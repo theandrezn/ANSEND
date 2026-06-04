@@ -196,16 +196,29 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .an-theater-hero {
   isolation: isolate;
-  min-height: clamp(330px, 34vw, 445px);
-  padding: clamp(28px, 3.5vw, 48px) clamp(32px, 5vw, 72px);
+  min-height: clamp(286px, 28vw, 386px);
+  padding: clamp(22px, 2.8vw, 38px) clamp(28px, 4vw, 58px);
   display: grid;
-  grid-template-columns: minmax(390px, .9fr) minmax(320px, .7fr);
+  grid-template-columns: minmax(360px, .86fr) minmax(280px, .64fr);
   align-items: center;
-  gap: 28px;
-  background:
+  gap: 24px;
+  background-color: #000;
+  background-image:
+    url("/assets/ansend-microphone-hero.png"),
     radial-gradient(circle at 76% 48%, rgba(255, 106, 0, .28), transparent 240px),
     radial-gradient(circle at 45% 52%, rgba(255, 106, 0, .18), transparent 270px),
     linear-gradient(90deg, #000 0%, #040201 48%, #000 100%);
+  background-position:
+    right 310px center,
+    center,
+    center,
+    center;
+  background-size:
+    340px auto,
+    auto,
+    auto,
+    auto;
+  background-repeat: no-repeat;
 }
 .an-theater-hero::before {
   content: "";
@@ -245,6 +258,25 @@ button:focus-visible, a:focus-visible, input:focus-visible {
     radial-gradient(circle at 84% 42%, rgba(255, 106, 0, .45) 0 1px, transparent 2px),
     radial-gradient(circle at 63% 70%, rgba(255, 106, 0, .35) 0 1px, transparent 2px);
 }
+.hero-particles::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: clamp(165px, 15vw, 290px);
+  width: clamp(270px, 24vw, 430px);
+  aspect-ratio: 1;
+  transform: translateY(-50%) rotate(-5deg);
+  transform-origin: 50% 54%;
+  background: url("/assets/ansend-microphone-hero.png") center / contain no-repeat;
+  opacity: .96;
+  filter:
+    brightness(1.85)
+    contrast(1.22)
+    saturate(1.25)
+    drop-shadow(0 0 30px rgba(255, 106, 0, .58))
+    drop-shadow(0 24px 42px rgba(0, 0, 0, .62));
+  animation: micBgPulse 2.8s ease-in-out infinite;
+}
 .hero-eq {
   left: 38%;
   right: 2%;
@@ -271,10 +303,48 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background: linear-gradient(180deg, transparent, var(--orange-glow), var(--orange), transparent);
   box-shadow: 0 0 20px rgba(255, 106, 0, .8);
 }
-.hero-eq span:nth-child(3n) { height: 110px; }
-.hero-eq span:nth-child(3n + 1) { height: 66px; }
-.hero-eq span:nth-child(3n + 2) { height: 148px; }
-.hero-eq span:nth-child(5n) { height: 184px; }
+.hero-eq span:nth-child(3n) { height: 76px; }
+.hero-eq span:nth-child(3n + 1) { height: 46px; }
+.hero-eq span:nth-child(3n + 2) { height: 104px; }
+.hero-eq span:nth-child(5n) { height: 128px; }
+@keyframes micPulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    filter:
+      drop-shadow(0 0 20px rgba(255, 106, 0, .28))
+      drop-shadow(0 22px 38px rgba(0, 0, 0, .6));
+  }
+  50% {
+    transform: translateY(-4px) scale(1.035);
+    filter:
+      drop-shadow(0 0 34px rgba(255, 106, 0, .5))
+      drop-shadow(0 28px 46px rgba(0, 0, 0, .66));
+  }
+}
+@keyframes micPulseGlow {
+  0%, 100% { opacity: .72; transform: scale(.96); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes micBgPulse {
+  0%, 100% {
+    opacity: .82;
+    transform: translateY(-50%) rotate(-5deg) scale(.985);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-52%) rotate(-5deg) scale(1.035);
+  }
+}
+@keyframes micInlinePulse {
+  0%, 100% {
+    opacity: .88;
+    transform: translateY(-50%) rotate(-5deg) scale(.985);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-52%) rotate(-5deg) scale(1.035);
+  }
+}
 .an-hero-copy,
 .an-hero-art,
 .hero-playlist-card {
@@ -285,18 +355,34 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   grid-column: 1;
   grid-row: 1;
 }
+.hero-mic-inline {
+  position: absolute;
+  z-index: 3;
+  left: clamp(650px, 58vw, 1040px);
+  top: 50%;
+  width: clamp(260px, 24vw, 430px);
+  max-height: 86%;
+  object-fit: contain;
+  transform: translateY(-50%) rotate(-5deg);
+  transform-origin: 50% 54%;
+  pointer-events: none;
+  animation: micInlinePulse 2.8s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 30px rgba(255, 106, 0, .5))
+    drop-shadow(0 24px 42px rgba(0, 0, 0, .62));
+}
 .an-hero-brand img {
-  width: clamp(138px, 14vw, 194px);
+  width: clamp(108px, 10vw, 158px);
   height: auto;
   display: block;
-  margin-bottom: clamp(18px, 2.5vw, 30px);
+  margin-bottom: clamp(14px, 1.8vw, 24px);
 }
 .an-kicker {
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--orange);
-  font-size: clamp(11px, 1.1vw, 14px);
+  font-size: clamp(10px, .9vw, 12px);
   font-weight: 800;
   letter-spacing: .12em;
 }
@@ -305,8 +391,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   height: 18px;
 }
 .an-hero-copy h1 {
-  margin: 18px 0 16px;
-  font-size: clamp(44px, 5vw, 70px);
+  margin: 14px 0 12px;
+  font-size: clamp(38px, 4.2vw, 58px);
   line-height: .95;
   letter-spacing: -0.02em;
   max-width: 720px;
@@ -325,45 +411,45 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   text-shadow: 0 0 26px rgba(255, 106, 0, .28);
 }
 .an-hero-copy p {
-  max-width: 520px;
+  max-width: 430px;
   margin: 0;
   color: var(--muted);
-  font-size: clamp(15px, 1.25vw, 19px);
+  font-size: clamp(13px, 1.05vw, 16px);
   line-height: 1.5;
 }
 .an-hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  margin-top: clamp(22px, 2.6vw, 32px);
+  margin-top: clamp(18px, 2.2vw, 26px);
 }
 .an-primary,
 .an-secondary {
-  min-height: 58px;
+  min-height: 48px;
   border-radius: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 0 28px;
+  padding: 0 22px;
   color: white;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
 }
 .an-primary {
   border: 0;
-  min-width: 230px;
+  min-width: 180px;
   background: linear-gradient(135deg, var(--orange), #ff4d00);
   box-shadow: 0 16px 34px rgba(255, 106, 0, .2);
 }
 .an-secondary {
-  min-width: 230px;
+  min-width: 180px;
   border: 1px solid rgba(255, 106, 0, .55);
   background: rgba(0, 0, 0, .32);
 }
 .an-primary svg,
 .an-secondary svg {
-  width: 21px;
+  width: 18px;
 }
 .an-secondary svg {
   fill: currentColor;
@@ -371,41 +457,63 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .an-benefits {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: clamp(22px, 2.7vw, 34px);
+  gap: 12px;
+  margin-top: clamp(17px, 2vw, 24px);
   color: #d4d4d4;
-  font-size: 14px;
+  font-size: 12px;
 }
 .an-benefits span {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding-right: 18px;
+  gap: 8px;
+  padding-right: 12px;
   border-right: 1px solid rgba(184, 184, 184, .25);
 }
 .an-benefits span:last-child {
   border-right: 0;
 }
 .an-benefits svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   color: var(--orange);
   filter: drop-shadow(0 0 10px rgba(255, 106, 0, .42));
 }
 .an-hero-art {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
-  align-self: center;
-  position: relative;
-  z-index: 3;
-  right: auto;
-  top: auto;
+  position: absolute;
+  z-index: 5;
+  right: clamp(245px, 18vw, 360px);
+  top: 50%;
   transform: none;
-  min-height: 320px;
+  min-height: 260px;
   display: grid;
   place-items: center;
-  width: min(340px, 100%);
+  width: clamp(230px, 22vw, 360px);
+  transform: translateY(-50%) rotate(-4deg);
+  pointer-events: none;
+}
+.an-hero-art::before {
+  content: "";
+  position: absolute;
+  inset: 12% 8% 4%;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 106, 0, .38), transparent 62%);
+  filter: blur(10px);
+  animation: micPulseGlow 2.8s ease-in-out infinite;
+}
+.hero-mic-img {
+  width: 100%;
+  max-height: min(330px, 28vw);
+  object-fit: contain;
+  display: block;
+  transform-origin: 50% 54%;
+  animation: micPulse 2.8s ease-in-out infinite;
+  filter:
+    brightness(1.85)
+    contrast(1.22)
+    saturate(1.25)
+    drop-shadow(0 0 24px rgba(255, 106, 0, .34))
+    drop-shadow(0 22px 38px rgba(0, 0, 0, .6));
 }
 .hero-mic-svg {
   width: 100%;
@@ -505,9 +613,9 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   z-index: 6;
   right: auto;
   bottom: auto;
-  width: min(270px, 90%);
-  min-height: 150px;
-  padding: 18px;
+  width: min(238px, 86%);
+  min-height: 128px;
+  padding: 15px;
   margin: 0 0 -6px 0;
   border: 1px solid rgba(184, 184, 184, .18);
   border-radius: 18px;
@@ -533,7 +641,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .hero-playlist-card strong {
   display: block;
-  font-size: clamp(18px, 1.7vw, 24px);
+  font-size: clamp(16px, 1.45vw, 20px);
 }
 .hero-playlist-card p {
   margin: 6px 0 14px;
@@ -542,13 +650,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .hero-player-line {
   display: grid;
-  grid-template-columns: 48px 1fr auto;
+  grid-template-columns: 40px 1fr auto;
   align-items: center;
   gap: 16px;
 }
 .hero-player-line button {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: 50%;
   display: grid;
@@ -562,7 +670,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   margin-left: 3px;
 }
 .hero-wave {
-  height: 34px;
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1535,10 +1643,15 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   }
   .an-hero-art {
     position: absolute;
-    right: -34px;
-    bottom: -60px;
-    opacity: .38;
-    transform: scale(.82);
+    right: clamp(10px, 4vw, 36px);
+    bottom: 18px;
+    width: min(250px, 34vw);
+    min-height: 0;
+    opacity: .52;
+    transform: none;
+  }
+  .hero-mic-img {
+    max-height: 250px;
   }
   .hero-playlist-card {
     position: relative;
@@ -1672,6 +1785,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .an-theater-hero {
     padding: 26px 20px;
     gap: 0;
+    background-image:
+      radial-gradient(circle at 76% 48%, rgba(255, 106, 0, .28), transparent 240px),
+      radial-gradient(circle at 45% 52%, rgba(255, 106, 0, .18), transparent 270px),
+      linear-gradient(90deg, #000 0%, #040201 48%, #000 100%);
+    background-position: center;
+    background-size: auto;
   }
   .an-hero-brand img {
     width: 116px;
@@ -1688,6 +1807,9 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .an-hero-copy p {
     max-width: 270px;
     font-size: 13px;
+  }
+  .hero-mic-inline {
+    display: none;
   }
   .an-hero-actions {
     gap: 10px;
@@ -1720,15 +1842,24 @@ button:focus-visible, a:focus-visible, input:focus-visible {
     height: 15px;
   }
   .an-hero-art {
-    right: -134px;
-    bottom: 88px;
-    opacity: .46;
-    transform: scale(.48);
+    right: -54px;
+    bottom: 110px;
+    width: 190px;
+    opacity: .34;
+    transform: rotate(-4deg);
+  }
+  .hero-mic-img {
+    max-height: 210px;
   }
   .hero-eq {
     left: 24%;
     right: -20%;
     opacity: .55;
+  }
+  .hero-particles::after {
+    right: -88px;
+    width: 170px;
+    opacity: .18;
   }
   .hero-playlist-card {
     width: min(240px, 100%);
