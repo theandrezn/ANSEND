@@ -181,6 +181,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   min-width: 0;
   padding: 26px 36px 48px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 34px;
 }
 .playlist-hero {
@@ -2092,5 +2093,181 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .spotlight-card::before,
   .spotlight-card::after {
     display: none;
+  }
+}
+
+/* Reference-led hero: one integrated microphone, compact at wide resolutions. */
+.playlist-hero {
+  width: 100%;
+  max-width: 1540px;
+  justify-self: center;
+}
+.an-theater-hero {
+  height: clamp(410px, 28vw, 500px);
+  min-height: 0;
+  padding: 0;
+  display: block;
+  background-image:
+    radial-gradient(circle at 72% 48%, rgba(255, 106, 0, .16), transparent 32%),
+    radial-gradient(circle at 42% 50%, rgba(255, 106, 0, .08), transparent 34%),
+    linear-gradient(90deg, #000 0%, #030201 62%, #080301 100%);
+  background-position: center;
+  background-size: auto;
+}
+.an-theater-hero::before {
+  background-image:
+    linear-gradient(rgba(255, 106, 0, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 106, 0, .04) 1px, transparent 1px),
+    radial-gradient(circle at 24% 52%, transparent 0 210px, rgba(255, 106, 0, .07) 211px, transparent 212px);
+  background-size: 34px 34px, 34px 34px, auto;
+  mask-image: linear-gradient(90deg, transparent, black 28%, black 96%);
+}
+.an-theater-hero::after {
+  background: linear-gradient(90deg, rgba(0, 0, 0, .2), transparent 52%, rgba(0, 0, 0, .12));
+}
+.hero-particles::after,
+.hero-mic-inline,
+.hero-shader-bg {
+  display: none;
+}
+.an-hero-copy {
+  position: absolute;
+  z-index: 5;
+  left: clamp(30px, 4.2vw, 68px);
+  top: 50%;
+  width: min(45%, 610px);
+  transform: translateY(-50%);
+}
+.an-hero-brand img {
+  width: clamp(126px, 11vw, 176px);
+  margin-bottom: clamp(18px, 2vw, 28px);
+}
+.an-hero-copy h1 {
+  margin: 14px 0 14px;
+  font-size: clamp(40px, 4vw, 60px);
+  line-height: .98;
+}
+.an-hero-copy p {
+  max-width: 470px;
+  font-size: clamp(13px, 1.05vw, 17px);
+}
+.an-hero-actions {
+  margin-top: clamp(18px, 2vw, 28px);
+}
+.an-benefits {
+  margin-top: clamp(18px, 2vw, 28px);
+}
+.hero-eq {
+  z-index: 2;
+  left: 36%;
+  right: 0;
+  top: 22%;
+  bottom: 16%;
+  gap: clamp(5px, .58vw, 9px);
+  opacity: .78;
+}
+.hero-eq span {
+  width: 2px;
+}
+.hero-eq span:nth-child(3n) { height: 58px; }
+.hero-eq span:nth-child(3n + 1) { height: 32px; }
+.hero-eq span:nth-child(3n + 2) { height: 78px; }
+.hero-eq span:nth-child(5n) { height: 96px; }
+.an-hero-art {
+  position: absolute;
+  z-index: 5;
+  right: clamp(190px, 17vw, 310px);
+  top: 50%;
+  bottom: auto;
+  width: clamp(300px, 29vw, 470px);
+  height: 112%;
+  min-height: 0;
+  opacity: 1;
+  transform: translateY(-50%);
+}
+.an-hero-art::before {
+  inset: 12% 5%;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(255, 106, 0, .2), transparent 64%);
+  animation: none;
+}
+.hero-mic-img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+  animation: none;
+  transform: none;
+  filter: drop-shadow(0 0 22px rgba(255, 106, 0, .24)) drop-shadow(0 28px 40px rgba(0, 0, 0, .72));
+}
+.hero-playlist-card {
+  position: absolute;
+  z-index: 7;
+  right: clamp(18px, 2.6vw, 42px);
+  bottom: clamp(18px, 2.2vw, 34px);
+  width: clamp(230px, 21vw, 320px);
+  min-height: 132px;
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .an-hero-copy {
+    width: 52%;
+  }
+  .an-hero-art {
+    right: 130px;
+    width: clamp(270px, 34vw, 380px);
+    height: 96%;
+    opacity: .82;
+  }
+  .hero-playlist-card {
+    width: 230px;
+  }
+}
+
+@media (max-width: 720px) {
+  .an-theater-hero {
+    height: auto;
+    min-height: 640px;
+    padding: 26px 20px;
+  }
+  .an-hero-copy {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    transform: none;
+  }
+  .an-hero-copy h1 {
+    font-size: clamp(38px, 11vw, 52px);
+  }
+  .an-hero-copy p {
+    max-width: calc(100vw - 70px);
+    font-size: 12.5px;
+  }
+  .an-hero-art {
+    right: -88px;
+    top: 48%;
+    width: 280px;
+    height: 360px;
+    opacity: .2;
+    transform: translateY(-50%);
+  }
+  .hero-eq {
+    left: 28%;
+    right: -18%;
+    opacity: .42;
+  }
+  .hero-playlist-card {
+    position: relative;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    justify-self: start;
+    align-self: auto;
+    width: min(240px, calc(100vw - 70px));
+    max-width: calc(100vw - 70px);
+    margin: 18px 0 0;
+    transform: none;
   }
 }
