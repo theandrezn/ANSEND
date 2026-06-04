@@ -51,6 +51,7 @@ const appState = {
   query: "",
   genre: "Todos",
   playing: null,
+  sellerMode: "login",
 };
 
 const sections = [
@@ -275,6 +276,7 @@ const routeTitles = {
   produtores: ["Produtores", "Conheça produtores verificados da comunidade ANSEND."],
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
 };
+routeTitles.vendedor = ["Area do vendedor", "Entre na sua conta de produtor ou abra sua loja ANSEND."];
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
@@ -337,6 +339,48 @@ function renderSettings() {
   </section>`;
 }
 
+function renderSellerAuth() {
+  const isLogin = appState.sellerMode === "login";
+  appView.innerHTML = `<section class="seller-auth" aria-label="Login do vendedor">
+    <div class="seller-auth-panel">
+      <a class="seller-auth-logo" href="#feed" data-route="feed" aria-label="ANSEND inicio"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
+      <div class="seller-auth-copy">
+        <span>PORTAL DO PRODUTOR</span>
+        <h1>${isLogin ? "Entre na sua loja" : "Comece a vender beats"}</h1>
+        <p>${isLogin ? "Acesse vendas, licencas, downloads e catalogo em um painel feito para produtores independentes." : "Crie sua conta de vendedor e prepare seu catalogo para artistas comprarem com seguranca."}</p>
+      </div>
+      <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}">
+        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome artistico" autocomplete="name" required></label>
+        <label for="seller-store">Nome da loja<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization" required></label>`}
+        <label for="seller-email">E-mail<input id="seller-email" name="email" type="email" placeholder="produtor@email.com" autocomplete="email" required></label>
+        <label for="seller-password">Senha
+          <span class="password-wrap">
+            <input id="seller-password" name="password" type="password" placeholder="Sua senha" autocomplete="${isLogin ? "current-password" : "new-password"}" required>
+            <button type="button" data-action="toggle-password" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+          </span>
+        </label>
+        <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar loja"}<i data-lucide="arrow-right"></i></button>
+      </form>
+      <div class="seller-auth-actions">
+        <button type="button" data-action="seller-google"><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">Continuar com Google</button>
+        <p>${isLogin ? "Ainda nao vende na ANSEND?" : "Ja tem conta de vendedor?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar loja" : "Entrar"}</button></p>
+      </div>
+    </div>
+    <aside class="seller-auth-showcase" aria-label="Beneficios para vendedores">
+      <div class="seller-showcase-card">
+        <span><i data-lucide="badge-dollar-sign"></i>Receba por licenca</span>
+        <strong>Venda beats, organize licencas e acompanhe downloads em tempo real.</strong>
+        <div class="seller-meter"><b style="width: 78%"></b></div>
+        <ul>
+          <li><i data-lucide="shield-check"></i>Licencas seguras</li>
+          <li><i data-lucide="audio-lines"></i>Catalogo profissional</li>
+          <li><i data-lucide="download"></i>Entrega imediata</li>
+        </ul>
+      </div>
+    </aside>
+  </section>`;
+}
+
 function hydrateView() {
   decorateControls();
   document.querySelectorAll('[data-action="favorite"][data-id]').forEach((button) => {
@@ -363,6 +407,7 @@ function renderRoute() {
   if (route === "biblioteca") renderLibrary();
   if (route === "produtores") renderProducers();
   if (route === "configuracoes") renderSettings();
+  if (route === "vendedor") renderSellerAuth();
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
   hydrateView();
 }
@@ -425,6 +470,29 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("button, a");
   if (!target) return;
   const action = target.dataset.action;
+  if (action === "seller") {
+    location.hash = "vendedor";
+    return;
+  }
+  if (action === "seller-mode") {
+    appState.sellerMode = target.dataset.mode || "login";
+    renderRoute();
+    return;
+  }
+  if (action === "seller-google") {
+    showToast("Login com Google preparado para vendedores", "badge-check");
+    return;
+  }
+  if (action === "toggle-password") {
+    const input = target.closest(".password-wrap")?.querySelector("input");
+    if (input) {
+      input.type = input.type === "password" ? "text" : "password";
+      target.setAttribute("aria-label", input.type === "password" ? "Mostrar senha" : "Ocultar senha");
+      target.innerHTML = `<i data-lucide="${input.type === "password" ? "eye" : "eye-off"}"></i>`;
+      lucide.createIcons();
+    }
+    return;
+  }
   if (target.dataset.route && target.tagName === "BUTTON") location.hash = target.dataset.route;
   if (action === "favorite") handleFavorite(target.dataset.id);
   if (action === "buy") handleBuy(target.dataset.id);
@@ -458,6 +526,13 @@ document.addEventListener("change", (event) => {
   if (event.target.closest(".settings-panel")) {
     showToast("Configuração salva", "settings");
   }
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target.closest(".seller-auth-form");
+  if (!form) return;
+  event.preventDefault();
+  showToast(form.dataset.mode === "signup" ? "Loja criada para revisao" : "Login de vendedor validado", "store");
 });
 
 document.addEventListener("keydown", (event) => {
