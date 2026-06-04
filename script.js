@@ -174,6 +174,114 @@ prefersReducedMotion.addEventListener?.("change", enableSpotlights);
 
 let autoScrollFrame = null;
 let autoScrollRows = [];
+let heroShader = null;
+
+function destroyHeroShader() {
+  if (!heroShader) return;
+  heroShader.destroy();
+  heroShader = null;
+}
+
+function setupHeroShader() {
+  const container = document.querySelector("[data-hero-shader]");
+  destroyHeroShader();
+  if (!container || prefersReducedMotion.matches || !window.THREE) return;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+  renderer.domElement.setAttribute("aria-hidden", "true");
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const clock = new THREE.Clock();
+  const uniforms = {
+    iTime: { value: 0 },
+    iResolution: { value: new THREE.Vector2(1, 1) },
+    iMouse: { value: new THREE.Vector2(.5, .5) },
+  };
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms,
+    vertexShader: `
+      void main() {
+        gl_Position = vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      uniform vec2 iResolution;
+      uniform float iTime;
+      uniform vec2 iMouse;
+
+      float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+      }
+
+      void main() {
+        vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+        vec2 mouse = (iMouse - 0.5 * iResolution.xy) / iResolution.y;
+        float t = iTime * 0.34;
+        float r = length(uv);
+        float a = atan(uv.y, uv.x);
+        float mouseDist = length(uv - mouse);
+        float bloom = smoothstep(0.48, 0.0, mouseDist);
+        float petals = 5.0 + sin(t) * 1.5;
+        float petalShape = pow(abs(sin(a * petals + r * 2.4)), 0.55);
+        float flow = sin(r * 12.0 - t * 2.4);
+        float pattern = mix(petalShape, flow * 0.5 + 0.5, 0.48) + bloom * 0.55;
+        float vignette = smoothstep(1.05, 0.12, r);
+        float grain = random(gl_FragCoord.xy + t) * 0.06;
+        vec3 ember = vec3(1.0, 0.16, 0.0);
+        vec3 fire = vec3(1.0, 0.26, 0.0);
+        vec3 smoke = vec3(0.08, 0.018, 0.0);
+        vec3 color = mix(smoke, ember, smoothstep(0.18, 0.82, pattern));
+        color = mix(color, fire, pow(pattern, 5.5) * (0.55 + bloom));
+        color += fire * pow(pattern, 10.0) * 0.48;
+        color = min(color, vec3(1.0, 0.32, 0.035));
+        float alpha = clamp((pattern * 0.48 + bloom * 0.42 + grain) * vignette, 0.0, 0.88);
+        gl_FragColor = vec4(color, alpha);
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  scene.add(mesh);
+
+  const resize = () => {
+    const width = Math.max(1, container.clientWidth);
+    const height = Math.max(1, container.clientHeight);
+    renderer.setSize(width, height, false);
+    uniforms.iResolution.value.set(width, height);
+    uniforms.iMouse.value.set(width * .58, height * .48);
+  };
+  const onPointerMove = (event) => {
+    const bounds = container.getBoundingClientRect();
+    uniforms.iMouse.value.set(event.clientX - bounds.left, bounds.height - (event.clientY - bounds.top));
+  };
+  const tick = () => {
+    uniforms.iTime.value = clock.getElapsedTime();
+    renderer.render(scene, camera);
+  };
+
+  const pointerArea = container.closest(".playlist-hero, .seller-auth-showcase") || container;
+  window.addEventListener("resize", resize);
+  pointerArea.addEventListener("pointermove", onPointerMove, { passive: true });
+  resize();
+  renderer.setAnimationLoop(tick);
+
+  heroShader = {
+    destroy() {
+      window.removeEventListener("resize", resize);
+      pointerArea.removeEventListener("pointermove", onPointerMove);
+      renderer.setAnimationLoop(null);
+      mesh.geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+      renderer.domElement.remove();
+    },
+  };
+}
 
 function pauseAutoScroll(row, duration = 1600) {
   row.dataset.paused = "true";
@@ -240,6 +348,7 @@ function setupAutoScrollRows() {
 }
 
 prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
+prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
 function setupScrollReveals() {
   const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth");
@@ -391,17 +500,18 @@ function renderSellerAuth() {
       </form>
       <div class="seller-auth-actions">
         <button type="button" data-action="seller-google"><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">Continuar com Google</button>
-        <p>${isLogin ? "Ainda nao vende na ANSEND?" : "Ja tem conta de vendedor?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar loja" : "Entrar"}</button></p>
+        <p>${isLogin ? "Ainda não vende na ANSEND?" : "Já tem conta de vendedor?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar loja" : "Entrar"}</button></p>
       </div>
     </div>
-    <aside class="seller-auth-showcase" aria-label="Beneficios para vendedores">
+    <aside class="seller-auth-showcase" aria-label="Benefícios para vendedores">
+      <div class="seller-shader-bg" data-hero-shader aria-hidden="true"></div>
       <div class="seller-showcase-card">
-        <span><i data-lucide="badge-dollar-sign"></i>Receba por licenca</span>
-        <strong>Venda beats, organize licencas e acompanhe downloads em tempo real.</strong>
+        <span><i data-lucide="badge-dollar-sign"></i>Receba por licença</span>
+        <strong>Venda beats, organize licenças e acompanhe downloads em tempo real.</strong>
         <div class="seller-meter"><b style="width: 78%"></b></div>
         <ul>
-          <li><i data-lucide="shield-check"></i>Licencas seguras</li>
-          <li><i data-lucide="audio-lines"></i>Catalogo profissional</li>
+          <li><i data-lucide="shield-check"></i>Licenças seguras</li>
+          <li><i data-lucide="audio-lines"></i>Catálogo profissional</li>
           <li><i data-lucide="download"></i>Entrega imediata</li>
         </ul>
       </div>
@@ -416,6 +526,7 @@ function hydrateView() {
     button.classList.toggle("is-favorite", appState.favorites.has(button.dataset.id));
   });
   enableSpotlights();
+  setupHeroShader();
   setupAutoScrollRows();
   setupScrollReveals();
   lucide.createIcons();

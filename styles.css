@@ -491,11 +491,28 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   transform: translateY(-50%) rotate(-4deg);
   pointer-events: none;
 }
+.hero-shader-bg {
+  position: absolute;
+  inset: -52% -72%;
+  z-index: -1;
+  opacity: .9;
+  mix-blend-mode: screen;
+  filter: blur(.1px) saturate(1.35);
+  transform: rotate(4deg);
+  -webkit-mask-image: radial-gradient(circle at 52% 50%, #000 0 42%, rgba(0, 0, 0, .72) 54%, transparent 76%);
+  mask-image: radial-gradient(circle at 52% 50%, #000 0 42%, rgba(0, 0, 0, .72) 54%, transparent 76%);
+  pointer-events: none;
+}
+.hero-shader-bg canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
 .an-hero-art::before {
   content: "";
   position: absolute;
   inset: 12% 8% 4%;
-  z-index: -1;
+  z-index: -2;
   border-radius: 999px;
   background: radial-gradient(circle, rgba(255, 106, 0, .38), transparent 62%);
   filter: blur(10px);
@@ -1594,13 +1611,29 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, .68), transparent 45%),
     radial-gradient(circle at 50% 90%, rgba(255, 106, 0, .22), transparent 260px);
 }
+.seller-shader-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: .52;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(circle at 52% 48%, #000 0 42%, rgba(0, 0, 0, .7) 58%, transparent 82%);
+  mask-image: radial-gradient(circle at 52% 48%, #000 0 42%, rgba(0, 0, 0, .7) 58%, transparent 82%);
+  pointer-events: none;
+}
+.seller-shader-bg canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
 .seller-showcase-card {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(430px, 100%);
   padding: 26px;
   border: 1px solid rgba(255, 255, 255, .14);
