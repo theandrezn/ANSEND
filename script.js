@@ -48,11 +48,27 @@ const allBeats = Array.from({ length: beatNames.length }, (_, i) => beat(i, i % 
 const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
+  onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   query: "",
   genre: "Todos",
   playing: null,
   sellerMode: "login",
 };
+
+const onboardingStyles = [
+  { id: "trap", label: "Trap", desc: "808 forte, melodia escura e espaço para voz.", icon: "flame", genres: ["Trap", "Type Beat"] },
+  { id: "drill", label: "Drill", desc: "Bateria seca, grave pesado e clima agressivo.", icon: "target", genres: ["Drill", "Trap"] },
+  { id: "funk", label: "Funk", desc: "Ritmo direto, bounce e energia de pista.", icon: "radio", genres: ["Funk", "Type Beat"] },
+  { id: "rnb", label: "R&B", desc: "Textura suave, acordes e refrões melódicos.", icon: "moon", genres: ["R&B", "Boom Bap"] },
+  { id: "boombap", label: "Boom Bap", desc: "Bateria clássica, sample e presença urbana.", icon: "disc-3", genres: ["Boom Bap", "R&B"] },
+  { id: "type", label: "Type Beat", desc: "Referências atuais para criar rápido.", icon: "sparkles", genres: ["Type Beat", "Trap"] },
+];
+
+const onboardingGoals = [
+  ["gravar", "Gravar uma música"],
+  ["comprar", "Comprar licença"],
+  ["descobrir", "Descobrir produtores"],
+];
 
 const sections = [
   ["Últimas quentes", "Beats recentes subindo no feed", "flame", Array.from({ length: 6 }, (_, i) => beat(i, i % 2 ? "" : "Hot"))],
@@ -92,7 +108,7 @@ function playlistCard([title, subtitle, cover]) {
 function beatCard(item) {
   const klass = item.badge === "Novo" ? "new" : item.badge === "Exclusivo" ? "exclusive" : "";
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
-  return `<article class="beat-card gradient-card spotlight-card" style="--card-art: url('${item.cover}')">
+  return `<article class="beat-card gradient-card spotlight-card" style="--card-art: url('${item.cover}')" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
     <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
     ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
     <button class="fav-over${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
@@ -146,6 +162,7 @@ let lastRoute = null;
 
 function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
+  if (route.startsWith("beat-")) return "detalhe";
   return routeTitles?.[route] ? route : "feed";
 }
 
@@ -344,7 +361,7 @@ prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
 prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth");
+  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .beat-detail-layout, .producer-profile");
   if (revealObserver) revealObserver.disconnect();
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
@@ -405,12 +422,129 @@ const routeTitles = {
   biblioteca: ["Biblioteca", "Playlists, históricos e itens salvos em um só lugar."],
   produtores: ["Produtores", "Conheça produtores verificados da comunidade ANSEND."],
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
+  detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
 routeTitles.vendedor = ["Area do vendedor", "Entre na sua conta de produtor ou abra sua loja ANSEND."];
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
+}
+
+function persistOnboarding(profile) {
+  appState.onboardingProfile = profile;
+  localStorage.setItem("ansend-onboarding-profile", JSON.stringify(profile));
+}
+
+function preferredGenres() {
+  const profile = appState.onboardingProfile;
+  if (!profile?.genres?.length) return ["Trap", "Drill", "Funk"];
+  return [...new Set(profile.genres)].slice(0, 3);
+}
+
+function preferredBeats(limit = 8) {
+  const selected = preferredGenres();
+  const exact = allBeats.filter((item) => selected.includes(item.tags[0]));
+  return exact.concat(allBeats.filter((item) => !selected.includes(item.tags[0]))).slice(0, limit);
+}
+
+function personalizedPlaylists() {
+  const selected = preferredGenres();
+  const names = {
+    Trap: ["Trap na Área", "808 para verso", "Noite de Trap"],
+    Drill: ["Drill Brutal", "Rua & Hi-hat", "Drill de Luxo"],
+    Funk: ["Funk de Estúdio", "Baile Premium", "Funk Type"],
+    "R&B": ["R&B Noturno", "Voz & Melodia", "Slow Sessions"],
+    "Boom Bap": ["Boom Bap Sujo", "Sample Room", "Clássicos de Rua"],
+    "Type Beat": ["Type Beats em Alta", "Referências do Momento", "Flow Pronto"],
+  };
+  const result = selected.flatMap((genre, index) => {
+    const pack = names[genre] || [`${genre} em alta`, `${genre} selecionado`];
+    return pack.slice(0, 2).map((title, offset) => [
+      title,
+      `${32 + index * 9 + offset * 6} beats escolhidos`,
+      img(covers[(index * 3 + offset + 1) % covers.length]),
+    ]);
+  });
+  return result.slice(0, 6);
+}
+
+function applyFeedPersonalization() {
+  const profile = appState.onboardingProfile;
+  if (!profile?.completed) return;
+  const selected = preferredGenres();
+  const firstTitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head h2");
+  const firstSubtitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head p");
+  const exploreTitle = document.querySelector('[data-feed="explore"]')?.closest(".catalog-section")?.querySelector(".section-head h2");
+  const exploreSubtitle = document.querySelector('[data-feed="explore"]')?.closest(".catalog-section")?.querySelector(".section-head p");
+
+  if (firstTitle) firstTitle.innerHTML = `<i data-lucide="list-music"></i>Playlists para seu estilo`;
+  if (firstSubtitle) firstSubtitle.textContent = `Curadoria baseada em ${selected.join(", ")}`;
+  if (exploreTitle) exploreTitle.innerHTML = `<i data-lucide="sparkles"></i>Beats escolhidos pra você`;
+  if (exploreSubtitle) exploreSubtitle.textContent = profile.goalLabel ? `Foco: ${profile.goalLabel.toLowerCase()}` : "Descoberta guiada pelo seu gosto";
+
+  const playlistRow = document.querySelector("#playlistRow");
+  if (playlistRow) playlistRow.innerHTML = personalizedPlaylists().map(playlistCard).join("");
+  const exploreRow = document.querySelector('[data-feed="explore"]');
+  if (exploreRow) exploreRow.innerHTML = preferredBeats(8).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Hot" : item.badge })).join("");
+  enableSpotlights();
+  setupAutoScrollRows();
+  lucide.createIcons();
+}
+
+function onboardingMarkup() {
+  return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="onboarding-shell">
+      <div class="onboarding-orbit" aria-hidden="true"></div>
+      <div class="onboarding-copy">
+        <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
+        <span>PRIMEIRO ACESSO</span>
+        <h2 id="onboardingTitle">Monte seu feed antes de entrar.</h2>
+        <p>Escolha as vibes que combinam com você e a ANSEND adapta playlists, beats e produtores já na primeira tela.</p>
+        <div class="onboarding-preview">
+          <strong>Seu feed vai priorizar</strong>
+          <small>playlists por estilo, beats compatíveis e produtores próximos da sua intenção.</small>
+        </div>
+      </div>
+      <form class="onboarding-card">
+        <div class="onboarding-step">
+          <span>01</span>
+          <h3>Quais estilos você curte?</h3>
+          <div class="onboarding-options">
+            ${onboardingStyles.map((style, index) => `<label class="quiz-option">
+              <input type="checkbox" name="styles" value="${style.id}" ${index < 2 ? "checked" : ""}>
+              <b><i data-lucide="${style.icon}"></i>${style.label}</b>
+              <small>${style.desc}</small>
+            </label>`).join("")}
+          </div>
+        </div>
+        <div class="onboarding-step compact">
+          <span>02</span>
+          <h3>Qual é seu objetivo agora?</h3>
+          <div class="goal-row">
+            ${onboardingGoals.map(([value, label], index) => `<label><input type="radio" name="goal" value="${value}" ${index === 0 ? "checked" : ""}>${label}</label>`).join("")}
+          </div>
+        </div>
+        <div class="onboarding-footer">
+          <button class="skip-onboarding" type="button" data-action="skip-onboarding">Pular</button>
+          <button class="finish-onboarding" type="submit">Criar meu feed<i data-lucide="arrow-right"></i></button>
+        </div>
+      </form>
+    </div>
+  </section>`;
+}
+
+function showOnboarding(force = false) {
+  if (!force && appState.onboardingProfile?.completed) return;
+  document.querySelector(".onboarding-quiz")?.remove();
+  document.body.insertAdjacentHTML("beforeend", onboardingMarkup());
+  document.body.classList.add("onboarding-open");
+  lucide.createIcons();
+}
+
+function closeOnboarding() {
+  document.body.classList.remove("onboarding-open");
+  document.querySelector(".onboarding-quiz")?.remove();
 }
 
 function findBeat(id) {
@@ -460,12 +594,81 @@ function renderProducers() {
   appView.innerHTML = `${pageIntro("produtores")}<div class="producer-grid">${avatars.concat(["Duzzi", "Milly Studio", "Nocivo Beats", "Apollo"]).map(avatarCard).join("")}</div>`;
 }
 
+function renderBeatDetail() {
+  const hashId = location.hash.replace("#beat-", "");
+  const item = findBeat(hashId);
+  const producerName = item.producer.replace("prod. ", "");
+  const producerIndex = Math.max(0, producers.indexOf(item.producer)) % avatarImages.length;
+  const producerAvatar = img(avatarImages[producerIndex]);
+  const related = allBeats.filter((beatItem) => beatItem.id !== item.id).slice(producerIndex, producerIndex + 5);
+  const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
+
+  appView.innerHTML = `
+    <section class="beat-detail-hero" style="--detail-cover: url('${item.cover}')">
+      <img class="beat-detail-cover" src="${item.cover}" alt="Capa do beat ${item.title}">
+      <div class="beat-detail-copy">
+        <span class="detail-eyebrow">BEAT PROFISSIONAL · ${item.tags[0]}</span>
+        <h1>${item.title}</h1>
+        <button class="detail-producer-link" type="button" data-action="producer-focus">
+          <img src="${producerAvatar}" alt="">
+          <span><b>${item.producer}</b><small>Produtor verificado</small></span>
+          <i data-lucide="badge-check"></i>
+        </button>
+        <p>Beat com identidade urbana, graves definidos e espaço para sua voz. Pronto para gravar, licenciar e lançar.</p>
+        <div class="detail-actions">
+          <button class="detail-play" type="button" data-action="play" data-id="${item.id}"><i data-lucide="play"></i>Ouvir prévia</button>
+          <button class="detail-buy" type="button" data-action="buy" data-id="${item.id}">Comprar licença</button>
+          <button class="detail-favorite${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar"><i data-lucide="heart"></i></button>
+        </div>
+      </div>
+      <div class="detail-stats">
+        <span><small>BPM</small><strong>${item.tags[1].replace(" BPM", "")}</strong></span>
+        <span><small>Gênero</small><strong>${item.tags[0]}</strong></span>
+        <span><small>Tom</small><strong>Fá menor</strong></span>
+        <span><small>Duração</small><strong>02:45</strong></span>
+      </div>
+    </section>
+
+    <section class="beat-detail-layout">
+      <div class="beat-detail-main">
+        <header class="detail-section-head"><div><span>ESCOLHA SUA LICENÇA</span><h2>Arquivos prontos para sua próxima música</h2></div></header>
+        <div class="license-grid">
+          <article><span>Básica</span><strong>[VALOR]</strong><p>MP3 sem tag para lançar seu primeiro som.</p><ul><li>Arquivo MP3</li><li>5.000 streams</li><li>Uso comercial</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher básica</button></article>
+          <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>[VALOR]</strong><p>WAV + MP3 para lançamentos profissionais.</p><ul><li>WAV e MP3</li><li>100.000 streams</li><li>Videoclipe incluso</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher premium</button></article>
+          <article><span>Exclusiva</span><strong>[VALOR]</strong><p>O beat deixa o catálogo após sua compra.</p><ul><li>Todos os arquivos</li><li>Streams ilimitados</li><li>Direitos exclusivos</li></ul><button type="button" data-action="buy" data-id="${item.id}">Comprar exclusiva</button></article>
+        </div>
+
+        <section class="producer-profile" id="producerProfile">
+          <div class="producer-profile-cover" style="--producer-cover: url('${item.cover}')"></div>
+          <div class="producer-profile-info">
+            <img src="${producerAvatar}" alt="Avatar de ${producerName}">
+            <div><span>PRODUTOR VERIFICADO</span><h2>${producerName}</h2><p>Produtor independente focado em ${item.tags[0]}, trap e sonoridades urbanas. Beats com mix limpa, identidade forte e entrega imediata.</p></div>
+            <button type="button" data-action="follow-producer">Seguir</button>
+          </div>
+          <div class="producer-profile-stats"><span><strong>${420 + producerIndex * 137}</strong><small>vendas</small></span><span><strong>${18 + producerIndex * 4} mil</strong><small>ouvintes mensais</small></span><span><strong>${36 + producerIndex * 3}</strong><small>beats publicados</small></span></div>
+        </section>
+
+        <section class="catalog-section detail-catalog">
+          <div class="section-head"><div><h2><i data-lucide="flame"></i>Populares de ${producerName}</h2><p>Mais ouvidos e licenciados</p></div></div>
+          <div class="beat-row">${related.map(beatCard).join("")}</div>
+        </section>
+      </div>
+      <aside class="beat-detail-side">
+        <h3>Sobre este beat</h3>
+        <p>Produzido para artistas que procuram presença, dinâmica e uma base pronta para lançamento.</p>
+        <dl><div><dt>Publicado</dt><dd>4 de junho de 2026</dd></div><div><dt>Arquivos</dt><dd>WAV, MP3 e stems</dd></div><div><dt>Licença</dt><dd>Contrato digital seguro</dd></div></dl>
+        <button type="button" data-action="producer-focus">Ver perfil do produtor<i data-lucide="arrow-down"></i></button>
+      </aside>
+    </section>`;
+}
+
 function renderSettings() {
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
     <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>André Silva</strong><span>Artista independente</span></div><button type="button" data-action="profile-edit">Editar perfil</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
+    <label><span><strong>Preferências musicais</strong><small>Refaça o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
   </section>`;
 }
 
@@ -535,7 +738,10 @@ function renderRoute() {
   appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
-  if (route === "feed") appView.innerHTML = feedTemplate;
+  if (route === "feed") {
+    appView.innerHTML = feedTemplate;
+    applyFeedPersonalization();
+  }
   if (route === "explorar") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
@@ -543,6 +749,7 @@ function renderRoute() {
   if (route === "produtores") renderProducers();
   if (route === "configuracoes") renderSettings();
   if (route === "vendedor") renderSellerAuth();
+  if (route === "detalhe") renderBeatDetail();
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
   hydrateView();
 }
@@ -602,11 +809,29 @@ document.querySelector(".search")?.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const clickedBeatCard = event.target.closest(".beat-card");
   const target = event.target.closest("button, a");
+  if (!target && clickedBeatCard) {
+    location.hash = `beat-${clickedBeatCard.dataset.beatId}`;
+    return;
+  }
   if (!target) return;
   const action = target.dataset.action;
   if (action === "seller") {
     location.hash = "vendedor";
+    return;
+  }
+  if (action === "skip-onboarding") {
+    persistOnboarding({ completed: true, styles: ["trap", "drill"], genres: ["Trap", "Drill", "Type Beat"], goal: "descobrir", goalLabel: "Descobrir produtores" });
+    closeOnboarding();
+    if (currentRoute() === "feed") {
+      renderRoute();
+    }
+    showToast("Feed personalizado com uma curadoria inicial", "sparkles");
+    return;
+  }
+  if (action === "restart-onboarding") {
+    showOnboarding(true);
     return;
   }
   if (action === "seller-mode") {
@@ -641,6 +866,11 @@ document.addEventListener("click", (event) => {
   if (action === "playlist") showToast(`Playlist aberta: ${target.dataset.title}`, "list-music");
   if (action === "how-it-works") showToast("Explore, escolha sua licença e baixe o beat imediatamente", "circle-help");
   if (action === "producer") showToast(`Perfil de ${target.dataset.title}`, "badge-check");
+  if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
+  if (action === "follow-producer") {
+    target.classList.toggle("is-following");
+    target.textContent = target.classList.contains("is-following") ? "Seguindo" : "Seguir";
+  }
   if (action === "download") showToast("Download preparado com sucesso", "download");
   if (action === "seller") showToast("Sua loja de produtor está pronta para configurar", "store");
   if (action === "notifications") showToast("Você tem 3 novos lançamentos", "bell");
@@ -664,6 +894,27 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("submit", (event) => {
+  const onboardingForm = event.target.closest(".onboarding-card");
+  if (onboardingForm) {
+    event.preventDefault();
+    const selectedStyles = [...onboardingForm.querySelectorAll('input[name="styles"]:checked')].map((input) => input.value);
+    const styles = selectedStyles.length ? selectedStyles : ["trap"];
+    const selectedGoal = onboardingForm.querySelector('input[name="goal"]:checked')?.value || "gravar";
+    const selectedStyleData = onboardingStyles.filter((style) => styles.includes(style.id));
+    const selectedGoalData = onboardingGoals.find(([value]) => value === selectedGoal) || onboardingGoals[0];
+    persistOnboarding({
+      completed: true,
+      styles,
+      genres: [...new Set(selectedStyleData.flatMap((style) => style.genres))],
+      goal: selectedGoal,
+      goalLabel: selectedGoalData[1],
+      updatedAt: new Date().toISOString(),
+    });
+    closeOnboarding();
+    if (currentRoute() === "feed") renderRoute();
+    showToast("Seu feed ANSEND foi adaptado", "sparkles");
+    return;
+  }
   const form = event.target.closest(".seller-auth-form");
   if (!form) return;
   event.preventDefault();
@@ -672,6 +923,11 @@ document.addEventListener("submit", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") document.body.classList.remove("menu-open");
+  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".beat-card")) {
+    event.preventDefault();
+    location.hash = `beat-${event.target.dataset.beatId}`;
+  }
 });
 
 renderRoute();
+showOnboarding();
