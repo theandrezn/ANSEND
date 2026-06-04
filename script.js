@@ -187,7 +187,7 @@ function setupHeroShader() {
   destroyHeroShader();
   if (!container || prefersReducedMotion.matches || !window.THREE) return;
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
   renderer.domElement.setAttribute("aria-hidden", "true");
   container.appendChild(renderer.domElement);
@@ -201,7 +201,7 @@ function setupHeroShader() {
     iMouse: { value: new THREE.Vector2(.5, .5) },
   };
   const material = new THREE.ShaderMaterial({
-    transparent: true,
+    transparent: false,
     depthWrite: false,
     uniforms,
     vertexShader: `
@@ -215,33 +215,26 @@ function setupHeroShader() {
       uniform float iTime;
       uniform vec2 iMouse;
 
-      float random(vec2 st) {
-        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-      }
-
       void main() {
-        vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
-        vec2 mouse = (iMouse - 0.5 * iResolution.xy) / iResolution.y;
-        float t = iTime * 0.34;
-        float r = length(uv);
-        float a = atan(uv.y, uv.x);
-        float mouseDist = length(uv - mouse);
-        float bloom = smoothstep(0.48, 0.0, mouseDist);
-        float petals = 5.0 + sin(t) * 1.5;
-        float petalShape = pow(abs(sin(a * petals + r * 2.4)), 0.55);
-        float flow = sin(r * 12.0 - t * 2.4);
-        float pattern = mix(petalShape, flow * 0.5 + 0.5, 0.48) + bloom * 0.55;
-        float vignette = smoothstep(1.05, 0.12, r);
-        float grain = random(gl_FragCoord.xy + t) * 0.06;
-        vec3 ember = vec3(1.0, 0.16, 0.0);
-        vec3 fire = vec3(1.0, 0.26, 0.0);
-        vec3 smoke = vec3(0.08, 0.018, 0.0);
-        vec3 color = mix(smoke, ember, smoothstep(0.18, 0.82, pattern));
-        color = mix(color, fire, pow(pattern, 5.5) * (0.55 + bloom));
-        color += fire * pow(pattern, 10.0) * 0.48;
-        color = min(color, vec3(1.0, 0.32, 0.035));
-        float alpha = clamp((pattern * 0.48 + bloom * 0.42 + grain) * vignette, 0.0, 0.88);
-        gl_FragColor = vec4(color, alpha);
+        vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / min(iResolution.x, iResolution.y);
+        vec2 mouse = (2.0 * iMouse - iResolution.xy) / min(iResolution.x, iResolution.y);
+        float t = iTime * 0.42;
+
+        for (float i = 1.0; i < 10.0; i++) {
+          uv.x += 0.5 / i * cos(i * 2.35 * uv.y + t);
+          uv.y += 0.5 / i * cos(i * 1.45 * uv.x + t * 1.12);
+        }
+
+        float lines = 0.075 / max(abs(sin(t - uv.y - uv.x)), 0.075);
+        float pointerGlow = smoothstep(0.7, 0.0, length(uv - mouse)) * 0.16;
+        float centerShade = smoothstep(0.0, 1.15, length(uv * vec2(.82, 1.0)));
+        vec3 black = vec3(0.0);
+        vec3 ember = vec3(0.42, 0.075, 0.0);
+        vec3 orange = vec3(1.0, 0.28, 0.0);
+        vec3 color = mix(black, ember, clamp(lines * .42, 0.0, 1.0));
+        color += orange * clamp(lines * .18 + pointerGlow, 0.0, .62);
+        color *= mix(.42, 1.0, centerShade);
+        gl_FragColor = vec4(color, 1.0);
       }
     `,
   });
@@ -506,9 +499,7 @@ function renderSellerAuth() {
     <aside class="seller-auth-showcase" aria-label="Benefícios para vendedores">
       <div class="seller-shader-bg" data-hero-shader aria-hidden="true"></div>
       <div class="seller-showcase-card">
-        <span><i data-lucide="badge-dollar-sign"></i>Receba por licença</span>
         <strong>Venda beats, organize licenças e acompanhe downloads em tempo real.</strong>
-        <div class="seller-meter"><b style="width: 78%"></b></div>
         <ul>
           <li><i data-lucide="shield-check"></i>Licenças seguras</li>
           <li><i data-lucide="audio-lines"></i>Catálogo profissional</li>
