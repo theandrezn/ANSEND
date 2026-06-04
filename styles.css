@@ -1528,6 +1528,10 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .seller-auth-form input::placeholder {
   color: #747474;
 }
+.seller-auth-form.is-submitting {
+  opacity: .72;
+  pointer-events: none;
+}
 .password-wrap {
   position: relative;
   display: block;
@@ -1597,6 +1601,171 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background: transparent;
   font-weight: 900;
 }
+.account-role-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.role-option {
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 15px;
+  background: rgba(0, 0, 0, .45);
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.role-option input,
+.account-style-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.role-option b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 13px;
+}
+.role-option svg {
+  width: 17px;
+  color: var(--orange);
+}
+.role-option small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.38;
+}
+.role-option:has(input:checked) {
+  border-color: var(--orange);
+  background: linear-gradient(145deg, rgba(255, 106, 0, .16), rgba(0, 0, 0, .64));
+  box-shadow: 0 0 28px rgba(255, 106, 0, .12);
+}
+.role-option:hover { transform: translateY(-1px); }
+.account-style-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.account-style-chip span {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 106, 0, .22);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, .36);
+  font-size: 11px;
+  font-weight: 900;
+}
+.account-style-chip:has(input:checked) span {
+  color: white;
+  border-color: var(--orange);
+  background: rgba(255, 106, 0, .16);
+}
+.account-dashboard {
+  display: grid;
+  gap: 24px;
+}
+.account-hero-card {
+  min-height: 300px;
+  padding: clamp(26px, 5vw, 58px);
+  border: 1px solid rgba(255, 106, 0, .28);
+  border-radius: 22px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 24px;
+  background:
+    radial-gradient(circle at 76% 20%, rgba(255, 106, 0, .22), transparent 280px),
+    linear-gradient(135deg, rgba(8, 6, 4, .98), rgba(0, 0, 0, .86));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .5);
+}
+.account-hero-card span {
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.account-hero-card h1 {
+  max-width: 820px;
+  margin: 10px 0;
+  font-size: clamp(42px, 6vw, 82px);
+  line-height: .95;
+}
+.account-hero-card p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.account-hero-card > button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 106, 0, .32);
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: white;
+  background: rgba(0, 0, 0, .42);
+  font-weight: 900;
+}
+.account-hero-card > button svg { width: 17px; }
+.account-badges {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.account-badges b {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  background: rgba(255, 106, 0, .12);
+  border: 1px solid rgba(255, 106, 0, .26);
+  font-size: 11px;
+}
+.account-badges svg { width: 15px; color: var(--orange); }
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.account-grid article {
+  min-height: 190px;
+  padding: 22px;
+  border: 1px solid rgba(255, 106, 0, .2);
+  border-radius: 18px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  background: linear-gradient(145deg, rgba(8, 6, 4, .96), rgba(0, 0, 0, .9));
+}
+.account-grid svg { width: 22px; color: var(--orange); }
+.account-grid span {
+  color: var(--orange);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.account-grid strong {
+  color: white;
+  font-size: 21px;
+}
+.account-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.account-recs { margin-top: 4px; }
 .seller-auth-showcase {
   position: relative;
   min-height: 620px;
@@ -2307,6 +2476,35 @@ body.onboarding-open { overflow: hidden; }
 }
 
 @media (max-width: 720px) {
+  .account-role-picker,
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-option {
+    min-height: 96px;
+  }
+
+  .account-hero-card {
+    min-height: 260px;
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding: 24px;
+  }
+
+  .account-hero-card h1 {
+    font-size: 38px;
+  }
+
+  .account-hero-card p {
+    font-size: 13px;
+  }
+
+  .account-hero-card > button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .onboarding-quiz {
     padding: 10px;
     align-items: start;

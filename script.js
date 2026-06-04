@@ -1,4 +1,28 @@
 const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
+const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
+const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
+const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
+const isSupabaseConfigured = Boolean(
+  window.supabase
+  && SUPABASE_CONFIG.url
+  && SUPABASE_CONFIG.publishableKey
+  && SUPABASE_CONFIG.publishableKey !== SUPABASE_KEY_PLACEHOLDER
+);
+const supabaseClient = isSupabaseConfigured
+  ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.publishableKey)
+  : null;
+
+const accountRoles = [
+  { id: "produtor", label: "Produtor", icon: "sliders-horizontal", desc: "Publica beats, gerencia licenças e acompanha vendas." },
+  { id: "curador", label: "Curador", icon: "list-music", desc: "Monta playlists, salva catálogos e encontra novos sons." },
+  { id: "artista", label: "Artista", icon: "mic-2", desc: "Busca beats para gravar, licenciar e lançar músicas." },
+  { id: "designer", label: "Designer", icon: "palette", desc: "Organiza capas, identidade visual e assets de lançamento." },
+  { id: "beatmaker", label: "BeatMaker", icon: "audio-lines", desc: "Cria beats, colabora com produtores e sobe catálogos." },
+  { id: "manager", label: "Manager", icon: "briefcase-business", desc: "Gerencia artistas, compras, contratos e lançamentos." },
+  { id: "selo", label: "Selo", icon: "badge-check", desc: "Opera catálogo, talentos e licenças em escala." },
+];
+
+const roleLabels = Object.fromEntries(accountRoles.map((role) => [role.id, role.label]));
 
 const playlists = [
   ["Trap na Área", "52 beats", img("photo-1493225457124-a3eb161ffa5f")],
@@ -49,6 +73,9 @@ const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
+  authUser: null,
+  profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
+  authReady: !supabaseClient,
   query: "",
   genre: "Todos",
   playing: null,
@@ -424,11 +451,111 @@ const routeTitles = {
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
-routeTitles.vendedor = ["Area do vendedor", "Entre na sua conta de produtor ou abra sua loja ANSEND."];
+routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
+}
+
+function pendingProfileKey(userId) {
+  return `ansend-pending-profile-${userId}`;
+}
+
+function activeProfile() {
+  return appState.profile || appState.onboardingProfile || null;
+}
+
+function accountRoleLabel(role = activeProfile()?.account_role) {
+  return roleLabels[role] || "Visitante";
+}
+
+function accountGreeting() {
+  const profile = activeProfile();
+  if (!profile?.account_role) return "Sua seleção diária de playlists, beats e produtores.";
+  const label = accountRoleLabel(profile.account_role);
+  const map = {
+    produtor: "Painel adaptado para publicar beats, vender licenças e acompanhar catálogo.",
+    curador: "Playlists e descobertas organizadas para sua curadoria.",
+    artista: "Beats, licenças e produtores priorizados para seu próximo lançamento.",
+    designer: "Referências, capas e catálogos para apoiar lançamentos musicais.",
+    beatmaker: "Catálogos e referências para criar, colaborar e vender beats.",
+    manager: "Compras, artistas e licenças reunidas para gerenciar lançamentos.",
+    selo: "Catálogos, produtores e licenças prontos para operação de selo.",
+  };
+  return map[profile.account_role] || `Experiência adaptada para ${label}.`;
+}
+
+function setLocalPreviewProfile(profile) {
+  appState.profile = profile;
+  localStorage.setItem("ansend-profile-preview", JSON.stringify(profile));
+}
+
+function clearLocalPreviewProfile() {
+  localStorage.removeItem("ansend-profile-preview");
+}
+
+async function upsertProfile(profile) {
+  if (!supabaseClient || !appState.authUser) return { error: new Error("Supabase não configurado") };
+  const payload = {
+    id: appState.authUser.id,
+    email: appState.authUser.email || profile.email,
+    full_name: profile.full_name,
+    account_role: profile.account_role,
+    artistic_name: profile.artistic_name || null,
+    music_styles: profile.music_styles || preferredGenres(),
+    onboarding_goal: profile.onboarding_goal || appState.onboardingProfile?.goal || null,
+  };
+  const { data, error } = await supabaseClient.from("profiles").upsert(payload, { onConflict: "id" }).select().single();
+  if (!error && data) appState.profile = data;
+  return { data, error };
+}
+
+async function loadProfile(user) {
+  if (!supabaseClient || !user) return;
+  const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (error) {
+    showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
+    return;
+  }
+  const pending = JSON.parse(localStorage.getItem(pendingProfileKey(user.id)) || "null");
+  if (!data && pending) {
+    const result = await upsertProfile(pending);
+    if (!result.error) localStorage.removeItem(pendingProfileKey(user.id));
+    return;
+  }
+  appState.profile = data;
+  clearLocalPreviewProfile();
+}
+
+function syncAccountUi() {
+  document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
+  const avatar = document.querySelector(".avatar-btn");
+  const profile = activeProfile();
+  if (avatar && profile?.full_name) {
+    avatar.setAttribute("aria-label", `Conta de ${profile.full_name}`);
+  }
+}
+
+async function initAuth() {
+  if (!supabaseClient) {
+    appState.authReady = true;
+    syncAccountUi();
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  appState.authUser = data.session?.user || null;
+  if (appState.authUser) await loadProfile(appState.authUser);
+  appState.authReady = true;
+  syncAccountUi();
+  renderRoute();
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    appState.authUser = session?.user || null;
+    if (appState.authUser) await loadProfile(appState.authUser);
+    else appState.profile = null;
+    syncAccountUi();
+    renderRoute();
+  });
 }
 
 function persistOnboarding(profile) {
@@ -437,9 +564,11 @@ function persistOnboarding(profile) {
 }
 
 function preferredGenres() {
-  const profile = appState.onboardingProfile;
-  if (!profile?.genres?.length) return ["Trap", "Drill", "Funk"];
-  return [...new Set(profile.genres)].slice(0, 3);
+  const profile = appState.profile;
+  if (profile?.music_styles?.length) return [...new Set(profile.music_styles)].slice(0, 3);
+  const onboarding = appState.onboardingProfile;
+  if (!onboarding?.genres?.length) return ["Trap", "Drill", "Funk"];
+  return [...new Set(onboarding.genres)].slice(0, 3);
 }
 
 function preferredBeats(limit = 8) {
@@ -470,8 +599,8 @@ function personalizedPlaylists() {
 }
 
 function applyFeedPersonalization() {
-  const profile = appState.onboardingProfile;
-  if (!profile?.completed) return;
+  const profile = activeProfile();
+  if (!profile?.completed && !profile?.account_role) return;
   const selected = preferredGenres();
   const firstTitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head h2");
   const firstSubtitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head p");
@@ -481,7 +610,7 @@ function applyFeedPersonalization() {
   if (firstTitle) firstTitle.innerHTML = `<i data-lucide="list-music"></i>Playlists para seu estilo`;
   if (firstSubtitle) firstSubtitle.textContent = `Curadoria baseada em ${selected.join(", ")}`;
   if (exploreTitle) exploreTitle.innerHTML = `<i data-lucide="sparkles"></i>Beats escolhidos pra você`;
-  if (exploreSubtitle) exploreSubtitle.textContent = profile.goalLabel ? `Foco: ${profile.goalLabel.toLowerCase()}` : "Descoberta guiada pelo seu gosto";
+  if (exploreSubtitle) exploreSubtitle.textContent = profile.account_role ? `Adaptado para ${accountRoleLabel(profile.account_role).toLowerCase()}` : profile.goalLabel ? `Foco: ${profile.goalLabel.toLowerCase()}` : "Descoberta guiada pelo seu gosto";
 
   const playlistRow = document.querySelector("#playlistRow");
   if (playlistRow) playlistRow.innerHTML = personalizedPlaylists().map(playlistCard).join("");
@@ -553,7 +682,8 @@ function findBeat(id) {
 
 function pageIntro(route, actions = "") {
   const [title, subtitle] = routeTitles[route];
-  return `<header class="view-header"><div><span class="view-eyebrow">ANSEND</span><h1>${title}</h1><p>${subtitle}</p></div>${actions}</header>`;
+  const resolvedSubtitle = route === "feed" ? accountGreeting() : subtitle;
+  return `<header class="view-header"><div><span class="view-eyebrow">ANSEND</span><h1>${title}</h1><p>${resolvedSubtitle}</p></div>${actions}</header>`;
 }
 
 function emptyState(icon, title, text, route = "explorar") {
@@ -663,8 +793,11 @@ function renderBeatDetail() {
 }
 
 function renderSettings() {
+  const profile = activeProfile();
+  const profileName = profile?.full_name || "Visitante ANSEND";
+  const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
-    <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>André Silva</strong><span>Artista independente</span></div><button type="button" data-action="profile-edit">Editar perfil</button></div>
+    <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="vendedor">Conta</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
@@ -674,29 +807,88 @@ function renderSettings() {
 
 function renderSellerAuth() {
   const isLogin = appState.sellerMode === "login";
-  appView.innerHTML = `<section class="seller-auth" aria-label="Login do vendedor">
+  const profile = appState.profile;
+  const role = profile?.account_role || "produtor";
+  const roleLabel = accountRoleLabel(role);
+  if (appState.authUser || profile) {
+    appView.innerHTML = `<section class="account-dashboard">
+      <div class="account-hero-card">
+        <div>
+          <span>CONTA ${roleLabel.toUpperCase()}</span>
+          <h1>${profile?.full_name || "Conta ANSEND"}</h1>
+          <p>${accountGreeting()}</p>
+          <div class="account-badges">
+            <b><i data-lucide="badge-check"></i>${roleLabel}</b>
+            <b><i data-lucide="${isSupabaseConfigured ? "cloud-check" : "cloud-off"}"></i>${isSupabaseConfigured ? "Supabase conectado" : "Configure a key Supabase"}</b>
+            <b><i data-lucide="sparkles"></i>${(profile?.music_styles || preferredGenres()).slice(0, 2).join(" + ")}</b>
+          </div>
+        </div>
+        <button type="button" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>
+      </div>
+      <div class="account-grid">
+        <article>
+          <i data-lucide="user-round"></i>
+          <span>Função principal</span>
+          <strong>${roleLabel}</strong>
+          <p>${accountRoles.find((item) => item.id === role)?.desc || "Perfil adaptado para a plataforma."}</p>
+        </article>
+        <article>
+          <i data-lucide="audio-lines"></i>
+          <span>Estilos favoritos</span>
+          <strong>${(profile?.music_styles || preferredGenres()).join(", ")}</strong>
+          <p>Esses estilos priorizam playlists e beats no feed.</p>
+        </article>
+        <article>
+          <i data-lucide="mail"></i>
+          <span>E-mail</span>
+          <strong>${profile?.email || appState.authUser?.email || "Preview local"}</strong>
+          <p>${isSupabaseConfigured ? "Sessão gerenciada pelo Supabase Auth." : "Adicione a publishable key para ativar login real."}</p>
+        </article>
+      </div>
+      <section class="catalog-section account-recs">
+        <div class="section-head"><div><h2><i data-lucide="sparkles"></i>Recomendado para ${roleLabel}</h2><p>Feed adaptado ao tipo da sua conta</p></div></div>
+        <div class="beat-row">${preferredBeats(6).map(beatCard).join("")}</div>
+      </section>
+    </section>`;
+    return;
+  }
+
+  const roleOptions = accountRoles.map((roleItem, index) => `<label class="role-option">
+    <input type="radio" name="account-role" value="${roleItem.id}" ${index === 0 ? "checked" : ""}>
+    <b><i data-lucide="${roleItem.icon}"></i>${roleItem.label}</b>
+    <small>${roleItem.desc}</small>
+  </label>`).join("");
+
+  const styleOptions = onboardingStyles.map((style, index) => `<label class="account-style-chip">
+    <input type="checkbox" name="account-styles" value="${style.label}" ${index < 3 ? "checked" : ""}>
+    <span>${style.label}</span>
+  </label>`).join("");
+
+  appView.innerHTML = `<section class="seller-auth" aria-label="Sistema de contas ANSEND">
     <div class="seller-auth-panel">
       <a class="seller-auth-logo" href="#feed" data-route="feed" aria-label="ANSEND inicio"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
       <div class="seller-auth-copy">
-        <span>PORTAL DO PRODUTOR</span>
-        <h1>${isLogin ? "Entre na sua loja" : "Comece a vender beats"}</h1>
-        <p>${isLogin ? "Acesse vendas, licencas, downloads e catalogo em um painel feito para produtores independentes." : "Crie sua conta de vendedor e prepare seu catalogo para artistas comprarem com seguranca."}</p>
+        <span>${isSupabaseConfigured ? `SUPABASE · ${SUPABASE_PROJECT_REF}` : "CONFIGURAÇÃO SUPABASE PENDENTE"}</span>
+        <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
+        <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
       </div>
       <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}">
-        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome artistico" autocomplete="name" required></label>
-        <label for="seller-store">Nome da loja<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization" required></label>`}
-        <label for="seller-email">E-mail<input id="seller-email" name="email" type="email" placeholder="produtor@email.com" autocomplete="email" required></label>
+        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name" required></label>
+        <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
+        <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
+        <div class="account-style-picker" aria-label="Escolha estilos musicais">${styleOptions}</div>`}
+        <label for="seller-email">E-mail<input id="seller-email" name="email" type="email" placeholder="voce@email.com" autocomplete="email" required></label>
         <label for="seller-password">Senha
           <span class="password-wrap">
             <input id="seller-password" name="password" type="password" placeholder="Sua senha" autocomplete="${isLogin ? "current-password" : "new-password"}" required>
             <button type="button" data-action="toggle-password" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
           </span>
         </label>
-        <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar loja"}<i data-lucide="arrow-right"></i></button>
+        <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i></button>
       </form>
       <div class="seller-auth-actions">
         <button type="button" data-action="seller-google"><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">Continuar com Google</button>
-        <p>${isLogin ? "Ainda não vende na ANSEND?" : "Já tem conta de vendedor?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar loja" : "Entrar"}</button></p>
+        <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
       </div>
     </div>
     <aside class="seller-auth-showcase" aria-label="Benefícios para vendedores">
@@ -790,6 +982,97 @@ function handleBuy(id) {
   showToast("Licença adicionada em Minhas compras", "shopping-bag");
 }
 
+function profileFromAccountForm(form, email) {
+  const selectedRole = form.querySelector('input[name="account-role"]:checked')?.value || "produtor";
+  const styles = [...form.querySelectorAll('input[name="account-styles"]:checked')].map((input) => input.value);
+  return {
+    email,
+    full_name: form.elements.name?.value?.trim() || "Usuário ANSEND",
+    artistic_name: form.elements.store?.value?.trim() || null,
+    account_role: selectedRole,
+    music_styles: styles.length ? styles : preferredGenres(),
+    onboarding_goal: appState.onboardingProfile?.goal || null,
+  };
+}
+
+async function handleAccountSubmit(form) {
+  const mode = form.dataset.mode;
+  const email = form.elements.email.value.trim();
+  const password = form.elements.password.value;
+  if (!email || !password) return;
+
+  if (!supabaseClient) {
+    if (mode === "login") {
+      showToast("Adicione a publishable key para ativar login real", "cloud-off");
+      return;
+    }
+    const profile = {
+      ...profileFromAccountForm(form, email),
+      id: `preview-${Date.now()}`,
+      created_at: new Date().toISOString(),
+    };
+    setLocalPreviewProfile(profile);
+    showToast("Conta criada em modo preview. Conecte a key para salvar no Supabase.", "cloud-off");
+    renderRoute();
+    return;
+  }
+
+  form.classList.add("is-submitting");
+  const submitButton = form.querySelector(".seller-submit");
+  if (submitButton) submitButton.disabled = true;
+  try {
+    if (mode === "login") {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      appState.authUser = data.user;
+      await loadProfile(data.user);
+      showToast("Login realizado com Supabase", "cloud-check");
+      renderRoute();
+      return;
+    }
+
+    const profile = profileFromAccountForm(form, email);
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: profile.full_name,
+          account_role: profile.account_role,
+          artistic_name: profile.artistic_name,
+        },
+      },
+    });
+    if (error) throw error;
+    appState.authUser = data.user;
+    if (data.session && data.user) {
+      const result = await upsertProfile(profile);
+      if (result.error) throw result.error;
+      showToast("Conta criada e perfil salvo no Supabase", "badge-check");
+    } else if (data.user) {
+      localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
+      showToast("Conta criada. Confirme seu e-mail para finalizar o perfil.", "mail-check");
+    }
+    renderRoute();
+  } catch (error) {
+    showToast(error.message || "Não foi possível concluir a autenticação", "triangle-alert");
+  } finally {
+    form.classList.remove("is-submitting");
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  if (supabaseClient && appState.authUser) {
+    await supabaseClient.auth.signOut();
+  }
+  appState.authUser = null;
+  appState.profile = null;
+  clearLocalPreviewProfile();
+  showToast("Você saiu da conta ANSEND", "log-out");
+  renderRoute();
+}
+
 function scrollCatalog(button, direction) {
   const section = button.closest(".catalog-section");
   const row = section?.querySelector(".playlist-row, .beat-row, .avatar-row");
@@ -840,7 +1123,15 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "seller-google") {
-    showToast("Login com Google preparado para vendedores", "badge-check");
+    if (!supabaseClient) {
+      showToast("Configure a publishable key para ativar Google pelo Supabase", "cloud-off");
+      return;
+    }
+    supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + "#vendedor" } });
+    return;
+  }
+  if (action === "logout-account") {
+    handleLogout();
     return;
   }
   if (action === "toggle-password") {
@@ -918,7 +1209,7 @@ document.addEventListener("submit", (event) => {
   const form = event.target.closest(".seller-auth-form");
   if (!form) return;
   event.preventDefault();
-  showToast(form.dataset.mode === "signup" ? "Loja criada para revisao" : "Login de vendedor validado", "store");
+  handleAccountSubmit(form);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -931,3 +1222,4 @@ document.addEventListener("keydown", (event) => {
 
 renderRoute();
 showOnboarding();
+initAuth();
