@@ -141,6 +141,13 @@ document.querySelector("#lateSections").innerHTML = lateSections.map(sectionTemp
 
 const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+let revealObserver = null;
+let lastRoute = null;
+
+function currentRouteFromHash() {
+  const route = location.hash.replace("#", "") || "feed";
+  return routeTitles?.[route] ? route : "feed";
+}
 
 function updateSpotlight(event) {
   const card = event.currentTarget;
@@ -233,6 +240,27 @@ function setupAutoScrollRows() {
 }
 
 prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
+
+function setupScrollReveals() {
+  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth");
+  if (revealObserver) revealObserver.disconnect();
+  targets.forEach((target, index) => {
+    target.classList.add("reveal-section");
+    target.style.setProperty("--reveal-delay", `${Math.min(index * 34, 170)}ms`);
+  });
+  if (prefersReducedMotion.matches) {
+    targets.forEach((target) => target.classList.add("is-visible"));
+    return;
+  }
+  revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      revealObserver.unobserve(entry.target);
+    });
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+  targets.forEach((target) => revealObserver.observe(target));
+}
 
 function decorateControls() {
   document.querySelectorAll(".arrow-pair").forEach((pair) => {
@@ -382,22 +410,27 @@ function renderSellerAuth() {
 }
 
 function hydrateView() {
+  appView.classList.add("route-slide-in");
   decorateControls();
   document.querySelectorAll('[data-action="favorite"][data-id]').forEach((button) => {
     button.classList.toggle("is-favorite", appState.favorites.has(button.dataset.id));
   });
   enableSpotlights();
   setupAutoScrollRows();
+  setupScrollReveals();
   lucide.createIcons();
+  setTimeout(() => appView.classList.remove("route-slide-in", "route-slide-left"), 620);
 }
 
 function currentRoute() {
-  const route = location.hash.replace("#", "") || "feed";
-  return routeTitles[route] ? route : "feed";
+  return currentRouteFromHash();
 }
 
 function renderRoute() {
   const route = currentRoute();
+  const routeChanged = route !== lastRoute;
+  lastRoute = route;
+  appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
   if (route === "feed") appView.innerHTML = feedTemplate;
