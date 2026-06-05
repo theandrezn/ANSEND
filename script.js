@@ -730,66 +730,70 @@ function renderBeatDetail() {
   const producerName = item.producer.replace("prod. ", "");
   const producerIndex = Math.max(0, producers.indexOf(item.producer)) % avatarImages.length;
   const producerAvatar = img(avatarImages[producerIndex]);
-  const related = allBeats.filter((beatItem) => beatItem.id !== item.id).slice(producerIndex, producerIndex + 5);
+  const related = allBeats.filter((beatItem) => beatItem.id !== item.id).slice(producerIndex, producerIndex + 6);
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
 
   appView.innerHTML = `
-    <section class="beat-detail-hero" style="--detail-cover: url('${item.cover}')">
-      <img class="beat-detail-cover" src="${item.cover}" alt="Capa do beat ${item.title}">
-      <div class="beat-detail-copy">
-        <span class="detail-eyebrow">BEAT PROFISSIONAL · ${item.tags[0]}</span>
-        <h1>${item.title}</h1>
-        <button class="detail-producer-link" type="button" data-action="producer-focus">
-          <img src="${producerAvatar}" alt="">
-          <span><b>${item.producer}</b><small>Produtor verificado</small></span>
-          <i data-lucide="badge-check"></i>
-        </button>
-        <p>Beat com identidade urbana, graves definidos e espaço para sua voz. Pronto para gravar, licenciar e lançar.</p>
-        <div class="detail-actions">
-          <button class="detail-play" type="button" data-action="play" data-id="${item.id}"><i data-lucide="play"></i>Ouvir prévia</button>
-          <button class="detail-buy" type="button" data-action="buy" data-id="${item.id}">Comprar licença</button>
-          <button class="detail-favorite${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar"><i data-lucide="heart"></i></button>
+    <div class="beat-detail-page">
+      <section class="beat-detail-hero" style="--detail-cover: url('${item.cover}')">
+        <div class="beat-detail-cover-wrap">
+          <img class="beat-detail-cover" src="${item.cover}" alt="Capa do beat ${item.title}">
         </div>
-      </div>
-      <div class="detail-stats">
-        <span><small>BPM</small><strong>${item.tags[1].replace(" BPM", "")}</strong></span>
-        <span><small>Gênero</small><strong>${item.tags[0]}</strong></span>
-        <span><small>Tom</small><strong>Fá menor</strong></span>
-        <span><small>Duração</small><strong>02:45</strong></span>
-      </div>
-    </section>
-
-    <section class="beat-detail-layout">
-      <div class="beat-detail-main">
-        <header class="detail-section-head"><div><span>ESCOLHA SUA LICENÇA</span><h2>Arquivos prontos para sua próxima música</h2></div></header>
-        <div class="license-grid">
-          <article><span>Básica</span><strong>[VALOR]</strong><p>MP3 sem tag para lançar seu primeiro som.</p><ul><li>Arquivo MP3</li><li>5.000 streams</li><li>Uso comercial</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher básica</button></article>
-          <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>[VALOR]</strong><p>WAV + MP3 para lançamentos profissionais.</p><ul><li>WAV e MP3</li><li>100.000 streams</li><li>Videoclipe incluso</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher premium</button></article>
-          <article><span>Exclusiva</span><strong>[VALOR]</strong><p>O beat deixa o catálogo após sua compra.</p><ul><li>Todos os arquivos</li><li>Streams ilimitados</li><li>Direitos exclusivos</li></ul><button type="button" data-action="buy" data-id="${item.id}">Comprar exclusiva</button></article>
-        </div>
-
-        <section class="producer-profile" id="producerProfile">
-          <div class="producer-profile-cover" style="--producer-cover: url('${item.cover}')"></div>
-          <div class="producer-profile-info">
-            <img src="${producerAvatar}" alt="Avatar de ${producerName}">
-            <div><span>PRODUTOR VERIFICADO</span><h2>${producerName}</h2><p>Produtor independente focado em ${item.tags[0]}, trap e sonoridades urbanas. Beats com mix limpa, identidade forte e entrega imediata.</p></div>
-            <button type="button" data-action="follow-producer">Seguir</button>
+        <div class="beat-detail-copy">
+          <span class="detail-eyebrow">BEAT PROFISSIONAL - ${item.tags[0]}</span>
+          <h1>${item.title}</h1>
+          <button class="detail-producer-link" type="button" data-action="producer-focus">
+            <img src="${producerAvatar}" alt="">
+            <span><b>${producerName}</b><small>Produtor verificado</small></span>
+            <i data-lucide="badge-check"></i>
+          </button>
+          <p>Beat com identidade urbana, graves definidos e espaco para sua voz. Pronto para gravar, licenciar e lancar.</p>
+          <div class="detail-actions">
+            <button class="detail-play" type="button" data-action="play" data-id="${item.id}"><i data-lucide="play"></i>Ouvir previa</button>
+            <button class="detail-buy" type="button" data-action="buy" data-id="${item.id}">Comprar licenca</button>
+            <button class="detail-favorite${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar"><i data-lucide="heart"></i></button>
           </div>
-          <div class="producer-profile-stats"><span><strong>${420 + producerIndex * 137}</strong><small>vendas</small></span><span><strong>${18 + producerIndex * 4} mil</strong><small>ouvintes mensais</small></span><span><strong>${36 + producerIndex * 3}</strong><small>beats publicados</small></span></div>
-        </section>
+        </div>
+        <div class="detail-stats" aria-label="Informacoes tecnicas do beat">
+          <span><small>BPM</small><strong>${item.tags[1].replace(" BPM", "")}</strong></span>
+          <span><small>Genero</small><strong>${item.tags[0]}</strong></span>
+          <span><small>Tom</small><strong>Fa menor</strong></span>
+          <span><small>Duracao</small><strong>02:45</strong></span>
+        </div>
+      </section>
 
-        <section class="catalog-section detail-catalog">
-          <div class="section-head"><div><h2><i data-lucide="flame"></i>Populares de ${producerName}</h2><p>Mais ouvidos e licenciados</p></div></div>
-          <div class="beat-row">${related.map(beatCard).join("")}</div>
-        </section>
-      </div>
-      <aside class="beat-detail-side">
-        <h3>Sobre este beat</h3>
-        <p>Produzido para artistas que procuram presença, dinâmica e uma base pronta para lançamento.</p>
-        <dl><div><dt>Publicado</dt><dd>4 de junho de 2026</dd></div><div><dt>Arquivos</dt><dd>WAV, MP3 e stems</dd></div><div><dt>Licença</dt><dd>Contrato digital seguro</dd></div></dl>
-        <button type="button" data-action="producer-focus">Ver perfil do produtor<i data-lucide="arrow-down"></i></button>
-      </aside>
-    </section>`;
+      <section class="beat-detail-layout">
+        <div class="beat-detail-main">
+          <header class="detail-section-head"><div><span>ESCOLHA SUA LICENCA</span><h2>Arquivos prontos para sua proxima musica</h2></div></header>
+          <div class="license-grid">
+            <article><span>Basica</span><strong>[VALOR]</strong><p>MP3 sem tag para lancar seu primeiro som.</p><ul><li>Arquivo MP3</li><li>5.000 streams</li><li>Uso comercial</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher basica</button></article>
+            <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>[VALOR]</strong><p>WAV + MP3 para lancamentos profissionais.</p><ul><li>WAV e MP3</li><li>100.000 streams</li><li>Videoclipe incluso</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher premium</button></article>
+            <article><span>Exclusiva</span><strong>[VALOR]</strong><p>O beat deixa o catalogo apos sua compra.</p><ul><li>Todos os arquivos</li><li>Streams ilimitados</li><li>Direitos exclusivos</li></ul><button type="button" data-action="buy" data-id="${item.id}">Comprar exclusiva</button></article>
+          </div>
+
+          <section class="producer-profile" id="producerProfile">
+            <div class="producer-profile-cover" style="--producer-cover: url('${item.cover}')"></div>
+            <div class="producer-profile-info">
+              <img src="${producerAvatar}" alt="Avatar de ${producerName}">
+              <div><span>PRODUTOR VERIFICADO</span><h2>${producerName}</h2><p>Produtor independente focado em ${item.tags[0]}, trap e sonoridades urbanas. Beats com mix limpa, identidade forte e entrega imediata dentro da ANSEND.</p></div>
+              <button type="button" data-action="follow-producer">Seguir</button>
+            </div>
+            <div class="producer-profile-stats"><span><strong>${420 + producerIndex * 137}</strong><small>vendas</small></span><span><strong>${18 + producerIndex * 4} mil</strong><small>ouvintes mensais</small></span><span><strong>${36 + producerIndex * 3}</strong><small>beats publicados</small></span></div>
+          </section>
+
+          <section class="catalog-section detail-catalog">
+            <div class="section-head"><div><h2><i data-lucide="flame"></i>Populares de ${producerName}</h2><p>Mais ouvidos e licenciados</p></div></div>
+            <div class="beat-row">${related.map(beatCard).join("")}</div>
+          </section>
+        </div>
+        <aside class="beat-detail-side">
+          <h3>Sobre este beat</h3>
+          <p>Produzido para artistas que procuram presenca, dinamica e uma base pronta para lancamento.</p>
+          <dl><div><dt>Publicado</dt><dd>4 de junho de 2026</dd></div><div><dt>Arquivos</dt><dd>WAV, MP3 e stems</dd></div><div><dt>Licenca</dt><dd>Contrato digital seguro</dd></div></dl>
+          <button type="button" data-action="producer-focus">Ver perfil do produtor<i data-lucide="arrow-down"></i></button>
+        </aside>
+      </section>
+    </div>`;
 }
 
 function renderSettings() {
