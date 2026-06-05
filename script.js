@@ -252,6 +252,29 @@ const avatarImages = [
   "photo-1504593811423-6dd665756598", "photo-1507003211169-0a1dd7228f2d",
 ];
 const avatars = ["Faijo Gonzales", "Akira Beat", "Maya Keys", "Ghost Lab", "Rokstar", "DJ Shelby", "Noma", "Ares"];
+const professionalCategories = [
+  { id: "todos", label: "Todos", icon: "layout-grid" },
+  { id: "beatmakers", label: "BeatMakers", icon: "audio-lines" },
+  { id: "produtores", label: "Produtores", icon: "sliders-horizontal" },
+  { id: "artistas", label: "Artistas", icon: "mic-2" },
+  { id: "designers", label: "Designers", icon: "palette" },
+  { id: "curadores", label: "Curadores", icon: "list-music" },
+  { id: "marketing", label: "Marketing", icon: "megaphone" },
+];
+const professionalProfiles = [
+  { name: "Faijo Gonzales", role: "BeatMaker", category: "beatmakers", city: "SP", image: 0, rating: "4.9", jobs: 420, price: "R$ 180", specialty: "Trap melodico, type beats e packs exclusivos", tags: ["Trap", "Type Beat", "Licenca"], response: "2h" },
+  { name: "Akira Beat", role: "BeatMaker", category: "beatmakers", city: "RJ", image: 1, rating: "4.8", jobs: 557, price: "R$ 220", specialty: "Drill, funk consciente e instrumentais sob medida", tags: ["Drill", "Funk", "WAV"], response: "1h" },
+  { name: "Ghost Lab", role: "Produtor", category: "produtores", city: "BH", image: 3, rating: "5.0", jobs: 831, price: "R$ 350", specialty: "Mix, master e direcao vocal para lancamentos urbanos", tags: ["Mix", "Master", "Voz"], response: "3h" },
+  { name: "Rokstar", role: "Produtor", category: "produtores", city: "Curitiba", image: 4, rating: "4.9", jobs: 968, price: "R$ 480", specialty: "Producao musical completa para singles e EPs", tags: ["Producao", "EP", "Studio"], response: "Hoje" },
+  { name: "Noma", role: "Artista", category: "artistas", city: "Fortaleza", image: 6, rating: "4.7", jobs: 1242, price: "Collab", specialty: "Voz guia, feat, topline e referencia melodica", tags: ["Feat", "Topline", "Rap"], response: "4h" },
+  { name: "Ares", role: "Artista", category: "artistas", city: "Salvador", image: 7, rating: "4.8", jobs: 1379, price: "Collab", specialty: "Vocal urbano, hooks e composicao para trap/funk", tags: ["Hook", "Composicao", "Vocal"], response: "2h" },
+  { name: "Maya Keys", role: "Designer", category: "designers", city: "Recife", image: 2, rating: "5.0", jobs: 694, price: "R$ 160", specialty: "Capas premium, canvas e identidade visual para single", tags: ["Capa", "Canvas", "Brand"], response: "1h" },
+  { name: "DJ Shelby", role: "Curador", category: "curadores", city: "Goiania", image: 5, rating: "4.8", jobs: 1105, price: "R$ 120", specialty: "Curadoria de playlists, radios e posicionamento de vibe", tags: ["Playlist", "Radio", "Vibe"], response: "Hoje" },
+  { name: "Duzzi", role: "Curador", category: "curadores", city: "SP", image: 0, rating: "4.7", jobs: 1516, price: "R$ 140", specialty: "Selecao editorial para trap, drill e boom bap", tags: ["Editorial", "Trap", "Drill"], response: "5h" },
+  { name: "Milly Studio", role: "Designer", category: "designers", city: "Floripa", image: 1, rating: "4.9", jobs: 1653, price: "R$ 210", specialty: "Arte 3D, motion cover e pacote de redes", tags: ["3D", "Motion", "Redes"], response: "3h" },
+  { name: "Nocivo Beats", role: "Marketing", category: "marketing", city: "SP", image: 2, rating: "4.8", jobs: 1790, price: "R$ 300", specialty: "Planejamento de lancamento, criativos e ADS inicial", tags: ["ADS", "Lancamento", "Conteudo"], response: "1h" },
+  { name: "Apollo", role: "Marketing", category: "marketing", city: "RJ", image: 3, rating: "4.9", jobs: 1927, price: "R$ 420", specialty: "Crescimento, estrategia de funil e analise de resultado", tags: ["Growth", "Funil", "Dados"], response: "Hoje" },
+];
 
 function slugify(value) {
   return String(value || "playlist")
@@ -1472,8 +1495,71 @@ function renderLibrary() {
   appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Coleções para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section><section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
 }
 
+function professionalCard(profile) {
+  return `<article class="professional-card" data-category="${profile.category}">
+    <div class="professional-card-top">
+      <img src="${img(avatarImages[profile.image % avatarImages.length])}" alt="Avatar de ${profile.name}">
+      <div>
+        <span class="professional-role">${profile.role}</span>
+        <h3>${profile.name}<i data-lucide="badge-check"></i></h3>
+        <p>${profile.city} - responde em ${profile.response}</p>
+      </div>
+      <button class="professional-save" type="button" data-action="producer" data-title="${profile.name}" aria-label="Salvar ${profile.name}"><i data-lucide="heart"></i></button>
+    </div>
+    <p class="professional-specialty">${profile.specialty}</p>
+    <div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+    <div class="professional-metrics">
+      <span><strong>${profile.rating}</strong><small>score</small></span>
+      <span><strong>${profile.jobs}</strong><small>jobs</small></span>
+      <span><strong>${profile.price}</strong><small>desde</small></span>
+    </div>
+    <div class="professional-actions">
+      <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
+      <button type="button" data-action="professional-contact" data-title="${profile.name}">Contratar</button>
+    </div>
+  </article>`;
+}
+
+function professionalCategorySummary(category) {
+  const count = category.id === "todos"
+    ? professionalProfiles.length
+    : professionalProfiles.filter((profile) => profile.category === category.id).length;
+  return `<button class="professional-tab ${category.id === appState.professionalCategory ? "is-active" : ""}" type="button" data-action="professional-filter" data-category="${category.id}">
+    <i data-lucide="${category.icon}"></i>
+    <span>${category.label}</span>
+    <small>${count}</small>
+  </button>`;
+}
+
 function renderProducers() {
-  appView.innerHTML = `${pageIntro("produtores")}<div class="producer-grid">${avatars.concat(["Duzzi", "Milly Studio", "Nocivo Beats", "Apollo"]).map(avatarCard).join("")}</div>`;
+  appState.professionalCategory = appState.professionalCategory || "todos";
+  const selectedCategory = appState.professionalCategory;
+  const visibleProfiles = selectedCategory === "todos"
+    ? professionalProfiles
+    : professionalProfiles.filter((profile) => profile.category === selectedCategory);
+  const featuredProfile = visibleProfiles[0] || professionalProfiles[0];
+  appView.innerHTML = `
+    ${pageIntro("produtores")}
+    <section class="professionals-directory">
+      <div class="professional-tabs" aria-label="Categorias de profissionais">
+        ${professionalCategories.map(professionalCategorySummary).join("")}
+      </div>
+      <div class="professional-spotlight">
+        <div>
+          <span><i data-lucide="sparkles"></i> Match recomendado pela NEXO</span>
+          <h2>${featuredProfile.name}</h2>
+          <p>${featuredProfile.specialty}</p>
+        </div>
+        <div class="professional-spotlight-meta">
+          <strong>${featuredProfile.role}</strong>
+          <small>${featuredProfile.rating} score - ${featuredProfile.jobs} entregas</small>
+          <button type="button" data-action="professional-contact" data-title="${featuredProfile.name}">Iniciar conversa</button>
+        </div>
+      </div>
+      <div class="professional-grid">
+        ${visibleProfiles.map(professionalCard).join("")}
+      </div>
+    </section>`;
 }
 
 function renderPlaylistDetail() {
@@ -2073,6 +2159,16 @@ document.addEventListener("click", (event) => {
   }
   if (action === "ai-professionals") {
     location.hash = "produtores";
+    return;
+  }
+  if (action === "professional-filter") {
+    appState.professionalCategory = target.dataset.category || "todos";
+    renderProducers();
+    hydrateView();
+    return;
+  }
+  if (action === "professional-contact") {
+    showToast(`Conversa iniciada com ${target.dataset.title}`, "messages-square");
     return;
   }
   if (action === "logout-account") {
