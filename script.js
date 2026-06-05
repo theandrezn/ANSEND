@@ -63,15 +63,18 @@ const roleDashboards = {
     combo: "Beatmaker / Designer / Produtor / Curador / Marketing",
   },
   beatmaker: {
-    headline: ["Venda seus beats.", "Ache os artistas certos."],
-    subheadline: "A NEXO IA organiza seu catalogo, sugere packs, precos, licencas e artistas com maior chance de comprar seus beats.",
-    placeholder: "Ex: Tenho 20 beats de trap 140 BPM e quero montar um pack para vender...",
+    headline: ["Venda seus beats para os", "artistas certos."],
+    subheadline: "A NEXO organiza seu catalogo, sugere precos, cria packs e encontra artistas com maior chance de compra.",
+    placeholder: "Ex: Tenho 20 beats de trap 140 BPM e quero montar um pack para vender melhor...",
     primaryCta: "Organizar catalogo",
-    secondaryCta: "Ver artistas",
-    chips: [["Subir pack", "Quero organizar um pack de beats para vender melhor."], ["Precificar", "Preciso definir preco e licencas para meus beats."], ["Achar artistas", "Quero encontrar artistas com match para meu som."], ["Criar vitrine", "Quero melhorar minha vitrine de beatmaker."]],
-    benefits: [["badge-dollar-sign", "Licencas claras"], ["users-round", "Artistas com match"], ["bar-chart-3", "Catalogo otimizado"]],
-    preview: ["Pack recomendado", "Preco sugerido", "Licenca ideal", "Artistas com match", "Vitrine do beatmaker"],
-    mapSteps: [["Catalogo", "Packs e tags"], ["Licenca", "Planos de venda"], ["Match", "Artistas ideais"], ["Vitrine", "Perfil publico"], ["Vendas", "Proximas acoes"]],
+    secondaryCta: "Encontrar artistas",
+    chips: [["Criar pack", "Quero montar um pack de beats para vender melhor."], ["Precificar beats", "Preciso definir preco e licencas para meus beats."], ["Achar artistas", "Quero encontrar artistas com match para meu som."]],
+    benefits: [["shield-check", "Licencas claras"], ["bar-chart-3", "Catalogo otimizado"], ["users-round", "Match com artistas"]],
+    preview: ["Pack ideal - Trap Melodico", "Preco sugerido - [VALOR]", "Match - 18 artistas"],
+    mapSteps: [["Pack ideal", "Trap Melodico"], ["Preco sugerido", "[VALOR]"], ["Match", "18 artistas"]],
+    compactRecommendation: true,
+    recommendationTitle: "NEXO recomenda",
+    recommendationSubtitle: "Diagnostico rapido para vender melhor.",
     metrics: [["Packs", "3 ativos"], ["Match", "18 artistas"], ["Vendas", "+12%"]],
     actions: [["perfil", "Cadastrar beats"], ["catalogo", "Ver catalogo"], ["profissionais", "Colaborar"]],
     sectionTitle: "Oportunidades para beatmakers",
@@ -325,6 +328,13 @@ const quickActions = [
   ["megaphone", "Divulgar lançamento", "Curadoria, conteúdo e marketing.", "produtores"],
 ];
 
+const beatmakerQuickActions = [
+  ["upload-cloud", "Subir beat", "Publique um beat com tags e licencas.", "perfil"],
+  ["package-plus", "Criar pack", "Agrupe beats por vibe, BPM e preco.", "perfil"],
+  ["badge-dollar-sign", "Ajustar precos", "Revise licencas e valores sugeridos.", "ia"],
+  ["users-round", "Ver artistas com match", "Encontre compradores com fit sonoro.", "produtores"],
+];
+
 const nexoRecommendations = [
   { icon: "audio-lines", title: "Black Coupe", type: "Beat", reason: "Bom para trap melódico", route: "beat-5" },
   { icon: "palette", title: "Maya Keys", type: "Designer", reason: "Ideal para capa dark premium", route: "produtores" },
@@ -424,7 +434,7 @@ function renderHomeDashboard() {
   const professionals = document.querySelector("#featuredProfessionals");
   const activity = document.querySelector("#recentActivity");
 
-  if (quick) quick.innerHTML = quickActions.map(quickActionCard).join("");
+  if (quick) quick.innerHTML = (activeRoleKey() === "beatmaker" ? beatmakerQuickActions : quickActions).map(quickActionCard).join("");
   if (recommendations) recommendations.innerHTML = nexoRecommendations.slice(0, 6).map(nexoRecommendationCard).join("");
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = smartCombos.map(smartComboCard).join("");
@@ -864,8 +874,10 @@ function defaultRolePreview(dashboard = roleDashboard()) {
   }
   if (output) {
     output.classList.remove("is-generated");
-    output.innerHTML = `<small>NEXO recomenda</small>
-      <ul>${dashboard.preview.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+    output.innerHTML = dashboard.compactRecommendation
+      ? `<button class="nexo-diagnosis-button" type="button" data-route="ia">Ver diagnostico</button>`
+      : `<small>NEXO recomenda</small>
+        <ul>${dashboard.preview.map((item) => `<li>${item}</li>`).join("")}</ul>`;
   }
 }
 
@@ -900,8 +912,10 @@ function roleDashboardStripMarkup(dashboard) {
 
 function applyRoleDashboard() {
   const dashboard = roleDashboard();
+  const role = activeRoleKey();
   const hero = document.querySelector(".ai-hero");
   if (!hero) return;
+  hero.classList.toggle("is-beatmaker-hero", role === "beatmaker");
   hero.setAttribute("aria-label", "NEXO IA - Diagnostico Musical Inteligente");
   const kicker = hero.querySelector(".an-kicker span");
   const title = hero.querySelector(".an-hero-copy h1");
@@ -912,8 +926,10 @@ function applyRoleDashboard() {
   const secondary = hero.querySelector(".ai-actions .an-secondary");
   const benefits = hero.querySelector(".an-benefits");
   const mapTitle = hero.querySelector(".ai-map-card > strong");
+  const quickTitle = document.querySelector("#quickActionsTitle");
+  const quickSubtitle = document.querySelector(".quick-actions-section .section-head p");
 
-  if (kicker) kicker.textContent = "NEXO IA";
+  if (kicker) kicker.textContent = role === "beatmaker" ? "NEXO IA PARA BEATMAKERS" : "NEXO IA";
   if (title) title.innerHTML = `<span>${dashboard.headline[0]}</span><strong>${dashboard.headline[1]}</strong>`;
   if (subtitle) subtitle.textContent = dashboard.subheadline;
   if (input) input.placeholder = dashboard.placeholder;
@@ -925,7 +941,13 @@ function applyRoleDashboard() {
   if (benefits) {
     benefits.innerHTML = dashboard.benefits.map(([icon, label]) => `<span><i data-lucide="${icon}"></i>${label}</span>`).join("");
   }
-  if (mapTitle) mapTitle.textContent = "Diagnostico Musical IA";
+  if (quickTitle && role === "beatmaker") quickTitle.innerHTML = `<i data-lucide="zap"></i>Acoes rapidas`;
+  if (quickSubtitle && role === "beatmaker") quickSubtitle.textContent = "Atalhos para vender melhor sem baguncar sua rotina.";
+  const mapEyebrow = hero.querySelector(".ai-map-card > span");
+  const mapSubtitle = hero.querySelector(".ai-map-card > p");
+  if (mapEyebrow) mapEyebrow.textContent = dashboard.recommendationTitle || "MAPA DO LANCAMENTO";
+  if (mapTitle) mapTitle.textContent = dashboard.compactRecommendation ? "Diagnostico rapido" : "Diagnostico Musical IA";
+  if (mapSubtitle) mapSubtitle.textContent = dashboard.recommendationSubtitle || "Conte sua ideia e receba uma ordem clara de execucao.";
   if (!appState.aiPlan || appState.aiPlan.role !== activeRoleKey()) defaultRolePreview(dashboard);
 
   document.querySelector("#roleDashboardStrip")?.remove();

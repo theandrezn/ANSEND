@@ -5643,6 +5643,225 @@ body.onboarding-open { overflow: hidden; }
   font-weight: 900;
 }
 
+/* BeatMaker dashboard hero: compact, focused NEXO IA entry. */
+.ai-inline-submit {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--orange), var(--orange-shadow));
+  box-shadow: 0 10px 24px rgba(255, 106, 0, .22);
+  flex: 0 0 auto;
+}
+.ai-inline-submit svg {
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  stroke: #fff;
+}
+.feed .ai-hero.is-beatmaker-hero {
+  height: clamp(360px, 28vw, 430px);
+  min-height: 360px;
+  border-radius: 24px;
+  background-image:
+    radial-gradient(circle at 72% 50%, rgba(255, 106, 0, .26), transparent 300px),
+    linear-gradient(rgba(255, 106, 0, .032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 106, 0, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, .98), rgba(8, 6, 4, .94) 52%, rgba(0, 0, 0, .98));
+  background-size: auto, 42px 42px, 42px 42px, auto;
+  box-shadow: 0 24px 76px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .035);
+}
+.feed .ai-hero.is-beatmaker-hero .an-hero-brand {
+  display: none;
+}
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy {
+  left: clamp(36px, 4vw, 64px);
+  top: 50%;
+  width: min(47%, 660px);
+  z-index: 7;
+}
+.feed .ai-hero.is-beatmaker-hero .an-kicker {
+  margin-bottom: 12px;
+}
+.feed .ai-hero.is-beatmaker-hero .an-kicker span {
+  letter-spacing: .1em;
+}
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy h1 {
+  max-width: 610px;
+  margin: 0 0 12px;
+  font-size: clamp(40px, 3.4vw, 58px);
+  line-height: .96;
+}
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy p {
+  max-width: 620px;
+  font-size: clamp(13px, .95vw, 16px);
+  line-height: 1.42;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-input-shell {
+  min-height: 66px;
+  margin-top: 16px;
+  padding: 10px 12px 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-input-shell textarea {
+  min-height: 42px;
+  height: 42px;
+  resize: none;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-chip-row {
+  margin-top: 9px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-chip-row button {
+  min-height: 28px;
+  padding-inline: 11px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-actions {
+  margin-top: 10px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-actions .an-primary,
+.feed .ai-hero.is-beatmaker-hero .ai-actions .an-secondary {
+  min-height: 42px;
+  padding-inline: 18px;
+}
+.feed .ai-hero.is-beatmaker-hero .an-benefits {
+  margin-top: 14px;
+  gap: 12px;
+}
+.feed .ai-hero.is-beatmaker-hero .an-benefits span {
+  padding-right: 12px;
+  font-size: 12px;
+}
+.feed .ai-hero.is-beatmaker-hero .an-hero-art {
+  right: clamp(255px, 22vw, 390px);
+  top: 50%;
+  width: clamp(330px, 25vw, 455px);
+  height: 118%;
+  opacity: .78;
+  z-index: 3;
+  pointer-events: none;
+}
+.feed .ai-hero.is-beatmaker-hero .hero-mic-img {
+  transform: rotate(-8deg) scale(.98);
+  filter: drop-shadow(0 0 22px rgba(255, 106, 0, .22)) drop-shadow(0 28px 48px rgba(0, 0, 0, .72));
+  mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 88%, transparent 100%);
+}
+.feed .ai-hero.is-beatmaker-hero .hero-eq {
+  left: 48%;
+  right: 22%;
+  opacity: .42;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-map-card {
+  top: 50%;
+  right: clamp(28px, 3vw, 58px);
+  width: clamp(285px, 23vw, 360px);
+  padding: 18px;
+  transform: translateY(-50%);
+  z-index: 8;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-map-card > span {
+  font-size: 10px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-map-card > strong {
+  margin-top: 8px;
+  font-size: 21px;
+}
+.feed .ai-hero.is-beatmaker-hero .ai-map-card > p {
+  margin-top: 6px;
+  font-size: 13px;
+}
+.feed .ai-hero.is-beatmaker-hero .release-map {
+  margin-top: 12px;
+  gap: 7px;
+}
+.feed .ai-hero.is-beatmaker-hero .release-map li {
+  min-height: 38px;
+  grid-template-columns: 22px minmax(86px, .82fr) minmax(0, 1fr);
+}
+.feed .ai-hero.is-beatmaker-hero .ai-output {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.nexo-diagnosis-button {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255, 106, 0, .28);
+  border-radius: 12px;
+  color: var(--text);
+  background: rgba(0, 0, 0, .45);
+  font-size: 12px;
+  font-weight: 900;
+}
+.nexo-diagnosis-button:hover {
+  border-color: rgba(255, 106, 0, .62);
+  background: rgba(255, 106, 0, .1);
+}
+
+@media (max-width: 1100px) {
+  .feed .ai-hero.is-beatmaker-hero {
+    height: auto;
+    min-height: 560px;
+    padding: 30px 24px;
+  }
+  .feed .ai-hero.is-beatmaker-hero .an-hero-copy {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: min(100%, 720px);
+    transform: none;
+  }
+  .feed .ai-hero.is-beatmaker-hero .an-hero-art {
+    right: -28px;
+    top: 36%;
+    width: 360px;
+    opacity: .18;
+  }
+  .feed .ai-hero.is-beatmaker-hero .ai-map-card {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: min(420px, 100%);
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .feed .ai-hero.is-beatmaker-hero {
+    min-height: 0;
+    padding: 22px 16px;
+  }
+  .feed .ai-hero.is-beatmaker-hero .an-hero-copy {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    transform: none;
+  }
+  .feed .ai-hero.is-beatmaker-hero .an-hero-art {
+    display: none;
+  }
+  .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1 {
+    font-size: clamp(35px, 10vw, 46px);
+  }
+  .feed .ai-hero.is-beatmaker-hero .ai-input-shell {
+    align-items: flex-start;
+  }
+  .feed .ai-hero.is-beatmaker-hero .ai-input-shell textarea {
+    height: 58px;
+  }
+  .feed .ai-hero.is-beatmaker-hero .ai-actions {
+    display: grid;
+  }
+  .feed .ai-hero.is-beatmaker-hero .ai-actions .an-primary,
+  .feed .ai-hero.is-beatmaker-hero .ai-actions .an-secondary {
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   .featured-professional-grid {
     grid-auto-columns: minmax(104px, 118px);
