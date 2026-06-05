@@ -3821,7 +3821,7 @@ body.onboarding-open { overflow: hidden; }
 /* Reference-led hero: one integrated microphone, compact at wide resolutions. */
 .playlist-hero {
   width: 100%;
-  max-width: 1540px;
+  max-width: 100%;
   justify-self: center;
 }
 .an-theater-hero {
@@ -4517,7 +4517,7 @@ body.onboarding-open { overflow: hidden; }
 /* Beat detail v2: final guarded layout for the producer/beat page. */
 .beat-detail-page {
   width: 100% !important;
-  max-width: 1540px !important;
+  max-width: 100% !important;
   min-width: 0 !important;
   justify-self: center;
   display: grid !important;
@@ -4718,7 +4718,7 @@ body.onboarding-open { overflow: hidden; }
 /* Playlist detail: Spotify-inspired pack page for ANSEND playlist cards. */
 .playlist-detail-page {
   width: 100%;
-  max-width: 1540px;
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   gap: 28px;
@@ -5312,7 +5312,7 @@ body.onboarding-open { overflow: hidden; }
 /* Home dashboard: short, premium, action-led. */
 .home-section {
   width: 100%;
-  max-width: 1540px;
+  max-width: 100%;
   justify-self: center;
   min-width: 0;
 }
