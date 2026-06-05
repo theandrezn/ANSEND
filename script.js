@@ -2320,9 +2320,9 @@ function openCheckout(id, selectedPlan = "premium") {
 }
 
 function miniWaveformBars(progress = 0) {
-  return Array.from({ length: 96 }, (_, index) => {
+  return Array.from({ length: 260 }, (_, index) => {
     const height = 18 + ((index * 17) % 42);
-    const active = index / 95 <= progress ? " is-active" : "";
+    const active = index / 259 <= progress ? " is-active" : "";
     return `<span class="${active}" style="--bar-h:${height}%"></span>`;
   }).join("");
 }
