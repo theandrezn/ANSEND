@@ -73,6 +73,7 @@ const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
+  catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
   authUser: null,
   profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
   authReady: !supabaseClient,
@@ -399,7 +400,7 @@ prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
 prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
+  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
   if (revealObserver) revealObserver.disconnect();
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
@@ -464,11 +465,132 @@ const routeTitles = {
 };
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 
+routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
+}
+
+function persistCatalogItems() {
+  localStorage.setItem("ansend-catalog-items", JSON.stringify(appState.catalogItems));
+}
+
+function catalogOwnerId() {
+  return appState.authUser?.id || appState.profile?.id || "preview";
+}
+
+function visibleCatalogItems() {
+  const owner = catalogOwnerId();
+  return appState.catalogItems.filter((item) => item.user_id === owner || (!appState.authUser && String(item.id || "").startsWith("local-")));
+}
+
+async function loadCatalogItems() {
+  if (!supabaseClient || !appState.authUser) return;
+  const { data, error } = await supabaseClient
+    .from("catalog_items")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) {
+    showToast("Nao consegui carregar seu catalogo no Supabase", "cloud-off");
+    return;
+  }
+  appState.catalogItems = data || [];
+  persistCatalogItems();
+}
+
+function catalogPayloadFromForm(form) {
+  const tags = String(form.elements.tags?.value || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  return {
+    kind: form.elements.kind.value,
+    title: form.elements.title.value.trim(),
+    artist_name: form.elements.artist.value.trim() || null,
+    producer_name: form.elements.producer.value.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || null,
+    genre: form.elements.genre.value.trim(),
+    bpm: form.elements.bpm.value ? Number(form.elements.bpm.value) : null,
+    musical_key: form.elements.key.value.trim() || null,
+    price: form.elements.price.value ? Number(form.elements.price.value) : 0,
+    license_type: form.elements.license.value,
+    status: form.elements.status.value,
+    audio_url: form.elements.audio_url.value.trim() || null,
+    cover_url: form.elements.cover_url.value.trim() || null,
+    description: form.elements.description.value.trim() || null,
+    tags,
+  };
+}
+
+async function saveCatalogItem(form) {
+  const payload = catalogPayloadFromForm(form);
+  if (!payload.title || !payload.genre) {
+    showToast("Preencha titulo e genero para cadastrar", "triangle-alert");
+    return;
+  }
+
+  if (supabaseClient && appState.authUser) {
+    const { data, error } = await supabaseClient
+      .from("catalog_items")
+      .insert({ ...payload, user_id: appState.authUser.id })
+      .select()
+      .single();
+    if (error) {
+      showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
+      return;
+    }
+    appState.catalogItems.unshift(data);
+    showToast("Item salvo no catalogo Supabase", "cloud-check");
+  } else {
+    const localItem = {
+      ...payload,
+      id: `local-${Date.now()}`,
+      user_id: catalogOwnerId(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    appState.catalogItems.unshift(localItem);
+    showToast("Item salvo neste navegador. Entre para sincronizar no Supabase.", "hard-drive");
+  }
+
+  persistCatalogItems();
+  form.reset();
+  renderRoute();
+}
+
+async function deleteCatalogItem(id) {
+  if (supabaseClient && appState.authUser && !String(id).startsWith("local-")) {
+    const { error } = await supabaseClient.from("catalog_items").delete().eq("id", id);
+    if (error) {
+      showToast(error.message || "Nao foi possivel remover", "triangle-alert");
+      return;
+    }
+  }
+  appState.catalogItems = appState.catalogItems.filter((item) => item.id !== id);
+  persistCatalogItems();
+  showToast("Item removido do catalogo", "trash-2");
+  renderRoute();
+}
+
+async function toggleCatalogStatus(id) {
+  const item = appState.catalogItems.find((entry) => entry.id === id);
+  if (!item) return;
+  const nextStatus = item.status === "published" ? "draft" : "published";
+  if (supabaseClient && appState.authUser && !String(id).startsWith("local-")) {
+    const { data, error } = await supabaseClient.from("catalog_items").update({ status: nextStatus }).eq("id", id).select().single();
+    if (error) {
+      showToast(error.message || "Nao foi possivel atualizar", "triangle-alert");
+      return;
+    }
+    Object.assign(item, data);
+  } else {
+    item.status = nextStatus;
+    item.updated_at = new Date().toISOString();
+  }
+  persistCatalogItems();
+  showToast(nextStatus === "published" ? "Item publicado" : "Item voltou para rascunho", nextStatus === "published" ? "badge-check" : "pencil");
+  renderRoute();
 }
 
 function pendingProfileKey(userId) {
@@ -502,6 +624,10 @@ function accountGreeting() {
 function setLocalPreviewProfile(profile) {
   appState.profile = profile;
   localStorage.setItem("ansend-profile-preview", JSON.stringify(profile));
+}
+
+function localPreviewProfile() {
+  return JSON.parse(localStorage.getItem("ansend-profile-preview") || "null");
 }
 
 function clearLocalPreviewProfile() {
@@ -558,14 +684,21 @@ async function initAuth() {
   }
   const { data } = await supabaseClient.auth.getSession();
   appState.authUser = data.session?.user || null;
-  if (appState.authUser) await loadProfile(appState.authUser);
+  if (appState.authUser) {
+    await loadProfile(appState.authUser);
+    await loadCatalogItems();
+  }
   appState.authReady = true;
   syncAccountUi();
   renderRoute();
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     appState.authUser = session?.user || null;
-    if (appState.authUser) await loadProfile(appState.authUser);
-    else appState.profile = null;
+    if (appState.authUser) {
+      await loadProfile(appState.authUser);
+      await loadCatalogItems();
+    } else {
+      appState.profile = localPreviewProfile();
+    }
     syncAccountUi();
     renderRoute();
   });
@@ -929,11 +1062,107 @@ function renderSettings() {
   const profileName = profile?.full_name || "Visitante ANSEND";
   const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
-    <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="vendedor">Conta</button></div>
+    <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
     <label><span><strong>Preferências musicais</strong><small>Refaça o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
+  </section>`;
+}
+
+function renderProfile() {
+  const profile = activeProfile();
+  const items = visibleCatalogItems();
+  const published = items.filter((item) => item.status === "published").length;
+  const beats = items.filter((item) => item.kind === "beat").length;
+  const musicas = items.filter((item) => item.kind === "musica").length;
+  const roleLabel = profile?.account_role ? accountRoleLabel(profile.account_role) : "Visitante";
+  const accountStatus = appState.authUser
+    ? "Conta conectada ao Supabase"
+    : isSupabaseConfigured
+      ? "Entre para sincronizar no Supabase"
+      : "Supabase pendente";
+
+  const catalogCards = items.length ? items.map((item) => {
+    const fallbackCover = item.kind === "musica" ? img("photo-1511379938547-c1f69419868d") : img("photo-1493225457124-a3eb161ffa5f");
+    const price = Number(item.price || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return `<article class="profile-catalog-item">
+      <img src="${item.cover_url || fallbackCover}" alt="Capa de ${item.title}">
+      <div>
+        <span>${item.kind === "beat" ? "Beat" : "Musica"} - ${item.status === "published" ? "Publicado" : "Rascunho"}</span>
+        <h3>${item.title}</h3>
+        <p>${item.producer_name || item.artist_name || profile?.artistic_name || "ANSEND"} / ${item.genre}${item.bpm ? ` / ${item.bpm} BPM` : ""}</p>
+        <small>${item.license_type} / ${price}</small>
+      </div>
+      <div class="profile-catalog-actions">
+        <button type="button" data-action="play-catalog" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
+        <button type="button" data-action="toggle-catalog-status" data-id="${item.id}">${item.status === "published" ? "Rascunhar" : "Publicar"}</button>
+        <button type="button" data-action="delete-catalog" data-id="${item.id}" aria-label="Remover ${item.title}"><i data-lucide="trash-2"></i></button>
+      </div>
+    </article>`;
+  }).join("") : `<div class="profile-empty">
+    <i data-lucide="upload-cloud"></i>
+    <strong>Nenhum beat ou musica cadastrado ainda</strong>
+    <p>Use o formulario ao lado para montar seu catalogo ANSEND.</p>
+  </div>`;
+
+  appView.innerHTML = `<section class="profile-page">
+    <div class="profile-hero">
+      <div>
+        <span><i data-lucide="${appState.authUser ? "cloud-check" : "cloud"}"></i>${accountStatus}</span>
+        <h1>${profile?.artistic_name || profile?.full_name || "Meu perfil ANSEND"}</h1>
+        <p>${accountGreeting()}</p>
+        <div class="profile-badges">
+          <b>${roleLabel}</b>
+          <b>${(profile?.music_styles || preferredGenres()).slice(0, 3).join(" + ")}</b>
+          <b>${profile?.email || appState.authUser?.email || "preview local"}</b>
+        </div>
+      </div>
+      <button type="button" data-action="${appState.authUser || profile ? "logout-account" : "seller"}">
+        <i data-lucide="${appState.authUser || profile ? "log-out" : "user-plus"}"></i>${appState.authUser || profile ? "Sair" : "Criar conta"}
+      </button>
+    </div>
+
+    <div class="profile-stats">
+      <article><span>Catalogo</span><strong>${items.length}</strong><small>itens cadastrados</small></article>
+      <article><span>Publicados</span><strong>${published}</strong><small>visiveis na loja</small></article>
+      <article><span>Beats</span><strong>${beats}</strong><small>licencas de beat</small></article>
+      <article><span>Musicas</span><strong>${musicas}</strong><small>faixas autorais</small></article>
+    </div>
+
+    <div class="profile-workspace">
+      <form class="profile-catalog-form">
+        <div class="profile-form-head">
+          <span><i data-lucide="badge-plus"></i>Novo cadastro</span>
+          <h2>Cadastrar musica ou beat</h2>
+          <p>Adicione as informacoes principais para publicar, vender licencas e organizar seu catalogo.</p>
+        </div>
+        <div class="profile-form-grid">
+          <label>Tipo<select name="kind"><option value="beat">Beat</option><option value="musica">Musica</option></select></label>
+          <label>Status<select name="status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></label>
+          <label>Titulo<input name="title" type="text" placeholder="Ex: Black Coupe" required></label>
+          <label>Genero<input name="genre" type="text" placeholder="Trap, Funk, Drill..." required></label>
+          <label>Artista<input name="artist" type="text" placeholder="Nome do artista"></label>
+          <label>Produtor<input name="producer" type="text" placeholder="prod. ANSEND"></label>
+          <label>BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
+          <label>Tom<input name="key" type="text" placeholder="Fm"></label>
+          <label>Preco<input name="price" type="number" min="0" step="0.01" placeholder="99.90"></label>
+          <label>Licenca<select name="license"><option value="basic">Basica</option><option value="premium">Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
+          <label class="profile-wide">URL da previa<input name="audio_url" type="url" placeholder="https://...mp3"></label>
+          <label class="profile-wide">URL da capa<input name="cover_url" type="url" placeholder="https://...jpg"></label>
+          <label class="profile-wide">Tags<input name="tags" type="text" placeholder="trap, 808, dark, type beat"></label>
+          <label class="profile-wide">Descricao<textarea name="description" rows="4" placeholder="Resumo do beat, vibe e arquivos incluidos"></textarea></label>
+        </div>
+        <button class="seller-submit" type="submit">Salvar no catalogo<i data-lucide="arrow-right"></i></button>
+      </form>
+
+      <section class="profile-catalog-list">
+        <div class="section-head">
+          <div><h2><i data-lucide="library-big"></i>Meu catalogo</h2><p>Itens cadastrados para venda, curadoria e perfil publico</p></div>
+        </div>
+        ${catalogCards}
+      </section>
+    </div>
   </section>`;
 }
 
@@ -1071,6 +1300,7 @@ function renderRoute() {
   if (route === "compras") renderPurchases();
   if (route === "biblioteca") renderLibrary();
   if (route === "produtores") renderProducers();
+  if (route === "perfil") renderProfile();
   if (route === "configuracoes") renderSettings();
   if (route === "vendedor") renderSellerAuth();
   if (route === "playlist") renderPlaylistDetail();
@@ -1159,6 +1389,7 @@ async function handleAccountSubmit(form) {
       if (error) throw error;
       appState.authUser = data.user;
       await loadProfile(data.user);
+      await loadCatalogItems();
       showToast("Login realizado com Supabase", "cloud-check");
       renderRoute();
       return;
@@ -1278,6 +1509,27 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (target.dataset.route && target.tagName === "BUTTON") location.hash = target.dataset.route;
+  if (action === "play-catalog") {
+    const item = appState.catalogItems.find((entry) => entry.id === target.dataset.id);
+    if (item) {
+      updateMiniPlayer({
+        id: item.id,
+        title: item.title,
+        producer: item.producer_name || item.artist_name || "ANSEND",
+        cover: item.cover_url || img("photo-1493225457124-a3eb161ffa5f"),
+      });
+      showToast(`Tocando agora: ${item.title}`, "play");
+    }
+    return;
+  }
+  if (action === "toggle-catalog-status") {
+    toggleCatalogStatus(target.dataset.id);
+    return;
+  }
+  if (action === "delete-catalog") {
+    deleteCatalogItem(target.dataset.id);
+    return;
+  }
   if (action === "favorite") handleFavorite(target.dataset.id);
   if (action === "buy") handleBuy(target.dataset.id);
   if (action === "play") {
@@ -1346,6 +1598,12 @@ document.addEventListener("submit", (event) => {
     closeOnboarding();
     if (currentRoute() === "feed") renderRoute();
     showToast("Seu feed ANSEND foi adaptado", "sparkles");
+    return;
+  }
+  const catalogForm = event.target.closest(".profile-catalog-form");
+  if (catalogForm) {
+    event.preventDefault();
+    saveCatalogItem(catalogForm);
     return;
   }
   const form = event.target.closest(".seller-auth-form");

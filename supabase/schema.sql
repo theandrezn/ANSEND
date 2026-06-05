@@ -56,3 +56,74 @@ with check ((select auth.uid()) = id);
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.profiles to authenticated;
+
+create table if not exists public.catalog_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null check (kind in ('beat', 'musica')),
+  title text not null,
+  artist_name text,
+  producer_name text,
+  genre text not null,
+  bpm integer check (bpm is null or bpm between 40 and 240),
+  musical_key text,
+  price numeric(10,2) check (price is null or price >= 0),
+  license_type text not null default 'basic' check (license_type in ('basic', 'premium', 'exclusive', 'free')),
+  status text not null default 'draft' check (status in ('draft', 'published', 'sold', 'archived')),
+  description text,
+  audio_url text,
+  cover_url text,
+  tags text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.catalog_items enable row level security;
+
+create index if not exists catalog_items_user_created_idx on public.catalog_items (user_id, created_at desc);
+create index if not exists catalog_items_status_created_idx on public.catalog_items (status, created_at desc);
+create index if not exists catalog_items_kind_genre_idx on public.catalog_items (kind, genre);
+
+drop trigger if exists catalog_items_set_updated_at on public.catalog_items;
+create trigger catalog_items_set_updated_at
+before update on public.catalog_items
+for each row execute function public.set_updated_at();
+
+drop policy if exists "Published catalog is public" on public.catalog_items;
+create policy "Published catalog is public"
+on public.catalog_items
+for select
+to anon, authenticated
+using (status = 'published');
+
+drop policy if exists "Users can read their catalog" on public.catalog_items;
+create policy "Users can read their catalog"
+on public.catalog_items
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can insert their catalog" on public.catalog_items;
+create policy "Users can insert their catalog"
+on public.catalog_items
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can update their catalog" on public.catalog_items;
+create policy "Users can update their catalog"
+on public.catalog_items
+for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users can delete their catalog" on public.catalog_items;
+create policy "Users can delete their catalog"
+on public.catalog_items
+for delete
+to authenticated
+using ((select auth.uid()) = user_id);
+
+grant select on public.catalog_items to anon;
+grant select, insert, update, delete on public.catalog_items to authenticated;
