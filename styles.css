@@ -3950,7 +3950,7 @@ body.onboarding-open { overflow: hidden; }
 }
 .ai-input-shell {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr) 42px;
   gap: 10px;
   padding: 13px 15px;
   border: 1px solid rgba(255, 106, 0, .28);
@@ -6736,5 +6736,384 @@ body.onboarding-open { overflow: hidden; }
   .top-beat-card.is-playing .top-beat-play,
   .top-beat-meter span {
     animation: none;
+  }
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.app-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.app-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .74);
+  backdrop-filter: blur(10px);
+}
+
+.app-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 42px);
+  overflow: auto;
+  border: 1px solid rgba(255, 106, 0, .34);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 82% 0, rgba(255, 106, 0, .12), transparent 260px),
+    linear-gradient(145deg, rgba(8, 6, 4, .98), rgba(0, 0, 0, .96));
+  box-shadow: 0 30px 110px rgba(0, 0, 0, .74), 0 0 50px rgba(255, 106, 0, .12);
+}
+
+.app-modal-close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 4;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 106, 0, .25);
+  border-radius: 50%;
+  color: var(--text);
+  background: rgba(0, 0, 0, .72);
+}
+
+.professional-profile-modal,
+.checkout-form,
+.contract-form,
+.nexo-console,
+.nexo-plan-panel {
+  padding: clamp(22px, 3vw, 34px);
+}
+
+.professional-profile-modal header {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.professional-profile-modal header img {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 106, 0, .38);
+}
+
+.professional-profile-modal span,
+.checkout-form > span,
+.contract-form > span,
+.nexo-console > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.professional-profile-modal h2,
+.checkout-form h2,
+.contract-form h2,
+.nexo-console h2 {
+  margin: 8px 0;
+  color: var(--text);
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+}
+
+.professional-profile-modal p,
+.checkout-form p,
+.contract-form p,
+.nexo-console p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.professional-modal-stats,
+.contract-summary {
+  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.professional-modal-stats span,
+.contract-summary {
+  padding: 14px;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 16px;
+  background: rgba(255, 106, 0, .05);
+}
+
+.professional-modal-stats strong,
+.contract-summary strong {
+  display: block;
+  color: var(--text);
+  font-size: 22px;
+}
+
+.professional-modal-actions,
+.ai-plan-actions {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.professional-modal-actions button,
+.ai-plan-actions button,
+.nexo-status {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 106, 0, .3);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(0, 0, 0, .5);
+  font-weight: 900;
+}
+
+.professional-modal-actions button:first-child,
+.contract-form .seller-submit,
+.checkout-form .seller-submit {
+  border: 0;
+  background: linear-gradient(135deg, var(--orange), #ff4d00);
+}
+
+.modal-mini-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.modal-mini-grid button {
+  overflow: hidden;
+  min-height: 116px;
+  border: 1px solid rgba(255, 106, 0, .16);
+  border-radius: 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .03);
+  text-align: left;
+}
+
+.modal-mini-grid img {
+  width: 100%;
+  height: 74px;
+  object-fit: cover;
+}
+
+.modal-mini-grid span {
+  display: block;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.checkout-product {
+  margin: 18px 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: center;
+  background: rgba(255, 255, 255, .03);
+}
+
+.checkout-product img {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.checkout-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.checkout-plan {
+  cursor: pointer;
+  min-height: 168px;
+  padding: 16px;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  background: rgba(255, 255, 255, .03);
+}
+
+.checkout-plan input {
+  position: absolute;
+  opacity: 0;
+}
+
+.checkout-plan.is-selected {
+  border-color: rgba(255, 106, 0, .72);
+  box-shadow: 0 0 34px rgba(255, 106, 0, .14);
+}
+
+.checkout-plan strong {
+  color: var(--text);
+  font-size: 24px;
+}
+
+.contract-form label {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.contract-form select,
+.contract-form textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 106, 0, .22);
+  border-radius: 14px;
+  color: var(--text);
+  background: rgba(0, 0, 0, .55);
+  padding: 13px;
+}
+
+.nexo-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  gap: 18px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.nexo-console,
+.nexo-plan-panel,
+.nexo-match-list {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(8, 6, 4, .94), rgba(0, 0, 0, .94));
+}
+
+.nexo-console h2,
+.nexo-plan-panel,
+.nexo-plan-panel * {
+  overflow-wrap: anywhere;
+}
+
+.nexo-console .ai-input-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 42px;
+  align-items: start;
+}
+
+.nexo-console .ai-diagnostic-form,
+.nexo-console textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.nexo-console .ai-input-shell > svg {
+  grid-column: 1;
+}
+
+.nexo-console .ai-input-shell textarea {
+  grid-column: 2;
+  width: 100%;
+}
+
+.nexo-console .ai-input-shell .ai-inline-submit {
+  grid-column: 3;
+}
+
+.nexo-status {
+  width: fit-content;
+  margin-top: 14px;
+  display: inline-grid;
+  align-items: center;
+}
+
+.nexo-status b,
+.nexo-status span {
+  display: block;
+}
+
+.nexo-match-list {
+  grid-column: 1 / -1;
+  padding: 20px;
+}
+
+.ai-diagnostic-form.is-thinking .ai-input-shell {
+  opacity: .72;
+  pointer-events: none;
+}
+
+.ai-source {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .nexo-workspace,
+  .checkout-plans,
+  .professional-modal-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .nexo-workspace {
+    gap: 14px;
+  }
+
+  .nexo-console,
+  .nexo-plan-panel,
+  .nexo-match-list {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .nexo-console h2 {
+    font-size: clamp(30px, 10vw, 42px);
+    line-height: .98;
+  }
+
+  .nexo-console .ai-input-shell {
+    grid-template-columns: 18px minmax(0, 1fr) 42px;
+    padding: 12px;
+  }
+
+  .nexo-status {
+    width: 100%;
+  }
+
+  .modal-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .professional-profile-modal header {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .professional-profile-modal header img {
+    width: 72px;
+    height: 72px;
   }
 }

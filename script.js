@@ -2,6 +2,8 @@ const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=52
 const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
 const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
 const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
+const NEXO_OLLAMA_ENDPOINT = "http://127.0.0.1:11434/api/chat";
+const NEXO_OLLAMA_MODEL = localStorage.getItem("ansend-ollama-model") || "llama3.1:8b";
 const isSupabaseConfigured = Boolean(
   window.supabase
   && SUPABASE_CONFIG.url
@@ -213,6 +215,8 @@ const topBeatOfDay = {
 const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
+  orders: JSON.parse(localStorage.getItem("ansend-orders") || "[]"),
+  contracts: JSON.parse(localStorage.getItem("ansend-contracts") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
@@ -287,6 +291,148 @@ const professionalProfiles = [
   { name: "Nocivo Beats", role: "Marketing", category: "marketing", city: "SP", image: 2, rating: "4.8", jobs: 1790, price: "R$ 300", specialty: "Planejamento de lancamento, criativos e ADS inicial", tags: ["ADS", "Lancamento", "Conteudo"], response: "1h" },
   { name: "Apollo", role: "Marketing", category: "marketing", city: "RJ", image: 3, rating: "4.9", jobs: 1927, price: "R$ 420", specialty: "Crescimento, estrategia de funil e analise de resultado", tags: ["Growth", "Funil", "Dados"], response: "Hoje" },
 ];
+
+const licensePlans = {
+  basic: {
+    label: "Licença Básica",
+    price: "R$ 79",
+    summary: "MP3 sem tag para validar a ideia e lançar com segurança.",
+    rights: ["Arquivo MP3", "5.000 streams", "Uso comercial", "Contrato digital"],
+  },
+  premium: {
+    label: "Licença Premium",
+    price: "R$ 179",
+    summary: "WAV + MP3 para lançamento profissional em plataformas digitais.",
+    rights: ["WAV e MP3", "100.000 streams", "Monetização liberada", "Contrato prioritário"],
+  },
+  exclusive: {
+    label: "Licença Exclusiva",
+    price: "R$ 799",
+    summary: "O beat sai do catálogo após a compra e você recebe todos os arquivos.",
+    rights: ["Stems completos", "Streams ilimitados", "Direitos exclusivos", "Suporte de lançamento"],
+  },
+};
+
+function professionalImage(profile) {
+  return img(avatarImages[(profile?.image || 0) % avatarImages.length]);
+}
+
+function findProfessional(name) {
+  return professionalProfiles.find((profile) => profile.name === name)
+    || professionalProfiles.find((profile) => profile.name.toLowerCase() === String(name || "").toLowerCase())
+    || professionalProfiles[0];
+}
+
+function professionalsForNeed(prompt, limit = 5) {
+  const text = String(prompt || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const wanted = [];
+  if (/beat|instrumental|trap|drill|funk|type/.test(text)) wanted.push("beatmakers");
+  if (/mix|master|producao|voz|demo|finalizar/.test(text)) wanted.push("produtores");
+  if (/capa|visual|arte|design|canvas|identidade/.test(text)) wanted.push("designers");
+  if (/playlist|curadoria|curador|radio/.test(text)) wanted.push("curadores");
+  if (/divulg|marketing|ads|trafego|campanha|conteudo/.test(text)) wanted.push("marketing");
+  const categories = wanted.length ? wanted : ["beatmakers", "produtores", "designers", "curadores", "marketing"];
+  return professionalProfiles
+    .filter((profile) => categories.includes(profile.category))
+    .sort((a, b) => Number(b.rating) - Number(a.rating) || b.jobs - a.jobs)
+    .slice(0, limit);
+}
+
+function beatMatchesForNeed(prompt, limit = 4) {
+  const text = String(prompt || "").toLowerCase();
+  const targetGenre = /drill/.test(text) ? "Drill" : /funk/.test(text) ? "Funk" : /r&b|rnb/.test(text) ? "R&B" : /boom bap/.test(text) ? "Boom Bap" : /type/.test(text) ? "Type Beat" : "Trap";
+  return allBeats
+    .filter((item) => item.tags.includes(targetGenre))
+    .concat(allBeats.filter((item) => !item.tags.includes(targetGenre)))
+    .slice(0, limit);
+}
+
+function nexoKnowledgeBase() {
+  return {
+    platform: "ANSEND e NEXO IA conectam artistas, beatmakers, produtores, designers, curadores e marketing musical.",
+    routes: {
+      feed: "Home com NEXO IA, beat top 1 e catálogos em alta.",
+      explorar: "Catálogo de beats com filtros, favoritos, play e compra de licença.",
+      produtores: "Diretório de profissionais por categoria com perfil e contratação.",
+      perfil: "Conta do usuário, cadastro de beats/músicas e loja do vendedor.",
+      compras: "Pedidos, licenças adquiridas, contratos e serviços contratados.",
+      biblioteca: "Playlists salvas e histórico.",
+    },
+    licenses: licensePlans,
+    professionals: professionalProfiles.map(({ name, role, category, specialty, price, rating, jobs }) => ({ name, role, category, specialty, price, rating, jobs })),
+    beats: allBeats.slice(0, 12).map(({ id, title, producer, tags }) => ({ id, title, producer, tags })),
+  };
+}
+
+function fallbackNexoIntelligence(prompt) {
+  const base = inferLaunchPlan(prompt);
+  const recommendedPros = professionalsForNeed(prompt);
+  const recommendedBeats = beatMatchesForNeed(prompt);
+  const firstRole = recommendedPros[0]?.category || "beatmakers";
+  const nextRoute = firstRole === "beatmakers" ? "explorar" : "produtores";
+  return {
+    ...base,
+    source: "fallback-local",
+    confidence: recommendedPros.length ? "Alta" : "Media",
+    recommendedProfessionals: recommendedPros.map((profile) => ({
+      name: profile.name,
+      role: profile.role,
+      reason: `${profile.specialty}. Score ${profile.rating}, ${profile.jobs} jobs.`,
+      route: "produtores",
+    })),
+    recommendedBeats: recommendedBeats.map((item) => ({
+      id: item.id,
+      title: item.title,
+      producer: item.producer,
+      reason: `${item.tags[0]} / ${item.tags[1]}`,
+    })),
+    recommendedLicense: /exclusiv|direito|selo/.test(prompt.toLowerCase()) ? "exclusive" : /wav|profissional|spotify|lancar|lançar/.test(prompt.toLowerCase()) ? "premium" : "basic",
+    nextAction: {
+      label: nextRoute === "explorar" ? "Abrir catálogo recomendado" : "Abrir profissionais recomendados",
+      route: nextRoute,
+    },
+  };
+}
+
+function nexoSystemPrompt() {
+  return `Voce e a NEXO IA da ANSEND. Seja objetivo, premium e pratico. Use apenas o contexto da plataforma. Responda em JSON valido com: genre, budget, combo, confidence, recommendedLicense, match array, steps array de {title,detail}, recommendedProfessionals array de {name,role,reason,route}, recommendedBeats array de {id,title,producer,reason}, nextAction {label,route}. Contexto: ${JSON.stringify(nexoKnowledgeBase())}`;
+}
+
+async function callOllamaNexo(prompt) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2800);
+  try {
+    const response = await fetch(NEXO_OLLAMA_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: NEXO_OLLAMA_MODEL,
+        stream: false,
+        format: "json",
+        messages: [
+          { role: "system", content: nexoSystemPrompt() },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!response.ok) throw new Error("Ollama indisponivel");
+    const data = await response.json();
+    const content = data?.message?.content || data?.response || "";
+    const parsed = JSON.parse(content);
+    return {
+      ...fallbackNexoIntelligence(prompt),
+      ...parsed,
+      prompt,
+      role: activeRoleKey(),
+      source: `ollama:${NEXO_OLLAMA_MODEL}`,
+    };
+  } catch (_error) {
+    return fallbackNexoIntelligence(prompt);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function slugify(value) {
   return String(value || "playlist")
@@ -765,6 +911,8 @@ routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e l
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
+  localStorage.setItem("ansend-orders", JSON.stringify(appState.orders));
+  localStorage.setItem("ansend-contracts", JSON.stringify(appState.contracts));
 }
 
 function persistAiPlan(plan) {
@@ -859,11 +1007,20 @@ function renderAiPlan(plan = appState.aiPlan) {
   const map = document.querySelector("#releaseMap");
   if (!output || !map) return;
   if (!plan || !plan.role || plan.role !== activeRoleKey()) return;
+  const license = licensePlans[plan.recommendedLicense] || licensePlans.premium;
+  const firstPro = plan.recommendedProfessionals?.[0];
+  const firstBeat = plan.recommendedBeats?.[0];
   output.classList.add("is-generated");
   output.innerHTML = `<small>Plano recomendado</small>
     <strong>${plan.genre} / ${plan.budget}</strong>
     <ul>${plan.match.map((item) => `<li>${item}</li>`).join("")}</ul>
-    <em>Combo sugerido: ${plan.combo}</em>`;
+    <em>Combo sugerido: ${plan.combo}</em>
+    <div class="ai-plan-actions">
+      ${firstPro ? `<button type="button" data-action="producer" data-title="${firstPro.name}"><i data-lucide="user-check"></i>${firstPro.name}</button>` : ""}
+      ${firstBeat ? `<button type="button" data-action="open-beat" data-id="${firstBeat.id}"><i data-lucide="disc-3"></i>${firstBeat.title}</button>` : ""}
+      <button type="button" data-action="ai-next-route" data-route="${plan.nextAction?.route || "produtores"}"><i data-lucide="arrow-right"></i>${plan.nextAction?.label || "Abrir recomendacao"}</button>
+    </div>
+    <small class="ai-source">Fonte: ${plan.source === "fallback-local" ? "NEXO local" : plan.source} / ${license.label}</small>`;
   map.innerHTML = plan.steps.map((step, index) => `<li class="is-ready">
     <i data-lucide="${["disc-3", "image", "upload-cloud", "megaphone", "line-chart"][index] || "check-circle-2"}"></i>
     <span>${step.title}</span>
@@ -1526,13 +1683,77 @@ function renderFavorites() {
 }
 
 function renderPurchases() {
-  const items = appState.purchases.map(findBeat);
-  appView.innerHTML = `${pageIntro("compras")}${items.length ? `<section class="purchase-list">${items.map((item, index) => `<article><img src="${item.cover}" alt=""><div><strong>${item.title}</strong><span>${item.producer} · Licença Básica</span></div><span class="purchase-status">Disponível</span><button type="button" data-action="download" data-id="${item.id}"><i data-lucide="download"></i>Baixar</button></article>`).join("")}</section>` : emptyState("shopping-bag", "Nenhuma compra ainda", "Quando você adquirir uma licença, ela aparecerá aqui.")}`;
+  const legacyOrders = appState.purchases
+    .filter((id) => !appState.orders.some((order) => order.beatId === id))
+    .map((id) => ({ id: `legacy-${id}`, beatId: id, license: "basic", status: "Disponivel", createdAt: new Date().toISOString() }));
+  const orders = [...appState.orders, ...legacyOrders];
+  const orderMarkup = orders.map((order) => {
+    const item = findBeat(order.beatId);
+    const license = licensePlans[order.license] || licensePlans.basic;
+    return `<article>
+      <img src="${item.cover}" alt="">
+      <div><strong>${item.title}</strong><span>${item.producer} - ${license.label} - ${license.price}</span></div>
+      <span class="purchase-status">${order.status || "Disponivel"}</span>
+      <button type="button" data-action="download" data-id="${item.id}"><i data-lucide="download"></i>Baixar</button>
+    </article>`;
+  }).join("");
+  const contractMarkup = appState.contracts.map((contract) => `<article>
+    <img src="${professionalImage(findProfessional(contract.professional))}" alt="">
+    <div><strong>${contract.professional}</strong><span>${contract.service} - ${contract.price}</span></div>
+    <span class="purchase-status">${contract.status}</span>
+    <button type="button" data-action="producer" data-title="${contract.professional}"><i data-lucide="user-round"></i>Perfil</button>
+  </article>`).join("");
+  const hasItems = orderMarkup || contractMarkup;
+  appView.innerHTML = `${pageIntro("compras")}${hasItems ? `<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
 }
-
 function renderLibrary() {
   const recent = allBeats.slice(3, 11);
   appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Coleções para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section><section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
+}
+
+function renderAiWorkspace() {
+  const plan = appState.aiPlan || fallbackNexoIntelligence("Tenho uma ideia musical e preciso lançar profissionalmente.");
+  const license = licensePlans[plan.recommendedLicense] || licensePlans.premium;
+  const pros = plan.recommendedProfessionals || professionalsForNeed(plan.prompt || "");
+  const beats = plan.recommendedBeats || beatMatchesForNeed(plan.prompt || "");
+  appView.innerHTML = `${pageIntro("ia")}
+    <section class="nexo-workspace">
+      <div class="nexo-console">
+        <span><i data-lucide="brain-circuit"></i>NEXO IA / Ollama ${NEXO_OLLAMA_MODEL}</span>
+        <h2>Conte o objetivo. A NEXO monta o caminho e manda você para a pessoa certa.</h2>
+        <form class="ai-diagnostic-form nexo-console-form">
+          <label class="sr-only" for="nexoPrompt">Prompt para NEXO IA</label>
+          <div class="ai-input-shell">
+            <i data-lucide="bot"></i>
+            <textarea id="nexoPrompt" name="aiPrompt" rows="4" placeholder="Ex: Tenho uma música de trap pronta, preciso de capa, mixagem, licença e divulgação...">${plan.prompt || ""}</textarea>
+            <button class="ai-inline-submit" type="submit" aria-label="Gerar diagnóstico"><i data-lucide="arrow-right"></i></button>
+          </div>
+        </form>
+        <div class="nexo-status">
+          <b>${plan.source === "fallback-local" ? "NEXO local ativa" : "Ollama conectado"}</b>
+          <span>Confiança ${plan.confidence || "Alta"} / ${license.label}</span>
+        </div>
+      </div>
+      <aside class="nexo-plan-panel" id="aiOutput">
+        <small>Plano recomendado</small>
+        <strong>${plan.genre || "Trap"} / ${plan.budget || "[VALOR] estimado"}</strong>
+        <ul>${(plan.match || []).map((item) => `<li>${item}</li>`).join("")}</ul>
+        <em>Combo sugerido: ${plan.combo || "Beatmaker / Designer / Produtor / Curador / Marketing"}</em>
+        <div class="ai-plan-actions">
+          ${pros[0] ? `<button type="button" data-action="producer" data-title="${pros[0].name}"><i data-lucide="user-check"></i>${pros[0].name}</button>` : ""}
+          ${beats[0] ? `<button type="button" data-action="open-beat" data-id="${beats[0].id}"><i data-lucide="disc-3"></i>${beats[0].title}</button>` : ""}
+          <button type="button" data-action="ai-next-route" data-route="${plan.nextAction?.route || "produtores"}"><i data-lucide="arrow-right"></i>${plan.nextAction?.label || "Abrir recomendação"}</button>
+        </div>
+      </aside>
+      <section class="nexo-match-list">
+        <div class="section-head"><div><h2><i data-lucide="users-round"></i>Profissionais com maior match</h2><p>A NEXO prioriza função, score, entregas e intenção do pedido.</p></div></div>
+        <div class="professional-grid">${pros.slice(0, 3).map((profile) => professionalCard(findProfessional(profile.name))).join("")}</div>
+      </section>
+      <section class="nexo-match-list">
+        <div class="section-head"><div><h2><i data-lucide="flame"></i>Beats recomendados</h2><p>Catálogo manual alinhado ao diagnóstico.</p></div></div>
+        <div class="beat-row">${beats.slice(0, 4).map((item) => beatCard(findBeat(item.id))).join("")}</div>
+      </section>
+    </section>`;
 }
 
 function professionalCard(profile) {
@@ -1704,9 +1925,9 @@ function renderBeatDetail() {
         <div class="beat-detail-main">
           <header class="detail-section-head"><div><span>ESCOLHA SUA LICENCA</span><h2>Arquivos prontos para sua proxima musica</h2></div></header>
           <div class="license-grid">
-            <article><span>Basica</span><strong>[VALOR]</strong><p>MP3 sem tag para lancar seu primeiro som.</p><ul><li>Arquivo MP3</li><li>5.000 streams</li><li>Uso comercial</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher basica</button></article>
-            <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>[VALOR]</strong><p>WAV + MP3 para lancamentos profissionais.</p><ul><li>WAV e MP3</li><li>100.000 streams</li><li>Videoclipe incluso</li></ul><button type="button" data-action="buy" data-id="${item.id}">Escolher premium</button></article>
-            <article><span>Exclusiva</span><strong>[VALOR]</strong><p>O beat deixa o catalogo apos sua compra.</p><ul><li>Todos os arquivos</li><li>Streams ilimitados</li><li>Direitos exclusivos</li></ul><button type="button" data-action="buy" data-id="${item.id}">Comprar exclusiva</button></article>
+            <article><span>Basica</span><strong>${licensePlans.basic.price}</strong><p>${licensePlans.basic.summary}</p><ul>${licensePlans.basic.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="basic" data-id="${item.id}">Escolher basica</button></article>
+            <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>${licensePlans.premium.price}</strong><p>${licensePlans.premium.summary}</p><ul>${licensePlans.premium.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="premium" data-id="${item.id}">Escolher premium</button></article>
+            <article><span>Exclusiva</span><strong>${licensePlans.exclusive.price}</strong><p>${licensePlans.exclusive.summary}</p><ul>${licensePlans.exclusive.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="exclusive" data-id="${item.id}">Comprar exclusiva</button></article>
           </div>
 
           <section class="producer-profile" id="producerProfile">
@@ -1992,6 +2213,7 @@ function renderRoute() {
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
   if (route === "biblioteca") renderLibrary();
+  if (route === "ia") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
   if (route === "configuracoes") renderSettings();
@@ -2010,6 +2232,93 @@ function showToast(message, icon = "check-circle-2") {
   region.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => toast.remove(), 2800);
+}
+
+function closeModal() {
+  document.querySelector(".app-modal")?.remove();
+  document.body.classList.remove("modal-open");
+}
+
+function openModal(markup) {
+  closeModal();
+  document.body.insertAdjacentHTML("beforeend", `<div class="app-modal" role="dialog" aria-modal="true">
+    <div class="app-modal-backdrop" data-action="close-modal"></div>
+    <div class="app-modal-panel">
+      <button class="app-modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i data-lucide="x"></i></button>
+      ${markup}
+    </div>
+  </div>`);
+  document.body.classList.add("modal-open");
+  lucide.createIcons();
+}
+
+function openProfessionalProfile(name) {
+  const profile = findProfessional(name);
+  const relatedBeats = beatMatchesForNeed(`${profile.role} ${profile.tags.join(" ")}`, 4);
+  openModal(`<section class="professional-profile-modal">
+    <header>
+      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+      <div>
+        <span>${profile.role} verificado</span>
+        <h2>${profile.name}</h2>
+        <p>${profile.specialty}</p>
+      </div>
+    </header>
+    <div class="professional-modal-stats">
+      <span><strong>${profile.rating}</strong><small>score</small></span>
+      <span><strong>${profile.jobs}</strong><small>entregas</small></span>
+      <span><strong>${profile.price}</strong><small>desde</small></span>
+    </div>
+    <div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+    <div class="professional-modal-actions">
+      <button type="button" data-action="professional-contact" data-title="${profile.name}">Contratar ${profile.role}</button>
+      <button type="button" data-action="ai-chip" data-prompt="Quero contratar ${profile.name} para ${profile.specialty}.">Pedir plano NEXO</button>
+    </div>
+    <div class="modal-mini-grid">
+      ${relatedBeats.map((item) => `<button type="button" data-action="open-beat" data-id="${item.id}"><img src="${findBeat(item.id).cover}" alt=""><span>${item.title}</span></button>`).join("")}
+    </div>
+  </section>`);
+}
+
+function openProfessionalContract(name) {
+  const profile = findProfessional(name);
+  openModal(`<form class="contract-form" data-professional="${profile.name}">
+    <span><i data-lucide="handshake"></i>Contratar profissional</span>
+    <h2>${profile.name}</h2>
+    <p>${profile.specialty}</p>
+    <label>Serviço
+      <select name="service">
+        <option value="Projeto completo">${profile.role} / projeto completo</option>
+        <option value="Consultoria NEXO">Consultoria NEXO</option>
+        <option value="Entrega expressa">Entrega expressa</option>
+      </select>
+    </label>
+    <label>Briefing
+      <textarea name="briefing" rows="4" placeholder="Descreva o que você precisa, prazo, referências e objetivo do lançamento"></textarea>
+    </label>
+    <div class="contract-summary">
+      <span>Valor inicial</span><strong>${profile.price}</strong><small>Resposta: ${profile.response}</small>
+    </div>
+    <button class="seller-submit" type="submit">Confirmar contratação<i data-lucide="arrow-right"></i></button>
+  </form>`);
+}
+
+function openCheckout(id, selectedPlan = "premium") {
+  const item = findBeat(id);
+  const cards = Object.entries(licensePlans).map(([key, plan]) => `<label class="checkout-plan ${key === selectedPlan ? "is-selected" : ""}">
+    <input type="radio" name="license" value="${key}" ${key === selectedPlan ? "checked" : ""}>
+    <span>${plan.label}</span>
+    <strong>${plan.price}</strong>
+    <small>${plan.summary}</small>
+  </label>`).join("");
+  openModal(`<form class="checkout-form" data-beat-id="${item.id}">
+    <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
+    <h2>${item.title}</h2>
+    <p>${item.producer} / ${item.tags.join(" / ")}</p>
+    <div class="checkout-product"><img src="${item.cover}" alt="Capa de ${item.title}"><div><strong>Contrato digital</strong><small>Pagamento simulado em ambiente preview. Pedido fica salvo na aba Pedidos.</small></div></div>
+    <div class="checkout-plans">${cards}</div>
+    <button class="seller-submit" type="submit">Finalizar pedido<i data-lucide="arrow-right"></i></button>
+  </form>`);
 }
 
 function updateMiniPlayer(item) {
@@ -2096,10 +2405,8 @@ function handleFavorite(id) {
   else document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`).forEach((button) => button.classList.toggle("is-favorite", appState.favorites.has(id)));
 }
 
-function handleBuy(id) {
-  if (!appState.purchases.includes(id)) appState.purchases.unshift(id);
-  persistState();
-  showToast("Licença adicionada em Minhas compras", "shopping-bag");
+function handleBuy(id, selectedPlan = "premium") {
+  openCheckout(id, selectedPlan);
 }
 
 function profileFromAccountForm(form, email) {
@@ -2221,6 +2528,10 @@ document.addEventListener("click", (event) => {
   }
   if (!target) return;
   const action = target.dataset.action;
+  if (action === "close-modal") {
+    closeModal();
+    return;
+  }
   if (action === "seller") {
     appState.sellerMode = hasAccountAccess() ? "login" : "signup";
     location.hash = "vendedor";
@@ -2272,7 +2583,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "professional-contact") {
-    showToast(`Conversa iniciada com ${target.dataset.title}`, "messages-square");
+    openProfessionalContract(target.dataset.title);
     return;
   }
   if (action === "logout-account") {
@@ -2312,7 +2623,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "favorite") handleFavorite(target.dataset.id);
-  if (action === "buy") handleBuy(target.dataset.id);
+  if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
   if (action === "play") {
     const item = findBeat(target.dataset.id);
     pauseTopBeat({ quiet: true });
@@ -2342,7 +2653,14 @@ document.addEventListener("click", (event) => {
   if (action === "save-playlist") showToast(`Playlist salva: ${target.dataset.title}`, "bookmark-plus");
   if (action === "share-playlist") showToast(`Link copiado: ${target.dataset.title}`, "share-2");
   if (action === "how-it-works") showToast("Explore, escolha sua licença e baixe o beat imediatamente", "circle-help");
-  if (action === "producer") showToast(`Perfil de ${target.dataset.title}`, "badge-check");
+  if (action === "ai-next-route") {
+    location.hash = target.dataset.route || "produtores";
+    return;
+  }
+  if (action === "producer") {
+    openProfessionalProfile(target.dataset.title);
+    return;
+  }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
   if (action === "follow-producer") {
     target.classList.toggle("is-following");
@@ -2365,22 +2683,30 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const checkoutPlan = event.target.closest('.checkout-plan input[name="license"]');
+  if (checkoutPlan) {
+    document.querySelectorAll(".checkout-plan").forEach((plan) => plan.classList.toggle("is-selected", plan.contains(checkoutPlan)));
+    return;
+  }
   if (event.target.closest(".settings-panel")) {
     showToast("Configuração salva", "settings");
   }
 });
 
-document.addEventListener("submit", (event) => {
+document.addEventListener("submit", async (event) => {
   const aiForm = event.target.closest(".ai-diagnostic-form");
   if (aiForm) {
     event.preventDefault();
     const input = aiForm.elements.aiPrompt;
     const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
-    const plan = inferLaunchPlan(prompt);
+    aiForm.classList.add("is-thinking");
+    const plan = await callOllamaNexo(prompt);
     persistAiPlan(plan);
-    renderAiPlan(plan);
+    if (currentRoute() === "ia") renderAiWorkspace();
+    else renderAiPlan(plan);
     lucide.createIcons();
-    showToast("Plano gerado pela NEXO IA", "sparkles");
+    aiForm.classList.remove("is-thinking");
+    showToast(plan.source === "fallback-local" ? "Plano gerado pela NEXO local" : "Plano gerado via Ollama", "sparkles");
     return;
   }
   const onboardingForm = event.target.closest(".onboarding-card");
@@ -2414,6 +2740,45 @@ document.addEventListener("submit", (event) => {
     saveCatalogItem(catalogForm);
     return;
   }
+  const checkoutForm = event.target.closest(".checkout-form");
+  if (checkoutForm) {
+    event.preventDefault();
+    const beatId = checkoutForm.dataset.beatId;
+    const license = checkoutForm.querySelector('input[name="license"]:checked')?.value || "premium";
+    const item = findBeat(beatId);
+    appState.orders.unshift({
+      id: `order-${Date.now()}`,
+      beatId,
+      license,
+      status: "Disponivel",
+      createdAt: new Date().toISOString(),
+    });
+    if (!appState.purchases.includes(beatId)) appState.purchases.unshift(beatId);
+    persistState();
+    closeModal();
+    showToast(`${licensePlans[license].label} liberada para ${item.title}`, "shopping-bag");
+    if (currentRoute() === "compras") renderRoute();
+    return;
+  }
+  const contractForm = event.target.closest(".contract-form");
+  if (contractForm) {
+    event.preventDefault();
+    const profile = findProfessional(contractForm.dataset.professional);
+    appState.contracts.unshift({
+      id: `contract-${Date.now()}`,
+      professional: profile.name,
+      service: contractForm.elements.service.value,
+      briefing: contractForm.elements.briefing.value.trim(),
+      price: profile.price,
+      status: "Briefing enviado",
+      createdAt: new Date().toISOString(),
+    });
+    persistState();
+    closeModal();
+    showToast(`Contratação enviada para ${profile.name}`, "handshake");
+    if (currentRoute() === "compras") renderRoute();
+    return;
+  }
   const form = event.target.closest(".seller-auth-form");
   if (!form) return;
   event.preventDefault();
@@ -2421,7 +2786,10 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") document.body.classList.remove("menu-open");
+  if (event.key === "Escape") {
+    document.body.classList.remove("menu-open");
+    closeModal();
+  }
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".beat-card")) {
     event.preventDefault();
     location.hash = `beat-${event.target.dataset.beatId}`;
@@ -2431,3 +2799,4 @@ document.addEventListener("keydown", (event) => {
 renderRoute();
 showOnboarding();
 initAuth();
+
