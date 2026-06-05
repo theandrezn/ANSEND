@@ -39,8 +39,8 @@ const roleChoices = [
 
 const roleDashboards = {
   artista: {
-    headline: ["Entre com uma ideia.", "Saia com uma solucao."],
-    subheadline: "Descreva sua musica, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lancar e divulgar.",
+    headline: ["Seu proximo hit", "comeca na NEXO IA."],
+    subheadline: "Descreva uma ideia, demo ou objetivo. A ANSEND monta o caminho certo em segundos.",
     placeholder: "Ex: Tenho uma musica de trap pronta e preciso lancar profissionalmente...",
     primaryCta: "Gerar meu plano",
     secondaryCta: "Explorar servicos",
@@ -63,8 +63,8 @@ const roleDashboards = {
     combo: "Beatmaker / Designer / Produtor / Curador / Marketing",
   },
   beatmaker: {
-    headline: ["Venda seus beats para os", "artistas certos."],
-    subheadline: "A NEXO organiza seu catalogo, sugere precos, cria packs e encontra artistas com maior chance de compra.",
+    headline: ["Seu catalogo", "vende com NEXO IA."],
+    subheadline: "Descreva seus beats ou packs. A ANSEND organiza a vitrine e sugere o proximo passo.",
     placeholder: "Ex: Tenho 20 beats de trap 140 BPM e quero montar um pack para vender melhor...",
     primaryCta: "Organizar catalogo",
     secondaryCta: "Encontrar artistas",
@@ -84,8 +84,8 @@ const roleDashboards = {
     combo: "Pack / Licencas / Tags / Vitrine / Match com artistas",
   },
   designer: {
-    headline: ["Transforme lancamentos.", "Em identidade visual."],
-    subheadline: "A NEXO IA entende o estilo do artista e recomenda capas, mockups, posts e pacotes visuais para vender dentro da ANSEND.",
+    headline: ["Crie capas", "com direcao de IA."],
+    subheadline: "Descreva o estilo do artista. A ANSEND transforma briefing em oferta visual clara.",
     placeholder: "Ex: Quero vender capas para artistas de trap e criar pacotes para lancamento...",
     primaryCta: "Criar oferta visual",
     secondaryCta: "Ver artistas",
@@ -102,8 +102,8 @@ const roleDashboards = {
     combo: "Briefing / Capa / Posts / Entrega / Upsell visual",
   },
   produtor: {
-    headline: ["Organize projetos.", "Entregue som profissional."],
-    subheadline: "A NEXO IA transforma pedidos de artistas em etapas de producao, mixagem, masterizacao, referencias e entregas.",
+    headline: ["Organize projetos", "com NEXO IA."],
+    subheadline: "Descreva a demo. A ANSEND estrutura mix, master, referencias e entrega final.",
     placeholder: "Ex: Tenho uma demo gravada e preciso mixar, masterizar e preparar para distribuicao...",
     primaryCta: "Montar fluxo",
     secondaryCta: "Ver projetos",
@@ -120,8 +120,8 @@ const roleDashboards = {
     combo: "Demo / Producao / Mix / Master / Entrega",
   },
   curador: {
-    headline: ["Monte playlists.", "Descubra sons certos."],
-    subheadline: "A NEXO IA sugere recortes, ordem de faixas, artistas promissores e oportunidades de curadoria para playlists e campanhas.",
+    headline: ["Sua curadoria", "guiada por IA."],
+    subheadline: "Descreva o mood. A ANSEND sugere recortes, ordem de faixas e sons com match.",
     placeholder: "Ex: Quero montar uma playlist de trap melodico com artistas independentes...",
     primaryCta: "Criar curadoria",
     secondaryCta: "Ver beats",
@@ -138,8 +138,8 @@ const roleDashboards = {
     combo: "Tema / Faixas / Ordem / Publicacao / Alcance",
   },
   marketing: {
-    headline: ["Planeje campanhas.", "Cresca lancamentos."],
-    subheadline: "A NEXO IA conecta objetivos musicais a criativos, funis, curadoria, conteudo e proximas acoes de marketing.",
+    headline: ["Lance melhor", "com plano de IA."],
+    subheadline: "Descreva o objetivo. A ANSEND sugere campanha, canais, criativos e proximas acoes.",
     placeholder: "Ex: Tenho um lancamento de funk em 15 dias e preciso de campanha, criativos e ADS...",
     primaryCta: "Gerar campanha",
     secondaryCta: "Ver demandas",
@@ -202,6 +202,14 @@ const beat = (i, badge = "") => ({
 });
 
 const allBeats = Array.from({ length: beatNames.length }, (_, i) => beat(i, i % 7 === 0 ? "Hot" : i % 5 === 0 ? "Novo" : ""));
+const topBeatOfDay = {
+  id: "top-beat-psiiiko",
+  title: "PSIIIKO",
+  producer: "FlackBeats x beatsbydudiz",
+  cover: "assets/top-beat-psiiiko-cover.jpg",
+  audio: "assets/top-beat-psiiiko.mp3",
+  tags: ["Type Beat", "Top 1 do dia"],
+};
 const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
@@ -215,6 +223,7 @@ const appState = {
   genre: "Todos",
   playing: null,
   sellerMode: "login",
+  topBeatUnlocked: false,
 };
 
 const onboardingStyles = [
@@ -2010,6 +2019,70 @@ function updateMiniPlayer(item) {
   player.querySelector("span").textContent = item.producer;
 }
 
+function topBeatAudio() {
+  return document.querySelector("#topBeatAudio");
+}
+
+function setTopBeatPlaying(isPlaying) {
+  document.querySelector(".top-beat-card")?.classList.toggle("is-playing", isPlaying);
+  document.querySelectorAll('[data-action="hero-beat-play"]').forEach((button) => {
+    button.setAttribute("aria-label", isPlaying ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia");
+    button.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+  });
+  const miniButton = document.querySelector('[data-action="mini-play"]');
+  if (appState.playing === topBeatOfDay.id && miniButton) {
+    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+  }
+  lucide.createIcons();
+}
+
+async function playTopBeat({ quiet = false } = {}) {
+  const audio = topBeatAudio();
+  if (!audio) return false;
+  updateMiniPlayer(topBeatOfDay);
+  appState.playing = topBeatOfDay.id;
+  try {
+    await audio.play();
+    appState.topBeatUnlocked = true;
+    setTopBeatPlaying(true);
+    if (!quiet) showToast("Tocando top 1 do dia: PSIIIKO", "play");
+    return true;
+  } catch (_error) {
+    setTopBeatPlaying(false);
+    if (!quiet) showToast("Clique para liberar o player do beat", "play-circle");
+    return false;
+  }
+}
+
+function pauseTopBeat({ quiet = false } = {}) {
+  const audio = topBeatAudio();
+  if (!audio) return;
+  audio.pause();
+  setTopBeatPlaying(false);
+  if (!quiet) showToast("Beat pausado", "pause");
+}
+
+function toggleTopBeat() {
+  const audio = topBeatAudio();
+  if (!audio) return;
+  if (audio.paused) playTopBeat();
+  else pauseTopBeat();
+}
+
+function shouldPrimeTopBeat() {
+  const route = location.hash.replace("#", "") || "feed";
+  return route === "feed" || route === "";
+}
+
+window.addEventListener("load", () => {
+  topBeatAudio()?.addEventListener("ended", () => setTopBeatPlaying(false));
+  if (shouldPrimeTopBeat()) playTopBeat({ quiet: true });
+}, { once: true });
+
+window.addEventListener("pointerdown", () => {
+  if (!appState.topBeatUnlocked && shouldPrimeTopBeat()) playTopBeat({ quiet: true });
+}, { once: true });
+
 function handleFavorite(id) {
   if (appState.favorites.has(id)) {
     appState.favorites.delete(id);
@@ -2242,11 +2315,22 @@ document.addEventListener("click", (event) => {
   if (action === "buy") handleBuy(target.dataset.id);
   if (action === "play") {
     const item = findBeat(target.dataset.id);
+    pauseTopBeat({ quiet: true });
     appState.playing = item.id;
     updateMiniPlayer(item);
     showToast(`Tocando agora: ${item.title}`, "play");
   }
-  if (action === "mini-play") showToast(appState.playing ? "Reprodução pausada" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
+  if (action === "hero-beat-play") {
+    toggleTopBeat();
+    return;
+  }
+  if (action === "mini-play") {
+    if (appState.playing === topBeatOfDay.id) {
+      toggleTopBeat();
+      return;
+    }
+    showToast(appState.playing ? "Reprodução pausada" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
+  }
   if (action === "playlist") {
     location.hash = `playlist-${target.dataset.playlistId || slugify(target.dataset.title)}`;
     return;

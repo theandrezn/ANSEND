@@ -71,6 +71,9 @@
             <span></span><span></span><span></span><span></span><span></span><span></span>
             <span></span><span></span><span></span><span></span><span></span><span></span>
           </div>
+          <div class="hero-wave-scene" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
 
           <div class="ai-hero-layout">
             <div class="an-hero-copy">
@@ -113,8 +116,24 @@
               </div>
             </div>
 
-            <div class="an-hero-art" aria-hidden="true">
-              <img class="hero-mic-img" src="assets/ansend-microphone-reference.png" alt="" />
+            <div class="an-hero-art top-beat-showcase">
+              <article class="top-beat-card" aria-label="Beat top 1 do dia">
+                <div class="top-beat-cover">
+                  <img src="assets/top-beat-psiiiko-cover.jpg" alt="Capa do beat PSIIIKO" />
+                  <button class="top-beat-play" type="button" data-action="hero-beat-play" aria-label="Tocar beat top 1 do dia">
+                    <i data-lucide="play"></i>
+                  </button>
+                </div>
+                <div class="top-beat-copy">
+                  <span>Top 1 do dia</span>
+                  <strong>PSIIIKO</strong>
+                  <p>Ryu, The Runner x DESSIIIK Type Beat</p>
+                </div>
+                <div class="top-beat-meter" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </article>
             </div>
 
             <aside class="hero-playlist-card ai-map-card" aria-label="Mapa do lançamento">
@@ -140,6 +159,14 @@
               </div>
             </aside>
           </div>
+        </section>
+
+        <section class="home-section featured-preview-section trending-catalogs-section" aria-labelledby="featuredPreviewTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="featuredPreviewTitle"><i data-lucide="flame"></i>Catálogos em alta</h2><p>Beats, packs e referências subindo agora na ANSEND.</p></div>
+            <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
+          </div>
+          <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
         </section>
 
         <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
@@ -171,14 +198,6 @@
           <div class="smart-combo-grid" id="smartComboGrid"></div>
         </section>
 
-        <section class="home-section featured-preview-section" aria-labelledby="featuredPreviewTitle">
-          <div class="section-head clean-head">
-            <div><h2 id="featuredPreviewTitle"><i data-lucide="disc-3"></i>Em destaque agora</h2><p>Uma prévia curta do catálogo. O acervo completo fica em Explorar.</p></div>
-            <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
-          </div>
-          <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
-        </section>
-
         <section class="home-section featured-professionals-section" aria-labelledby="featuredProfessionalsTitle">
           <div class="section-head clean-head">
             <div><h2 id="featuredProfessionalsTitle"><i data-lucide="badge-check"></i>Produtores em destaque</h2><p>Perfis verificados para seguir</p></div>
@@ -206,6 +225,7 @@
         <div><strong>Neon Alley</strong><span>prod. Viana</span></div>
         <button type="button" data-action="mini-play" aria-label="Tocar"><i data-lucide="play"></i></button>
       </aside>
+      <audio id="topBeatAudio" src="assets/top-beat-psiiiko.mp3" preload="auto"></audio>
       <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
     </div>
 
