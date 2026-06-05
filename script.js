@@ -420,8 +420,8 @@ function renderHomeDashboard() {
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = smartCombos.map(smartComboCard).join("");
   if (featured) featured.innerHTML = preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
-  if (professionals) professionals.innerHTML = avatars.slice(0, 6).map(featuredProfessionalCard).join("");
-  if (activity) activity.innerHTML = preferredBeats(5).map(recentActivityRow).join("");
+  if (professionals) professionals.innerHTML = avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
+  if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
 }
 
 function sectionTemplate([title, subtitle, icon, content]) {
