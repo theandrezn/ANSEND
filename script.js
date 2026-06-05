@@ -40,10 +40,10 @@ const roleChoices = [
 const roleDashboards = {
   artista: {
     headline: ["Entre com uma ideia.", "Saia com uma solucao."],
-    subheadline: "Conte sua letra, demo, musica pronta ou objetivo. A NEXO IA cria um plano e conecta voce aos profissionais certos para produzir, lancar e divulgar.",
+    subheadline: "Descreva sua musica, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lancar e divulgar.",
     placeholder: "Ex: Tenho uma musica de trap pronta e preciso lancar profissionalmente...",
     primaryCta: "Gerar meu plano",
-    secondaryCta: "Ver profissionais",
+    secondaryCta: "Explorar servicos",
     chips: [
       ["Tenho uma ideia", "Tenho uma ideia de musica e preciso transformar em lancamento."],
       ["Tenho uma letra", "Tenho uma letra de trap e preciso encontrar beat, capa e producao."],
@@ -294,6 +294,113 @@ function avatarCard(name, i) {
   return `<article class="avatar-card"><button type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}"><img src="${img(avatarImages[i % avatarImages.length])}" alt="Avatar de ${name}"><h3>${name}<i data-lucide="badge-check"></i></h3><p>${420 + i * 137} vendas</p></button></article>`;
 }
 
+const quickActions = [
+  ["brain-circuit", "Criar plano com IA", "Receba a ordem certa para lançar.", "ia"],
+  ["audio-lines", "Encontrar beatmaker", "Ache beats e produtores com match.", "produtores"],
+  ["image", "Criar capa", "Encontre designers para single e EP.", "produtores"],
+  ["sliders-horizontal", "Finalizar música", "Mix, master e produção vocal.", "produtores"],
+  ["megaphone", "Divulgar lançamento", "Curadoria, conteúdo e marketing.", "produtores"],
+];
+
+const nexoRecommendations = [
+  { icon: "audio-lines", title: "Black Coupe", type: "Beat", reason: "Bom para trap melódico", route: "beat-5" },
+  { icon: "palette", title: "Maya Keys", type: "Designer", reason: "Ideal para capa dark premium", route: "produtores" },
+  { icon: "boxes", title: "Combo Completo", type: "Pacote", reason: "Produção + capa + divulgação", route: "explorar" },
+  { icon: "sliders-horizontal", title: "Ghost Lab", type: "Produtor", reason: "Mix e master para voz urbana", route: "produtores" },
+  { icon: "list-music", title: "Curadoria Trap", type: "Serviço", reason: "Playlists com fit para lançamento", route: "playlist" },
+  { icon: "megaphone", title: "ADS Inicial", type: "Marketing", reason: "Teste de público antes do drop", route: "produtores" },
+];
+
+const mainCategories = [
+  ["audio-lines", "Beatmakers", "Beats, packs e licenças para gravar.", "produtores"],
+  ["palette", "Designers", "Capas, identidade e peças para redes.", "produtores"],
+  ["sliders-horizontal", "Produtores Musicais", "Produção, mixagem e masterização.", "produtores"],
+  ["list-music", "Curadores", "Playlists, seleção e posicionamento.", "produtores"],
+  ["megaphone", "Marketing Musical", "Campanhas, conteúdo e tráfego.", "produtores"],
+];
+
+const smartCombos = [
+  ["Combo Produção", "Beat + Mixagem + Masterização", "Economia sugerida: 15%"],
+  ["Combo Lançamento", "Capa + Curadoria", "Economia sugerida: 12%"],
+  ["Combo Completo", "Produção + Capa + Divulgação", "Economia sugerida: 20%"],
+];
+
+function quickActionCard([icon, title, desc, route]) {
+  return `<a class="quick-action-card" href="#${route}" data-route="${route}">
+    <i data-lucide="${icon}"></i>
+    <strong>${title}</strong>
+    <span>${desc}</span>
+  </a>`;
+}
+
+function nexoRecommendationCard(item) {
+  return `<article class="nexo-recommendation-card">
+    <div class="recommendation-icon"><i data-lucide="${item.icon}"></i></div>
+    <span>${item.type}</span>
+    <strong>${item.title}</strong>
+    <p>${item.reason}</p>
+    <a href="#${item.route}" data-route="${item.route}">Abrir <i data-lucide="arrow-right"></i></a>
+  </article>`;
+}
+
+function categoryCard([icon, title, desc, route]) {
+  return `<article class="category-card">
+    <i data-lucide="${icon}"></i>
+    <strong>${title}</strong>
+    <p>${desc}</p>
+    <a href="#${route}" data-route="${route}">Explorar</a>
+  </article>`;
+}
+
+function smartComboCard([title, services, economy], index) {
+  return `<article class="smart-combo-card ${index === 2 ? "is-featured" : ""}">
+    <span>${index === 2 ? "Mais completo" : "Combo inteligente"}</span>
+    <strong>${title}</strong>
+    <p>${services}</p>
+    <small>${economy}</small>
+    <button type="button" data-action="ai-chip" data-prompt="Quero montar o ${title.toLowerCase()} para meu lançamento.">Montar combo</button>
+  </article>`;
+}
+
+function featuredProfessionalCard(name, index) {
+  const categories = ["Beatmaker", "Designer", "Produtor", "Curador", "Marketing"];
+  return `<article class="featured-professional-card">
+    <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
+    <div>
+      <strong>${name}<i data-lucide="badge-check"></i></strong>
+      <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
+    </div>
+    <button type="button" data-action="producer" data-title="${name}">Ver perfil</button>
+  </article>`;
+}
+
+function recentActivityRow(item, index) {
+  const labels = ["Plano gerado", "Beat favoritado", "Serviço contratado", "Combo montado", "Perfil seguido"];
+  return `<article>
+    <i data-lucide="${["sparkles", "heart", "shopping-bag", "boxes", "user-plus"][index] || "activity"}"></i>
+    <div><strong>${labels[index]}</strong><span>${item.title} · ${item.producer}</span></div>
+    <small>${index + 2} min</small>
+  </article>`;
+}
+
+function renderHomeDashboard() {
+  const quick = document.querySelector("#quickActionGrid");
+  const recommendations = document.querySelector("#nexoRecommendationGrid");
+  const categories = document.querySelector("#categoryGrid");
+  const combos = document.querySelector("#smartComboGrid");
+  const featured = document.querySelector("#featuredCatalogPreview");
+  const professionals = document.querySelector("#featuredProfessionals");
+  const activity = document.querySelector("#recentActivity");
+
+  if (quick) quick.innerHTML = quickActions.map(quickActionCard).join("");
+  if (recommendations) recommendations.innerHTML = nexoRecommendations.slice(0, 6).map(nexoRecommendationCard).join("");
+  if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
+  if (combos) combos.innerHTML = smartCombos.map(smartComboCard).join("");
+  if (featured) featured.innerHTML = preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
+  if (professionals) professionals.innerHTML = avatars.slice(0, 6).map(featuredProfessionalCard).join("");
+  if (activity) activity.innerHTML = preferredBeats(5).map(recentActivityRow).join("");
+}
+
 function sectionTemplate([title, subtitle, icon, content]) {
   const body = content === "avatars"
     ? `<div class="avatar-row">${avatars.map(avatarCard).join("")}</div>`
@@ -318,11 +425,12 @@ function trackRow(item, i) {
   </article>`;
 }
 
-document.querySelector("#playlistRow").innerHTML = playlists.map(playlistCard).join("");
-document.querySelector('[data-feed="explore"]').innerHTML = Array.from({ length: 6 }, (_, i) => beatCard(beat(i + 1, i === 4 ? "Em alta" : ""))).join("");
-document.querySelector("#dynamicSections").innerHTML = sections.map(sectionTemplate).join("");
-document.querySelector("#trackList").innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
-document.querySelector("#lateSections").innerHTML = lateSections.map(sectionTemplate).join("");
+document.querySelector("#playlistRow") && (document.querySelector("#playlistRow").innerHTML = playlists.map(playlistCard).join(""));
+document.querySelector('[data-feed="explore"]') && (document.querySelector('[data-feed="explore"]').innerHTML = Array.from({ length: 6 }, (_, i) => beatCard(beat(i + 1, i === 4 ? "Em alta" : ""))).join(""));
+document.querySelector("#dynamicSections") && (document.querySelector("#dynamicSections").innerHTML = sections.map(sectionTemplate).join(""));
+document.querySelector("#trackList") && (document.querySelector("#trackList").innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join(""));
+document.querySelector("#lateSections") && (document.querySelector("#lateSections").innerHTML = lateSections.map(sectionTemplate).join(""));
+renderHomeDashboard();
 
 const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -531,7 +639,7 @@ prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
 prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
+  const targets = document.querySelectorAll(".home-section, .catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
   if (revealObserver) revealObserver.disconnect();
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
@@ -594,6 +702,8 @@ const routeTitles = {
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
+routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendacoes e proximos passos."];
+routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos contratados."];
 routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
@@ -783,16 +893,15 @@ function applyRoleDashboard() {
   if (benefits) {
     benefits.innerHTML = dashboard.benefits.map(([icon, label]) => `<span><i data-lucide="${icon}"></i>${label}</span>`).join("");
   }
-  if (mapTitle) mapTitle.textContent = "NEXO IA";
+  if (mapTitle) mapTitle.textContent = "Diagnostico Musical IA";
   if (!appState.aiPlan || appState.aiPlan.role !== activeRoleKey()) defaultRolePreview(dashboard);
 
   document.querySelector("#roleDashboardStrip")?.remove();
-  hero.insertAdjacentHTML("afterend", roleDashboardStripMarkup(dashboard));
 
   const labels = {
     ia: "NEXO IA",
     explorar: activeRoleKey() === "artista" ? "Explorar" : "Demandas",
-    compras: activeRoleKey() === "artista" ? "Minhas compras" : "Pedidos",
+    compras: "Pedidos",
     biblioteca: activeRoleKey() === "curador" ? "Playlists" : "Biblioteca",
     produtores: activeRoleKey() === "artista" ? "Profissionais" : "Comunidade",
   };
@@ -1198,6 +1307,13 @@ function applyFeedPersonalization() {
   if (playlistRow) playlistRow.innerHTML = personalizedPlaylists().map(playlistCard).join("");
   const exploreRow = document.querySelector('[data-feed="explore"]');
   if (exploreRow) exploreRow.innerHTML = preferredBeats(8).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Hot" : item.badge })).join("");
+  enableSpotlights();
+  setupAutoScrollRows();
+  lucide.createIcons();
+}
+
+function applyFeedPersonalization() {
+  renderHomeDashboard();
   enableSpotlights();
   setupAutoScrollRows();
   lucide.createIcons();

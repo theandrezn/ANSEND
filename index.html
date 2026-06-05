@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260605-auth-hero-01" />
+    <link rel="stylesheet" href="styles.css?v=20260605-home-dashboard-01" />
   </head>
   <body>
     <aside class="sidebar" aria-label="Navegação principal">
@@ -22,11 +22,11 @@
       </a>
 
       <nav class="nav-menu">
-        <a class="nav-link is-active" data-route="feed" href="#feed"><i data-lucide="radio"></i><span>Feed</span></a>
+        <a class="nav-link is-active" data-route="feed" href="#feed"><i data-lucide="radio"></i><span>Home</span></a>
         <a class="nav-link" data-route="ia" href="#ia"><i data-lucide="sparkles"></i><span>NEXO IA</span></a>
         <a class="nav-link" data-route="explorar" href="#explorar"><i data-lucide="compass"></i><span>Explorar</span></a>
         <a class="nav-link" data-route="favoritos" href="#favoritos"><i data-lucide="heart"></i><span>Favoritos</span></a>
-        <a class="nav-link" data-route="compras" href="#compras"><i data-lucide="shopping-bag"></i><span>Minhas compras</span></a>
+        <a class="nav-link" data-route="compras" href="#compras"><i data-lucide="shopping-bag"></i><span>Pedidos</span></a>
         <a class="nav-link" data-route="biblioteca" href="#biblioteca"><i data-lucide="library"></i><span>Biblioteca</span></a>
         <a class="nav-link" data-route="produtores" href="#produtores"><i data-lucide="users"></i><span>Profissionais</span></a>
         <a class="nav-link" data-route="perfil" href="#perfil"><i data-lucide="circle-user-round"></i><span>Meu perfil</span></a>
@@ -83,7 +83,7 @@
             </div>
 
             <h1><span>Entre com uma ideia.</span><strong>Saia com uma solução.</strong></h1>
-            <p>Descreva sua letra, demo, música pronta ou objetivo. A IA da ANSEND cria um plano e conecta você aos profissionais certos para produzir, lançar e divulgar com segurança.</p>
+            <p>Descreva sua música, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lançar e divulgar.</p>
 
             <form class="ai-diagnostic-form" aria-label="Diagnóstico Musical NEXO IA">
               <label class="sr-only" for="aiPrompt">Diagnóstico Musical NEXO IA</label>
@@ -100,7 +100,7 @@
               </div>
               <div class="an-hero-actions ai-actions">
                 <button class="an-primary" type="submit">Gerar meu plano <i data-lucide="arrow-right"></i></button>
-                <button class="an-secondary" type="button" data-action="ai-professionals">Explorar profissionais <i data-lucide="users-round"></i></button>
+                <button class="an-secondary" type="button" data-action="ai-professionals">Explorar serviços <i data-lucide="users-round"></i></button>
               </div>
             </form>
 
@@ -117,7 +117,7 @@
 
           <aside class="hero-playlist-card ai-map-card" aria-label="Mapa do lançamento">
             <span>MAPA DO LANÇAMENTO</span>
-            <strong>NEXO IA</strong>
+            <strong>Diagnóstico Musical IA</strong>
             <p>Conte sua ideia e receba uma ordem clara de execução.</p>
             <ol class="release-map" id="releaseMap">
               <li><i data-lucide="disc-3"></i><span>Produção</span><b>Beatmaker</b></li>
@@ -139,36 +139,57 @@
           </aside>
         </section>
 
-        <section class="catalog-section">
-          <div class="section-head">
-            <div><h2><i data-lucide="list-music"></i>Playlists para seu estilo</h2><p>Curadorias baseadas no seu gosto</p></div>
-            <div class="arrow-pair"><button type="button" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button type="button" aria-label="Próximo"><i data-lucide="chevron-right"></i></button></div>
+        <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="quickActionsTitle"><i data-lucide="zap"></i>Qual seu próximo passo?</h2><p>Escolha uma ação e a ANSEND guia o caminho certo.</p></div>
           </div>
-          <div class="playlist-row" id="playlistRow"></div>
+          <div class="quick-action-grid" id="quickActionGrid"></div>
         </section>
 
-        <section class="catalog-section" id="explore">
-          <div class="section-head">
-            <div><h2><i data-lucide="sparkles"></i>Beats escolhidos pra você</h2><p>Ajustado para seu estilo e histórico</p></div>
-            <div class="arrow-pair"><button type="button" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button type="button" aria-label="Próximo"><i data-lucide="chevron-right"></i></button></div>
+        <section class="home-section nexo-recommendations-section" aria-labelledby="nexoRecommendationsTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="nexoRecommendationsTitle"><i data-lucide="sparkles"></i>Recomendado pela NEXO</h2><p>Seis sugestões principais para resolver seu lançamento agora.</p></div>
+            <a class="section-link" href="#explorar" data-route="explorar">Ver mais</a>
           </div>
-          <div class="chip-row">
-            <button class="is-active" type="button">Todos</button><button type="button">Trap</button><button type="button">Funk</button><button type="button">Drill</button><button type="button">R&amp;B</button><button type="button">Gospel</button><button type="button">Boom Bap</button><button type="button">Type Beats</button>
-          </div>
-          <div class="beat-row" data-feed="explore"></div>
+          <div class="nexo-recommendation-grid" id="nexoRecommendationGrid"></div>
         </section>
 
-        <div id="dynamicSections"></div>
-
-        <section class="catalog-section list-section">
-          <div class="section-head">
-            <div><h2><i data-lucide="clock-3"></i>Lista recente</h2><p>Ranking de faixas adicionadas agora</p></div>
-            <div class="arrow-pair"><button type="button" aria-label="Anterior"><i data-lucide="chevron-left"></i></button><button type="button" aria-label="Próximo"><i data-lucide="chevron-right"></i></button></div>
+        <section class="home-section category-section" aria-labelledby="categoryTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="categoryTitle"><i data-lucide="layout-grid"></i>Explore por categoria</h2><p>Os cinco pilares do marketplace musical da ANSEND.</p></div>
           </div>
-          <div class="track-list" id="trackList"></div>
+          <div class="category-grid" id="categoryGrid"></div>
         </section>
 
-        <div id="lateSections"></div>
+        <section class="home-section smart-combos-section" aria-labelledby="smartCombosTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="smartCombosTitle"><i data-lucide="boxes"></i>Combos para acelerar seu lançamento</h2><p>Pacotes inteligentes para sair da ideia até a divulgação.</p></div>
+          </div>
+          <div class="smart-combo-grid" id="smartComboGrid"></div>
+        </section>
+
+        <section class="home-section featured-preview-section" aria-labelledby="featuredPreviewTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="featuredPreviewTitle"><i data-lucide="disc-3"></i>Em destaque agora</h2><p>Uma prévia curta do catálogo. O acervo completo fica em Explorar.</p></div>
+            <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
+          </div>
+          <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
+        </section>
+
+        <section class="home-section featured-professionals-section" aria-labelledby="featuredProfessionalsTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="featuredProfessionalsTitle"><i data-lucide="badge-check"></i>Profissionais em destaque</h2><p>Perfis verificados para produzir, finalizar e divulgar sua música.</p></div>
+            <a class="section-link" href="#produtores" data-route="produtores">Ver profissionais</a>
+          </div>
+          <div class="featured-professional-grid" id="featuredProfessionals"></div>
+        </section>
+
+        <section class="home-section recent-activity-section" aria-labelledby="recentActivityTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="recentActivityTitle"><i data-lucide="activity"></i>Movimento recente</h2><p>Um resumo compacto do que acabou de acontecer na plataforma.</p></div>
+          </div>
+          <div class="recent-activity-widget" id="recentActivity"></div>
+        </section>
       </main>
 
       <footer class="footer">
@@ -194,7 +215,7 @@
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",
       };
     </script>
-    <script src="script.js?v=20260605-auth-hero-01"></script>
+    <script src="script.js?v=20260605-home-dashboard-01"></script>
   </body>
 </html>
 
