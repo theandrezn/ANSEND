@@ -1009,11 +1009,29 @@ async function loadProfile(user) {
 
 function syncAccountUi() {
   document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
+  document.body.classList.toggle("is-authenticated", hasAccountAccess());
+  document.body.classList.toggle("requires-auth", !hasAccountAccess());
   const avatar = document.querySelector(".avatar-btn");
   const profile = activeProfile();
   if (avatar && profile?.full_name) {
     avatar.setAttribute("aria-label", `Conta de ${profile.full_name}`);
   }
+}
+
+function hasAccountAccess() {
+  return Boolean(appState.authUser || appState.profile);
+}
+
+function protectedRoute(route) {
+  return !["vendedor"].includes(route);
+}
+
+function renderAuthLoading() {
+  appView.innerHTML = `<section class="auth-gate-loading" aria-live="polite">
+    <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
+    <span>Verificando sua conta</span>
+    <strong>Preparando acesso seguro</strong>
+  </section>`;
 }
 
 async function initAuth() {
@@ -1281,6 +1299,7 @@ function onboardingMarkup() {
 }
 
 function showOnboarding(force = false) {
+  if (!hasAccountAccess()) return;
   if (!force && appState.onboardingProfile?.completed) return;
   document.querySelector(".onboarding-quiz")?.remove();
   document.body.insertAdjacentHTML("beforeend", onboardingMarkup());
@@ -1706,9 +1725,23 @@ function renderRoute() {
   const route = currentRoute();
   const routeChanged = route !== lastRoute;
   lastRoute = route;
+  document.body.classList.toggle("is-authenticated", hasAccountAccess());
+  document.body.classList.toggle("requires-auth", !hasAccountAccess());
   appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
+  if (!appState.authReady && !hasAccountAccess() && protectedRoute(route)) {
+    renderAuthLoading();
+    hydrateView();
+    return;
+  }
+  if (!hasAccountAccess() && protectedRoute(route)) {
+    appState.sellerMode = appState.sellerMode || "login";
+    renderSellerAuth();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    hydrateView();
+    return;
+  }
   if (route === "feed" || route === "ia") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
@@ -1883,6 +1916,7 @@ document.addEventListener("click", (event) => {
   if (!target) return;
   const action = target.dataset.action;
   if (action === "seller") {
+    appState.sellerMode = hasAccountAccess() ? "login" : "signup";
     location.hash = "vendedor";
     return;
   }
