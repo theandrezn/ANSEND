@@ -159,6 +159,8 @@ const roleDashboards = {
   },
 };
 
+const heroHeadline = ["ANSEND |", "O marketplace inteligente da música"];
+
 const playlists = [
   ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],
   ["Mainstreet Hits", "38 faixas", "assets/catalog-cover-02.webp"],
@@ -1094,7 +1096,7 @@ function applyRoleDashboard() {
   const quickSubtitle = document.querySelector(".quick-actions-section .section-head p");
 
   if (kicker) kicker.textContent = role === "beatmaker" ? "NEXO IA PARA BEATMAKERS" : "NEXO IA";
-  if (title) title.innerHTML = `<span>${dashboard.headline[0]}</span><strong>${dashboard.headline[1]}</strong>`;
+  if (title) title.innerHTML = `<span>${heroHeadline[0]}</span><strong>${heroHeadline[1]}</strong>`;
   if (subtitle) subtitle.textContent = dashboard.subheadline;
   if (input) input.placeholder = dashboard.placeholder;
   if (chips) {

@@ -7976,3 +7976,8 @@ body.modal-open {
     min-width: 96px !important;
   }
 }
+
+.feed .ai-hero .an-hero-copy h1 span,
+.feed .ai-hero .an-hero-copy h1 strong {
+  display: block;
+}
