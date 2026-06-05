@@ -41,9 +41,9 @@ const roleChoices = [
 
 const roleDashboards = {
   artista: {
-    headline: ["Seu proximo hit", "comeca na NEXO IA."],
-    subheadline: "Descreva uma ideia, demo ou objetivo. A ANSEND monta o caminho certo em segundos.",
-    placeholder: "Ex: Tenho uma musica de trap pronta e preciso lancar profissionalmente...",
+    headline: ["Seu primeiro hit", "começa aqui."],
+    subheadline: "Busque um som, descreva sua ideia ou peça para a NEXO montar o plano certo.",
+    placeholder: "Explore novos sons ou diga para a NEXO o que você quer lançar...",
     primaryCta: "Gerar meu plano",
     secondaryCta: "Explorar servicos",
     chips: [
@@ -160,32 +160,30 @@ const roleDashboards = {
 };
 
 const playlists = [
-  ["Trap na Área", "52 beats", img("photo-1493225457124-a3eb161ffa5f")],
-  ["Mainstreet Hits", "38 faixas", img("photo-1514525253161-7a46d19cd819")],
-  ["Drill Brutal", "44 beats", img("photo-1507874457470-272b3c8d8ee2")],
-  ["Matuê Type", "29 beats", img("photo-1516450360452-9312f5e86fc7")],
-  ["Yunk Vino Vibes", "31 beats", img("photo-1521337581100-8ca9a73a5f79")],
-  ["Noite 808", "67 beats", img("photo-1501386761578-eac5c94b800a")],
+  ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],
+  ["Mainstreet Hits", "38 faixas", "assets/catalog-cover-02.webp"],
+  ["Drill Brutal", "44 beats", "assets/catalog-cover-03.webp"],
+  ["Matuê Type", "29 beats", "assets/catalog-cover-04.webp"],
+  ["Yunk Vino Vibes", "31 beats", "assets/catalog-cover-05.webp"],
+  ["Noite 808", "67 beats", "assets/catalog-cover-06.webp"],
 ];
-
 const covers = [
-  "photo-1516280440614-37939bbacd81",
-  "photo-1511379938547-c1f69419868d",
-  "photo-1487180144351-b8472da7d491",
-  "photo-1533174072545-7a4b6ad7a6c3",
-  "photo-1516280440614-37939bbacd81",
-  "photo-1493225457124-a3eb161ffa5f",
-  "photo-1501386761578-eac5c94b800a",
-  "photo-1514525253161-7a46d19cd819",
-  "photo-1521337581100-8ca9a73a5f79",
-  "photo-1507874457470-272b3c8d8ee2",
-  "photo-1516450360452-9312f5e86fc7",
-  "photo-1525362081669-2b476bb628c3",
-  "photo-1524368535928-5b5e00ddc76b",
-  "photo-1499364615650-ec38552f4f34",
-  "photo-1506157786151-b8491531f063",
+  "assets/catalog-cover-07.webp",
+  "assets/catalog-cover-08.webp",
+  "assets/catalog-cover-09.webp",
+  "assets/catalog-cover-10.webp",
+  "assets/catalog-exclusive.jpg",
+  "assets/catalog-chorus.jpg",
+  "assets/catalog-vocal.jpg",
+  "assets/catalog-cover-01.webp",
+  "assets/catalog-cover-02.webp",
+  "assets/catalog-cover-03.webp",
+  "assets/catalog-cover-04.webp",
+  "assets/catalog-cover-05.webp",
+  "assets/catalog-cover-06.webp",
+  "assets/catalog-cover-07.webp",
+  "assets/catalog-cover-08.webp",
 ];
-
 const beatNames = [
   "808 Main", "Noite Cara", "Favela Chrome", "Cold Vision", "Focaccia Flow", "Black Coupe",
   "Royal Type", "After Club", "Velvet Room", "Drill de Luxo", "Neon Alley", "Rua 808",
@@ -198,7 +196,7 @@ const beat = (i, badge = "") => ({
   id: `beat-${i % beatNames.length}`,
   title: beatNames[i % beatNames.length],
   producer: producers[i % producers.length],
-  cover: img(covers[i % covers.length]),
+  cover: covers[i % covers.length],
   tags: [genres[i % genres.length], `${90 + (i * 7) % 62} BPM`],
   badge,
 });
@@ -2304,7 +2302,7 @@ function openProfessionalContract(name) {
 }
 
 function openCheckout(id, selectedPlan = "premium") {
-  const item = findBeat(id);
+  const item = findBeat(id) || topBeatOfDay;
   const cards = Object.entries(licensePlans).map(([key, plan]) => `<label class="checkout-plan ${key === selectedPlan ? "is-selected" : ""}">
     <input type="radio" name="license" value="${key}" ${key === selectedPlan ? "checked" : ""}>
     <span>${plan.label}</span>
@@ -2314,18 +2312,54 @@ function openCheckout(id, selectedPlan = "premium") {
   openModal(`<form class="checkout-form" data-beat-id="${item.id}">
     <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
     <h2>${item.title}</h2>
-    <p>${item.producer} / ${item.tags.join(" / ")}</p>
+    <p>${item.producer} / ${(item.tags || ["Top beat"]).join(" / ")}</p>
     <div class="checkout-product"><img src="${item.cover}" alt="Capa de ${item.title}"><div><strong>Contrato digital</strong><small>Pagamento simulado em ambiente preview. Pedido fica salvo na aba Pedidos.</small></div></div>
     <div class="checkout-plans">${cards}</div>
     <button class="seller-submit" type="submit">Finalizar pedido<i data-lucide="arrow-right"></i></button>
   </form>`);
 }
 
+function miniWaveformBars(progress = 0) {
+  return Array.from({ length: 96 }, (_, index) => {
+    const height = 18 + ((index * 17) % 42);
+    const active = index / 95 <= progress ? " is-active" : "";
+    return `<span class="${active}" style="--bar-h:${height}%"></span>`;
+  }).join("");
+}
+
+function formatTime(seconds) {
+  const safe = Math.max(0, Math.floor(seconds || 0));
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+}
+
+function currentPlayingBeat() {
+  return findBeat(appState.playing) || (appState.playing === topBeatOfDay.id ? topBeatOfDay : allBeats[10]);
+}
+
+function updateMiniProgress() {
+  const player = document.querySelector(".mini-player");
+  if (!player) return;
+  const audio = topBeatAudio();
+  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
+  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
+  const current = isAudioBeat ? audio.currentTime : 11;
+  const progress = Math.min(1, duration ? current / duration : 0);
+  player.querySelector(".mini-current").textContent = formatTime(current);
+  player.querySelector(".mini-duration").textContent = formatTime(duration || 165);
+  player.querySelector(".mini-wave-bars").innerHTML = miniWaveformBars(progress);
+}
+
 function updateMiniPlayer(item) {
   const player = document.querySelector(".mini-player");
-  player.querySelector("img").src = item.cover;
-  player.querySelector("strong").textContent = item.title;
-  player.querySelector("span").textContent = item.producer;
+  if (!player || !item) return;
+  player.classList.add("is-active");
+  player.dataset.currentBeat = item.id;
+  player.querySelector(".mini-track img").src = item.cover;
+  player.querySelector(".mini-track strong").textContent = item.title;
+  player.querySelector(".mini-track span").textContent = `${item.producer} · ${item.tags?.[1] || "153 BPM"}`;
+  const numericId = Number(String(item.id).replace(/\D/g, "")) || 4;
+  player.querySelector(".mini-buy span").textContent = item.id === topBeatOfDay.id ? "$44.95" : `$${(24.95 + (numericId % 5) * 5).toFixed(2)}`;
+  updateMiniProgress();
 }
 
 function topBeatAudio() {
@@ -2342,6 +2376,7 @@ function setTopBeatPlaying(isPlaying) {
   if (appState.playing === topBeatOfDay.id && miniButton) {
     miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
   }
+  document.querySelector(".mini-player")?.classList.toggle("is-playing", isPlaying || Boolean(appState.playing));
   lucide.createIcons();
 }
 
@@ -2378,6 +2413,17 @@ function toggleTopBeat() {
   else pauseTopBeat();
 }
 
+function playBeatByOffset(offset) {
+  const current = currentPlayingBeat();
+  const index = Math.max(0, allBeats.findIndex((item) => item.id === current?.id));
+  const next = allBeats[(index + offset + allBeats.length) % allBeats.length];
+  pauseTopBeat({ quiet: true });
+  appState.playing = next.id;
+  updateMiniPlayer(next);
+  document.querySelector(".mini-player")?.classList.add("is-playing");
+  showToast(`Tocando agora: ${next.title}`, "play");
+}
+
 function shouldPrimeTopBeat() {
   const route = location.hash.replace("#", "") || "feed";
   return route === "feed" || route === "";
@@ -2385,6 +2431,9 @@ function shouldPrimeTopBeat() {
 
 window.addEventListener("load", () => {
   topBeatAudio()?.addEventListener("ended", () => setTopBeatPlaying(false));
+  topBeatAudio()?.addEventListener("timeupdate", updateMiniProgress);
+  topBeatAudio()?.addEventListener("loadedmetadata", updateMiniProgress);
+  updateMiniPlayer(currentPlayingBeat());
   if (shouldPrimeTopBeat()) playTopBeat({ quiet: true });
 }, { once: true });
 
@@ -2609,6 +2658,7 @@ document.addEventListener("click", (event) => {
         title: item.title,
         producer: item.producer_name || item.artist_name || "ANSEND",
         cover: item.cover_url || img("photo-1493225457124-a3eb161ffa5f"),
+        tags: [item.genre || "ANSEND", item.bpm ? `${item.bpm} BPM` : "Preview"],
       });
       showToast(`Tocando agora: ${item.title}`, "play");
     }
@@ -2640,9 +2690,38 @@ document.addEventListener("click", (event) => {
       toggleTopBeat();
       return;
     }
-    showToast(appState.playing ? "Reprodução pausada" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
+    document.querySelector(".mini-player")?.classList.toggle("is-playing");
+    showToast(appState.playing ? "Player alternado" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
+    return;
   }
-  if (action === "playlist") {
+  if (action === "prev-track") {
+    playBeatByOffset(-1);
+    return;
+  }
+  if (action === "next-track") {
+    playBeatByOffset(1);
+    return;
+  }
+  if (action === "favorite-current") {
+    handleFavorite(currentPlayingBeat()?.id);
+    return;
+  }
+  if (action === "buy-current") {
+    handleBuy(currentPlayingBeat()?.id || topBeatOfDay.id, "premium");
+    return;
+  }
+  if (["edit-beat", "loop-beat", "lyrics", "volume", "queue", "more-player"].includes(action)) {
+    const labels = {
+      "edit-beat": "Editor do beat aberto",
+      "loop-beat": "Loop ativado para estudo",
+      lyrics: "Area de letras sincronizadas",
+      volume: "Volume do preview ajustado",
+      queue: "Fila de reproducao aberta",
+      "more-player": "Mais opcoes do player",
+    };
+    showToast(labels[action], action === "loop-beat" ? "repeat-2" : "settings-2");
+    return;
+  }  if (action === "playlist") {
     location.hash = `playlist-${target.dataset.playlistId || slugify(target.dataset.title)}`;
     return;
   }

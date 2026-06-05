@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20260605-hero-structure-03" />
@@ -221,9 +221,30 @@
       </footer>
 
       <aside class="mini-player" aria-label="Player atual">
-        <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=120&q=80" alt="" />
-        <div><strong>Neon Alley</strong><span>prod. Viana</span></div>
-        <button type="button" data-action="mini-play" aria-label="Tocar"><i data-lucide="play"></i></button>
+        <div class="mini-waveform" aria-hidden="true">
+          <span class="mini-current">0:00</span>
+          <div class="mini-wave-bars"></div>
+          <span class="mini-duration">2:45</span>
+        </div>
+        <div class="mini-track">
+          <img src="assets/catalog-cover-07.webp" alt="" />
+          <div><strong>Neon Alley</strong><span>prod. Viana · 98 BPM</span></div>
+        </div>
+        <div class="mini-controls" aria-label="Controles do player">
+          <button type="button" data-action="favorite-current" aria-label="Favoritar beat atual"><i data-lucide="heart"></i></button>
+          <button type="button" data-action="prev-track" aria-label="Faixa anterior"><i data-lucide="skip-back"></i></button>
+          <button class="mini-play-button" type="button" data-action="mini-play" aria-label="Tocar"><i data-lucide="play"></i></button>
+          <button type="button" data-action="next-track" aria-label="Próxima faixa"><i data-lucide="skip-forward"></i></button>
+          <button type="button" data-action="queue" aria-label="Fila"><i data-lucide="list-music"></i></button>
+        </div>
+        <div class="mini-tools" aria-label="Ferramentas do beat">
+          <button type="button" data-action="edit-beat"><i data-lucide="gauge"></i><span>Edit</span></button>
+          <button type="button" data-action="loop-beat"><i data-lucide="repeat-2"></i><span>Loop</span></button>
+          <button type="button" data-action="lyrics"><i data-lucide="scroll-text"></i><span>Lyrics</span></button>
+          <button type="button" data-action="volume"><i data-lucide="volume-2"></i></button>
+          <button type="button" data-action="more-player"><i data-lucide="ellipsis"></i></button>
+          <button class="mini-buy" type="button" data-action="buy-current"><i data-lucide="shopping-bag"></i><span>$44.95</span></button>
+        </div>
       </aside>
       <audio id="topBeatAudio" src="assets/top-beat-psiiiko.mp3" preload="auto"></audio>
       <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
