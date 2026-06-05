@@ -121,9 +121,19 @@ const avatarImages = [
 ];
 const avatars = ["Faijo Gonzales", "Akira Beat", "Maya Keys", "Ghost Lab", "Rokstar", "DJ Shelby", "Noma", "Ares"];
 
+function slugify(value) {
+  return String(value || "playlist")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "playlist";
+}
+
 function playlistCard([title, subtitle, cover]) {
-  return `<article class="playlist-card gradient-card spotlight-card" style="--card-art: url('${cover}')" data-playlist="${title}">
-    <button class="playlist-action gradient-card-body" type="button" data-action="playlist" data-title="${title}" aria-label="Abrir ${title}">
+  const playlistId = slugify(title);
+  return `<article class="playlist-card gradient-card spotlight-card" style="--card-art: url('${cover}')" data-playlist="${title}" data-playlist-id="${playlistId}">
+    <button class="playlist-action gradient-card-body" type="button" data-action="playlist" data-title="${title}" data-playlist-id="${playlistId}" aria-label="Abrir ${title}">
       <img class="card-art-source" src="${cover}" alt="Capa ${title}">
       <span class="card-orb"><i data-lucide="list-music"></i></span>
       <span class="card-copy"><strong>${title}</strong><small>${subtitle}</small></span>
@@ -190,6 +200,7 @@ let lastRoute = null;
 function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
   if (route.startsWith("beat-")) return "detalhe";
+  if (route.startsWith("playlist-")) return "playlist";
   return routeTitles?.[route] ? route : "feed";
 }
 
@@ -388,7 +399,7 @@ prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
 prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .beat-detail-layout, .producer-profile");
+  const targets = document.querySelectorAll(".catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
   if (revealObserver) revealObserver.disconnect();
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
@@ -452,6 +463,8 @@ const routeTitles = {
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
+
+routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
@@ -598,6 +611,61 @@ function personalizedPlaylists() {
   return result.slice(0, 6);
 }
 
+function playlistLibrary() {
+  return [
+    ...playlists,
+    ...personalizedPlaylists(),
+    ["Mainstreet Type Beats", "Playlist oficial ANSEND", img("photo-1516280440614-37939bbacd81")],
+  ];
+}
+
+function findPlaylistPack(idOrTitle) {
+  const requested = slugify(idOrTitle?.replace?.(/^playlist-/, "") || idOrTitle);
+  const source = playlistLibrary();
+  const found = source.find(([title]) => slugify(title) === requested) || source[0];
+  const [title, subtitle, cover] = found;
+  const seed = [...slugify(title)].reduce((total, char) => total + char.charCodeAt(0), 0);
+  const preferred = preferredBeats(allBeats.length);
+  const pool = preferred.length ? preferred : allBeats;
+  const trackCount = Math.min(12, Math.max(8, pool.length));
+  const tracks = Array.from({ length: trackCount }, (_, index) => {
+    const item = pool[(seed + index) % pool.length];
+    return {
+      ...item,
+      duration: `${2 + ((seed + index) % 2)}:${String(18 + ((seed + index) * 7) % 42).padStart(2, "0")}`,
+      plays: `${(18 + ((seed + index) * 13) % 82).toString().padStart(2, "0")}.${(120 + index * 37).toString().slice(0, 3)}`
+    };
+  });
+  return {
+    id: slugify(title),
+    title,
+    subtitle,
+    cover,
+    tracks,
+    curator: title.includes("Trap") ? "Curadoria ANSEND Trap" : title.includes("Funk") ? "Curadoria ANSEND Funk" : "Curadoria ANSEND",
+    description: "Um pack selecionado para encontrar referencias, testar flows e escolher beats prontos para licenciar dentro da plataforma.",
+  };
+}
+
+function playlistDetailTrackRow(item, index) {
+  const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
+  return `<article class="playlist-track-row" data-beat-id="${item.id}">
+    <span class="playlist-track-index">${index + 1}</span>
+    <button class="playlist-track-main" type="button" data-action="open-beat" data-id="${item.id}">
+      <img src="${item.cover}" alt="Capa de ${item.title}" onerror="this.classList.add('is-broken')">
+      <span><strong>${item.title}</strong><small>${item.producer}</small></span>
+    </button>
+    <span class="playlist-track-tags">${item.tags[0]}<small>${item.tags[1]}</small></span>
+    <span class="playlist-track-plays">${item.plays}</span>
+    <div class="playlist-track-actions">
+      <button type="button" data-action="favorite" data-id="${item.id}" class="${favoriteClass}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
+      <button type="button" data-action="buy" data-id="${item.id}">Licenca</button>
+      <button type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
+    </div>
+    <span class="playlist-track-duration">${item.duration}</span>
+  </article>`;
+}
+
 function applyFeedPersonalization() {
   const profile = activeProfile();
   if (!profile?.completed && !profile?.account_role) return;
@@ -722,6 +790,66 @@ function renderLibrary() {
 
 function renderProducers() {
   appView.innerHTML = `${pageIntro("produtores")}<div class="producer-grid">${avatars.concat(["Duzzi", "Milly Studio", "Nocivo Beats", "Apollo"]).map(avatarCard).join("")}</div>`;
+}
+
+function renderPlaylistDetail() {
+  const playlistId = location.hash.replace("#playlist-", "");
+  const pack = findPlaylistPack(playlistId);
+  const firstTrack = pack.tracks[0] || allBeats[0];
+  const totalMinutes = pack.tracks.reduce((total, item) => total + Number(item.duration.split(":")[0] || 0), 0);
+  const related = playlistLibrary().filter(([title]) => slugify(title) !== pack.id).slice(0, 6);
+
+  appView.innerHTML = `
+    <div class="playlist-detail-page">
+      <section class="playlist-detail-hero" style="--playlist-cover: url('${pack.cover}')">
+        <button class="detail-back" type="button" data-route="feed"><i data-lucide="chevron-left"></i>Voltar ao feed</button>
+        <div class="playlist-detail-art">
+          <img src="${pack.cover}" alt="Capa da playlist ${pack.title}" onerror="this.classList.add('is-broken')">
+        </div>
+        <div class="playlist-detail-copy">
+          <span class="detail-eyebrow"><i data-lucide="list-music"></i>PACK DE PLAYLIST</span>
+          <h1>${pack.title}</h1>
+          <p>${pack.description}</p>
+          <div class="playlist-detail-meta">
+            <strong>${pack.curator}</strong>
+            <span>${pack.tracks.length} beats</span>
+            <span>${totalMinutes} min</span>
+            <span>Atualizada hoje</span>
+          </div>
+          <div class="playlist-detail-actions">
+            <button class="detail-play" type="button" data-action="play" data-id="${firstTrack.id}"><i data-lucide="play"></i>Tocar pack</button>
+            <button class="detail-save" type="button" data-action="save-playlist" data-title="${pack.title}"><i data-lucide="plus"></i>Salvar playlist</button>
+            <button class="detail-more" type="button" data-action="share-playlist" data-title="${pack.title}" aria-label="Compartilhar playlist"><i data-lucide="more-horizontal"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="playlist-detail-layout">
+        <div class="playlist-detail-main">
+          <div class="playlist-table-head" aria-hidden="true">
+            <span>#</span><span>Titulo</span><span>Vibe</span><span>Plays</span><span>Acoes</span><span>Tempo</span>
+          </div>
+          <div class="playlist-track-list">
+            ${pack.tracks.map(playlistDetailTrackRow).join("")}
+          </div>
+        </div>
+        <aside class="playlist-detail-side">
+          <h2>Sobre o pack</h2>
+          <p>${pack.subtitle}. Use como base para descobrir produtores, testar direcoes de voz e comprar licencas com seguranca.</p>
+          <dl>
+            <div><dt>Curadoria</dt><dd>${pack.curator}</dd></div>
+            <div><dt>Foco</dt><dd>${preferredGenres().join(", ")}</dd></div>
+            <div><dt>Entrega</dt><dd>Licenca e download imediato</dd></div>
+          </dl>
+          <button type="button" data-action="save-playlist" data-title="${pack.title}"><i data-lucide="bookmark-plus"></i>Adicionar a biblioteca</button>
+        </aside>
+      </section>
+
+      <section class="catalog-section playlist-related">
+        <div class="section-head"><div><h2><i data-lucide="sparkles"></i>Mais packs para explorar</h2><p>Outras curadorias no mesmo clima</p></div></div>
+        <div class="playlist-row">${related.map(playlistCard).join("")}</div>
+      </section>
+    </div>`;
 }
 
 function renderBeatDetail() {
@@ -945,6 +1073,7 @@ function renderRoute() {
   if (route === "produtores") renderProducers();
   if (route === "configuracoes") renderSettings();
   if (route === "vendedor") renderSellerAuth();
+  if (route === "playlist") renderPlaylistDetail();
   if (route === "detalhe") renderBeatDetail();
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
   hydrateView();
@@ -1158,7 +1287,16 @@ document.addEventListener("click", (event) => {
     showToast(`Tocando agora: ${item.title}`, "play");
   }
   if (action === "mini-play") showToast(appState.playing ? "Reprodução pausada" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
-  if (action === "playlist") showToast(`Playlist aberta: ${target.dataset.title}`, "list-music");
+  if (action === "playlist") {
+    location.hash = `playlist-${target.dataset.playlistId || slugify(target.dataset.title)}`;
+    return;
+  }
+  if (action === "open-beat") {
+    location.hash = `beat-${target.dataset.id}`;
+    return;
+  }
+  if (action === "save-playlist") showToast(`Playlist salva: ${target.dataset.title}`, "bookmark-plus");
+  if (action === "share-playlist") showToast(`Link copiado: ${target.dataset.title}`, "share-2");
   if (action === "how-it-works") showToast("Explore, escolha sua licença e baixe o beat imediatamente", "circle-help");
   if (action === "producer") showToast(`Perfil de ${target.dataset.title}`, "badge-check");
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
