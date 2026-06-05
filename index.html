@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260605-glowing-prompt-01" />
+    <link rel="stylesheet" href="styles.css?v=20260605-hero-structure-03" />
   </head>
   <body>
     <aside class="sidebar" aria-label="Navegação principal">
@@ -72,72 +72,74 @@
             <span></span><span></span><span></span><span></span><span></span><span></span>
           </div>
 
-          <div class="an-hero-copy">
-            <div class="an-hero-brand">
-              <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+          <div class="ai-hero-layout">
+            <div class="an-hero-copy">
+              <div class="an-hero-brand">
+                <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+              </div>
+
+              <div class="an-kicker">
+                <i data-lucide="sparkles"></i>
+                <span>NEXO IA</span>
+              </div>
+
+              <h1><span>Entre com uma ideia.</span><strong>Saia com uma solução.</strong></h1>
+              <p>Descreva sua música, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lançar e divulgar.</p>
+
+              <form class="ai-diagnostic-form" aria-label="Diagnóstico Musical NEXO IA">
+                <label class="sr-only" for="aiPrompt">Diagnóstico Musical NEXO IA</label>
+                <div class="ai-input-shell">
+                  <i data-lucide="bot"></i>
+                  <textarea id="aiPrompt" name="aiPrompt" rows="3" placeholder="Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente..."></textarea>
+                  <button class="ai-inline-submit" type="submit" aria-label="Enviar para NEXO IA"><i data-lucide="arrow-right"></i></button>
+                </div>
+                <div class="ai-chip-row" aria-label="Atalhos do diagnóstico">
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma ideia de música e preciso transformar em lançamento.">Tenho uma ideia</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma letra de trap e preciso encontrar beat, capa e produção.">Tenho uma letra</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma demo gravada e quero finalizar com mixagem, master e capa.">Tenho uma demo</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Quero lançar no Spotify com distribuição, curadoria e divulgação.">Quero lançar</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Preciso divulgar minha música com curadoria, marketing musical e tráfego.">Preciso divulgar</button>
+                </div>
+                <div class="an-hero-actions ai-actions">
+                  <button class="an-primary" type="submit">Gerar meu plano <i data-lucide="arrow-right"></i></button>
+                  <button class="an-secondary" type="button" data-action="ai-professionals">Explorar serviços <i data-lucide="users-round"></i></button>
+                </div>
+              </form>
+
+              <div class="an-benefits" aria-label="Benefícios">
+                <span><i data-lucide="shield-check"></i>Pagamento protegido</span>
+                <span><i data-lucide="badge-check"></i>Profissionais avaliados</span>
+                <span><i data-lucide="brain-circuit"></i>Recomendações por IA</span>
+              </div>
             </div>
 
-            <div class="an-kicker">
-              <i data-lucide="sparkles"></i>
-              <span>NEXO IA</span>
+            <div class="an-hero-art" aria-hidden="true">
+              <img class="hero-mic-img" src="assets/ansend-microphone-reference.png" alt="" />
             </div>
 
-            <h1><span>Entre com uma ideia.</span><strong>Saia com uma solução.</strong></h1>
-            <p>Descreva sua música, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lançar e divulgar.</p>
-
-            <form class="ai-diagnostic-form" aria-label="Diagnóstico Musical NEXO IA">
-              <label class="sr-only" for="aiPrompt">Diagnóstico Musical NEXO IA</label>
-              <div class="ai-input-shell">
-                <i data-lucide="bot"></i>
-                <textarea id="aiPrompt" name="aiPrompt" rows="3" placeholder="Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente..."></textarea>
-                <button class="ai-inline-submit" type="submit" aria-label="Enviar para NEXO IA"><i data-lucide="arrow-right"></i></button>
+            <aside class="hero-playlist-card ai-map-card" aria-label="Mapa do lançamento">
+              <span>MAPA DO LANÇAMENTO</span>
+              <strong>Diagnóstico Musical IA</strong>
+              <p>Conte sua ideia e receba uma ordem clara de execução.</p>
+              <ol class="release-map" id="releaseMap">
+                <li><i data-lucide="disc-3"></i><span>Produção</span><b>Beatmaker</b></li>
+                <li><i data-lucide="image"></i><span>Capa</span><b>Designer</b></li>
+                <li><i data-lucide="upload-cloud"></i><span>Distribuição</span><b>Lançamento</b></li>
+                <li><i data-lucide="list-music"></i><span>Curadoria</span><b>Playlists</b></li>
+                <li><i data-lucide="megaphone"></i><span>Divulgação</span><b>Marketing</b></li>
+              </ol>
+              <div class="ai-output" id="aiOutput">
+                <small>Prévia do plano</small>
+                <ul>
+                  <li>Beatmaker recomendado</li>
+                  <li>Designer recomendado</li>
+                  <li>Produtor musical</li>
+                  <li>Curador</li>
+                  <li>Marketing musical</li>
+                </ul>
               </div>
-              <div class="ai-chip-row" aria-label="Atalhos do diagnóstico">
-                <button type="button" data-action="ai-chip" data-prompt="Tenho uma ideia de música e preciso transformar em lançamento.">Tenho uma ideia</button>
-                <button type="button" data-action="ai-chip" data-prompt="Tenho uma letra de trap e preciso encontrar beat, capa e produção.">Tenho uma letra</button>
-                <button type="button" data-action="ai-chip" data-prompt="Tenho uma demo gravada e quero finalizar com mixagem, master e capa.">Tenho uma demo</button>
-                <button type="button" data-action="ai-chip" data-prompt="Quero lançar no Spotify com distribuição, curadoria e divulgação.">Quero lançar</button>
-                <button type="button" data-action="ai-chip" data-prompt="Preciso divulgar minha música com curadoria, marketing musical e tráfego.">Preciso divulgar</button>
-              </div>
-              <div class="an-hero-actions ai-actions">
-                <button class="an-primary" type="submit">Gerar meu plano <i data-lucide="arrow-right"></i></button>
-                <button class="an-secondary" type="button" data-action="ai-professionals">Explorar serviços <i data-lucide="users-round"></i></button>
-              </div>
-            </form>
-
-            <div class="an-benefits" aria-label="Benefícios">
-              <span><i data-lucide="shield-check"></i>Pagamento protegido</span>
-              <span><i data-lucide="badge-check"></i>Profissionais avaliados</span>
-              <span><i data-lucide="brain-circuit"></i>Recomendações por IA</span>
-            </div>
+            </aside>
           </div>
-
-          <div class="an-hero-art" aria-hidden="true">
-            <img class="hero-mic-img" src="assets/ansend-microphone-reference.png" alt="" />
-          </div>
-
-          <aside class="hero-playlist-card ai-map-card" aria-label="Mapa do lançamento">
-            <span>MAPA DO LANÇAMENTO</span>
-            <strong>Diagnóstico Musical IA</strong>
-            <p>Conte sua ideia e receba uma ordem clara de execução.</p>
-            <ol class="release-map" id="releaseMap">
-              <li><i data-lucide="disc-3"></i><span>Produção</span><b>Beatmaker</b></li>
-              <li><i data-lucide="image"></i><span>Capa</span><b>Designer</b></li>
-              <li><i data-lucide="upload-cloud"></i><span>Distribuição</span><b>Lançamento</b></li>
-              <li><i data-lucide="list-music"></i><span>Curadoria</span><b>Playlists</b></li>
-              <li><i data-lucide="megaphone"></i><span>Divulgação</span><b>Marketing</b></li>
-            </ol>
-            <div class="ai-output" id="aiOutput">
-              <small>Prévia do plano</small>
-              <ul>
-                <li>Beatmaker recomendado</li>
-                <li>Designer recomendado</li>
-                <li>Produtor musical</li>
-                <li>Curador</li>
-                <li>Marketing musical</li>
-              </ul>
-            </div>
-          </aside>
         </section>
 
         <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
@@ -216,7 +218,7 @@
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",
       };
     </script>
-    <script src="script.js?v=20260605-glowing-prompt-01"></script>
+    <script src="script.js?v=20260605-hero-structure-03"></script>
   </body>
 </html>
 
