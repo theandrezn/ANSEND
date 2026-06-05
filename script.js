@@ -23,6 +23,136 @@ const accountRoles = [
 ];
 
 const roleLabels = Object.fromEntries(accountRoles.map((role) => [role.id, role.label]));
+Object.assign(roleLabels, {
+  produtor: "Produtor Musical",
+  marketing: "Marketing Musical",
+});
+
+const roleChoices = [
+  { id: "artista", label: "Sou artista", shortLabel: "Artista", icon: "mic-2", desc: "Quero transformar ideias, letras ou demos em lancamentos." },
+  { id: "beatmaker", label: "Sou beatmaker", shortLabel: "Beatmaker", icon: "audio-lines", desc: "Quero vender beats, organizar packs e encontrar artistas." },
+  { id: "designer", label: "Sou designer", shortLabel: "Designer", icon: "palette", desc: "Quero vender capas, identidade visual e artes para lancamentos." },
+  { id: "produtor", label: "Sou produtor musical", shortLabel: "Produtor Musical", icon: "sliders-horizontal", desc: "Quero mixar, masterizar, produzir e receber projetos." },
+  { id: "curador", label: "Sou curador", shortLabel: "Curador", icon: "list-music", desc: "Quero montar playlists, selecionar sons e descobrir talentos." },
+  { id: "marketing", label: "Trabalho com marketing musical", shortLabel: "Marketing Musical", icon: "megaphone", desc: "Quero criar campanhas, divulgar artistas e medir resultados." },
+];
+
+const roleDashboards = {
+  artista: {
+    headline: ["Entre com uma ideia.", "Saia com uma solucao."],
+    subheadline: "Conte sua letra, demo, musica pronta ou objetivo. A NEXO IA cria um plano e conecta voce aos profissionais certos para produzir, lancar e divulgar.",
+    placeholder: "Ex: Tenho uma musica de trap pronta e preciso lancar profissionalmente...",
+    primaryCta: "Gerar meu plano",
+    secondaryCta: "Ver profissionais",
+    chips: [
+      ["Tenho uma ideia", "Tenho uma ideia de musica e preciso transformar em lancamento."],
+      ["Tenho uma letra", "Tenho uma letra de trap e preciso encontrar beat, capa e producao."],
+      ["Tenho uma demo", "Tenho uma demo gravada e quero finalizar com mixagem, master e capa."],
+      ["Quero lancar", "Quero lancar no Spotify com distribuicao, curadoria e divulgacao."],
+      ["Preciso divulgar", "Preciso divulgar minha musica com curadoria, marketing musical e trafego."],
+    ],
+    benefits: [["shield-check", "Pagamento protegido"], ["badge-check", "Profissionais avaliados"], ["brain-circuit", "Recomendacoes por IA"]],
+    preview: ["Beatmaker recomendado", "Designer recomendado", "Produtor musical", "Curador", "Marketing musical"],
+    mapSteps: [["Producao", "Beatmaker ideal"], ["Capa", "Designer de capa"], ["Distribuicao", "Lancamento"], ["Curadoria", "Playlists"], ["Divulgacao", "Marketing"]],
+    metrics: [["Plano", "IA pronta"], ["Match", "92%"], ["Ordem", "5 etapas"]],
+    actions: [["catalogo", "Explorar catalogo"], ["profissionais", "Ver profissionais"], ["perfil", "Meu perfil"]],
+    sectionTitle: "Beats escolhidos pra voce",
+    sectionSubtitle: "Recomendacoes moldadas para sua proxima musica",
+    playlistTitle: "Playlists para seu estilo",
+    playlistSubtitle: "Curadoria baseada no seu gosto musical",
+    combo: "Beatmaker / Designer / Produtor / Curador / Marketing",
+  },
+  beatmaker: {
+    headline: ["Venda seus beats.", "Ache os artistas certos."],
+    subheadline: "A NEXO IA organiza seu catalogo, sugere packs, precos, licencas e artistas com maior chance de comprar seus beats.",
+    placeholder: "Ex: Tenho 20 beats de trap 140 BPM e quero montar um pack para vender...",
+    primaryCta: "Organizar catalogo",
+    secondaryCta: "Ver artistas",
+    chips: [["Subir pack", "Quero organizar um pack de beats para vender melhor."], ["Precificar", "Preciso definir preco e licencas para meus beats."], ["Achar artistas", "Quero encontrar artistas com match para meu som."], ["Criar vitrine", "Quero melhorar minha vitrine de beatmaker."]],
+    benefits: [["badge-dollar-sign", "Licencas claras"], ["users-round", "Artistas com match"], ["bar-chart-3", "Catalogo otimizado"]],
+    preview: ["Pack recomendado", "Preco sugerido", "Licenca ideal", "Artistas com match", "Vitrine do beatmaker"],
+    mapSteps: [["Catalogo", "Packs e tags"], ["Licenca", "Planos de venda"], ["Match", "Artistas ideais"], ["Vitrine", "Perfil publico"], ["Vendas", "Proximas acoes"]],
+    metrics: [["Packs", "3 ativos"], ["Match", "18 artistas"], ["Vendas", "+12%"]],
+    actions: [["perfil", "Cadastrar beats"], ["catalogo", "Ver catalogo"], ["profissionais", "Colaborar"]],
+    sectionTitle: "Oportunidades para beatmakers",
+    sectionSubtitle: "Artistas, packs e referencias para vender melhor",
+    playlistTitle: "Packs em destaque",
+    playlistSubtitle: "Formatos que combinam com seu catalogo",
+    combo: "Pack / Licencas / Tags / Vitrine / Match com artistas",
+  },
+  designer: {
+    headline: ["Transforme lancamentos.", "Em identidade visual."],
+    subheadline: "A NEXO IA entende o estilo do artista e recomenda capas, mockups, posts e pacotes visuais para vender dentro da ANSEND.",
+    placeholder: "Ex: Quero vender capas para artistas de trap e criar pacotes para lancamento...",
+    primaryCta: "Criar oferta visual",
+    secondaryCta: "Ver artistas",
+    chips: [["Capa single", "Quero montar uma oferta de capa para single."], ["Pacote redes", "Quero vender capa, stories e feed para lancamento."], ["Identidade", "Quero criar identidade visual para um artista."], ["Portifolio", "Quero organizar meu portifolio na ANSEND."]],
+    benefits: [["image", "Capas profissionais"], ["sparkles", "Briefing por IA"], ["shield-check", "Entrega segura"]],
+    preview: ["Briefing de capa", "Paleta visual", "Pacote de redes", "Artistas com match", "Preco sugerido"],
+    mapSteps: [["Briefing", "Estilo e referencias"], ["Capa", "Arte principal"], ["Redes", "Posts e stories"], ["Entrega", "Arquivos finais"], ["Upsell", "Pacote visual"]],
+    metrics: [["Briefings", "6 novos"], ["Pacotes", "4 prontos"], ["Match", "21 artistas"]],
+    actions: [["perfil", "Cadastrar servico"], ["profissionais", "Ver demanda"], ["catalogo", "Explorar capas"]],
+    sectionTitle: "Demandas visuais em alta",
+    sectionSubtitle: "Artistas e lancamentos procurando capa e identidade",
+    playlistTitle: "Referencias visuais por estilo",
+    playlistSubtitle: "Direcoes esteticas para criar ofertas melhores",
+    combo: "Briefing / Capa / Posts / Entrega / Upsell visual",
+  },
+  produtor: {
+    headline: ["Organize projetos.", "Entregue som profissional."],
+    subheadline: "A NEXO IA transforma pedidos de artistas em etapas de producao, mixagem, masterizacao, referencias e entregas.",
+    placeholder: "Ex: Tenho uma demo gravada e preciso mixar, masterizar e preparar para distribuicao...",
+    primaryCta: "Montar fluxo",
+    secondaryCta: "Ver projetos",
+    chips: [["Mix/master", "Preciso montar oferta de mixagem e masterizacao."], ["Producao vocal", "Quero organizar producao vocal para artistas."], ["Finalizar demo", "Quero transformar demos em musicas prontas."], ["Agenda", "Quero organizar meus projetos ativos."]],
+    benefits: [["sliders-horizontal", "Fluxo claro"], ["file-check-2", "Arquivos finais"], ["clock-3", "Prazos organizados"]],
+    preview: ["Projeto recomendado", "Referencia sonora", "Checklist de mix", "Entrega final", "Proximo passo"],
+    mapSteps: [["Entrada", "Demo e referencias"], ["Producao", "Direcao sonora"], ["Mix", "Tratamento"], ["Master", "Volume final"], ["Entrega", "Arquivos prontos"]],
+    metrics: [["Projetos", "5 ativos"], ["Entregas", "2 hoje"], ["Satisfacao", "98%"]],
+    actions: [["perfil", "Cadastrar servico"], ["catalogo", "Ver demandas"], ["profissionais", "Colaborar"]],
+    sectionTitle: "Projetos para produzir",
+    sectionSubtitle: "Demos e artistas que precisam finalizar musica",
+    playlistTitle: "Referencias de producao",
+    playlistSubtitle: "Sons para guiar mix, master e direcao",
+    combo: "Demo / Producao / Mix / Master / Entrega",
+  },
+  curador: {
+    headline: ["Monte playlists.", "Descubra sons certos."],
+    subheadline: "A NEXO IA sugere recortes, ordem de faixas, artistas promissores e oportunidades de curadoria para playlists e campanhas.",
+    placeholder: "Ex: Quero montar uma playlist de trap melodico com artistas independentes...",
+    primaryCta: "Criar curadoria",
+    secondaryCta: "Ver beats",
+    chips: [["Playlist nova", "Quero montar uma playlist nova com curadoria forte."], ["Descobrir talentos", "Quero achar artistas independentes com potencial."], ["Mood especifico", "Preciso montar uma curadoria por vibe."], ["Campanha", "Quero apoiar lancamentos com playlist e alcance."]],
+    benefits: [["list-music", "Curadoria inteligente"], ["radar", "Novos talentos"], ["trending-up", "Sons em alta"]],
+    preview: ["Tema da playlist", "Ordem sugerida", "Artistas em alta", "Faixas com match", "Plano de alcance"],
+    mapSteps: [["Tema", "Recorte musical"], ["Selecao", "Faixas certas"], ["Ordem", "Narrativa da playlist"], ["Publicacao", "Vitrine"], ["Alcance", "Crescimento"]],
+    metrics: [["Playlists", "8 ativas"], ["Novos sons", "34"], ["Retencao", "71%"]],
+    actions: [["playlist", "Abrir playlists"], ["catalogo", "Descobrir beats"], ["perfil", "Meu perfil"]],
+    sectionTitle: "Sons para sua curadoria",
+    sectionSubtitle: "Beats, artistas e vibes com alto potencial",
+    playlistTitle: "Playlists para curar agora",
+    playlistSubtitle: "Recortes prontos para adaptar ao seu publico",
+    combo: "Tema / Faixas / Ordem / Publicacao / Alcance",
+  },
+  marketing: {
+    headline: ["Planeje campanhas.", "Cresca lancamentos."],
+    subheadline: "A NEXO IA conecta objetivos musicais a criativos, funis, curadoria, conteudo e proximas acoes de marketing.",
+    placeholder: "Ex: Tenho um lancamento de funk em 15 dias e preciso de campanha, criativos e ADS...",
+    primaryCta: "Gerar campanha",
+    secondaryCta: "Ver demandas",
+    chips: [["Pre-lancamento", "Quero montar uma campanha de pre-lancamento."], ["Criativos", "Preciso de ideias de criativos para redes e ADS."], ["ADS", "Quero organizar trafego pago para uma musica."], ["Relatorio", "Quero analisar resultado e proximos passos."]],
+    benefits: [["megaphone", "Campanhas claras"], ["line-chart", "Metas visiveis"], ["users-round", "Equipe recomendada"]],
+    preview: ["Objetivo de campanha", "Criativos sugeridos", "Publico inicial", "Canais de divulgacao", "Orcamento estimado"],
+    mapSteps: [["Objetivo", "Meta do lancamento"], ["Criativos", "Posts e anuncios"], ["Canais", "Playlists e redes"], ["ADS", "Teste de publico"], ["Analise", "Proximos passos"]],
+    metrics: [["Campanhas", "4 ativas"], ["Criativos", "12 ideias"], ["ROI alvo", "2.4x"]],
+    actions: [["perfil", "Cadastrar servico"], ["profissionais", "Ver equipe"], ["catalogo", "Explorar cases"]],
+    sectionTitle: "Campanhas e lancamentos",
+    sectionSubtitle: "Demandas para divulgar com direcao e dados",
+    playlistTitle: "Referencias para campanhas",
+    playlistSubtitle: "Sons e nichos para orientar criativos",
+    combo: "Objetivo / Criativos / Canais / ADS / Analise",
+  },
+};
 
 const playlists = [
   ["Trap na Área", "52 beats", img("photo-1493225457124-a3eb161ffa5f")],
@@ -464,7 +594,7 @@ const routeTitles = {
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
-routeTitles.ia = ["ANSEND IA", "Diagnostico musical inteligente para montar seu lancamento."];
+routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 
@@ -481,7 +611,53 @@ function persistAiPlan(plan) {
   localStorage.setItem("ansend-ai-plan", JSON.stringify(plan));
 }
 
+function normalizeRole(role) {
+  const key = String(role || "").toLowerCase();
+  const map = {
+    artist: "artista",
+    artista: "artista",
+    beatmaker: "beatmaker",
+    beat: "beatmaker",
+    designer: "designer",
+    produtor: "produtor",
+    producer: "produtor",
+    producao: "produtor",
+    curador: "curador",
+    curator: "curador",
+    marketing: "marketing",
+    marketer: "marketing",
+    manager: "marketing",
+    selo: "curador",
+  };
+  return map[key] || "artista";
+}
+
+function activeRoleKey() {
+  return normalizeRole(activeProfile()?.account_role || activeProfile()?.userType || appState.onboardingProfile?.account_role || "artista");
+}
+
+function roleDashboard(role = activeRoleKey()) {
+  return roleDashboards[normalizeRole(role)] || roleDashboards.artista;
+}
+
+function roleChoice(role = activeRoleKey()) {
+  return roleChoices.find((item) => item.id === normalizeRole(role)) || roleChoices[0];
+}
+
 function inferLaunchPlan(prompt) {
+  const role = activeRoleKey();
+  const dashboard = roleDashboard(role);
+  if (role !== "artista") {
+    return {
+      prompt,
+      role,
+      genre: roleChoice(role).shortLabel,
+      budget: "[VALOR] estimado",
+      combo: dashboard.combo,
+      match: dashboard.preview.map((item) => `${item}: recomendado pela NEXO IA`),
+      steps: dashboard.mapSteps.map(([title, detail]) => ({ title, detail })),
+    };
+  }
   const text = prompt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const wantsRelease = /lancar|lan.ar|spotify|distribui|release|plataforma/.test(text);
   const hasLyrics = /letra|verso|refrao/.test(text);
@@ -497,6 +673,7 @@ function inferLaunchPlan(prompt) {
   ];
   return {
     prompt,
+    role,
     genre,
     budget,
     combo: combo.join(" / "),
@@ -520,7 +697,7 @@ function renderAiPlan(plan = appState.aiPlan) {
   const output = document.querySelector("#aiOutput");
   const map = document.querySelector("#releaseMap");
   if (!output || !map) return;
-  if (!plan) return;
+  if (!plan || !plan.role || plan.role !== activeRoleKey()) return;
   output.classList.add("is-generated");
   output.innerHTML = `<small>Plano recomendado</small>
     <strong>${plan.genre} / ${plan.budget}</strong>
@@ -531,6 +708,98 @@ function renderAiPlan(plan = appState.aiPlan) {
     <span>${step.title}</span>
     <b>${step.detail}</b>
   </li>`).join("");
+}
+
+function defaultRolePreview(dashboard = roleDashboard()) {
+  const output = document.querySelector("#aiOutput");
+  const map = document.querySelector("#releaseMap");
+  if (map) {
+    map.innerHTML = dashboard.mapSteps.map(([title, detail], index) => `<li>
+      <i data-lucide="${["disc-3", "image", "upload-cloud", "list-music", "megaphone"][index] || "check-circle-2"}"></i>
+      <span>${title}</span>
+      <b>${detail}</b>
+    </li>`).join("");
+  }
+  if (output) {
+    output.classList.remove("is-generated");
+    output.innerHTML = `<small>NEXO recomenda</small>
+      <ul>${dashboard.preview.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+  }
+}
+
+function roleDashboardStripMarkup(dashboard) {
+  const metrics = dashboard.metrics.map(([label, value]) => `<article class="role-metric-card">
+    <span>${label}</span>
+    <strong>${value}</strong>
+  </article>`).join("");
+  const actionMap = {
+    catalogo: ["#explorar", "compass"],
+    profissionais: ["#produtores", "users-round"],
+    perfil: ["#perfil", "user-round"],
+    playlist: ["#playlist", "list-music"],
+  };
+  const actions = dashboard.actions.map(([route, label]) => {
+    const [href, icon] = actionMap[route] || ["#feed", "arrow-right"];
+    return `<a class="role-action-card" href="${href}" data-route="${href.replace("#", "")}">
+      <i data-lucide="${icon}"></i>
+      <span>${label}</span>
+    </a>`;
+  }).join("");
+  return `<section class="role-dashboard-strip" id="roleDashboardStrip" aria-label="Dashboard NEXO IA">
+    <div class="role-dashboard-copy">
+      <span>NEXO IA</span>
+      <strong>${roleChoice().shortLabel}</strong>
+      <p>${dashboard.combo}</p>
+    </div>
+    <div class="role-dashboard-metrics">${metrics}</div>
+    <div class="role-dashboard-actions">${actions}</div>
+  </section>`;
+}
+
+function applyRoleDashboard() {
+  const dashboard = roleDashboard();
+  const hero = document.querySelector(".ai-hero");
+  if (!hero) return;
+  hero.setAttribute("aria-label", "NEXO IA - Diagnostico Musical Inteligente");
+  const kicker = hero.querySelector(".an-kicker span");
+  const title = hero.querySelector(".an-hero-copy h1");
+  const subtitle = hero.querySelector(".an-hero-copy > p");
+  const input = hero.querySelector("#aiPrompt");
+  const chips = hero.querySelector(".ai-chip-row");
+  const primary = hero.querySelector(".ai-actions .an-primary");
+  const secondary = hero.querySelector(".ai-actions .an-secondary");
+  const benefits = hero.querySelector(".an-benefits");
+  const mapTitle = hero.querySelector(".ai-map-card > strong");
+
+  if (kicker) kicker.textContent = "NEXO IA";
+  if (title) title.innerHTML = `<span>${dashboard.headline[0]}</span><strong>${dashboard.headline[1]}</strong>`;
+  if (subtitle) subtitle.textContent = dashboard.subheadline;
+  if (input) input.placeholder = dashboard.placeholder;
+  if (chips) {
+    chips.innerHTML = dashboard.chips.map(([label, prompt]) => `<button type="button" data-action="ai-chip" data-prompt="${prompt}">${label}</button>`).join("");
+  }
+  if (primary) primary.innerHTML = `${dashboard.primaryCta} <i data-lucide="arrow-right"></i>`;
+  if (secondary) secondary.innerHTML = `${dashboard.secondaryCta} <i data-lucide="users-round"></i>`;
+  if (benefits) {
+    benefits.innerHTML = dashboard.benefits.map(([icon, label]) => `<span><i data-lucide="${icon}"></i>${label}</span>`).join("");
+  }
+  if (mapTitle) mapTitle.textContent = "NEXO IA";
+  if (!appState.aiPlan || appState.aiPlan.role !== activeRoleKey()) defaultRolePreview(dashboard);
+
+  document.querySelector("#roleDashboardStrip")?.remove();
+  hero.insertAdjacentHTML("afterend", roleDashboardStripMarkup(dashboard));
+
+  const labels = {
+    ia: "NEXO IA",
+    explorar: activeRoleKey() === "artista" ? "Explorar" : "Demandas",
+    compras: activeRoleKey() === "artista" ? "Minhas compras" : "Pedidos",
+    biblioteca: activeRoleKey() === "curador" ? "Playlists" : "Biblioteca",
+    produtores: activeRoleKey() === "artista" ? "Profissionais" : "Comunidade",
+  };
+  Object.entries(labels).forEach(([route, label]) => {
+    const target = document.querySelector(`[data-route="${route}"] span`);
+    if (target) target.textContent = label;
+  });
 }
 
 function persistCatalogItems() {
@@ -679,6 +948,17 @@ function accountGreeting() {
     selo: "Catálogos, produtores e licenças prontos para operação de selo.",
   };
   return map[profile.account_role] || `Experiência adaptada para ${label}.`;
+}
+
+function accountRoleLabel(role = activeProfile()?.account_role) {
+  const choice = roleChoice(role);
+  return choice?.shortLabel || roleLabels[role] || "Visitante";
+}
+
+function accountGreeting() {
+  const profile = activeProfile();
+  if (!profile?.account_role) return "Sua selecao diaria de playlists, beats e profissionais.";
+  return roleDashboard(profile.account_role).subheadline;
 }
 
 function setLocalPreviewProfile(profile) {
@@ -882,6 +1162,29 @@ function applyFeedPersonalization() {
   lucide.createIcons();
 }
 
+function applyFeedPersonalization() {
+  const profile = activeProfile() || { account_role: activeRoleKey() };
+  const dashboard = roleDashboard();
+  const selected = preferredGenres();
+  const firstTitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head h2");
+  const firstSubtitle = document.querySelector("#playlistRow")?.closest(".catalog-section")?.querySelector(".section-head p");
+  const exploreTitle = document.querySelector('[data-feed="explore"]')?.closest(".catalog-section")?.querySelector(".section-head h2");
+  const exploreSubtitle = document.querySelector('[data-feed="explore"]')?.closest(".catalog-section")?.querySelector(".section-head p");
+
+  if (firstTitle) firstTitle.innerHTML = `<i data-lucide="list-music"></i>${dashboard.playlistTitle}`;
+  if (firstSubtitle) firstSubtitle.textContent = `${dashboard.playlistSubtitle} - ${selected.join(", ")}`;
+  if (exploreTitle) exploreTitle.innerHTML = `<i data-lucide="sparkles"></i>${dashboard.sectionTitle}`;
+  if (exploreSubtitle) exploreSubtitle.textContent = profile.account_role ? `${dashboard.sectionSubtitle} para ${accountRoleLabel(profile.account_role).toLowerCase()}` : dashboard.sectionSubtitle;
+
+  const playlistRow = document.querySelector("#playlistRow");
+  if (playlistRow) playlistRow.innerHTML = personalizedPlaylists().map(playlistCard).join("");
+  const exploreRow = document.querySelector('[data-feed="explore"]');
+  if (exploreRow) exploreRow.innerHTML = preferredBeats(8).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Hot" : item.badge })).join("");
+  enableSpotlights();
+  setupAutoScrollRows();
+  lucide.createIcons();
+}
+
 function onboardingMarkup() {
   return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
     <div class="onboarding-shell">
@@ -918,6 +1221,59 @@ function onboardingMarkup() {
         <div class="onboarding-footer">
           <button class="skip-onboarding" type="button" data-action="skip-onboarding">Pular</button>
           <button class="finish-onboarding" type="submit">Criar meu feed<i data-lucide="arrow-right"></i></button>
+        </div>
+      </form>
+    </div>
+  </section>`;
+}
+
+function onboardingMarkup() {
+  return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="onboarding-shell">
+      <div class="onboarding-orbit" aria-hidden="true"></div>
+      <div class="onboarding-copy">
+        <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
+        <span>PRIMEIRO ACESSO</span>
+        <h2 id="onboardingTitle">Como voce quer usar a ANSEND?</h2>
+        <p>Escolha sua funcao principal e a NEXO IA adapta atalhos, recomendacoes, metricas e catalogos para voce.</p>
+        <div class="onboarding-preview">
+          <strong>Sua dashboard vai priorizar</strong>
+          <small>profissionais, catalogos, acoes e mapas de execucao coerentes com sua funcao.</small>
+        </div>
+      </div>
+      <form class="onboarding-card">
+        <div class="onboarding-step role-step">
+          <span>01</span>
+          <h3>Como voce quer usar a ANSEND?</h3>
+          <div class="onboarding-options role-options">
+            ${roleChoices.map((role, index) => `<label class="quiz-option role-choice">
+              <input type="radio" name="account-role" value="${role.id}" ${index === 0 ? "checked" : ""}>
+              <b><i data-lucide="${role.icon}"></i>${role.label}</b>
+              <small>${role.desc}</small>
+            </label>`).join("")}
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <span>02</span>
+          <h3>Quais estilos voce curte?</h3>
+          <div class="onboarding-options">
+            ${onboardingStyles.map((style, index) => `<label class="quiz-option">
+              <input type="checkbox" name="styles" value="${style.id}" ${index < 2 ? "checked" : ""}>
+              <b><i data-lucide="${style.icon}"></i>${style.label}</b>
+              <small>${style.desc}</small>
+            </label>`).join("")}
+          </div>
+        </div>
+        <div class="onboarding-step compact">
+          <span>03</span>
+          <h3>Qual e seu objetivo agora?</h3>
+          <div class="goal-row">
+            ${onboardingGoals.map(([value, label], index) => `<label><input type="radio" name="goal" value="${value}" ${index === 0 ? "checked" : ""}>${label}</label>`).join("")}
+          </div>
+        </div>
+        <div class="onboarding-footer">
+          <button class="skip-onboarding" type="button" data-action="skip-onboarding">Pular</button>
+          <button class="finish-onboarding" type="submit">Criar minha dashboard<i data-lucide="arrow-right"></i></button>
         </div>
       </form>
     </div>
@@ -1251,7 +1607,7 @@ function renderSellerAuth() {
           <i data-lucide="user-round"></i>
           <span>Função principal</span>
           <strong>${roleLabel}</strong>
-          <p>${accountRoles.find((item) => item.id === role)?.desc || "Perfil adaptado para a plataforma."}</p>
+          <p>${roleChoice(role).desc || "Perfil adaptado para a plataforma."}</p>
         </article>
         <article>
           <i data-lucide="audio-lines"></i>
@@ -1274,9 +1630,9 @@ function renderSellerAuth() {
     return;
   }
 
-  const roleOptions = accountRoles.map((roleItem, index) => `<label class="role-option">
+  const roleOptions = roleChoices.map((roleItem, index) => `<label class="role-option">
     <input type="radio" name="account-role" value="${roleItem.id}" ${index === 0 ? "checked" : ""}>
-    <b><i data-lucide="${roleItem.icon}"></i>${roleItem.label}</b>
+    <b><i data-lucide="${roleItem.icon}"></i>${roleItem.shortLabel}</b>
     <small>${roleItem.desc}</small>
   </label>`).join("");
 
@@ -1334,6 +1690,7 @@ function hydrateView() {
   });
   enableSpotlights();
   setupHeroShader();
+  applyRoleDashboard();
   renderAiPlan();
   setupAutoScrollRows();
   setupScrollReveals();
@@ -1530,7 +1887,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "skip-onboarding") {
-    persistOnboarding({ completed: true, styles: ["trap", "drill"], genres: ["Trap", "Drill", "Type Beat"], goal: "descobrir", goalLabel: "Descobrir produtores" });
+    persistOnboarding({ completed: true, account_role: "artista", userType: "artista", roleLabel: "Artista", styles: ["trap", "drill"], genres: ["Trap", "Drill", "Type Beat"], goal: "descobrir", goalLabel: "Descobrir produtores" });
     closeOnboarding();
     if (currentRoute() === "feed") {
       renderRoute();
@@ -1662,12 +2019,13 @@ document.addEventListener("submit", (event) => {
     persistAiPlan(plan);
     renderAiPlan(plan);
     lucide.createIcons();
-    showToast("Plano musical gerado pela ANSEND IA", "sparkles");
+    showToast("Plano gerado pela NEXO IA", "sparkles");
     return;
   }
   const onboardingForm = event.target.closest(".onboarding-card");
   if (onboardingForm) {
     event.preventDefault();
+    const selectedRole = onboardingForm.querySelector('input[name="account-role"]:checked')?.value || "artista";
     const selectedStyles = [...onboardingForm.querySelectorAll('input[name="styles"]:checked')].map((input) => input.value);
     const styles = selectedStyles.length ? selectedStyles : ["trap"];
     const selectedGoal = onboardingForm.querySelector('input[name="goal"]:checked')?.value || "gravar";
@@ -1675,6 +2033,9 @@ document.addEventListener("submit", (event) => {
     const selectedGoalData = onboardingGoals.find(([value]) => value === selectedGoal) || onboardingGoals[0];
     persistOnboarding({
       completed: true,
+      account_role: selectedRole,
+      userType: selectedRole,
+      roleLabel: accountRoleLabel(selectedRole),
       styles,
       genres: [...new Set(selectedStyleData.flatMap((style) => style.genres))],
       goal: selectedGoal,
@@ -1683,7 +2044,7 @@ document.addEventListener("submit", (event) => {
     });
     closeOnboarding();
     if (currentRoute() === "feed") renderRoute();
-    showToast("Seu feed ANSEND foi adaptado", "sparkles");
+    showToast("Sua dashboard NEXO foi adaptada", "sparkles");
     return;
   }
   const catalogForm = event.target.closest(".profile-catalog-form");
