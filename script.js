@@ -74,6 +74,7 @@ const appState = {
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
+  aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   authUser: null,
   profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
   authReady: !supabaseClient,
@@ -463,6 +464,8 @@ const routeTitles = {
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
 };
+routeTitles.ia = ["ANSEND IA", "Diagnostico musical inteligente para montar seu lancamento."];
+routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
@@ -471,6 +474,63 @@ routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e l
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
+}
+
+function persistAiPlan(plan) {
+  appState.aiPlan = plan;
+  localStorage.setItem("ansend-ai-plan", JSON.stringify(plan));
+}
+
+function inferLaunchPlan(prompt) {
+  const text = prompt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const wantsRelease = /lancar|lan.ar|spotify|distribui|release|plataforma/.test(text);
+  const hasLyrics = /letra|verso|refrao/.test(text);
+  const hasDemo = /demo|gravada|voz|previa/.test(text);
+  const wantsMarketing = /divulg|marketing|ads|trafego|playlist|curadoria/.test(text);
+  const genre = /drill/.test(text) ? "Drill" : /funk/.test(text) ? "Funk" : /r&b|rnb/.test(text) ? "R&B" : /boom bap/.test(text) ? "Boom Bap" : "Trap";
+  const budget = wantsMarketing ? "[VALOR] + campanha" : wantsRelease ? "[VALOR] lançamento" : "[VALOR] inicial";
+  const combo = [
+    hasLyrics && !hasDemo ? "Beatmaker + produtor vocal" : "Produtor musical",
+    "Designer de capa",
+    wantsRelease ? "Distribuição + curadoria" : "Curadoria ANSEND",
+    wantsMarketing ? "Marketing musical + ADS" : "Plano de divulgação orgânica",
+  ];
+  return {
+    prompt,
+    genre,
+    budget,
+    combo: combo.join(" / "),
+    match: [
+      `Beatmaker ideal: ${genre} com estética premium`,
+      "Designer para capa: visual dark/laranja de lançamento",
+      hasDemo ? "Produtor/mixagem: finalizar demo e master" : "Produtor/mixagem: guia de gravação e mix",
+      wantsMarketing ? "Curador + marketing: playlists, criativos e tráfego" : "Curador: encaixe em playlists e referências",
+    ],
+    steps: [
+      { title: "Produção", detail: hasLyrics ? "Escolher beatmaker e fechar estrutura da letra" : "Definir direção sonora e referência" },
+      { title: "Identidade", detail: "Criar capa e peças para redes" },
+      { title: "Lançamento", detail: wantsRelease ? "Preparar distribuição e licenças" : "Organizar arquivos e cronograma" },
+      { title: "Divulgação", detail: wantsMarketing ? "Ativar curadoria, marketing musical e ADS" : "Montar curadoria e calendário de posts" },
+      { title: "Crescimento", detail: "Analisar resultado e próximos passos" },
+    ],
+  };
+}
+
+function renderAiPlan(plan = appState.aiPlan) {
+  const output = document.querySelector("#aiOutput");
+  const map = document.querySelector("#releaseMap");
+  if (!output || !map) return;
+  if (!plan) return;
+  output.classList.add("is-generated");
+  output.innerHTML = `<small>Plano recomendado</small>
+    <strong>${plan.genre} / ${plan.budget}</strong>
+    <ul>${plan.match.map((item) => `<li>${item}</li>`).join("")}</ul>
+    <em>Combo sugerido: ${plan.combo}</em>`;
+  map.innerHTML = plan.steps.map((step, index) => `<li class="is-ready">
+    <i data-lucide="${["disc-3", "image", "upload-cloud", "megaphone", "line-chart"][index] || "check-circle-2"}"></i>
+    <span>${step.title}</span>
+    <b>${step.detail}</b>
+  </li>`).join("");
 }
 
 function persistCatalogItems() {
@@ -1274,6 +1334,7 @@ function hydrateView() {
   });
   enableSpotlights();
   setupHeroShader();
+  renderAiPlan();
   setupAutoScrollRows();
   setupScrollReveals();
   lucide.createIcons();
@@ -1291,7 +1352,7 @@ function renderRoute() {
   appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
-  if (route === "feed") {
+  if (route === "feed" || route === "ia") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
   }
@@ -1494,6 +1555,19 @@ document.addEventListener("click", (event) => {
     supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + "#vendedor" } });
     return;
   }
+  if (action === "ai-chip") {
+    const input = document.querySelector("#aiPrompt");
+    if (input) {
+      input.value = target.dataset.prompt || target.textContent.trim();
+      document.querySelectorAll('[data-action="ai-chip"]').forEach((button) => button.classList.toggle("is-active", button === target));
+      input.focus();
+    }
+    return;
+  }
+  if (action === "ai-professionals") {
+    location.hash = "produtores";
+    return;
+  }
   if (action === "logout-account") {
     handleLogout();
     return;
@@ -1579,6 +1653,18 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("submit", (event) => {
+  const aiForm = event.target.closest(".ai-diagnostic-form");
+  if (aiForm) {
+    event.preventDefault();
+    const input = aiForm.elements.aiPrompt;
+    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
+    const plan = inferLaunchPlan(prompt);
+    persistAiPlan(plan);
+    renderAiPlan(plan);
+    lucide.createIcons();
+    showToast("Plano musical gerado pela ANSEND IA", "sparkles");
+    return;
+  }
   const onboardingForm = event.target.closest(".onboarding-card");
   if (onboardingForm) {
     event.preventDefault();
