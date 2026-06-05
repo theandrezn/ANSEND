@@ -7545,3 +7545,228 @@ body.modal-open {
     display: none;
   }
 }
+
+/* Full-bleed feed composition: section bands fill the app viewport instead of
+   floating as narrow islands inside a black canvas. */
+.feed {
+  padding: 0;
+  gap: 0;
+  background:
+    linear-gradient(180deg, #000 0%, #0d0d0d 42%, #050505 100%);
+}
+
+.feed .ai-hero,
+.feed .ai-hero.is-beatmaker-hero,
+.feed .ai-hero:not(.is-beatmaker-hero) {
+  width: 100%;
+  min-height: calc(100svh - 64px);
+  height: calc(100svh - 64px);
+  margin-left: 0;
+  background:
+    linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .98) 29%, rgba(0, 0, 0, .76) 45%, rgba(0, 0, 0, .08) 72%, rgba(0, 0, 0, .62) 100%),
+    radial-gradient(circle at 56% 48%, rgba(255, 106, 0, .14), transparent 34%),
+    radial-gradient(circle at 82% 60%, rgba(255, 106, 0, .18), transparent 30%),
+    url("assets/top-beat-psiiiko-cover.jpg") right center / cover no-repeat,
+    #000;
+}
+
+.feed .ai-hero .ai-hero-layout,
+.feed .ai-hero.is-beatmaker-hero .ai-hero-layout,
+.feed .ai-hero:not(.is-beatmaker-hero) .ai-hero-layout {
+  width: 100%;
+  max-width: none;
+  padding: clamp(64px, 7vh, 110px) clamp(56px, 7vw, 148px);
+  grid-template-columns: minmax(520px, .78fr) minmax(280px, 360px) minmax(220px, .42fr);
+}
+
+.feed .ai-hero .ai-hero-layout .an-hero-copy,
+.feed .ai-hero.is-beatmaker-hero .ai-hero-layout .an-hero-copy,
+.feed .ai-hero:not(.is-beatmaker-hero) .ai-hero-layout .an-hero-copy {
+  width: min(680px, 100%);
+  max-width: 680px;
+}
+
+.feed .ai-hero .an-hero-copy h1,
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
+.feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
+  font-size: clamp(64px, 5.7vw, 106px);
+}
+
+.feed .ai-hero .ai-diagnostic-form,
+.feed .ai-hero.is-beatmaker-hero .ai-diagnostic-form,
+.feed .ai-hero:not(.is-beatmaker-hero) .ai-diagnostic-form {
+  width: min(640px, 100%);
+}
+
+.feed .ai-hero .ai-hero-layout .top-beat-showcase,
+.feed .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
+  width: min(340px, 100%) !important;
+}
+
+.feed .ai-hero .top-beat-card {
+  min-height: 430px;
+}
+
+.feed > .home-section,
+.feed > .catalog-section {
+  width: 100%;
+  margin: 0;
+  padding: clamp(48px, 5vw, 86px) clamp(42px, 6vw, 120px);
+  border-radius: 0;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  border-bottom: 1px solid rgba(0, 0, 0, .72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+
+.feed > .trending-catalogs-section {
+  min-height: 520px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .28), transparent 22%, rgba(255, 106, 0, .035) 52%, transparent 100%),
+    radial-gradient(circle at 84% 12%, rgba(255, 106, 0, .14), transparent 320px),
+    linear-gradient(180deg, #171717 0%, #101010 100%);
+}
+
+.feed > .quick-actions-section {
+  background:
+    linear-gradient(90deg, rgba(255, 106, 0, .035), transparent 38%, rgba(255, 255, 255, .025) 100%),
+    radial-gradient(circle at 12% 8%, rgba(255, 106, 0, .1), transparent 290px),
+    linear-gradient(180deg, #060606 0%, #0d0d0d 100%);
+}
+
+.feed > .nexo-recommendations-section {
+  background:
+    linear-gradient(135deg, rgba(255, 106, 0, .06), transparent 34%),
+    linear-gradient(180deg, #141414 0%, #080808 100%);
+}
+
+.feed > .category-section {
+  background:
+    linear-gradient(90deg, #0b0b0b 0%, #121212 55%, #090909 100%),
+    radial-gradient(circle at 78% 20%, rgba(255, 138, 0, .08), transparent 340px);
+}
+
+.feed > .smart-combos-section {
+  background:
+    linear-gradient(90deg, rgba(255, 106, 0, .025), transparent 45%, rgba(255, 138, 0, .045)),
+    linear-gradient(180deg, #070707 0%, #151515 100%);
+}
+
+.feed > .featured-professionals-section {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 106, 0, .09), transparent 330px),
+    linear-gradient(180deg, #0c0c0c, #050505);
+}
+
+.feed > .recent-activity-section {
+  padding-bottom: 132px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .025), transparent 50%, rgba(255, 106, 0, .035)),
+    linear-gradient(180deg, #171717 0%, #050505 100%);
+}
+
+.feed > .home-section .section-head,
+.feed > .catalog-section .section-head,
+.feed > .home-section .featured-catalog-row,
+.feed > .home-section .quick-action-grid,
+.feed > .home-section .nexo-recommendation-grid,
+.feed > .home-section .category-grid,
+.feed > .home-section .smart-combo-grid,
+.feed > .home-section .featured-professional-grid,
+.feed > .home-section .track-list,
+.feed > .catalog-section .playlist-row,
+.feed > .catalog-section .beat-row,
+.feed > .catalog-section .track-list {
+  width: min(100%, 1680px);
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.trending-catalogs-section .featured-catalog-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(14px, 1.4vw, 22px);
+  overflow: visible;
+}
+
+.trending-catalogs-section .beat-card {
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(246px, 15vw, 300px);
+}
+
+.quick-action-grid,
+.nexo-recommendation-grid,
+.category-grid,
+.smart-combo-grid {
+  gap: clamp(16px, 1.5vw, 24px);
+}
+
+.footer {
+  margin-left: var(--sidebar-width);
+  padding-inline: clamp(42px, 6vw, 120px);
+  background:
+    linear-gradient(180deg, #080808, #000);
+}
+
+@media (max-width: 1100px) {
+  .feed .ai-hero .ai-hero-layout,
+  .feed .ai-hero.is-beatmaker-hero .ai-hero-layout,
+  .feed .ai-hero:not(.is-beatmaker-hero) .ai-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
+  }
+}
+
+@media (max-width: 900px) {
+  .feed {
+    padding: 0;
+  }
+
+  .feed .ai-hero,
+  .feed .ai-hero.is-beatmaker-hero,
+  .feed .ai-hero:not(.is-beatmaker-hero) {
+    width: 100%;
+    min-height: 900px;
+    height: auto;
+    margin-left: 0;
+  }
+
+  .feed .ai-hero .ai-hero-layout .top-beat-showcase,
+  .feed .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
+    width: min(250px, 100%) !important;
+    justify-self: start;
+    margin-top: -54px;
+  }
+
+  .feed .ai-hero .top-beat-card {
+    min-height: 292px;
+    padding: 14px;
+  }
+
+  .feed .ai-hero .an-hero-copy h1,
+  .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
+  .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
+    font-size: clamp(42px, 13vw, 62px);
+  }
+
+  .feed > .home-section,
+  .feed > .catalog-section {
+    padding: 38px 18px;
+  }
+
+  .trending-catalogs-section .featured-catalog-row {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+
+  .trending-catalogs-section .beat-card {
+    flex: 0 0 260px;
+    min-height: 330px;
+  }
+
+  .footer {
+    margin-left: 0;
+    padding-inline: 20px;
+  }
+}
