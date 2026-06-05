@@ -342,6 +342,14 @@ const mainCategories = [
   ["megaphone", "Marketing Musical", "Campanhas, conteúdo e tráfego.", "produtores"],
 ];
 
+const categoryBackgrounds = {
+  Beatmakers: "assets/category-beatmakers.png",
+  Designers: "assets/category-designers.png",
+  "Produtores Musicais": "assets/category-producers.png",
+  Curadores: "assets/category-curators.png",
+  "Marketing Musical": "assets/category-marketing.png",
+};
+
 const smartCombos = [
   ["Combo Produção", "Beat + Mixagem + Masterização", "Economia sugerida: 15%"],
   ["Combo Lançamento", "Capa + Curadoria", "Economia sugerida: 12%"],
@@ -367,7 +375,8 @@ function nexoRecommendationCard(item) {
 }
 
 function categoryCard([icon, title, desc, route]) {
-  return `<article class="category-card">
+  const background = categoryBackgrounds[title] || "assets/category-beatmakers.png";
+  return `<article class="category-card" style="--category-bg: url('${background}')">
     <i data-lucide="${icon}"></i>
     <strong>${title}</strong>
     <p>${desc}</p>

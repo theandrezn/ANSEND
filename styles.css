@@ -5393,12 +5393,33 @@ body.onboarding-open { overflow: hidden; }
   gap: 14px;
 }
 .category-card {
+  position: relative;
+  overflow: hidden;
   min-height: 230px;
   padding: 20px;
   border-radius: 22px;
   display: grid;
   align-content: space-between;
   gap: 12px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .92) 0%, rgba(0, 0, 0, .72) 42%, rgba(0, 0, 0, .2) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, .26), rgba(0, 0, 0, .82)),
+    var(--category-bg) center / cover no-repeat;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.category-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255, 106, 0, .14), transparent 170px),
+    linear-gradient(90deg, rgba(0, 0, 0, .28), transparent 72%);
+  pointer-events: none;
+}
+.category-card > * {
+  position: relative;
+  z-index: 1;
 }
 .category-card a {
   margin-top: 8px;
