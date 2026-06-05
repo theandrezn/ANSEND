@@ -7241,33 +7241,29 @@ body.modal-open {
 .feed .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
   position: relative !important;
   inset: auto !important;
-  grid-column: 2;
+  grid-column: 2 / 4 !important;
+  justify-self: end !important;
   width: min(320px, 100%) !important;
   min-height: 0;
-  display: block !important;
-  opacity: 1 !important;
-  transform: none !important;
-  z-index: 9;
-  pointer-events: auto;
 }
 
 .feed .ai-hero .top-beat-card {
   min-height: 390px;
   padding: 18px;
-  border: 1px solid rgba(111, 117, 255, .76);
+  border: 1px solid rgba(255, 106, 0, .6);
   border-radius: 22px;
   background:
-    radial-gradient(circle at 48% 100%, rgba(255, 106, 0, .28), transparent 38%),
-    linear-gradient(180deg, rgba(20, 20, 52, .92), rgba(12, 9, 35, .96));
+    radial-gradient(circle at 50% 0%, rgba(255, 106, 0, .3), transparent 60%),
+    linear-gradient(180deg, rgba(38, 20, 8, .96) 0%, rgba(0, 0, 0, .98) 100%);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, .04) inset,
-    0 0 54px rgba(94, 92, 255, .34),
+    0 0 0 1px rgba(255, 255, 255, .05) inset,
+    0 0 54px rgba(255, 106, 0, .22),
     0 34px 100px rgba(0, 0, 0, .76);
 }
 
 .feed .ai-hero .top-beat-cover {
   aspect-ratio: 1.48;
-  border-color: rgba(112, 118, 255, .86);
+  border-color: rgba(255, 106, 0, .6);
 }
 
 .feed .ai-hero .top-beat-cover img {
