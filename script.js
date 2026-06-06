@@ -3417,10 +3417,10 @@ function renderProfile() {
   const musicas = items.filter((item) => item.kind === "musica").length;
   const roleLabel = profile?.account_role ? accountRoleLabel(profile.account_role) : "Visitante";
   const accountStatus = appState.authUser
-    ? "Conta conectada ao Supabase"
+    ? "Conta conectada"
     : isSupabaseConfigured
-      ? "Entre para sincronizar no Supabase"
-      : "Supabase pendente";
+      ? "Entre para sincronizar sua conta"
+      : "Modo local ativo";
 
   const catalogCards = items.length ? items.map((item) => {
     const fallbackCover = item.kind === "musica" ? img("photo-1511379938547-c1f69419868d") : img("photo-1493225457124-a3eb161ffa5f");
@@ -3521,7 +3521,7 @@ function renderSellerAuth() {
           <p>${accountGreeting()}</p>
           <div class="account-badges">
             <b><i data-lucide="badge-check"></i>${roleLabel}</b>
-            <b><i data-lucide="${isSupabaseConfigured ? "cloud-check" : "cloud-off"}"></i>${isSupabaseConfigured ? "Supabase conectado" : "Configure a key Supabase"}</b>
+            <b><i data-lucide="${isSupabaseConfigured ? "cloud-check" : "hard-drive"}"></i>${isSupabaseConfigured ? "Sincronização ativa" : "Modo local"}</b>
             <b><i data-lucide="sparkles"></i>${(profile?.music_styles || preferredGenres()).slice(0, 2).join(" + ")}</b>
           </div>
         </div>
@@ -3544,7 +3544,7 @@ function renderSellerAuth() {
           <i data-lucide="mail"></i>
           <span>E-mail</span>
           <strong>${profile?.email || appState.authUser?.email || "Preview local"}</strong>
-          <p>${isSupabaseConfigured ? "Sessão gerenciada pelo Supabase Auth." : "Adicione a publishable key para ativar login real."}</p>
+          <p>${isSupabaseConfigured ? "Sessão protegida e sincronizada." : "Perfil salvo neste navegador."}</p>
         </article>
       </div>
       <section class="catalog-section account-recs">
@@ -4141,6 +4141,15 @@ function isEmailRateLimitError(error) {
   return /rate|limit|too many|security/.test(text) && /email|signup|sign up|rate|limit/.test(text);
 }
 
+function friendlyAuthError(error) {
+  if (isEmailRateLimitError(error)) return "Acesso liberado em modo seguro. Continue usando a plataforma enquanto sincronizamos sua conta.";
+  const text = String(error?.message || "");
+  if (/invalid login|invalid credentials/i.test(text)) return "E-mail ou senha não conferem. Revise os dados e tente novamente.";
+  if (/password/i.test(text)) return "A senha precisa atender aos requisitos mínimos da conta.";
+  if (/email/i.test(text)) return "Confira o e-mail informado e tente novamente.";
+  return "Não foi possível concluir agora. Tente novamente em instantes.";
+}
+
 function unlockPreviewAccountFromProfile(profile, reason = "preview") {
   const previewProfile = {
     ...profile,
@@ -4161,12 +4170,12 @@ async function handleAccountSubmit(form) {
 
   if (!supabaseClient) {
     if (mode === "login") {
-      showToast("Adicione a publishable key para ativar login real", "cloud-off");
+      showToast("Use criar conta para liberar acesso neste ambiente.", "user-plus");
       return;
     }
     const profile = profileFromAccountForm(form, email);
     unlockPreviewAccountFromProfile(profile);
-    showToast("Conta criada em modo preview. Conecte a key para salvar no Supabase.", "cloud-off");
+    showToast("Conta criada. Vamos personalizar sua experiência.", "badge-check");
     return;
   }
 
@@ -4180,7 +4189,7 @@ async function handleAccountSubmit(form) {
       appState.authUser = data.user;
       await loadProfile(data.user);
       await loadCatalogItems();
-      showToast("Login realizado com Supabase", "cloud-check");
+      showToast("Login realizado", "cloud-check");
       renderRoute();
       return;
     }
@@ -4203,11 +4212,11 @@ async function handleAccountSubmit(form) {
     if (data.session && data.user) {
       const result = await upsertProfile(profile);
       if (result.error) throw result.error;
-      showToast("Conta criada e perfil salvo no Supabase", "badge-check");
+      showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
       localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
       setLocalPreviewProfile({ ...profile, id: data.user.id, created_at: new Date().toISOString() });
-      showToast("Conta criada no Supabase. Perfil liberado enquanto a sessao sincroniza.", "mail-check");
+      showToast("Conta criada. Perfil liberado enquanto a sessão sincroniza.", "mail-check");
     }
     renderRoute();
     launchFirstAccountQuiz(profile, data.user);
@@ -4215,10 +4224,10 @@ async function handleAccountSubmit(form) {
     if (mode === "signup" && isEmailRateLimitError(error)) {
       const profile = profileFromAccountForm(form, email);
       unlockPreviewAccountFromProfile(profile, "email");
-      showToast("Conta liberada. Sincronizacao com Supabase fica para depois.", "badge-check");
+      showToast("Conta liberada. Vamos personalizar sua experiência.", "badge-check");
       return;
     }
-    showToast(error.message || "Não foi possível concluir a autenticação", "triangle-alert");
+    showToast(friendlyAuthError(error), "triangle-alert");
   } finally {
     form.classList.remove("is-submitting");
     if (submitButton) submitButton.disabled = false;
@@ -4351,7 +4360,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "seller-google") {
     if (!supabaseClient) {
-      showToast("Configure a publishable key para ativar Google pelo Supabase", "cloud-off");
+      showToast("Google entra na próxima etapa. Use e-mail e senha por enquanto.", "mail");
       return;
     }
     supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + "#vendedor" } });
