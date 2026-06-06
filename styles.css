@@ -9152,3 +9152,444 @@ body.onboarding-open {
   z-index: 3 !important;
   max-width: calc(100% - 44px) !important;
 }
+
+/* --- MINIMALIST BEATSTARS-STYLE CARDS --- */
+.minimal-beat-card,
+.minimal-playlist-card {
+  height: auto !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+.minimal-beat-card .card-cover-wrapper,
+.minimal-playlist-card .card-cover-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #111 !important;
+  transition: transform 0.25s ease !important;
+}
+
+.minimal-beat-card:hover .card-cover-wrapper,
+.minimal-playlist-card:hover .card-cover-wrapper {
+  transform: translateY(-4px) !important;
+}
+
+.minimal-beat-card .card-art-source,
+.minimal-playlist-card .card-art-source {
+  position: static !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  display: block !important;
+}
+
+.minimal-beat-card .badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  z-index: 5 !important;
+  background: var(--orange) !important;
+  color: black !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.minimal-beat-card .badge.new {
+  background: #00e676 !important;
+  color: black !important;
+}
+
+.minimal-beat-card .badge.exclusive {
+  background: #ff1744 !important;
+  color: white !important;
+}
+
+.minimal-beat-card .fav-over {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 5 !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+}
+
+.minimal-beat-card .fav-over svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 2.5 !important;
+}
+
+.minimal-beat-card:hover .fav-over,
+.minimal-beat-card .fav-over.is-favorite {
+  opacity: 1 !important;
+}
+
+.minimal-beat-card .fav-over.is-favorite {
+  color: #ff1744 !important;
+  background: rgba(255, 23, 68, 0.1) !important;
+  border-color: #ff1744 !important;
+}
+
+.minimal-beat-card .fav-over:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.minimal-beat-card .play-over {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) scale(0.9) !important;
+  z-index: 5 !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: #0055ff !important;
+  color: white !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 85, 255, 0.4) !important;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease !important;
+}
+
+.minimal-beat-card .play-over svg {
+  width: 18px !important;
+  height: 18px !important;
+  fill: currentColor !important;
+  margin-left: 2px !important;
+}
+
+.minimal-beat-card:hover .play-over {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+.minimal-beat-card .play-over:hover {
+  background: #0077ff !important;
+  transform: translate(-50%, -50%) scale(1.05) !important;
+}
+
+.minimal-beat-card .card-info,
+.minimal-playlist-card .card-info {
+  padding: 12px 2px 0 2px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  width: 100% !important;
+}
+
+.minimal-beat-card .card-title,
+.minimal-playlist-card .card-title {
+  font-family: 'Schibsted Grotesk', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  color: white !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.minimal-beat-card .card-producer,
+.minimal-playlist-card .card-subtitle {
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #a0a0a0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.minimal-beat-card .card-producer span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.minimal-beat-card .verified-badge {
+  color: #1d9bf0 !important;
+  fill: #1d9bf0 !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin-left: 5px !important;
+  flex-shrink: 0 !important;
+}
+
+.minimal-beat-card .card-actions-row {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  width: 100% !important;
+  align-items: center !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn {
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 36px !important;
+  border-radius: 18px !important;
+  border: 1px solid #0055ff !important;
+  background: transparent !important;
+  color: #0055ff !important;
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 2 !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn:hover {
+  background: #0055ff !important;
+  color: white !important;
+  box-shadow: 0 4px 10px rgba(0, 85, 255, 0.2) !important;
+}
+
+.minimal-beat-card .beat-card-download-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: transparent !important;
+  color: white !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.minimal-beat-card .beat-card-download-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 2 !important;
+}
+
+.minimal-beat-card .beat-card-download-btn:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Playlist elements */
+.minimal-playlist-card .playlist-action {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  text-align: left !important;
+  display: flex !important;
+  flex-direction: column !important;
+  cursor: pointer !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.minimal-playlist-card .card-orb {
+  position: absolute !important;
+  bottom: 12px !important;
+  right: 12px !important;
+  z-index: 5 !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.2s ease !important;
+}
+
+.minimal-playlist-card:hover .card-orb {
+  transform: scale(1.1) !important;
+}
+
+.minimal-playlist-card .card-orb svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.minimal-playlist-card .match-pill {
+  position: static !important;
+  align-self: flex-start !important;
+  margin-top: 6px !important;
+  background: rgba(255, 106, 0, 0.1) !important;
+  border: 1px solid rgba(255, 106, 0, 0.3) !important;
+  color: var(--orange) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase !important;
+}
+
+/* --- VERTICAL & CIRCULAR FEATURED PROFESSIONALS CARDS (FIX SQUISHED PROPORTIONS) --- */
+.feed > .home-section .featured-professional-grid {
+  grid-auto-columns: minmax(180px, 220px) !important;
+  gap: 20px !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card,
+.feed > .home-section .featured-professional-grid .featured-professional-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  background: rgba(14, 12, 10, 0.45) !important;
+  border: 1px solid rgba(255, 106, 0, 0.15) !important;
+  border-radius: 20px !important;
+  padding: 20px 15px !important;
+  min-height: 260px !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  justify-content: space-between !important;
+  transition: all 0.3s ease !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card:hover,
+.feed > .home-section .featured-professional-grid .featured-professional-card:hover {
+  background: rgba(255, 106, 0, 0.05) !important;
+  border-color: rgba(255, 106, 0, 0.35) !important;
+  transform: translateY(-4px) !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card button {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  height: 100% !important;
+  justify-content: space-between !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card img,
+.feed > .home-section .featured-professional-grid .featured-professional-card img {
+  width: 90px !important;
+  height: 90px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid var(--orange) !important;
+  box-shadow: 0 0 15px rgba(255, 106, 0, 0.2) !important;
+  margin-bottom: 12px !important;
+  transition: transform 0.3s ease !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card:hover img,
+.feed > .home-section .featured-professional-grid .featured-professional-card:hover img {
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 20px rgba(255, 106, 0, 0.4) !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card h3,
+.feed > .home-section .featured-professional-grid .featured-professional-card strong {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: white !important;
+  margin: 8px 0 4px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card h3 svg,
+.feed > .home-section .featured-professional-grid .featured-professional-card strong svg {
+  width: 15px !important;
+  height: 15px !important;
+  color: #1d9bf0 !important;
+  fill: #1d9bf0 !important;
+}
+
+.feed > .home-section .featured-professional-grid .avatar-card p,
+.feed > .home-section .featured-professional-grid .featured-professional-card span {
+  font-size: 12px !important;
+  color: var(--muted) !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.feed > .home-section .featured-professional-grid .featured-professional-card small {
+  font-size: 11px !important;
+  color: var(--muted) !important;
+  opacity: 0.8 !important;
+  margin-bottom: 12px !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.feed > .home-section .featured-professional-grid .featured-professional-card button,
+.feed > .home-section .featured-professional-grid .avatar-card .profile-btn {
+  width: 100% !important;
+  min-height: 34px !important;
+  padding: 0 16px !important;
+  background: rgba(255, 106, 0, 0.1) !important;
+  border: 1px solid rgba(255, 106, 0, 0.4) !important;
+  color: white !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  margin-top: auto !important;
+}
+
+.feed > .home-section .featured-professional-grid .featured-professional-card button:hover,
+.feed > .home-section .featured-professional-grid .avatar-card .profile-btn:hover {
+  background: var(--orange) !important;
+  border-color: var(--orange) !important;
+  color: black !important;
+}
+

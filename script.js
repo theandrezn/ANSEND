@@ -876,13 +876,17 @@ function playlistCard(input) {
   const { title, cover } = data;
   const subtitle = data.match ? `${data.match.label} - ${data.match.score}%` : data.subtitle;
   const playlistId = slugify(title);
-  return `<article class="playlist-card gradient-card spotlight-card" style="--card-art: url('${cover}')" data-playlist="${title}" data-playlist-id="${playlistId}">
-    <button class="playlist-action gradient-card-body" type="button" data-action="playlist" data-title="${title}" data-playlist-id="${playlistId}" aria-label="Abrir ${title}">
-      <img class="card-art-source" src="${cover}" alt="Capa ${title}">
-      <span class="card-orb"><i data-lucide="list-music"></i></span>
-      <span class="card-copy"><strong>${title}</strong><small>${subtitle}</small></span>
-      ${data.match ? `<span class="match-pill">${data.match.reasons[0]}</span>` : ""}
-      <span class="card-link">Abrir <i data-lucide="arrow-right"></i></span>
+  return `<article class="playlist-card minimal-playlist-card" data-playlist="${title}" data-playlist-id="${playlistId}">
+    <button class="playlist-action" type="button" data-action="playlist" data-title="${title}" data-playlist-id="${playlistId}" aria-label="Abrir ${title}">
+      <div class="card-cover-wrapper">
+        <img class="card-art-source" src="${cover}" alt="Capa ${title}">
+        <span class="card-orb"><i data-lucide="list-music"></i></span>
+      </div>
+      <div class="card-info">
+        <h3 class="card-title">${title}</h3>
+        <p class="card-subtitle">${subtitle}</p>
+        ${data.match ? `<span class="match-pill">${data.match.reasons[0]}</span>` : ""}
+      </div>
     </button>
   </article>`;
 }
@@ -890,15 +894,29 @@ function playlistCard(input) {
 function beatCard(item) {
   const klass = item.badge === "Novo" ? "new" : item.badge === "Exclusivo" ? "exclusive" : "";
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
-  return `<article class="beat-card gradient-card spotlight-card" style="--card-art: url('${item.cover}')" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
-    <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
-    ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
-    <button class="fav-over${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
-    <button class="play-over" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
-    <div class="gradient-card-body">
-      <span class="card-orb"><i data-lucide="star"></i></span>
-      <span class="card-copy"><strong>${item.title}</strong><small>${item.producer} / ${item.tags[0]}</small></span>
-      <button class="card-link" type="button" data-action="buy" data-id="${item.id}">Licença <i data-lucide="arrow-right"></i></button>
+  const price = item.price || (item.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(item.title.length + (item.producer || "").length) % 6]);
+  return `<article class="beat-card minimal-beat-card" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
+    <div class="card-cover-wrapper">
+      <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
+      ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
+      <button class="fav-over${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
+      <button class="play-over" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
+    </div>
+    <div class="card-info">
+      <h3 class="card-title">${item.title}</h3>
+      <div class="card-producer">
+        <span>${item.producer}</span>
+        <i data-lucide="badge-check" class="verified-badge"></i>
+      </div>
+      <div class="card-actions-row">
+        <button class="beat-card-buy-btn" type="button" data-action="buy" data-id="${item.id}" aria-label="Comprar licença">
+          <i data-lucide="shopping-bag"></i>
+          <span>${price}</span>
+        </button>
+        <button class="beat-card-download-btn" type="button" data-action="download" data-id="${item.id}" aria-label="Baixar demo">
+          <i data-lucide="download"></i>
+        </button>
+      </div>
     </div>
   </article>`;
 }
