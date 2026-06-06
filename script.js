@@ -956,6 +956,8 @@ const smartCombos = [
 const MUSIC_PROFILE_KEY = "ansend_user_music_profile";
 const MUSIC_ONBOARDING_KEY = "ansend_onboarding_completed";
 const MUSIC_RECS_KEY = "ansend_last_recommendations";
+const FIRST_ACCOUNT_QUIZ_PREFIX = "ansend_first_account_quiz_completed:";
+const PENDING_ACCOUNT_QUIZ_KEY = "ansend_pending_account_quiz";
 
 const musicQuiz = {
   genres: ["Trap", "Funk", "Forro", "Sertanejo", "Gospel", "Rap", "Drill", "R&B", "Pop", "Afrobeat", "Piseiro", "Boom Bap", "Lo-fi", "Outro"],
@@ -1050,6 +1052,40 @@ function updateMusicProfile(partial) {
 
 function hasMusicProfile() {
   return Boolean(getMusicProfile()?.completed || localStorage.getItem(MUSIC_ONBOARDING_KEY) === "true");
+}
+
+function accountQuizIdentity(profile = appState.profile, user = appState.authUser) {
+  return String(user?.id || profile?.id || profile?.email || profile?.full_name || "").trim();
+}
+
+function accountQuizStorageKey(identity = accountQuizIdentity()) {
+  return `${FIRST_ACCOUNT_QUIZ_PREFIX}${identity || "preview"}`;
+}
+
+function hasCompletedFirstAccountQuiz(identity = accountQuizIdentity()) {
+  return Boolean(identity && localStorage.getItem(accountQuizStorageKey(identity)) === "true");
+}
+
+function markFirstAccountQuizCompleted(identity = localStorage.getItem(PENDING_ACCOUNT_QUIZ_KEY) || accountQuizIdentity()) {
+  if (!identity) return;
+  localStorage.setItem(accountQuizStorageKey(identity), "true");
+  localStorage.removeItem(PENDING_ACCOUNT_QUIZ_KEY);
+}
+
+function firstAccountQuizSeed(profile = appState.profile) {
+  return createDefaultMusicProfile({
+    genres: asArray(profile?.music_styles || profile?.genres).slice(0, 4),
+    objective: profile?.onboarding_goal || "Receber orientacao da IA",
+    userType: accountRoleLabel(profile?.account_role || profile?.userType || "artista"),
+  });
+}
+
+function launchFirstAccountQuiz(profile = appState.profile, user = appState.authUser) {
+  const identity = accountQuizIdentity(profile, user);
+  if (!identity || hasCompletedFirstAccountQuiz(identity)) return false;
+  localStorage.setItem(PENDING_ACCOUNT_QUIZ_KEY, identity);
+  showMusicPreferenceQuiz(true, firstAccountQuizSeed(profile));
+  return true;
 }
 
 function calculateNexoMatch(userMusicProfile, item) {
@@ -2605,14 +2641,14 @@ class SpotifyQuizEngine {
   }
 }
 
-function showMusicPreferenceQuiz(force = false) {
+function showMusicPreferenceQuiz(force = false, profile = getMusicProfile()) {
   if (!force && hasMusicProfile()) return;
   if (window.activeSpotifyQuiz) {
     window.activeSpotifyQuiz.destroy();
     window.activeSpotifyQuiz = null;
   }
   
-  const current = getMusicProfile() || createDefaultMusicProfile();
+  const current = profile || getMusicProfile() || createDefaultMusicProfile();
   
   const config = {
     isOnboarding: false,
@@ -2694,6 +2730,7 @@ function showMusicPreferenceQuiz(force = false) {
     ],
     onSkip: () => {
       saveMusicProfile(createDefaultMusicProfile({ completed: true }));
+      markFirstAccountQuizCompleted();
       closeMusicPreferenceQuiz();
       renderRoute();
       showToast("Perfil musical inicial criado pela NEXO", "sparkles");
@@ -2709,6 +2746,7 @@ function showMusicPreferenceQuiz(force = false) {
         userType: data.userType,
         completed: true
       });
+      markFirstAccountQuizCompleted();
       closeMusicPreferenceQuiz();
       renderRoute();
       showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
@@ -2728,7 +2766,6 @@ function closeMusicPreferenceQuiz() {
 function showOnboarding(force = false) {
   if (!hasAccountAccess()) return;
   if (!force && appState.onboardingProfile?.completed) {
-    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
     return;
   }
   
@@ -2812,12 +2849,8 @@ function showOnboarding(force = false) {
       });
       
       closeOnboarding();
-      if (!hasMusicProfile()) {
-        showMusicPreferenceQuiz(true);
-      } else {
-        if (currentRoute() === "feed") renderRoute();
-        showToast("Sua dashboard NEXO foi adaptada", "sparkles");
-      }
+      if (currentRoute() === "feed") renderRoute();
+      showToast("Sua dashboard NEXO foi adaptada", "sparkles");
     }
   };
   
@@ -3879,7 +3912,7 @@ async function handleAccountSubmit(form) {
     setLocalPreviewProfile(profile);
     showToast("Conta criada em modo preview. Conecte a key para salvar no Supabase.", "cloud-off");
     renderRoute();
-    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
+    launchFirstAccountQuiz(profile);
     return;
   }
 
@@ -3895,7 +3928,6 @@ async function handleAccountSubmit(form) {
       await loadCatalogItems();
       showToast("Login realizado com Supabase", "cloud-check");
       renderRoute();
-      if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
       return;
     }
 
@@ -3922,7 +3954,7 @@ async function handleAccountSubmit(form) {
       showToast("Conta criada. Confirme seu e-mail para finalizar o perfil.", "mail-check");
     }
     renderRoute();
-    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
+    launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
     showToast(error.message || "Não foi possível concluir a autenticação", "triangle-alert");
   } finally {
@@ -4007,6 +4039,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "skip-nexo-match") {
     saveMusicProfile(createDefaultMusicProfile({ completed: true }));
+    markFirstAccountQuizCompleted();
     closeMusicPreferenceQuiz();
     renderRoute();
     showToast("Perfil musical inicial criado pela NEXO", "sparkles");
@@ -4289,6 +4322,7 @@ document.addEventListener("submit", async (event) => {
   if (nexoMatchForm) {
     event.preventDefault();
     const profile = saveMusicProfile(profileFromForm(nexoMatchForm));
+    markFirstAccountQuizCompleted();
     closeMusicPreferenceQuiz();
     renderRoute();
     showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
@@ -4338,7 +4372,6 @@ document.addEventListener("submit", async (event) => {
       updatedAt: new Date().toISOString(),
     });
     closeOnboarding();
-    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
     if (currentRoute() === "feed") renderRoute();
     showToast("Sua dashboard NEXO foi adaptada", "sparkles");
     return;
@@ -4411,7 +4444,6 @@ detectLocaleWithGeo()
   .catch(() => setLocale(detectLocale(), { manual: false }))
   .finally(() => {
     renderRoute();
-    showOnboarding();
     initAuth();
   });
 
