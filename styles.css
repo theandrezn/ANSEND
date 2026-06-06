@@ -11327,11 +11327,11 @@ body.onboarding-open {
   width: 100% !important;
   height: 34px !important;
   border-radius: 17px !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  background: transparent !important;
-  color: #ffffff !important;
+  border: 1px solid var(--buy-green) !important;
+  background: #000000 !important;
+  color: var(--buy-green) !important;
   font-size: 12px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -11341,9 +11341,9 @@ body.onboarding-open {
 }
 
 .promoted-beat-card button:hover {
-  border-color: var(--buy-green) !important;
-  color: var(--buy-green) !important;
-  background: rgba(18, 214, 111, 0.04) !important;
+  border-color: #16e87b !important;
+  color: #001f10 !important;
+  background: var(--buy-green) !important;
 }
 
 @media (max-width: 900px) {
