@@ -649,6 +649,13 @@ const appState = {
   playing: null,
   sellerMode: "login",
   topBeatUnlocked: false,
+  player: {
+    loop: JSON.parse(localStorage.getItem("ansend-player-loop") || "false"),
+    shuffle: JSON.parse(localStorage.getItem("ansend-player-shuffle") || "false"),
+    volume: Number(localStorage.getItem("ansend-player-volume") || "0.82"),
+    speed: Number(localStorage.getItem("ansend-player-speed") || "1"),
+    pitch: Number(localStorage.getItem("ansend-player-pitch") || "0"),
+  },
 };
 
 const onboardingStyles = [
@@ -1642,6 +1649,11 @@ function persistState() {
   localStorage.setItem("ansend-purchases", JSON.stringify(appState.purchases));
   localStorage.setItem("ansend-orders", JSON.stringify(appState.orders));
   localStorage.setItem("ansend-contracts", JSON.stringify(appState.contracts));
+  localStorage.setItem("ansend-player-loop", JSON.stringify(appState.player.loop));
+  localStorage.setItem("ansend-player-shuffle", JSON.stringify(appState.player.shuffle));
+  localStorage.setItem("ansend-player-volume", String(appState.player.volume));
+  localStorage.setItem("ansend-player-speed", String(appState.player.speed));
+  localStorage.setItem("ansend-player-pitch", String(appState.player.pitch));
 }
 
 function persistAiPlan(plan) {
@@ -2459,6 +2471,7 @@ function closeOnboarding() {
 }
 
 function findBeat(id) {
+  if (id === topBeatOfDay.id) return topBeatOfDay;
   return allBeats.find((item) => item.id === id) || allBeats[0];
 }
 
@@ -2519,9 +2532,17 @@ function renderPurchases() {
   const hasItems = orderMarkup || contractMarkup;
   appView.innerHTML = `${pageIntro("compras")}${hasItems ? `<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
 }
-function renderLibrary() {
+function renderLibraryLegacy() {
   const recent = allBeats.slice(3, 11);
   appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Coleções para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section><section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
+}
+
+function renderLibrary() {
+  const recent = allBeats.slice(3, 11);
+  const savedIds = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
+  const saved = savedIds.map(findBeat).filter(Boolean);
+  const savedSection = saved.length ? `<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="bookmark-plus"></i>Salvos no player</h2><p>Beats adicionados pelo menu do player</p></div></div>${gridView(saved)}</section>` : "";
+  appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Colecoes para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section>${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
 }
 
 function renderAiWorkspace() {
@@ -3138,6 +3159,157 @@ function openCheckout(id, selectedPlan = "premium") {
   </form>`);
 }
 
+function playerActionBeat() {
+  return currentPlayingBeat() || topBeatOfDay;
+}
+
+function openAudioEditor() {
+  const item = playerActionBeat();
+  openModal(`<section class="player-tool-modal audio-tool-modal">
+    <span><i data-lucide="gauge"></i>Audio editor</span>
+    <h2>${item.title}</h2>
+    <p>Controles de preview para testar energia, velocidade e tom antes de comprar ou baixar. A compra mantém o arquivo original.</p>
+    <label class="player-range">
+      <div><strong>Speed</strong><em>${Math.round((appState.player.speed - 1) * 100)}%</em></div>
+      <input type="range" min="0.65" max="1.5" step="0.01" value="${appState.player.speed}" data-action="player-speed">
+    </label>
+    <label class="player-range">
+      <div><strong>Pitch</strong><em>${appState.player.pitch} ST</em></div>
+      <input type="range" min="-6" max="6" step="1" value="${appState.player.pitch}" data-action="player-pitch">
+    </label>
+    <div class="player-tool-actions">
+      <button type="button" data-action="reset-player-editor">Reset</button>
+      <button type="button" data-action="buy-current">Comprar licenca</button>
+    </div>
+  </section>`);
+}
+
+function lyricsForBeat(item) {
+  return [
+    `[Intro] ${item.title}`,
+    "Beat aberto para escrever sua ideia.",
+    "",
+    "[Verso]",
+    "Marque entradas, pausas e viradas enquanto escuta o preview.",
+    "Use a NEXO para transformar letra, demo ou referencia em plano de lancamento.",
+    "",
+    "[Hook]",
+    "Entre com uma ideia, saia com uma solucao.",
+    "ANSEND conecta beat, produtor, capa, curadoria e divulgacao.",
+  ].join("\n");
+}
+
+function openLyricsPanel() {
+  const item = playerActionBeat();
+  openModal(`<section class="player-tool-modal lyrics-tool-modal">
+    <span><i data-lucide="scroll-text"></i>Lyrics</span>
+    <h2>${item.title}</h2>
+    <p>${item.producer} / ${(item.tags || []).join(" / ")}</p>
+    <pre>${lyricsForBeat(item)}</pre>
+    <div class="player-tool-actions">
+      <button type="button" data-action="copy-lyrics">Copiar letra</button>
+      <button type="button" data-action="ai-chip" data-prompt="Tenho uma letra para ${item.title} e preciso montar um plano de lancamento.">Pedir plano NEXO</button>
+    </div>
+  </section>`);
+}
+
+function openVolumePanel() {
+  openModal(`<section class="player-tool-modal volume-tool-modal">
+    <span><i data-lucide="volume-2"></i>Volume</span>
+    <h2>Preview do player</h2>
+    <p>Ajuste o volume local do beat sem alterar arquivos comprados.</p>
+    <label class="player-range">
+      <div><strong>Volume</strong><em>${Math.round(appState.player.volume * 100)}%</em></div>
+      <input type="range" min="0" max="1" step="0.01" value="${appState.player.volume}" data-action="player-volume">
+    </label>
+  </section>`);
+}
+
+function queueItems() {
+  const current = playerActionBeat();
+  return [current, ...allBeats.filter((item) => item.id !== current.id).slice(0, 8)];
+}
+
+function openQueuePanel() {
+  const rows = queueItems().map((item, index) => `<button class="queue-row ${index === 0 ? "is-current" : ""}" type="button" data-action="play" data-id="${item.id}">
+    <span>${String(index + 1).padStart(2, "0")}</span>
+    <img src="${item.cover}" alt="">
+    <strong>${item.title}</strong>
+    <em>${item.producer}</em>
+    <i data-lucide="${index === 0 ? "volume-2" : "play"}"></i>
+  </button>`).join("");
+  openModal(`<section class="player-tool-modal queue-tool-modal">
+    <span><i data-lucide="list-music"></i>Fila</span>
+    <h2>Proximos beats</h2>
+    <div class="queue-list">${rows}</div>
+  </section>`);
+}
+
+function shareCurrentBeat() {
+  const item = playerActionBeat();
+  const url = `${location.origin}${location.pathname}#${item.id === topBeatOfDay.id ? "feed" : item.id}`;
+  navigator.clipboard?.writeText(url).then(
+    () => showToast("Link do beat copiado", "share-2"),
+    () => showToast("Link pronto para compartilhar", "share-2"),
+  );
+}
+
+function toggleCurrentLoop() {
+  appState.player.loop = !appState.player.loop;
+  persistState();
+  syncMiniPlayerState();
+  showToast(appState.player.loop ? "Loop ativado no player" : "Loop desativado", "repeat-2");
+  lucide.createIcons();
+}
+
+function togglePlayerShuffle() {
+  appState.player.shuffle = !appState.player.shuffle;
+  persistState();
+  showToast(appState.player.shuffle ? "Shuffle ativado" : "Shuffle desativado", "shuffle");
+}
+
+function addCurrentToPlaylist() {
+  const item = playerActionBeat();
+  const saved = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
+  if (!saved.includes(item.id)) saved.unshift(item.id);
+  localStorage.setItem("ansend-saved-playlist", JSON.stringify(saved.slice(0, 40)));
+  showToast(`${item.title} adicionado a biblioteca`, "bookmark-plus");
+  if (currentRoute() === "biblioteca") renderRoute();
+}
+
+function openCommentsPanel() {
+  const item = playerActionBeat();
+  openModal(`<section class="player-tool-modal comments-tool-modal">
+    <span><i data-lucide="message-circle"></i>Comentarios</span>
+    <h2>${item.title}</h2>
+    <div class="comment-list">
+      <article><strong>Viana</strong><p>Essa intro encaixa bem para trap melodico.</p></article>
+      <article><strong>NEXO IA</strong><p>Match alto para artistas buscando hook forte e lancamento rapido.</p></article>
+    </div>
+    <form class="comment-form">
+      <input type="text" placeholder="Escreva um comentario sobre o beat">
+      <button type="submit" data-action="comment-preview">Enviar</button>
+    </form>
+  </section>`);
+}
+
+function openMorePlayerMenu() {
+  const item = playerActionBeat();
+  openModal(`<section class="player-tool-modal more-tool-modal">
+    <span><i data-lucide="ellipsis"></i>Mais opcoes</span>
+    <h2>${item.title}</h2>
+    <div class="more-action-list">
+      <button type="button" data-action="repost-current"><i data-lucide="repeat"></i>Repost</button>
+      <button type="button" data-action="comments-current"><i data-lucide="message-circle"></i>Comments</button>
+      <button type="button" data-action="share-current"><i data-lucide="share-2"></i>Share</button>
+      <button type="button" data-action="add-playlist-current"><i data-lucide="bookmark-plus"></i>Add to Playlist</button>
+      <button type="button" data-action="shuffle-current"><i data-lucide="shuffle"></i>${appState.player.shuffle ? "Turn shuffle off" : "Turn shuffle on"}</button>
+      <button type="button" data-action="go-current-track"><i data-lucide="disc-3"></i>Go to Track</button>
+      <button type="button" data-action="go-current-artist"><i data-lucide="user-round"></i>Go to Artist</button>
+    </div>
+  </section>`);
+}
+
 function miniWaveformBars(progress = 0) {
   return Array.from({ length: 260 }, (_, index) => {
     const height = 18 + ((index * 17) % 42);
@@ -3152,7 +3324,37 @@ function formatTime(seconds) {
 }
 
 function currentPlayingBeat() {
-  return findBeat(appState.playing) || (appState.playing === topBeatOfDay.id ? topBeatOfDay : allBeats[10]);
+  if (appState.playing === topBeatOfDay.id) return topBeatOfDay;
+  return findBeat(appState.playing) || allBeats[10];
+}
+
+function applyPlayerAudioSettings() {
+  const audio = topBeatAudio();
+  if (!audio) return;
+  if (!Number.isFinite(appState.player.volume)) appState.player.volume = .82;
+  if (!Number.isFinite(appState.player.speed)) appState.player.speed = 1;
+  if (!Number.isFinite(appState.player.pitch)) appState.player.pitch = 0;
+  audio.volume = Math.min(1, Math.max(0, appState.player.volume));
+  audio.loop = Boolean(appState.player.loop);
+  audio.playbackRate = Math.min(1.5, Math.max(.65, appState.player.speed));
+  audio.preservesPitch = Math.abs(appState.player.pitch) < 1;
+}
+
+function syncMiniPlayerState() {
+  const player = document.querySelector(".mini-player");
+  if (!player) return;
+  const current = currentPlayingBeat();
+  const favoriteButton = player.querySelector('[data-action="favorite-current"]');
+  const loopButton = player.querySelector('[data-action="loop-beat"]');
+  const volumeButton = player.querySelector('[data-action="volume"]');
+  favoriteButton?.classList.toggle("is-active", appState.favorites.has(current?.id));
+  loopButton?.classList.toggle("is-active", appState.player.loop);
+  player.classList.toggle("is-looping", appState.player.loop);
+  if (volumeButton) {
+    const icon = appState.player.volume <= .02 ? "volume-x" : appState.player.volume < .45 ? "volume-1" : "volume-2";
+    volumeButton.innerHTML = `<i data-lucide="${icon}"></i>`;
+  }
+  applyPlayerAudioSettings();
 }
 
 function updateMiniProgress() {
@@ -3179,6 +3381,7 @@ function updateMiniPlayer(item) {
   const numericId = Number(String(item.id).replace(/\D/g, "")) || 4;
   player.querySelector(".mini-buy span").textContent = item.id === topBeatOfDay.id ? "$44.95" : `$${(24.95 + (numericId % 5) * 5).toFixed(2)}`;
   updateMiniProgress();
+  syncMiniPlayerState();
 }
 
 function topBeatAudio() {
@@ -3196,6 +3399,7 @@ function setTopBeatPlaying(isPlaying) {
     miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
   }
   document.querySelector(".mini-player")?.classList.toggle("is-playing", isPlaying || Boolean(appState.playing));
+  syncMiniPlayerState();
   lucide.createIcons();
 }
 
@@ -3234,13 +3438,17 @@ function toggleTopBeat() {
 
 function playBeatByOffset(offset) {
   const current = currentPlayingBeat();
-  const index = Math.max(0, allBeats.findIndex((item) => item.id === current?.id));
-  const next = allBeats[(index + offset + allBeats.length) % allBeats.length];
+  const queue = [topBeatOfDay, ...allBeats];
+  const index = Math.max(0, queue.findIndex((item) => item.id === current?.id));
+  const next = appState.player.shuffle && offset > 0
+    ? queue[Math.floor(Math.random() * queue.length)]
+    : queue[(index + offset + queue.length) % queue.length];
   pauseTopBeat({ quiet: true });
   appState.playing = next.id;
   updateMiniPlayer(next);
   document.querySelector(".mini-player")?.classList.add("is-playing");
   showToast(`Tocando agora: ${next.title}`, "play");
+  if (next.id === topBeatOfDay.id) playTopBeat({ quiet: true });
 }
 
 function shouldPrimeTopBeat() {
@@ -3252,6 +3460,7 @@ window.addEventListener("load", () => {
   topBeatAudio()?.addEventListener("ended", () => setTopBeatPlaying(false));
   topBeatAudio()?.addEventListener("timeupdate", updateMiniProgress);
   topBeatAudio()?.addEventListener("loadedmetadata", updateMiniProgress);
+  applyPlayerAudioSettings();
   updateMiniPlayer(currentPlayingBeat());
   if (shouldPrimeTopBeat()) playTopBeat({ quiet: true });
 }, { once: true });
@@ -3522,6 +3731,8 @@ document.addEventListener("click", (event) => {
     pauseTopBeat({ quiet: true });
     appState.playing = item.id;
     updateMiniPlayer(item);
+    document.querySelector(".mini-player")?.classList.add("is-playing");
+    if (target.closest(".queue-tool-modal")) closeModal();
     showToast(`Tocando agora: ${item.title}`, "play");
   }
   if (action === "hero-beat-play") {
@@ -3533,8 +3744,10 @@ document.addEventListener("click", (event) => {
       toggleTopBeat();
       return;
     }
-    document.querySelector(".mini-player")?.classList.toggle("is-playing");
-    showToast(appState.playing ? "Player alternado" : "Tocando Neon Alley", appState.playing ? "pause" : "play");
+    const player = document.querySelector(".mini-player");
+    const nextPlaying = !player?.classList.contains("is-playing");
+    player?.classList.toggle("is-playing", nextPlaying);
+    showToast(nextPlaying ? `Tocando ${playerActionBeat().title}` : "Preview pausado", nextPlaying ? "play" : "pause");
     return;
   }
   if (action === "prev-track") {
@@ -3547,24 +3760,90 @@ document.addEventListener("click", (event) => {
   }
   if (action === "favorite-current") {
     handleFavorite(currentPlayingBeat()?.id);
+    syncMiniPlayerState();
+    lucide.createIcons();
     return;
   }
   if (action === "buy-current") {
     handleBuy(currentPlayingBeat()?.id || topBeatOfDay.id, "premium");
     return;
   }
-  if (["edit-beat", "loop-beat", "lyrics", "volume", "queue", "more-player"].includes(action)) {
-    const labels = {
-      "edit-beat": "Editor do beat aberto",
-      "loop-beat": "Loop ativado para estudo",
-      lyrics: "Area de letras sincronizadas",
-      volume: "Volume do preview ajustado",
-      queue: "Fila de reproducao aberta",
-      "more-player": "Mais opcoes do player",
-    };
-    showToast(labels[action], action === "loop-beat" ? "repeat-2" : "settings-2");
+  if (action === "edit-beat") {
+    openAudioEditor();
     return;
-  }  if (action === "playlist") {
+  }
+  if (action === "loop-beat") {
+    toggleCurrentLoop();
+    return;
+  }
+  if (action === "lyrics") {
+    openLyricsPanel();
+    return;
+  }
+  if (action === "volume") {
+    openVolumePanel();
+    return;
+  }
+  if (action === "queue") {
+    openQueuePanel();
+    return;
+  }
+  if (action === "more-player") {
+    openMorePlayerMenu();
+    return;
+  }
+  if (action === "reset-player-editor") {
+    appState.player.speed = 1;
+    appState.player.pitch = 0;
+    persistState();
+    applyPlayerAudioSettings();
+    openAudioEditor();
+    showToast("Editor resetado", "rotate-ccw");
+    return;
+  }
+  if (action === "copy-lyrics") {
+    const text = document.querySelector(".lyrics-tool-modal pre")?.innerText || "";
+    navigator.clipboard?.writeText(text);
+    showToast("Letra copiada", "copy");
+    return;
+  }
+  if (action === "share-current") {
+    shareCurrentBeat();
+    return;
+  }
+  if (action === "repost-current") {
+    const item = playerActionBeat();
+    const reposts = JSON.parse(localStorage.getItem("ansend-reposts") || "[]");
+    if (!reposts.includes(item.id)) reposts.unshift(item.id);
+    localStorage.setItem("ansend-reposts", JSON.stringify(reposts.slice(0, 60)));
+    showToast(`${item.title} repostado`, "repeat");
+    return;
+  }
+  if (action === "comments-current") {
+    openCommentsPanel();
+    return;
+  }
+  if (action === "add-playlist-current") {
+    addCurrentToPlaylist();
+    return;
+  }
+  if (action === "shuffle-current") {
+    togglePlayerShuffle();
+    openMorePlayerMenu();
+    return;
+  }
+  if (action === "go-current-track") {
+    const item = playerActionBeat();
+    closeModal();
+    location.hash = item.id === topBeatOfDay.id ? "feed" : item.id;
+    return;
+  }
+  if (action === "go-current-artist") {
+    closeModal();
+    openProfessionalProfile(playerActionBeat().producer);
+    return;
+  }
+  if (action === "playlist") {
     location.hash = `playlist-${target.dataset.playlistId || slugify(target.dataset.title)}`;
     return;
   }
@@ -3615,7 +3894,36 @@ document.addEventListener("change", (event) => {
   }
 });
 
+document.addEventListener("input", (event) => {
+  const input = event.target;
+  const action = input?.dataset?.action;
+  if (!["player-speed", "player-pitch", "player-volume"].includes(action)) return;
+  const value = Number(input.value);
+  if (action === "player-speed") appState.player.speed = value;
+  if (action === "player-pitch") appState.player.pitch = value;
+  if (action === "player-volume") appState.player.volume = value;
+  const label = input.closest(".player-range")?.querySelector("em");
+  if (label && action === "player-speed") label.textContent = `${Math.round((appState.player.speed - 1) * 100)}%`;
+  if (label && action === "player-pitch") label.textContent = `${appState.player.pitch} ST`;
+  if (label && action === "player-volume") label.textContent = `${Math.round(appState.player.volume * 100)}%`;
+  persistState();
+  syncMiniPlayerState();
+  lucide.createIcons();
+});
+
 document.addEventListener("submit", async (event) => {
+  const commentForm = event.target.closest(".comment-form");
+  if (commentForm) {
+    event.preventDefault();
+    const input = commentForm.querySelector("input");
+    const message = input?.value.trim();
+    if (message) {
+      document.querySelector(".comment-list")?.insertAdjacentHTML("beforeend", `<article><strong>Voce</strong><p>${message}</p></article>`);
+      input.value = "";
+      showToast("Comentario publicado no preview", "message-circle");
+    }
+    return;
+  }
   const nexoMatchForm = event.target.closest(".nexo-match-form");
   if (nexoMatchForm) {
     event.preventDefault();
