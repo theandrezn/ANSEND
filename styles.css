@@ -1095,16 +1095,26 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .arrow-pair { display: flex; gap: 7px; }
 .arrow-pair button {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.03);
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
   color: white;
   display: grid;
   place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
-.arrow-pair svg { width: 15px; }
+.arrow-pair button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.08);
+}
+.arrow-pair button:active {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(0.95);
+}
+.arrow-pair svg { width: 16px; }
 
 .playlist-row,
 .beat-row,
@@ -5650,21 +5660,21 @@ body.onboarding-open { overflow: hidden; }
 }
 
 /* Restored feed modules: highlighted producers + recent ranking. */
-.featured-professional-grid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(118px, 150px);
-  grid-template-columns: none;
-  gap: 18px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 6px 2px 12px;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+.feed > .home-section .featured-professional-grid {
+  display: grid !important;
+  grid-auto-flow: column !important;
+  grid-auto-columns: minmax(118px, 150px) !important;
+  grid-template-columns: none !important;
+  gap: 18px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 6px 2px 12px !important;
+  scroll-snap-type: x proximity !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
-.featured-professional-grid::-webkit-scrollbar {
-  display: none;
+.feed > .home-section .featured-professional-grid::-webkit-scrollbar {
+  display: none !important;
 }
 .featured-professional-grid .avatar-card {
   scroll-snap-align: start;

@@ -51,7 +51,6 @@ Definido no topo de `script.js` para persistência em memória local (`localStor
 - `beatNames` (Linha 187) / `producers` (Linha 192) / `genres` (Linha 193): Banco de dados base para geração randômica de Beats.
 - `professionalProfiles` (Linha 278): Perfis do diretório de profissionais (trabalhos concluídos, preços, avaliações).
 - `licensePlans` (Linha 293): Regras e preços das licenças (Básica, Premium, Exclusiva).
-- `featuredEbooks` (Definido na seção home): Lista contendo Cardio Fitness, Desafio 24 Dias, Importação dos EUA, Lista de Fornecedores, Elite das Manicures e Fórmula Secreta.
 
 ---
 
@@ -60,7 +59,6 @@ Definido no topo de `script.js` para persistência em memória local (`localStor
 ### 1. Elementos Dinâmicos de Cards
 - `playlistCard([title, subtitle, cover])`: Cria o contêiner de playlists com efeito de spotlight.
 - `beatCard(item)`: Gera o card clássico de beats contendo botões de reproduzir, favoritar e licenciar.
-- `netflixCard(item)`: Componente de e-books em formato retangular vertical (2:3), aplicando imagem de capa inteira, efeitos de hover de escala e overlay de gradiente para exibir o título e a tag.
 - `avatarCard(name, i)`: Desenha o cartão circular de produtores em destaque com a contagem de vendas de serviços.
 - `featuredProfessionalCard(name, index)`: Card alternativo de profissionais com botão "Ver perfil".
 
@@ -81,10 +79,9 @@ Definido no topo de `script.js` para persistência em memória local (`localStor
   &::-webkit-scrollbar { display: none; } /* Chrome/Safari */
   ```
 
-### 2. Estilo de Cartões Premium
+### 2. Estilo de Cartões Premium e Setas
 - `.spotlight-card`: Utiliza variáveis CSS dinâmicas (`--spot-x` e `--spot-y`) manipuladas pelo evento mousemove do Javascript para criar um brilho de gradiente orbital que segue o cursor.
-- `.netflix-grid`: Grid organizador de e-books disposto em 6 colunas iguais.
-- `.netflix-card`: Estrutura retangular vertical com `aspect-ratio: 2 / 3`, com ampliação de tamanho, bordas laranja iluminadas (`border-color: var(--orange)`) e aparecimento suave do overlay no hover.
+- `.arrow-pair button`: Botões de carrossel de setas estilizados no formato circular sem bordas, com fundo translúcido `rgba(255, 255, 255, 0.08)`, possuindo efeitos de ampliação e escurecimento gradual no hover/active.
 
 ### 3. Equalizadores e Animações
 - `.hero-particles`: Efeito de partículas em canvas flutuantes de fundo.
