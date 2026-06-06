@@ -335,7 +335,9 @@ window.ANSEND_I18N = {
 
 function applyTranslations(root = document) {
   ensureLanguageSwitcher();
-  document.title = appLocale.current === "pt-BR" ? "ANSEND - Feed musical" : "ANSEND - Music feed";
+  document.title = appLocale.current === "pt-BR"
+    ? "ANSEND - O Marketplace Inteligente da música"
+    : "ANSEND - The Intelligent Music Marketplace";
   document.querySelector('meta[name="description"]')?.setAttribute(
     "content",
     appLocale.current === "pt-BR"
