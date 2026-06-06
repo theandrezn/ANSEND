@@ -8313,6 +8313,17 @@ body.modal-open {
   font-weight: 800;
 }
 
+.beat-match-pill {
+  max-width: 100%;
+  margin-top: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-color: rgba(18, 214, 111, .34);
+  color: #9ff7c7;
+  background: rgba(18, 214, 111, .08);
+}
+
 .playlist-card .match-pill {
   position: absolute;
   left: 22px;

@@ -769,10 +769,13 @@ function professionalsForNeed(prompt, limit = 5) {
 function beatMatchesForNeed(prompt, limit = 4) {
   const text = String(prompt || "").toLowerCase();
   const targetGenre = /drill/.test(text) ? "Drill" : /funk/.test(text) ? "Funk" : /r&b|rnb/.test(text) ? "R&B" : /boom bap/.test(text) ? "Boom Bap" : /type/.test(text) ? "Type Beat" : "Trap";
-  return allBeats
-    .filter((item) => item.tags.includes(targetGenre))
-    .concat(allBeats.filter((item) => !item.tags.includes(targetGenre)))
-    .slice(0, limit);
+  return getRecommendedBeats(createDefaultMusicProfile({
+    genres: [targetGenre],
+    objective: /divulg|playlist|campanha/.test(text) ? "Divulgar lancamento" : /mix|master|demo|finalizar/.test(text) ? "Mixar/masterizar" : "Encontrar um beat",
+    stage: /pronta|lancei|spotify|distribu/.test(text) ? "Tenho a musica pronta" : /demo|gravada/.test(text) ? "Tenho uma demo" : "Tenho uma letra",
+    references: prompt,
+    completed: true,
+  })).slice(0, limit);
 }
 
 function nexoKnowledgeBase() {
@@ -788,7 +791,7 @@ function nexoKnowledgeBase() {
     },
     licenses: licensePlans,
     professionals: professionalProfiles.map(({ name, role, category, specialty, price, rating, jobs }) => ({ name, role, category, specialty, price, rating, jobs })),
-    beats: allBeats.slice(0, 12).map(({ id, title, producer, tags }) => ({ id, title, producer, tags })),
+    beats: allBeats.map(({ id, title, producer, tags }) => ({ id, title, producer, tags })),
   };
 }
 
@@ -908,6 +911,7 @@ function beatCard(item) {
         <span>${item.producer}</span>
         <i data-lucide="badge-check" class="verified-badge"></i>
       </div>
+      ${item.match ? `<span class="match-pill beat-match-pill">${item.match.score}% match - ${item.match.reasons[0]}</span>` : ""}
       <div class="card-actions-row">
         <button class="beat-card-buy-btn" type="button" data-action="buy" data-id="${item.id}" aria-label="Comprar licença">
           <i data-lucide="shopping-bag"></i>
@@ -1155,6 +1159,66 @@ function withMatch(profile, item) {
   return { ...item, match: calculateNexoMatch(profile, item) };
 }
 
+const genreVibeMap = {
+  Trap: ["Pesada", "Melodica", "Underground"],
+  Drill: ["Pesada", "Underground"],
+  Funk: ["Dancante", "Festiva", "Comercial"],
+  "R&B": ["Romantica", "Melodica", "Comercial"],
+  "Boom Bap": ["Underground", "Triste", "Cinematografica"],
+  "Type Beat": ["Comercial", "Melodica"],
+};
+
+const objectiveGenreMap = {
+  "Encontrar um beat": ["beat", "licenca"],
+  "Produzir uma musica": ["producao", "direcao sonora"],
+  "Mixar/masterizar": ["mix", "master"],
+  "Divulgar lancamento": ["marketing", "curadoria"],
+  "Entrar em playlists": ["playlist", "curadoria"],
+  "Montar lancamento completo": ["beat", "capa", "mix", "marketing"],
+};
+
+function beatMatchCandidate(item) {
+  const genre = item.tags?.[0] || "Trap";
+  return {
+    ...item,
+    title: item.title,
+    type: "Beat",
+    genres: [genre],
+    vibes: genreVibeMap[genre] || ["Comercial"],
+    objectives: ["Encontrar um beat", ...(objectiveGenreMap["Encontrar um beat"] || [])],
+    references: [item.title, item.producer, ...(item.tags || [])],
+    verified: true,
+  };
+}
+
+function professionalMatchCandidate(item) {
+  const roleObjective = {
+    beatmakers: ["Encontrar um beat", "Montar lancamento completo"],
+    produtores: ["Produzir uma musica", "Mixar/masterizar", "Montar lancamento completo"],
+    designers: ["Criar uma capa", "Montar lancamento completo"],
+    curadores: ["Entrar em playlists", "Divulgar lancamento"],
+    marketing: ["Divulgar lancamento", "Montar lancamento completo"],
+    artistas: ["Produzir uma musica", "Receber orientacao da IA"],
+  };
+  return {
+    ...item,
+    title: item.name,
+    type: item.category,
+    genres: item.tags,
+    vibes: item.tags,
+    objectives: [...(roleObjective[item.category] || []), item.specialty, item.category],
+    verified: true,
+  };
+}
+
+function getRecommendedBeats(profile = getMusicProfile(), limit = 8) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return allBeats
+    .map((item) => withMatch(baseProfile, beatMatchCandidate(item)))
+    .sort((a, b) => b.match.score - a.match.score || a.title.localeCompare(b.title))
+    .slice(0, limit);
+}
+
 function getRecommendedPlaylists(profile = getMusicProfile()) {
   const baseProfile = profile || createDefaultMusicProfile();
   return nexoPlaylistCatalog.map((item) => withMatch(baseProfile, item)).sort((a, b) => b.match.score - a.match.score).slice(0, 6);
@@ -1163,7 +1227,7 @@ function getRecommendedPlaylists(profile = getMusicProfile()) {
 function getRecommendedProfessionals(profile = getMusicProfile()) {
   const baseProfile = profile || createDefaultMusicProfile();
   return professionalProfiles
-    .map((item) => withMatch(baseProfile, { ...item, type: item.category, title: item.name, genres: item.tags, vibes: item.tags, objectives: [item.category, item.specialty], verified: true }))
+    .map((item) => withMatch(baseProfile, professionalMatchCandidate(item)))
     .sort((a, b) => b.match.score - a.match.score)
     .slice(0, 6);
 }
@@ -1195,6 +1259,7 @@ function buildNexoRecommendations(profile = getMusicProfile(), persist = true) {
   const baseProfile = profile || createDefaultMusicProfile();
   const result = {
     profile: baseProfile,
+    beats: getRecommendedBeats(baseProfile),
     playlists: getRecommendedPlaylists(baseProfile),
     professionals: getRecommendedProfessionals(baseProfile),
     services: getRecommendedServices(baseProfile),
@@ -1369,7 +1434,7 @@ function renderHomeDashboard() {
   };
 
   if (hasProfile) {
-    setText("featuredPreviewTitle", `<i data-lucide="list-music"></i>${t("section.playlistsStyle")}`, `NEXO Match: ${musicProfileSummary(profile)}`);
+    setText("featuredPreviewTitle", `<i data-lucide="audio-lines"></i>Beats preferidos pela NEXO`, `Mapeados por estilo, fase e objetivo: ${musicProfileSummary(profile)}`);
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStepShort")}`, profile.objective || "NEXO");
     setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Profissionais e servicos com maior match para voce" : "Professionals and services with the strongest fit for you");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes montados para sua fase atual" : "Packages shaped for your current stage");
@@ -1388,7 +1453,7 @@ function renderHomeDashboard() {
   if (recommendations) recommendations.innerHTML = (hasProfile ? recs.services : nexoRecommendations).slice(0, 6).map(nexoRecommendationCard).join("");
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = (hasProfile ? recs.combos : smartCombos).map(smartComboCard).join("");
-  if (featured) featured.innerHTML = hasProfile ? recs.playlists.map(playlistCard).join("") : preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
+  if (featured) featured.innerHTML = hasProfile ? recs.beats.slice(0, 6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Match IA" : item.badge })).join("") : preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
   if (professionals) professionals.innerHTML = hasProfile ? recs.professionals.map(professionalMatchCard).join("") : avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
   if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
 }
@@ -2265,6 +2330,8 @@ function persistOnboarding(profile) {
 }
 
 function preferredGenres() {
+  const musicProfile = getMusicProfile();
+  if (musicProfile?.genres?.length) return [...new Set(musicProfile.genres)].slice(0, 3);
   const profile = appState.profile;
   if (profile?.music_styles?.length) return [...new Set(profile.music_styles)].slice(0, 3);
   const onboarding = appState.onboardingProfile;
@@ -2273,6 +2340,8 @@ function preferredGenres() {
 }
 
 function preferredBeats(limit = 8) {
+  const musicProfile = getMusicProfile();
+  if (musicProfile?.completed) return getRecommendedBeats(musicProfile, limit);
   const selected = preferredGenres();
   const exact = allBeats.filter((item) => selected.includes(item.tags[0]));
   return exact.concat(allBeats.filter((item) => !selected.includes(item.tags[0]))).slice(0, limit);
