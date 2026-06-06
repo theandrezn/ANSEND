@@ -655,6 +655,7 @@ const appState = {
     volume: Number(localStorage.getItem("ansend-player-volume") || "0.82"),
     speed: Number(localStorage.getItem("ansend-player-speed") || "1"),
     pitch: Number(localStorage.getItem("ansend-player-pitch") || "0"),
+    previewTime: Number(localStorage.getItem("ansend-player-preview-time") || "11"),
   },
 };
 
@@ -3455,7 +3456,7 @@ function renderSellerAuth() {
       <a class="seller-auth-logo" href="#feed" data-route="feed" aria-label="ANSEND inicio"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
       ${languageSwitcherMarkup()}
       <div class="seller-auth-copy">
-        <span>${isSupabaseConfigured ? `SUPABASE · ${SUPABASE_PROJECT_REF}` : "CONFIGURAÇÃO SUPABASE PENDENTE"}</span>
+        <span>${isLogin ? "ACESSO ANSEND" : "CONTA INTELIGENTE ANSEND"}</span>
         <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
         <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
       </div>
@@ -3854,11 +3855,40 @@ function updateMiniProgress() {
   const audio = topBeatAudio();
   const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
   const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
-  const current = isAudioBeat ? audio.currentTime : 11;
+  const current = isAudioBeat ? audio.currentTime : Math.min(duration, Math.max(0, appState.player.previewTime || 0));
   const progress = Math.min(1, duration ? current / duration : 0);
+  const waveform = player.querySelector(".mini-waveform");
   player.querySelector(".mini-current").textContent = formatTime(current);
   player.querySelector(".mini-duration").textContent = formatTime(duration || 165);
   player.querySelector(".mini-wave-bars").innerHTML = miniWaveformBars(progress);
+  player.style.setProperty("--mini-progress", progress.toFixed(4));
+  player.style.setProperty("--mini-progress-pct", `${(progress * 100).toFixed(2)}%`);
+  waveform?.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
+  waveform?.setAttribute("aria-valuetext", `${formatTime(current)} de ${formatTime(duration || 165)}`);
+}
+
+function seekMiniPlayerToRatio(ratio) {
+  const player = document.querySelector(".mini-player");
+  if (!player) return;
+  const audio = topBeatAudio();
+  const safeRatio = Math.min(1, Math.max(0, ratio));
+  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
+  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
+  if (isAudioBeat) {
+    audio.currentTime = safeRatio * duration;
+  } else {
+    appState.player.previewTime = safeRatio * duration;
+    localStorage.setItem("ansend-player-preview-time", String(appState.player.previewTime));
+  }
+  updateMiniProgress();
+}
+
+function seekMiniPlayerFromPointer(event) {
+  const waveform = event.target.closest(".mini-waveform");
+  if (!waveform) return;
+  const rect = waveform.querySelector(".mini-wave-bars")?.getBoundingClientRect() || waveform.getBoundingClientRect();
+  const ratio = (event.clientX - rect.left) / Math.max(1, rect.width);
+  seekMiniPlayerToRatio(ratio);
 }
 
 function updateMiniPlayer(item) {
@@ -3871,6 +3901,7 @@ function updateMiniPlayer(item) {
   player.querySelector(".mini-track span").textContent = `${item.producer} · ${item.tags?.[1] || "153 BPM"}`;
   const numericId = Number(String(item.id).replace(/\D/g, "")) || 4;
   player.querySelector(".mini-buy span").textContent = item.id === topBeatOfDay.id ? "$44.95" : `$${(24.95 + (numericId % 5) * 5).toFixed(2)}`;
+  if (item.id !== topBeatOfDay.id && appState.player.previewTime >= 165) appState.player.previewTime = 11;
   updateMiniProgress();
   syncMiniPlayerState();
 }
@@ -3946,6 +3977,15 @@ window.addEventListener("load", () => {
   topBeatAudio()?.addEventListener("ended", () => setTopBeatPlaying(false));
   topBeatAudio()?.addEventListener("timeupdate", updateMiniProgress);
   topBeatAudio()?.addEventListener("loadedmetadata", updateMiniProgress);
+  window.setInterval(() => {
+    const player = document.querySelector(".mini-player");
+    if (!player?.classList.contains("is-playing")) return;
+    if (appState.playing === topBeatOfDay.id) return;
+    appState.player.previewTime = appState.player.loop && appState.player.previewTime >= 165
+      ? 0
+      : Math.min(165, (appState.player.previewTime || 0) + .5);
+    updateMiniProgress();
+  }, 500);
   applyPlayerAudioSettings();
   updateMiniPlayer(currentPlayingBeat());
 }, { once: true });
@@ -3981,6 +4021,23 @@ function profileFromAccountForm(form, email) {
   };
 }
 
+function isEmailRateLimitError(error) {
+  const text = String(error?.message || error?.error_description || error?.name || "").toLowerCase();
+  return /rate|limit|too many|security/.test(text) && /email|signup|sign up|rate|limit/.test(text);
+}
+
+function unlockPreviewAccountFromProfile(profile, reason = "preview") {
+  const previewProfile = {
+    ...profile,
+    id: `preview-${reason}-${Date.now()}`,
+    created_at: new Date().toISOString(),
+  };
+  setLocalPreviewProfile(previewProfile);
+  renderRoute();
+  launchFirstAccountQuiz(previewProfile);
+  return previewProfile;
+}
+
 async function handleAccountSubmit(form) {
   const mode = form.dataset.mode;
   const email = form.elements.email.value.trim();
@@ -3992,15 +4049,9 @@ async function handleAccountSubmit(form) {
       showToast("Adicione a publishable key para ativar login real", "cloud-off");
       return;
     }
-    const profile = {
-      ...profileFromAccountForm(form, email),
-      id: `preview-${Date.now()}`,
-      created_at: new Date().toISOString(),
-    };
-    setLocalPreviewProfile(profile);
+    const profile = profileFromAccountForm(form, email);
+    unlockPreviewAccountFromProfile(profile);
     showToast("Conta criada em modo preview. Conecte a key para salvar no Supabase.", "cloud-off");
-    renderRoute();
-    launchFirstAccountQuiz(profile);
     return;
   }
 
@@ -4046,6 +4097,12 @@ async function handleAccountSubmit(form) {
     renderRoute();
     launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
+    if (mode === "signup" && isEmailRateLimitError(error)) {
+      const profile = profileFromAccountForm(form, email);
+      unlockPreviewAccountFromProfile(profile, "email");
+      showToast("Conta liberada. Sincronizacao com Supabase fica para depois.", "badge-check");
+      return;
+    }
     showToast(error.message || "Não foi possível concluir a autenticação", "triangle-alert");
   } finally {
     form.classList.remove("is-submitting");
@@ -4082,6 +4139,43 @@ document.querySelector(".search")?.addEventListener("submit", (event) => {
   appState.query = document.querySelector("#search").value;
   location.hash = "explorar";
   if (currentRoute() === "explorar") renderRoute();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  const waveform = event.target.closest(".mini-waveform");
+  if (!waveform) return;
+  event.preventDefault();
+  seekMiniPlayerFromPointer(event);
+  waveform.focus({ preventScroll: true });
+  waveform.setPointerCapture?.(event.pointerId);
+  const move = (moveEvent) => seekMiniPlayerFromPointer(moveEvent);
+  const stop = () => {
+    waveform.removeEventListener("pointermove", move);
+    waveform.removeEventListener("pointerup", stop);
+    waveform.removeEventListener("pointercancel", stop);
+  };
+  waveform.addEventListener("pointermove", move);
+  waveform.addEventListener("pointerup", stop, { once: true });
+  waveform.addEventListener("pointercancel", stop, { once: true });
+});
+
+document.addEventListener("keydown", (event) => {
+  const waveform = event.target.closest(".mini-waveform");
+  if (!waveform) return;
+  const audio = topBeatAudio();
+  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
+  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
+  const current = isAudioBeat ? audio.currentTime : appState.player.previewTime;
+  const step = event.shiftKey ? 15 : 5;
+  const keyMap = {
+    ArrowLeft: current - step,
+    ArrowRight: current + step,
+    Home: 0,
+    End: duration,
+  };
+  if (!(event.key in keyMap)) return;
+  event.preventDefault();
+  seekMiniPlayerToRatio(keyMap[event.key] / Math.max(1, duration));
 });
 
 document.addEventListener("click", (event) => {
