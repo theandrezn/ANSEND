@@ -218,6 +218,7 @@ const appState = {
   orders: JSON.parse(localStorage.getItem("ansend-orders") || "[]"),
   contracts: JSON.parse(localStorage.getItem("ansend-contracts") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
+  musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
   catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   authUser: null,
@@ -443,13 +444,17 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "") || "playlist";
 }
 
-function playlistCard([title, subtitle, cover]) {
+function playlistCard(input) {
+  const data = Array.isArray(input) ? { title: input[0], subtitle: input[1], cover: input[2] } : input;
+  const { title, cover } = data;
+  const subtitle = data.match ? `${data.match.label} - ${data.match.score}%` : data.subtitle;
   const playlistId = slugify(title);
   return `<article class="playlist-card gradient-card spotlight-card" style="--card-art: url('${cover}')" data-playlist="${title}" data-playlist-id="${playlistId}">
     <button class="playlist-action gradient-card-body" type="button" data-action="playlist" data-title="${title}" data-playlist-id="${playlistId}" aria-label="Abrir ${title}">
       <img class="card-art-source" src="${cover}" alt="Capa ${title}">
       <span class="card-orb"><i data-lucide="list-music"></i></span>
       <span class="card-copy"><strong>${title}</strong><small>${subtitle}</small></span>
+      ${data.match ? `<span class="match-pill">${data.match.reasons[0]}</span>` : ""}
       <span class="card-link">Abrir <i data-lucide="arrow-right"></i></span>
     </button>
   </article>`;
@@ -521,6 +526,218 @@ const smartCombos = [
   ["Combo Completo", "Produção + Capa + Divulgação", "Economia sugerida: 20%"],
 ];
 
+const MUSIC_PROFILE_KEY = "ansend_user_music_profile";
+const MUSIC_ONBOARDING_KEY = "ansend_onboarding_completed";
+const MUSIC_RECS_KEY = "ansend_last_recommendations";
+
+const musicQuiz = {
+  genres: ["Trap", "Funk", "Forro", "Sertanejo", "Gospel", "Rap", "Drill", "R&B", "Pop", "Afrobeat", "Piseiro", "Boom Bap", "Lo-fi", "Outro"],
+  objectives: ["Encontrar um beat", "Criar uma capa", "Produzir uma musica", "Mixar/masterizar", "Divulgar lancamento", "Entrar em playlists", "Montar lancamento completo", "Receber orientacao da IA"],
+  stages: ["So tenho uma ideia", "Tenho uma letra", "Tenho uma demo", "Tenho a musica gravada", "Tenho a musica pronta", "Ja lancei e quero divulgar"],
+  vibes: ["Romantica", "Pesada", "Dancante", "Melodica", "Triste", "Comercial", "Underground", "Espiritual", "Festiva", "Cinematografica"],
+  budgets: ["Baixo", "Medio", "Alto", "Quero so explorar agora"],
+  userTypes: ["Artista", "Beatmaker", "Designer", "Produtor musical", "Curador", "Marketing musical"],
+};
+
+const nexoPlaylistCatalog = [
+  { title: "Trap na Area", subtitle: "52 beats escolhidos", cover: "assets/catalog-cover-01.webp", genres: ["Trap", "Rap"], vibes: ["Pesada", "Underground"], services: ["beat"] },
+  { title: "808 para verso", subtitle: "38 beats escolhidos", cover: "assets/catalog-cover-08.webp", genres: ["Trap", "Boom Bap"], vibes: ["Melodica", "Comercial"], services: ["beat"] },
+  { title: "Drill Brutal", subtitle: "41 beats escolhidos", cover: "assets/catalog-cover-03.webp", genres: ["Drill", "Rap"], vibes: ["Pesada", "Underground"], services: ["beat"] },
+  { title: "Funk de Estudio", subtitle: "50 beats escolhidos", cover: "assets/catalog-cover-02.webp", genres: ["Funk", "Piseiro"], vibes: ["Dancante", "Festiva"], services: ["beat"] },
+  { title: "Gospel Trap", subtitle: "27 beats escolhidos", cover: "assets/catalog-cover-06.webp", genres: ["Gospel", "Trap"], vibes: ["Espiritual", "Melodica"], services: ["beat"] },
+  { title: "R&B Noturno", subtitle: "34 referencias", cover: "assets/catalog-vocal.jpg", genres: ["R&B", "Pop"], vibes: ["Romantica", "Melodica"], services: ["beat", "vocal"] },
+  { title: "Afrobeat Solar", subtitle: "30 beats escolhidos", cover: "assets/catalog-cover-09.webp", genres: ["Afrobeat", "Pop"], vibes: ["Dancante", "Comercial"], services: ["beat"] },
+  { title: "Lo-fi para letra", subtitle: "22 referencias", cover: "assets/catalog-chorus.jpg", genres: ["Lo-fi", "Boom Bap"], vibes: ["Triste", "Cinematografica"], services: ["beat"] },
+];
+
+const nexoServiceCatalog = [
+  { icon: "audio-lines", title: "Beatmaker ideal", type: "Beatmaker", reason: "Base sonora alinhada ao seu estilo", route: "produtores", genres: ["Trap", "Drill", "Funk", "Rap", "R&B"], objectives: ["Encontrar um beat", "Montar lancamento completo"], stages: ["Tenho uma letra", "So tenho uma ideia"] },
+  { icon: "palette", title: "Designer para capa", type: "Designer", reason: "Identidade visual pronta para single", route: "produtores", genres: ["Trap", "Pop", "Gospel", "Funk"], objectives: ["Criar uma capa", "Montar lancamento completo"], stages: ["Tenho a musica pronta", "Tenho uma demo"] },
+  { icon: "sliders-horizontal", title: "Produtor musical", type: "Produtor musical", reason: "Direcao, mix e master para finalizar", route: "produtores", genres: ["Trap", "Rap", "R&B", "Drill"], objectives: ["Produzir uma musica", "Mixar/masterizar", "Montar lancamento completo"], stages: ["Tenho uma demo", "Tenho a musica gravada"] },
+  { icon: "list-music", title: "Curador de playlists", type: "Curador", reason: "Entrada em playlists com fit de publico", route: "produtores", genres: ["Funk", "Trap", "Pop", "Afrobeat"], objectives: ["Entrar em playlists", "Divulgar lancamento"], stages: ["Tenho a musica pronta", "Ja lancei e quero divulgar"] },
+  { icon: "megaphone", title: "Marketing musical", type: "Marketing musical", reason: "Plano de conteudo e divulgacao do lancamento", route: "produtores", genres: ["Trap", "Funk", "Pop", "Sertanejo", "Gospel"], objectives: ["Divulgar lancamento", "Montar lancamento completo"], stages: ["Tenho a musica pronta", "Ja lancei e quero divulgar"] },
+  { icon: "brain-circuit", title: "Diagnostico NEXO", type: "IA", reason: "Ordem certa para executar sem perder dinheiro", route: "ia", genres: musicQuiz.genres, objectives: ["Receber orientacao da IA", "Montar lancamento completo"], stages: musicQuiz.stages },
+];
+
+const nexoComboCatalog = [
+  { title: "Combo Beat + Capa", services: "Beatmaker + Designer", economy: "Ideal para transformar letra em single", genres: ["Trap", "Rap", "Funk", "Drill"], objectives: ["Encontrar um beat", "Criar uma capa"], vibes: ["Pesada", "Comercial"] },
+  { title: "Combo Demo pronta", services: "Produtor + Mix/master", economy: "Ideal para finalizar gravacao", genres: ["R&B", "Pop", "Gospel", "Trap"], objectives: ["Produzir uma musica", "Mixar/masterizar"], vibes: ["Melodica", "Romantica"] },
+  { title: "Combo Lancamento completo", services: "Beat + Capa + Curadoria + Marketing", economy: "O caminho mais seguro para lancar", genres: musicQuiz.genres, objectives: ["Montar lancamento completo", "Receber orientacao da IA"], vibes: musicQuiz.vibes, featured: true },
+  { title: "Combo Divulgacao", services: "Curadoria + Marketing musical", economy: "Para musica pronta ou ja lancada", genres: ["Funk", "Trap", "Pop", "Afrobeat"], objectives: ["Divulgar lancamento", "Entrar em playlists"], vibes: ["Dancante", "Comercial", "Festiva"] },
+];
+
+function normalizeToken(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function asArray(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+}
+
+function createDefaultMusicProfile(seed = {}) {
+  const profile = appState.profile || appState.onboardingProfile || {};
+  const fallbackGenres = asArray(seed.genres || profile.music_styles || profile.genres).slice(0, 4);
+  return {
+    genres: fallbackGenres.length ? fallbackGenres : ["Trap", "Drill"],
+    objective: seed.objective || profile.onboarding_goal || "Receber orientacao da IA",
+    stage: seed.stage || "So tenho uma ideia",
+    vibes: asArray(seed.vibes).length ? asArray(seed.vibes) : ["Pesada", "Melodica"],
+    references: seed.references || "",
+    budget: seed.budget || "Quero so explorar agora",
+    userType: seed.userType || accountRoleLabel?.(profile.account_role || "artista") || "Artista",
+    completed: Boolean(seed.completed),
+  };
+}
+
+function getMusicProfile() {
+  try {
+    const profile = JSON.parse(localStorage.getItem(MUSIC_PROFILE_KEY) || "null");
+    return profile && typeof profile === "object" ? profile : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function saveMusicProfile(profile) {
+  const previous = getMusicProfile();
+  const normalized = {
+    ...createDefaultMusicProfile(previous || {}),
+    ...profile,
+    genres: asArray(profile.genres).slice(0, 6),
+    vibes: asArray(profile.vibes).slice(0, 6),
+    completed: true,
+    createdAt: previous?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  appState.musicProfile = normalized;
+  localStorage.setItem(MUSIC_PROFILE_KEY, JSON.stringify(normalized));
+  localStorage.setItem(MUSIC_ONBOARDING_KEY, "true");
+  localStorage.setItem(MUSIC_RECS_KEY, JSON.stringify(buildNexoRecommendations(normalized, false)));
+  return normalized;
+}
+
+function updateMusicProfile(partial) {
+  return saveMusicProfile({ ...createDefaultMusicProfile(), ...(getMusicProfile() || {}), ...partial });
+}
+
+function hasMusicProfile() {
+  return Boolean(getMusicProfile()?.completed || localStorage.getItem(MUSIC_ONBOARDING_KEY) === "true");
+}
+
+function calculateNexoMatch(userMusicProfile, item) {
+  const profile = userMusicProfile || createDefaultMusicProfile();
+  const genres = asArray(profile.genres).map(normalizeToken);
+  const vibes = asArray(profile.vibes).map(normalizeToken);
+  const objective = normalizeToken(profile.objective);
+  const stage = normalizeToken(profile.stage);
+  const budget = normalizeToken(profile.budget);
+  const refs = normalizeToken(profile.references);
+  const itemGenres = asArray(item.genres || item.tags?.[0]).map(normalizeToken);
+  const itemVibes = asArray(item.vibes).map(normalizeToken);
+  const itemObjectives = asArray(item.objectives || item.services || item.type).map(normalizeToken);
+  const haystack = normalizeToken([item.title, item.type, item.reason, item.services, item.producer, item.name, item.category, ...(item.tags || [])].join(" "));
+  const reasons = [];
+  let score = 18;
+
+  if (itemGenres.some((genre) => genres.includes(genre))) {
+    score += 30;
+    reasons.push("combina com seu estilo");
+  }
+  if (itemVibes.some((vibe) => vibes.includes(vibe))) {
+    score += 18;
+    reasons.push("bate com a vibe escolhida");
+  }
+  if (itemObjectives.some((entry) => objective.includes(entry) || entry.includes(objective))) {
+    score += 18;
+    reasons.push("serve para seu objetivo atual");
+  }
+  if (refs && refs.split(/\s+/).some((word) => word.length > 3 && haystack.includes(word))) {
+    score += 12;
+    reasons.push("dialoga com suas referencias");
+  }
+  if ((stage.includes("pronta") || stage.includes("lancei")) && /marketing|curador|playlist/.test(haystack)) score += 14;
+  if ((stage.includes("demo") || stage.includes("gravada")) && /produtor|mix|master/.test(haystack)) score += 14;
+  if (budget.includes("baixo") && !haystack.includes("exclusiv")) score += 5;
+  if (budget.includes("alto") && (haystack.includes("completo") || haystack.includes("premium"))) score += 8;
+  if (item.verified || item.rating || item.sales) score += 6;
+
+  const finalScore = Math.max(28, Math.min(99, Math.round(score)));
+  return {
+    score: finalScore,
+    label: finalScore >= 82 ? "Match alto" : finalScore >= 62 ? "Bom match" : "Match inicial",
+    reasons: reasons.length ? reasons.slice(0, 3) : ["boa porta de entrada para seu perfil"],
+  };
+}
+
+function withMatch(profile, item) {
+  return { ...item, match: calculateNexoMatch(profile, item) };
+}
+
+function getRecommendedPlaylists(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return nexoPlaylistCatalog.map((item) => withMatch(baseProfile, item)).sort((a, b) => b.match.score - a.match.score).slice(0, 6);
+}
+
+function getRecommendedProfessionals(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return professionalProfiles
+    .map((item) => withMatch(baseProfile, { ...item, type: item.category, title: item.name, genres: item.tags, vibes: item.tags, objectives: [item.category, item.specialty], verified: true }))
+    .sort((a, b) => b.match.score - a.match.score)
+    .slice(0, 6);
+}
+
+function getRecommendedServices(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return nexoServiceCatalog.map((item) => withMatch(baseProfile, item)).sort((a, b) => b.match.score - a.match.score).slice(0, 6);
+}
+
+function getRecommendedCombos(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return nexoComboCatalog.map((item) => withMatch(baseProfile, item)).sort((a, b) => b.match.score - a.match.score).slice(0, 3);
+}
+
+function getNextStepActions(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  const objective = normalizeToken(baseProfile.objective);
+  const stage = normalizeToken(baseProfile.stage);
+  const actions = [["brain-circuit", "Gerar diagnostico NEXO", "Receba um plano em ordem de execucao.", "ia"]];
+  if (objective.includes("beat") || stage.includes("letra") || stage.includes("ideia")) actions.push(["audio-lines", "Encontrar beat ideal", "Beats com match para sua voz e vibe.", "explorar"]);
+  if (objective.includes("capa") || objective.includes("completo")) actions.push(["palette", "Criar capa", "Designers alinhados ao seu lancamento.", "produtores"]);
+  if (objective.includes("mix") || stage.includes("demo") || stage.includes("gravada")) actions.push(["sliders-horizontal", "Finalizar som", "Producao, mix e masterizacao.", "produtores"]);
+  if (objective.includes("divulgar") || objective.includes("playlist") || stage.includes("lancei")) actions.push(["megaphone", "Divulgar agora", "Curadoria e marketing musical.", "produtores"]);
+  actions.push(["user-round", "Editar perfil musical", "Ajuste estilos, vibe e orcamento.", "perfil"]);
+  return actions.slice(0, 4);
+}
+
+function buildNexoRecommendations(profile = getMusicProfile(), persist = true) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  const result = {
+    profile: baseProfile,
+    playlists: getRecommendedPlaylists(baseProfile),
+    professionals: getRecommendedProfessionals(baseProfile),
+    services: getRecommendedServices(baseProfile),
+    combos: getRecommendedCombos(baseProfile),
+    nextSteps: getNextStepActions(baseProfile),
+    updatedAt: new Date().toISOString(),
+  };
+  if (persist) localStorage.setItem(MUSIC_RECS_KEY, JSON.stringify(result));
+  return result;
+}
+
+function musicProfileSummary(profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  return `${asArray(baseProfile.genres).slice(0, 3).join(", ")} - ${asArray(baseProfile.vibes).slice(0, 2).join(", ")}`;
+}
+
+function quizCtaCard() {
+  return `<button class="quick-action-card nexo-profile-cta" type="button" data-action="start-nexo-match">
+    <i data-lucide="sparkles"></i>
+    <strong>Personalize sua experiencia com a NEXO</strong>
+    <span>Responda um quiz rapido para receber playlists, profissionais e combos com match.</span>
+  </button>`;
+}
+
 function quickActionCard([icon, title, desc, route]) {
   return `<a class="quick-action-card" href="#${route}" data-route="${route}">
     <i data-lucide="${icon}"></i>
@@ -535,6 +752,7 @@ function nexoRecommendationCard(item) {
     <span>${item.type}</span>
     <strong>${item.title}</strong>
     <p>${item.reason}</p>
+    ${item.match ? `<small class="match-score">${item.match.label} - ${item.match.score}%</small><ul class="match-reasons">${item.match.reasons.map((reason) => `<li>${reason}</li>`).join("")}</ul>` : ""}
     <a href="#${item.route}" data-route="${item.route}">Abrir <i data-lucide="arrow-right"></i></a>
   </article>`;
 }
@@ -557,6 +775,55 @@ function smartComboCard([title, services, economy], index) {
     <small>${economy}</small>
     <button type="button" data-action="ai-chip" data-prompt="Quero montar o ${title.toLowerCase()} para meu lançamento.">Montar combo</button>
   </article>`;
+}
+
+function smartComboCard(input, index) {
+  const item = Array.isArray(input) ? { title: input[0], services: input[1], economy: input[2], featured: index === 2 } : input;
+  return `<article class="smart-combo-card ${item.featured ? "is-featured" : ""}">
+    <span>${item.featured ? "Mais completo" : item.match ? `${item.match.score}% match` : "Combo inteligente"}</span>
+    <strong>${item.title}</strong>
+    <p>${item.services}</p>
+    <small>${item.match ? item.match.reasons[0] : item.economy}</small>
+    <button type="button" data-action="ai-chip" data-prompt="Quero montar o ${item.title.toLowerCase()} para meu lancamento.">Montar combo</button>
+  </article>`;
+}
+
+function professionalMatchCard(profile) {
+  return `<article class="featured-professional-card match-professional-card">
+    <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+    <div>
+      <strong>${profile.name}<i data-lucide="badge-check"></i></strong>
+      <span>${profile.category} - ${profile.match.label} (${profile.match.score}%)</span>
+      <small>${profile.match.reasons[0]}</small>
+    </div>
+    <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
+  </article>`;
+}
+
+function musicProfilePanel(profile = getMusicProfile()) {
+  const current = profile || createDefaultMusicProfile();
+  const checked = (name, value) => asArray(current[name]).includes(value) ? "checked" : "";
+  const selected = (name, value) => current[name] === value ? "selected" : "";
+  return `<section class="music-profile-panel">
+    <div class="music-profile-copy">
+      <span><i data-lucide="sparkles"></i>Meu perfil musical</span>
+      <h2>NEXO Match</h2>
+      <p>${hasMusicProfile() ? `Recomendacoes baseadas em ${musicProfileSummary(current)}.` : "Personalize sua experiencia para destravar recomendacoes reais."}</p>
+      <button type="button" data-action="start-nexo-match">${hasMusicProfile() ? "Refazer quiz" : "Comecar quiz"}</button>
+    </div>
+    <form class="music-profile-form">
+      <div class="music-profile-form-grid">
+        <label>Objetivo<select name="objective">${musicQuiz.objectives.map((item) => `<option ${selected("objective", item)}>${item}</option>`).join("")}</select></label>
+        <label>Fase<select name="stage">${musicQuiz.stages.map((item) => `<option ${selected("stage", item)}>${item}</option>`).join("")}</select></label>
+        <label>Orcamento<select name="budget">${musicQuiz.budgets.map((item) => `<option ${selected("budget", item)}>${item}</option>`).join("")}</select></label>
+        <label>Tipo<select name="userType">${musicQuiz.userTypes.map((item) => `<option ${selected("userType", item)}>${item}</option>`).join("")}</select></label>
+      </div>
+      <div class="music-chip-group"><strong>Estilos</strong>${musicQuiz.genres.slice(0, 12).map((item) => `<label><input type="checkbox" name="genres" value="${item}" ${checked("genres", item)}>${item}</label>`).join("")}</div>
+      <div class="music-chip-group"><strong>Vibes</strong>${musicQuiz.vibes.map((item) => `<label><input type="checkbox" name="vibes" value="${item}" ${checked("vibes", item)}>${item}</label>`).join("")}</div>
+      <label class="music-profile-wide">Referencias<input name="references" value="${current.references || ""}" placeholder="Ex: Ryu, Veigh, Travis Scott, funk 150..."></label>
+      <button class="seller-submit" type="submit">Salvar perfil musical<i data-lucide="arrow-right"></i></button>
+    </form>
+  </section>`;
 }
 
 function featuredProfessionalCard(name, index) {
@@ -588,13 +855,32 @@ function renderHomeDashboard() {
   const featured = document.querySelector("#featuredCatalogPreview");
   const professionals = document.querySelector("#featuredProfessionals");
   const activity = document.querySelector("#recentActivity");
+  const profile = getMusicProfile();
+  const hasProfile = hasMusicProfile();
+  const recs = buildNexoRecommendations(profile || createDefaultMusicProfile());
+  const setText = (id, title, subtitle) => {
+    const head = document.querySelector(`#${id}`);
+    const copy = head?.closest(".section-head")?.querySelector("p");
+    if (head) head.innerHTML = title;
+    if (copy) copy.textContent = subtitle;
+  };
 
-  if (quick) quick.innerHTML = (activeRoleKey() === "beatmaker" ? beatmakerQuickActions : quickActions).map(quickActionCard).join("");
-  if (recommendations) recommendations.innerHTML = nexoRecommendations.slice(0, 6).map(nexoRecommendationCard).join("");
+  if (hasProfile) {
+    setText("featuredPreviewTitle", `<i data-lucide="list-music"></i>Playlists para seu estilo`, `NEXO Match baseado em ${musicProfileSummary(profile)}`);
+    setText("quickActionsTitle", `<i data-lucide="zap"></i>Seu proximo passo`, profile.objective || "Ordem sugerida pela NEXO");
+    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>Recomendado pela NEXO`, "Profissionais e servicos com maior match para voce");
+    setText("smartCombosTitle", `<i data-lucide="boxes"></i>Combos inteligentes`, "Pacotes montados para sua fase atual");
+    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, "Perfis verificados com fit para seu projeto");
+  } else {
+    setText("quickActionsTitle", `<i data-lucide="zap"></i>Personalize sua experiencia`, "Responda o quiz e desbloqueie recomendacoes reais");
+  }
+
+  if (quick) quick.innerHTML = hasProfile ? recs.nextSteps.map(quickActionCard).join("") : [quizCtaCard(), ...(activeRoleKey() === "beatmaker" ? beatmakerQuickActions : quickActions).slice(0, 3).map(quickActionCard)].join("");
+  if (recommendations) recommendations.innerHTML = (hasProfile ? recs.services : nexoRecommendations).slice(0, 6).map(nexoRecommendationCard).join("");
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
-  if (combos) combos.innerHTML = smartCombos.map(smartComboCard).join("");
-  if (featured) featured.innerHTML = preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
-  if (professionals) professionals.innerHTML = avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
+  if (combos) combos.innerHTML = (hasProfile ? recs.combos : smartCombos).map(smartComboCard).join("");
+  if (featured) featured.innerHTML = hasProfile ? recs.playlists.map(playlistCard).join("") : preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
+  if (professionals) professionals.innerHTML = hasProfile ? recs.professionals.map(professionalMatchCard).join("") : avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
   if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
 }
 
@@ -1542,6 +1828,68 @@ function applyFeedPersonalization() {
   lucide.createIcons();
 }
 
+function quizOptions(name, options, current = [], type = "checkbox") {
+  const values = asArray(current);
+  return options.map((option, index) => `<label class="nexo-quiz-option">
+    <input type="${type}" name="${name}" value="${option}" ${type === "radio" ? (values[0] === option || (!values.length && index === 0) ? "checked" : "") : values.includes(option) ? "checked" : ""}>
+    <span>${option}</span>
+  </label>`).join("");
+}
+
+function musicPreferenceQuizMarkup(profile = getMusicProfile()) {
+  const current = profile || createDefaultMusicProfile();
+  return `<section class="nexo-match-modal" role="dialog" aria-modal="true" aria-labelledby="nexoMatchTitle">
+    <div class="nexo-match-shell">
+      <button class="modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i data-lucide="x"></i></button>
+      <div class="nexo-match-intro">
+        <span><i data-lucide="sparkles"></i>NEXO Match</span>
+        <h2 id="nexoMatchTitle">Personalize sua experiencia musical.</h2>
+        <p>Responda rapido para a ANSEND adaptar playlists, profissionais, servicos e combos ao seu momento.</p>
+      </div>
+      <form class="nexo-match-form">
+        <fieldset><legend>1. Qual estilo musical mais combina com voce?</legend><div class="nexo-quiz-grid">${quizOptions("genres", musicQuiz.genres, current.genres)}</div></fieldset>
+        <fieldset><legend>2. Qual e seu objetivo agora?</legend><div class="nexo-quiz-grid">${quizOptions("objective", musicQuiz.objectives, [current.objective], "radio")}</div></fieldset>
+        <fieldset><legend>3. Em qual fase sua musica esta?</legend><div class="nexo-quiz-grid compact">${quizOptions("stage", musicQuiz.stages, [current.stage], "radio")}</div></fieldset>
+        <fieldset><legend>4. Qual vibe voce procura?</legend><div class="nexo-quiz-grid">${quizOptions("vibes", musicQuiz.vibes, current.vibes)}</div></fieldset>
+        <fieldset><legend>5. Referencias</legend><textarea name="references" rows="3" placeholder="Ex: Ryu, Travis Scott, Veigh, funk 150, beat triste...">${current.references || ""}</textarea></fieldset>
+        <fieldset><legend>6. Qual e seu orcamento?</legend><div class="nexo-quiz-grid compact">${quizOptions("budget", musicQuiz.budgets, [current.budget], "radio")}</div></fieldset>
+        <fieldset><legend>7. Qual tipo de usuario voce e?</legend><div class="nexo-quiz-grid compact">${quizOptions("userType", musicQuiz.userTypes, [current.userType], "radio")}</div></fieldset>
+        <div class="nexo-match-footer">
+          <button class="skip-onboarding" type="button" data-action="skip-nexo-match">Usar perfil inicial</button>
+          <button class="finish-onboarding" type="submit">Salvar e recomendar<i data-lucide="arrow-right"></i></button>
+        </div>
+      </form>
+    </div>
+  </section>`;
+}
+
+function showMusicPreferenceQuiz(force = false) {
+  if (!force && hasMusicProfile()) return;
+  document.querySelector(".nexo-match-modal")?.remove();
+  document.body.insertAdjacentHTML("beforeend", musicPreferenceQuizMarkup());
+  document.body.classList.add("onboarding-open");
+  lucide.createIcons();
+}
+
+function closeMusicPreferenceQuiz() {
+  document.body.classList.remove("onboarding-open");
+  document.querySelector(".nexo-match-modal")?.remove();
+}
+
+function profileFromForm(form) {
+  const genres = [...form.querySelectorAll('input[name="genres"]:checked')].map((input) => input.value);
+  const vibes = [...form.querySelectorAll('input[name="vibes"]:checked')].map((input) => input.value);
+  return {
+    genres: genres.length ? genres : ["Trap"],
+    objective: form.querySelector('input[name="objective"]:checked')?.value || form.elements.objective?.value || "Receber orientacao da IA",
+    stage: form.querySelector('input[name="stage"]:checked')?.value || form.elements.stage?.value || "So tenho uma ideia",
+    vibes: vibes.length ? vibes : ["Pesada"],
+    references: form.elements.references?.value?.trim() || "",
+    budget: form.querySelector('input[name="budget"]:checked')?.value || form.elements.budget?.value || "Quero so explorar agora",
+    userType: form.querySelector('input[name="userType"]:checked')?.value || form.elements.userType?.value || "Artista",
+  };
+}
+
 function onboardingMarkup() {
   return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
     <div class="onboarding-shell">
@@ -1639,7 +1987,10 @@ function onboardingMarkup() {
 
 function showOnboarding(force = false) {
   if (!hasAccountAccess()) return;
-  if (!force && appState.onboardingProfile?.completed) return;
+  if (!force && appState.onboardingProfile?.completed) {
+    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
+    return;
+  }
   document.querySelector(".onboarding-quiz")?.remove();
   document.body.insertAdjacentHTML("beforeend", onboardingMarkup());
   document.body.classList.add("onboarding-open");
@@ -2030,6 +2381,8 @@ function renderProfile() {
       <article><span>Beats</span><strong>${beats}</strong><small>licencas de beat</small></article>
       <article><span>Musicas</span><strong>${musicas}</strong><small>faixas autorais</small></article>
     </div>
+
+    ${musicProfilePanel()}
 
     <div class="profile-workspace">
       <form class="profile-catalog-form">
@@ -2495,6 +2848,7 @@ async function handleAccountSubmit(form) {
     setLocalPreviewProfile(profile);
     showToast("Conta criada em modo preview. Conecte a key para salvar no Supabase.", "cloud-off");
     renderRoute();
+    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
     return;
   }
 
@@ -2510,6 +2864,7 @@ async function handleAccountSubmit(form) {
       await loadCatalogItems();
       showToast("Login realizado com Supabase", "cloud-check");
       renderRoute();
+      if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
       return;
     }
 
@@ -2536,6 +2891,7 @@ async function handleAccountSubmit(form) {
       showToast("Conta criada. Confirme seu e-mail para finalizar o perfil.", "mail-check");
     }
     renderRoute();
+    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
   } catch (error) {
     showToast(error.message || "Não foi possível concluir a autenticação", "triangle-alert");
   } finally {
@@ -2586,6 +2942,7 @@ document.addEventListener("click", (event) => {
   const action = target.dataset.action;
   if (action === "close-modal") {
     closeModal();
+    closeMusicPreferenceQuiz();
     return;
   }
   if (action === "seller") {
@@ -2595,6 +2952,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "skip-onboarding") {
     persistOnboarding({ completed: true, account_role: "artista", userType: "artista", roleLabel: "Artista", styles: ["trap", "drill"], genres: ["Trap", "Drill", "Type Beat"], goal: "descobrir", goalLabel: "Descobrir produtores" });
+    saveMusicProfile(createDefaultMusicProfile({ completed: true }));
     closeOnboarding();
     if (currentRoute() === "feed") {
       renderRoute();
@@ -2603,7 +2961,18 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "restart-onboarding") {
-    showOnboarding(true);
+    showMusicPreferenceQuiz(true);
+    return;
+  }
+  if (action === "start-nexo-match") {
+    showMusicPreferenceQuiz(true);
+    return;
+  }
+  if (action === "skip-nexo-match") {
+    saveMusicProfile(createDefaultMusicProfile({ completed: true }));
+    closeMusicPreferenceQuiz();
+    renderRoute();
+    showToast("Perfil musical inicial criado pela NEXO", "sparkles");
     return;
   }
   if (action === "seller-mode") {
@@ -2780,6 +3149,23 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const nexoMatchForm = event.target.closest(".nexo-match-form");
+  if (nexoMatchForm) {
+    event.preventDefault();
+    const profile = saveMusicProfile(profileFromForm(nexoMatchForm));
+    closeMusicPreferenceQuiz();
+    renderRoute();
+    showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
+    return;
+  }
+  const musicForm = event.target.closest(".music-profile-form");
+  if (musicForm) {
+    event.preventDefault();
+    const profile = saveMusicProfile(profileFromForm(musicForm));
+    renderRoute();
+    showToast(`Perfil musical atualizado: ${musicProfileSummary(profile)}`, "sparkles");
+    return;
+  }
   const aiForm = event.target.closest(".ai-diagnostic-form");
   if (aiForm) {
     event.preventDefault();
@@ -2816,6 +3202,7 @@ document.addEventListener("submit", async (event) => {
       updatedAt: new Date().toISOString(),
     });
     closeOnboarding();
+    if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
     if (currentRoute() === "feed") renderRoute();
     showToast("Sua dashboard NEXO foi adaptada", "sparkles");
     return;

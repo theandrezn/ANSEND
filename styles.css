@@ -7995,3 +7995,271 @@ body.modal-open {
 .feed .ai-hero .an-hero-copy h1 strong {
   display: block;
 }
+
+.match-pill,
+.match-score {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 106, 0, .28);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #ff8a00;
+  background: rgba(255, 106, 0, .08);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.playlist-card .match-pill {
+  position: absolute;
+  left: 22px;
+  bottom: 58px;
+  z-index: 3;
+  max-width: calc(100% - 44px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-reasons {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.match-reasons li::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  vertical-align: middle;
+}
+
+.nexo-profile-cta {
+  min-height: 148px;
+  border-color: rgba(255, 106, 0, .55);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 106, 0, .2), transparent 36%),
+    linear-gradient(135deg, rgba(255, 106, 0, .1), rgba(8, 6, 4, .96));
+}
+
+.match-professional-card {
+  align-items: center;
+}
+
+.match-professional-card small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nexo-match-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, .82);
+  backdrop-filter: blur(18px);
+  overflow-y: auto;
+}
+
+.nexo-match-shell {
+  position: relative;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
+  border: 1px solid rgba(255, 106, 0, .28);
+  border-radius: 28px;
+  padding: clamp(22px, 3vw, 42px);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(255, 106, 0, .18), transparent 32%),
+    linear-gradient(135deg, #0b0806, #000 58%, #120804);
+  box-shadow: 0 30px 110px rgba(0, 0, 0, .78), 0 0 70px rgba(255, 106, 0, .14);
+}
+
+.nexo-match-shell .modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
+.nexo-match-intro {
+  max-width: 640px;
+  margin-bottom: 26px;
+}
+
+.nexo-match-intro span,
+.music-profile-copy span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.nexo-match-intro h2,
+.music-profile-copy h2 {
+  margin: 10px 0;
+  color: var(--text);
+  font-size: clamp(30px, 4vw, 54px);
+  line-height: .95;
+}
+
+.nexo-match-intro p,
+.music-profile-copy p {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.nexo-match-form {
+  display: grid;
+  gap: 18px;
+}
+
+.nexo-match-form fieldset {
+  margin: 0;
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(8, 6, 4, .74);
+}
+
+.nexo-match-form legend {
+  padding-inline: 8px;
+  color: #fff;
+  font-weight: 900;
+}
+
+.nexo-quiz-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.nexo-quiz-option input,
+.music-chip-group input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nexo-quiz-option span,
+.music-chip-group label {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  border: 1px solid rgba(255, 106, 0, .22);
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, .52);
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.nexo-quiz-option input:checked + span,
+.music-chip-group label:has(input:checked) {
+  border-color: rgba(255, 138, 0, .78);
+  color: #fff;
+  background: rgba(255, 106, 0, .16);
+  box-shadow: 0 0 24px rgba(255, 106, 0, .12);
+}
+
+.nexo-match-form textarea,
+.music-profile-form input,
+.music-profile-form select {
+  width: 100%;
+  border: 1px solid rgba(255, 106, 0, .22);
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: #fff;
+  background: rgba(0, 0, 0, .55);
+  outline: none;
+}
+
+.nexo-match-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.music-profile-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, .75fr) minmax(0, 1.6fr);
+  gap: 22px;
+  border: 1px solid rgba(255, 106, 0, .22);
+  border-radius: 24px;
+  padding: clamp(18px, 2.4vw, 28px);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 106, 0, .16), transparent 34%),
+    linear-gradient(135deg, rgba(8, 6, 4, .95), rgba(0, 0, 0, .95));
+}
+
+.music-profile-copy button {
+  border: 1px solid rgba(255, 106, 0, .52);
+  border-radius: 999px;
+  padding: 12px 16px;
+  color: #fff;
+  background: rgba(255, 106, 0, .12);
+  font-weight: 900;
+}
+
+.music-profile-form,
+.music-profile-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.music-profile-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.music-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.music-chip-group strong {
+  flex: 0 0 100%;
+  color: #fff;
+}
+
+.music-profile-wide {
+  display: grid;
+  gap: 8px;
+  color: #fff;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .music-profile-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .music-profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nexo-match-modal {
+    padding: 14px;
+  }
+}
