@@ -446,6 +446,7 @@ function applyTranslations(root = document) {
       items.forEach((item, index) => setIconText(item, showcaseItems[index] || item.textContent));
     }
   }
+  applyLocaleTextOverrides(root);
 }
 
 function setIconText(element, text) {
@@ -476,6 +477,407 @@ function languageSwitcherInnerHtml() {
 
 function languageSwitcherMarkup() {
   return `<div class="language-switcher inline-language-switcher" aria-label="Language">${languageSwitcherInnerHtml()}</div>`;
+}
+
+const englishTextPairs = [
+  ["In\u00edcio", "Home"],
+  ["Feed", "Home"],
+  ["NEXO IA", "NEXO AI"],
+  ["Explorar", "Explore"],
+  ["Favoritos", "Favorites"],
+  ["Pedidos", "Orders"],
+  ["Minhas compras", "Orders"],
+  ["Biblioteca", "Library"],
+  ["Profissionais", "Professionals"],
+  ["Meu perfil", "My profile"],
+  ["Configura\u00e7\u00f5es", "Settings"],
+  ["Conta", "Account"],
+  ["Carrinho", "Cart"],
+  ["Notifica\u00e7\u00f5es", "Notifications"],
+  ["Buscar servi\u00e7os, artistas ou profissionais", "Search services, artists, or professionals"],
+  ["Buscar beats, artistas, servi\u00e7os, BPM ou vibe", "Search beats, artists, services, BPM, or vibe"],
+  ["Buscar beats, artistas, BPM ou vibe", "Search beats, artists, BPM, or vibe"],
+  ["O marketplace inteligente da m\u00fasica", "The intelligent music marketplace"],
+  ["ANSEND | O marketplace inteligente da m\u00fasica", "ANSEND | The intelligent music marketplace"],
+  ["O que podemos lan\u00e7ar hoje?", "What can we release today?"],
+  ["Tenho uma ideia musical e preciso transformar em lan\u00e7amento profissional.", "I have a music idea and need to turn it into a professional release."],
+  ["Ex: Tenho uma m\u00fasica de trap pronta e preciso lan\u00e7ar profissionalmente...", "Ex: I have a finished trap song and need to release it professionally..."],
+  ["Lan\u00e7amento", "Release"],
+  ["Criar Capa (Design)", "Create Cover (Design)"],
+  ["Finalizar Demo (Mix/Master)", "Finish Demo (Mix/Master)"],
+  ["Divulgar Lan\u00e7amento", "Promote Release"],
+  ["Encontrar Beatmaker", "Find Beatmaker"],
+  ["Plano de Lan\u00e7amento", "Release Plan"],
+  ["NEXO IA Ativa", "NEXO AI Active"],
+  ["Confian\u00e7a Alta", "High Confidence"],
+  ["Licen\u00e7a Premium", "Premium License"],
+  ["IA MUSICAL ANSEND", "ANSEND MUSIC AI"],
+  ["Entre com uma ideia.", "Enter with an idea."],
+  ["Saia com uma solu\u00e7\u00e3o.", "Leave with a solution."],
+  ["Diagn\u00f3stico Musical IA", "AI Music Diagnostic"],
+  ["Diagn\u00f3stico Musical NEXO IA", "NEXO AI Music Diagnostic"],
+  ["Conte sua ideia e receba uma ordem clara de execu\u00e7\u00e3o.", "Share your idea and get a clear execution order."],
+  ["Tenho uma ideia", "I have an idea"],
+  ["Tenho uma letra", "I have lyrics"],
+  ["Tenho uma demo", "I have a demo"],
+  ["Quero lan\u00e7ar", "I want to release"],
+  ["Preciso divulgar", "I need promotion"],
+  ["Gerar meu plano", "Generate my plan"],
+  ["Explorar servi\u00e7os", "Explore services"],
+  ["Explorar profissionais", "Explore professionals"],
+  ["Ver profissionais", "View professionals"],
+  ["Pagamento protegido", "Protected payment"],
+  ["Profissionais avaliados", "Rated professionals"],
+  ["Recomenda\u00e7\u00f5es por IA", "AI recommendations"],
+  ["MAPA DO LAN\u00c7AMENTO", "RELEASE MAP"],
+  ["Mapa do lan\u00e7amento", "Release map"],
+  ["Produ\u00e7\u00e3o", "Production"],
+  ["Capa", "Cover"],
+  ["Distribui\u00e7\u00e3o", "Distribution"],
+  ["Curadoria", "Curation"],
+  ["Divulga\u00e7\u00e3o", "Promotion"],
+  ["Pr\u00e9via do plano", "Plan preview"],
+  ["Beatmaker recomendado", "Recommended beatmaker"],
+  ["Designer recomendado", "Recommended designer"],
+  ["Produtor musical", "Music producer"],
+  ["Curador", "Curator"],
+  ["Marketing musical", "Music marketing"],
+  ["Cat\u00e1logos em alta", "Trending catalogs"],
+  ["Beats, packs e refer\u00eancias subindo agora na ANSEND.", "Beats, packs, and references rising now on ANSEND."],
+  ["Ver cat\u00e1logo completo", "View full catalog"],
+  ["Qual seu pr\u00f3ximo passo?", "What is your next step?"],
+  ["Escolha uma a\u00e7\u00e3o e a ANSEND guia o caminho certo.", "Choose an action and ANSEND guides the right path."],
+  ["Subir beat", "Upload beat"],
+  ["Criar pack", "Create pack"],
+  ["Ajustar pre\u00e7os", "Adjust prices"],
+  ["Ver artistas com match", "View matching artists"],
+  ["Publique um beat com tags e licen\u00e7as.", "Publish a beat with tags and licenses."],
+  ["Agrupe beats por vibe, BPM e pre\u00e7o.", "Group beats by vibe, BPM, and price."],
+  ["Revise licen\u00e7as e valores sugeridos.", "Review suggested licenses and prices."],
+  ["Encontre compradores com fit sonoro.", "Find buyers with sonic fit."],
+  ["Recomendado pela NEXO", "Recommended by NEXO"],
+  ["Seis sugest\u00f5es principais para resolver seu lan\u00e7amento agora.", "Six key suggestions to solve your release now."],
+  ["Explore por categoria", "Explore by category"],
+  ["Os cinco pilares do marketplace musical da ANSEND.", "The five pillars of the ANSEND music marketplace."],
+  ["Combos para acelerar seu lan\u00e7amento", "Combos to accelerate your release"],
+  ["Pacotes inteligentes para sair da ideia at\u00e9 a divulga\u00e7\u00e3o.", "Smart packages from idea to promotion."],
+  ["Produtores em destaque", "Featured producers"],
+  ["Profissionais recomendados", "Recommended professionals"],
+  ["Perfis verificados para seguir", "Verified profiles to follow"],
+  ["Perfis verificados com fit para seu projeto", "Verified profiles that fit your project"],
+  ["Top produtores", "Top producers"],
+  ["Ver todos", "View all"],
+  ["Ver tudo", "View all"],
+  ["Ver mais", "See more"],
+  ["Lista recente", "Recent list"],
+  ["Ranking de faixas adicionadas agora", "Ranking of tracks added now"],
+  ["Beats escolhidos pra voc\u00ea", "Beats picked for you"],
+  ["Recomenda\u00e7\u00f5es moldadas para sua pr\u00f3xima m\u00fasica", "Recommendations shaped for your next song"],
+  ["Playlists para seu estilo", "Playlists for your style"],
+  ["Curadoria baseada no seu gosto musical", "Curation based on your musical taste"],
+  ["Abrir", "Open"],
+  ["Abrir pack", "Open pack"],
+  ["Abrir playlist", "Open playlist"],
+  ["Tocar", "Play"],
+  ["Tocar pack", "Play pack"],
+  ["Pausar", "Pause"],
+  ["Licen\u00e7a", "License"],
+  ["Comprar licen\u00e7a", "Buy license"],
+  ["Escolher licen\u00e7a", "Choose license"],
+  ["Contratar", "Hire"],
+  ["Ver perfil", "View profile"],
+  ["Seguir", "Follow"],
+  ["Baixar", "Download"],
+  ["Compartilhar", "Share"],
+  ["Favoritar", "Favorite"],
+  ["Remover", "Remove"],
+  ["Adicionar", "Add"],
+  ["Salvar", "Save"],
+  ["Editar", "Edit"],
+  ["Loop", "Loop"],
+  ["Letras", "Lyrics"],
+  ["Volume", "Volume"],
+  ["Fila", "Queue"],
+  ["Fechar player", "Close player"],
+  ["Ajustar tempo da m\u00fasica", "Adjust song time"],
+  ["Faixa anterior", "Previous track"],
+  ["Pr\u00f3xima faixa", "Next track"],
+  ["Favoritar beat atual", "Favorite current beat"],
+  ["Adicionar ao carrinho", "Add to cart"],
+  ["Finalizar pedido", "Complete order"],
+  ["Checkout seguro ANSEND", "Secure ANSEND checkout"],
+  ["Pagamento simulado em ambiente preview. Pedido fica salvo na aba Pedidos.", "Simulated payment in preview mode. The order is saved in Orders."],
+  ["Revise seus beats e finalize seu pedido.", "Review your beats and complete your order."],
+  ["INFORMA\u00c7\u00d5ES DE COBRAN\u00c7A E LICENCIAMENTO", "BILLING AND LICENSING INFORMATION"],
+  ["Adicionar info", "Add info"],
+  ["Resumo do carrinho", "Cart summary"],
+  ["Compartilhar carrinho", "Share cart"],
+  ["Total de itens", "Items total"],
+  ["Taxa de servi\u00e7o", "Service fee"],
+  ["Continuar como visitante.", "Continue as guest."],
+  ["Entrar", "Sign in"],
+  ["Criar conta", "Sign up"],
+  ["Prosseguir para checkout", "Proceed to checkout"],
+  ["Adicione mais 1 TRACK para ativar a promo\u00e7\u00e3o de Compre 1 e Leve 2!", "Add 1 more track to activate the Buy 1 Get 2 promotion!"],
+  ["Promovidos", "Promoted"],
+  ["Seu carrinho est\u00e1 vazio", "Your cart is empty"],
+  ["Adicione beats ou servi\u00e7os ao carrinho para finalizar seu pedido.", "Add beats or services to your cart to complete your order."],
+  ["Nenhum pedido ainda", "No orders yet"],
+  ["Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.", "When you buy a license or hire a service, it will appear here."],
+  ["Sua lista est\u00e1 vazia", "Your list is empty"],
+  ["Favorite beats no feed para encontr\u00e1-los aqui.", "Favorite beats in the feed to find them here."],
+  ["Nenhum beat encontrado", "No beat found"],
+  ["Tente outro nome, g\u00eanero ou BPM.", "Try another name, genre, or BPM."],
+  ["Entrar na sua conta", "Sign in to your account"],
+  ["Crie sua conta ANSEND", "Create your ANSEND account"],
+  ["Acesse playlists, compras, favoritos e recomendacoes adaptadas a sua funcao.", "Access playlists, orders, favorites, and recommendations adapted to your role."],
+  ["Escolha sua funcao para montar uma experiencia personalizada.", "Choose your role to build a personalized experience."],
+  ["Nome completo", "Full name"],
+  ["Seu nome completo", "Your full name"],
+  ["Nome art\u00edstico ou marca", "Artist name or brand"],
+  ["Ex: Viana Beats", "Ex: Viana Beats"],
+  ["Senha", "Password"],
+  ["Sua senha", "Your password"],
+  ["Entrar no painel", "Enter dashboard"],
+  ["Continuar com Google", "Continue with Google"],
+  ["Ainda nao tem conta?", "Do not have an account yet?"],
+  ["Ja tem conta?", "Already have an account?"],
+  ["Artista", "Artist"],
+  ["Sou artista", "I'm an artist"],
+  ["Sou beatmaker", "I'm a beatmaker"],
+  ["Sou designer", "I'm a designer"],
+  ["Produtor Musical", "Music Producer"],
+  ["Sou produtor musical", "I'm a music producer"],
+  ["Sou curador", "I'm a curator"],
+  ["Marketing Musical", "Music Marketing"],
+  ["Trabalho com marketing musical", "I work with music marketing"],
+  ["Produtor", "Producer"],
+  ["Manager", "Manager"],
+  ["Selo", "Label"],
+  ["Publica beats, gerencia licen\u00e7as e acompanha vendas.", "Publishes beats, manages licenses, and tracks sales."],
+  ["Monta playlists, salva cat\u00e1logos e encontra novos sons.", "Builds playlists, saves catalogs, and discovers new sounds."],
+  ["Busca beats para gravar, licenciar e lan\u00e7ar m\u00fasicas.", "Finds beats to record, license, and release songs."],
+  ["Organiza capas, identidade visual e assets de lan\u00e7amento.", "Organizes covers, visual identity, and release assets."],
+  ["Cria beats, colabora com produtores e sobe cat\u00e1logos.", "Creates beats, collaborates with producers, and uploads catalogs."],
+  ["Gerencia artistas, compras, contratos e lan\u00e7amentos.", "Manages artists, purchases, contracts, and releases."],
+  ["Opera cat\u00e1logo, talentos e licen\u00e7as em escala.", "Operates catalogs, talent, and licenses at scale."],
+  ["Quero transformar ideias, letras ou demos em lancamentos.", "I want to turn ideas, lyrics, or demos into releases."],
+  ["Quero vender beats, organizar packs e encontrar artistas.", "I want to sell beats, organize packs, and find artists."],
+  ["Quero vender capas, identidade visual e artes para lancamentos.", "I want to sell covers, visual identity, and release artwork."],
+  ["Quero mixar, masterizar, produzir e receber projetos.", "I want to mix, master, produce, and receive projects."],
+  ["Quero montar playlists, selecionar sons e descobrir talentos.", "I want to build playlists, select sounds, and discover talent."],
+  ["Quero criar campanhas, divulgar artistas e medir resultados.", "I want to create campaigns, promote artists, and measure results."],
+  ["Venda beats, organize licen\u00e7as e acompanhe downloads em tempo real.", "Sell beats, organize licenses, and track downloads in real time."],
+  ["Licen\u00e7as seguras", "Secure licenses"],
+  ["Cat\u00e1logo profissional", "Professional catalog"],
+  ["Entrega imediata", "Instant delivery"],
+  ["Venda seus beats", "Sell your beats"],
+  ["Abra sua loja", "Open your store"],
+  ["Come\u00e7ar", "Start"],
+  ["Central ANSEND", "ANSEND Center"],
+  ["Encontre informa\u00e7\u00f5es sobre servi\u00e7os, seguran\u00e7a, pagamentos, licen\u00e7as, privacidade e uso da plataforma.", "Find information about services, security, payments, licenses, privacy, and platform usage."],
+  ["Como funciona a ANSEND", "How ANSEND works"],
+  ["Servi\u00e7os dispon\u00edveis", "Available services"],
+  ["Termos e pol\u00edticas", "Terms and policies"],
+  ["Seguran\u00e7a e confian\u00e7a", "Security and trust"],
+  ["Suporte", "Support"],
+  ["Servi\u00e7os", "Services"],
+  ["O que pode ser contratado na ANSEND", "What you can hire on ANSEND"],
+  ["A plataforma organiza servi\u00e7os musicais por categoria para conectar artistas aos profissionais certos.", "The platform organizes music services by category to connect artists with the right professionals."],
+  ["Vendam beats, instrumentais, licen\u00e7as musicais, produ\u00e7\u00f5es personalizadas, beat lease, beat exclusivo, type beat, instrumental sob encomenda e pacotes de beats.", "Sell beats, instrumentals, music licenses, custom productions, beat leases, exclusive beats, type beats, custom instrumentals, and beat packs."],
+  ["Criam capas de single, capas de \u00e1lbum, identidade visual de lan\u00e7amento, artes para redes sociais, banners e materiais promocionais.", "Create single covers, album covers, release visual identity, social media assets, banners, and promotional materials."],
+  ["Atuam com produ\u00e7\u00e3o, dire\u00e7\u00e3o musical, mixagem, masteriza\u00e7\u00e3o, grava\u00e7\u00e3o guiada, dire\u00e7\u00e3o vocal e finaliza\u00e7\u00e3o de faixa.", "Work with production, music direction, mixing, mastering, guided recording, vocal direction, and track finishing."],
+  ["Ajudam no posicionamento em playlists, canais, blogs, p\u00e1ginas, comunidades musicais, feedback profissional e an\u00e1lise de lan\u00e7amento.", "Help with placement in playlists, channels, blogs, pages, music communities, professional feedback, and release analysis."],
+  ["Planejam lan\u00e7amento, tr\u00e1fego, divulga\u00e7\u00e3o em redes sociais, estrat\u00e9gia de conte\u00fado, posicionamento art\u00edstico e an\u00e1lise de p\u00fablico.", "Plan releases, traffic, social promotion, content strategy, artistic positioning, and audience analysis."],
+  ["Fluxo", "Flow"],
+  ["Como funciona a ANSEND", "How ANSEND works"],
+  ["O usu\u00e1rio entra com uma ideia, letra, demo, m\u00fasica pronta, imagem, objetivo ou necessidade. A NEXO IA transforma isso em um caminho de execu\u00e7\u00e3o.", "The user enters an idea, lyrics, demo, finished song, image, goal, or need. NEXO AI turns it into an execution path."],
+  ["O artista entra com uma ideia", "The artist enters an idea"],
+  ["A NEXO IA analisa o objetivo", "NEXO AI analyzes the goal"],
+  ["A plataforma recomenda profissionais", "The platform recommends professionals"],
+  ["O usu\u00e1rio contrata com seguran\u00e7a", "The user hires safely"],
+  ["O profissional entrega o servi\u00e7o", "The professional delivers the service"],
+  ["O usu\u00e1rio avalia", "The user reviews"],
+  ["Legal", "Legal"],
+  ["Central Legal", "Legal Center"],
+  ["Documentos jur\u00eddicos e regulat\u00f3rios reunidos de forma clara, sem parecer burocr\u00e1tico.", "Legal and regulatory documents gathered clearly without feeling bureaucratic."],
+  ["Termos", "Terms"],
+  ["Termos de Uso", "Terms of Use"],
+  ["Pol\u00edtica de Privacidade", "Privacy Policy"],
+  ["Pol\u00edtica de Cookies", "Cookie Policy"],
+  ["Termos de Licen\u00e7a Musical", "Music License Terms"],
+  ["Pagamentos e Reembolsos", "Payments and Refunds"],
+  ["Direitos Autorais", "Copyright"],
+  ["Seguran\u00e7a na ANSEND", "ANSEND Security"],
+  ["Diretrizes para Profissionais", "Guidelines for Professionals"],
+  ["Diretrizes para Artistas", "Guidelines for Artists"],
+  ["Plataforma", "Platform"],
+  ["Para artistas", "For artists"],
+  ["Como contratar", "How to hire"],
+  ["Criar briefing", "Create briefing"],
+  ["Licen\u00e7as musicais", "Music licenses"],
+  ["Para profissionais", "For professionals"],
+  ["Vender na ANSEND", "Sell on ANSEND"],
+  ["Diretrizes profissionais", "Professional guidelines"],
+  ["Criar loja", "Create store"],
+  ["Receber pagamentos", "Receive payments"],
+  ["Reputa\u00e7\u00e3o", "Reputation"],
+  ["Privacidade", "Privacy"],
+  ["Cookies", "Cookies"],
+  ["Confian\u00e7a", "Trust"],
+  ["Denunciar problema", "Report a problem"],
+  ["Contato", "Contact"],
+  ["Ecossistema musical inteligente para artistas e profissionais.", "Intelligent music ecosystem for artists and professionals."],
+  ["Marketplace de beats, m\u00fasicas e produtores independentes.", "Marketplace for beats, music, and independent producers."],
+  ["Sobre", "About"],
+  ["Licen\u00e7as", "Licenses"],
+  ["Perfil", "Profile"],
+  ["Cat\u00e1logo", "Catalog"],
+  ["Portf\u00f3lio", "Portfolio"],
+  ["Projetos", "Projects"],
+  ["Publicar", "Publish"],
+  ["Salvar altera\u00e7\u00f5es", "Save changes"],
+  ["Sair", "Sign out"],
+  ["Idioma", "Language"],
+  ["Tema", "Theme"],
+  ["Prefer\u00eancias", "Preferences"],
+  ["Conta criada em modo preview. Conecte a key para salvar no Supabase.", "Account created in preview mode. Connect the key to save to Supabase."],
+  ["Sess\u00e3o iniciada em modo preview.", "Signed in in preview mode."],
+  ["Conta criada com sucesso.", "Account created successfully."],
+  ["Pedido finalizado com sucesso!", "Order completed successfully!"],
+  ["Adicionado ao carrinho", "Added to cart"],
+  ["Removido do carrinho", "Removed from cart"],
+  ["Adicionado aos favoritos", "Added to favorites"],
+  ["Removido dos favoritos", "Removed from favorites"],
+  ["Player fechado. Clique em play em qualquer beat para abrir de novo.", "Player closed. Click play on any beat to open it again."],
+  ["Beat pausado", "Beat paused"],
+  ["Login necess\u00e1rio", "Login required"],
+  ["Fa\u00e7a login para continuar.", "Sign in to continue."],
+  ["Nao consegui carregar seu catalogo no Supabase", "I could not load your catalog from Supabase"],
+  ["Preencha titulo e genero para cadastrar", "Fill in title and genre to publish"],
+  ["Nao foi possivel salvar no Supabase", "Could not save to Supabase"],
+  ["Item salvo no catalogo Supabase", "Item saved to Supabase catalog"],
+  ["Item salvo neste navegador. Entre para sincronizar no Supabase.", "Item saved in this browser. Sign in to sync with Supabase."],
+  ["Nao foi possivel remover", "Could not remove item"],
+  ["Item removido do catalogo", "Item removed from catalog"],
+  ["Nao foi possivel atualizar", "Could not update item"],
+  ["Item publicado", "Item published"],
+  ["Item voltou para rascunho", "Item moved back to draft"],
+  ["N\u00e3o consegui carregar seu perfil do Supabase", "I could not load your Supabase profile"],
+  ["Perfil musical inicial criado pela NEXO", "Initial music profile created by NEXO"],
+  ["Feed personalizado com uma curadoria inicial", "Feed personalized with initial curation"],
+  ["Sua dashboard NEXO foi adaptada", "Your NEXO dashboard was adapted"],
+  ["Link do beat copiado", "Beat link copied"],
+  ["Link pronto para compartilhar", "Link ready to share"],
+  ["Loop ativado no player", "Loop enabled in player"],
+  ["Loop desativado", "Loop disabled"],
+  ["Shuffle ativado", "Shuffle enabled"],
+  ["Shuffle desativado", "Shuffle disabled"],
+  ["Player fechado. Clique em play para abrir de novo.", "Player closed. Click play to open it again."],
+  ["Clique para liberar o player do beat", "Click to unlock the beat player"],
+  ["Use criar conta para liberar acesso neste ambiente.", "Use sign up to unlock access in this environment."],
+  ["Conta criada. Vamos personalizar sua experi\u00eancia.", "Account created. Let's personalize your experience."],
+  ["Login realizado", "Signed in"],
+  ["Conta criada e perfil salvo", "Account created and profile saved"],
+  ["Conta criada. Perfil liberado enquanto a sess\u00e3o sincroniza.", "Account created. Profile unlocked while the session syncs."],
+  ["Conta liberada. Vamos personalizar sua experi\u00eancia.", "Account unlocked. Let's personalize your experience."],
+  ["Voc\u00ea saiu da conta ANSEND", "You signed out of ANSEND"],
+  ["Idioma alterado para portugues", "Language changed to Portuguese"],
+  ["Google entra na pr\u00f3xima etapa. Use e-mail e senha por enquanto.", "Google sign-in comes next. Use email and password for now."],
+  ["Preview pausado", "Preview paused"],
+  ["Editor resetado", "Editor reset"],
+  ["Letra copiada", "Lyrics copied"],
+  ["Explore, escolha sua licen\u00e7a e baixe o beat imediatamente", "Explore, choose your license, and download the beat immediately"],
+  ["Download preparado com sucesso", "Download prepared successfully"],
+  ["Sua loja de produtor est\u00e1 pronta para configurar", "Your producer store is ready to configure"],
+  ["Voc\u00ea tem 3 novos lan\u00e7amentos", "You have 3 new releases"],
+  ["Edi\u00e7\u00e3o de perfil habilitada", "Profile editing enabled"],
+  ["Configura\u00e7\u00e3o salva", "Settings saved"],
+  ["Comentario publicado no preview", "Comment posted in preview"],
+  ["Plano gerado pela NEXO local", "Plan generated by local NEXO"],
+  ["Plano gerado via Ollama", "Plan generated via Ollama"],
+  ["Audio Editor", "Audio Editor"],
+  ["Note: These playback controls are purely for inspiration and will not be applied to downloads or purchases.", "Note: These playback controls are purely for inspiration and will not be applied to downloads or purchases."],
+  ["Speed", "Speed"],
+  ["Pitch", "Pitch"],
+  ["Reset", "Reset"],
+  ["Lyrics", "Lyrics"],
+  ["Queue", "Queue"],
+  ["Comments", "Comments"],
+  ["Share", "Share"],
+  ["Repost", "Repost"],
+  ["Add to Playlist", "Add to Playlist"],
+  ["Turn shuffle off", "Turn shuffle off"],
+  ["Turn shuffle on", "Turn shuffle on"],
+  ["Go to Track", "Go to Track"],
+  ["Go to Artist", "Go to Artist"],
+];
+
+const localeTextMaps = {
+  en: new Map(englishTextPairs),
+  "pt-BR": englishTextPairs.reduce((map, [pt, en]) => {
+    if (!map.has(en)) map.set(en, pt);
+    return map;
+  }, new Map()),
+};
+
+function translateUiText(value) {
+  const text = String(value || "");
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+  const translated = localeTextMaps[appLocale.current]?.get(trimmed);
+  return translated ? text.replace(trimmed, translated) : text;
+}
+
+function translateToastText(message) {
+  let next = translateUiText(message);
+  if (appLocale.current === "en") {
+    next = next
+      .replace(/^Tocando top 1 do dia:/, "Playing top 1 of the day:")
+      .replace(/^Tocando agora:/, "Now playing:")
+      .replace(/^Tocando /, "Playing ");
+  }
+  return next;
+}
+
+function applyLocaleTextOverrides(root = document) {
+  const scope = root.body || root;
+  if (!scope) return;
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  textNodes.forEach((node) => {
+    const translated = translateUiText(node.nodeValue);
+    if (translated !== node.nodeValue) node.nodeValue = translated;
+  });
+  scope.querySelectorAll("[placeholder]").forEach((node) => {
+    const current = node.getAttribute("placeholder");
+    const translated = translateUiText(current);
+    if (translated !== current) node.setAttribute("placeholder", translated);
+  });
+  scope.querySelectorAll("[aria-label]").forEach((node) => {
+    const current = node.getAttribute("aria-label");
+    const translated = translateUiText(current);
+    if (translated !== current) node.setAttribute("aria-label", translated);
+  });
+  scope.querySelectorAll("[title]").forEach((node) => {
+    const current = node.getAttribute("title");
+    const translated = translateUiText(current);
+    if (translated !== current) node.setAttribute("title", translated);
+  });
+  scope.querySelectorAll("[data-prompt]").forEach((node) => {
+    const current = node.dataset.prompt;
+    const translated = translateUiText(current);
+    if (translated !== current) node.dataset.prompt = translated;
+  });
 }
 
 const accountRoles = [
@@ -4130,7 +4532,7 @@ function showToast(message, icon = "check-circle-2") {
   const region = document.querySelector("#toastRegion");
   const toast = document.createElement("div");
   toast.className = "toast";
-  toast.innerHTML = `<i data-lucide="${icon}"></i><span>${message}</span>`;
+  toast.innerHTML = `<i data-lucide="${icon}"></i><span>${translateToastText(message)}</span>`;
   region.appendChild(toast);
   lucide.createIcons();
   setTimeout(() => toast.remove(), 2800);
@@ -4151,6 +4553,7 @@ function openModal(markup) {
     </div>
   </div>`);
   document.body.classList.add("modal-open");
+  applyLocaleTextOverrides(document.querySelector(".app-modal"));
   lucide.createIcons();
 }
 
