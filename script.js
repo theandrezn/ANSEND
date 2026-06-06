@@ -29,7 +29,7 @@ const localeConfig = {
 
 const i18n = {
   "pt-BR": {
-    "nav.home": "Home",
+    "nav.home": "Início",
     "nav.ia": "NEXO IA",
     "nav.explore": "Explorar",
     "nav.favorites": "Favoritos",
@@ -84,6 +84,25 @@ const i18n = {
     "common.startQuiz": "Começar quiz",
     "common.refazerQuiz": "Refazer quiz",
     "common.save": "Salvar",
+    "cart.billing": "Informações de cobrança e licenciamento",
+    "cart.addInfo": "Adicionar dados",
+    "cart.trackLicense": "Faixa · Licença MP3 · Revisar licença",
+    "cart.byProducer": "por",
+    "cart.discount": "Adicione mais 1 faixa para ativar a promoção Compre 1 e Leve 2!",
+    "cart.summary": "Resumo do carrinho",
+    "cart.share": "Compartilhar carrinho",
+    "cart.itemsTotal": "Total dos itens",
+    "cart.serviceFee": "Taxa de serviço",
+    "cart.subtotal": "Subtotal",
+    "cart.itemSingular": "item",
+    "cart.itemPlural": "itens",
+    "cart.authHint": "Continue como visitante,",
+    "cart.signIn": "entrar",
+    "cart.or": "ou",
+    "cart.signUp": "criar conta",
+    "cart.checkout": "Finalizar compra",
+    "cart.terms": "Ao clicar em \"Finalizar compra\", você concorda com nossa Política de Reembolso, Termos de Serviço da ANSEND e Política de Privacidade da ANSEND. Impostos podem ser aplicados.",
+    "cart.promoted": "Promovidos",
     "trust.aiRecommendations": "Recomendações com IA",
     "trust.artistSupport": "Suporte ao artista",
     "route.feed.subtitle": "Dashboard resumido com IA, recomendações e próximos passos.",
@@ -162,6 +181,25 @@ const i18n = {
     "common.startQuiz": "Start quiz",
     "common.refazerQuiz": "Retake quiz",
     "common.save": "Save",
+    "cart.billing": "Billing and licensing information",
+    "cart.addInfo": "Add Info",
+    "cart.trackLicense": "Track · MP3 License (MP3) · Review License",
+    "cart.byProducer": "by",
+    "cart.discount": "Add 1 more track to activate the Buy 1 Get 2 promotion!",
+    "cart.summary": "Cart Summary",
+    "cart.share": "Share cart",
+    "cart.itemsTotal": "Items Total",
+    "cart.serviceFee": "Service Fee",
+    "cart.subtotal": "Subtotal",
+    "cart.itemSingular": "item",
+    "cart.itemPlural": "items",
+    "cart.authHint": "Continue as guest,",
+    "cart.signIn": "Sign in",
+    "cart.or": "or",
+    "cart.signUp": "Sign up",
+    "cart.checkout": "Proceed to Checkout",
+    "cart.terms": "By clicking the \"Proceed to checkout\" button, you agree to our Refund Policy, ANSEND Terms of Service, and ANSEND Privacy Policy. Taxes may apply.",
+    "cart.promoted": "Promoted",
     "trust.aiRecommendations": "AI recommendations",
     "trust.artistSupport": "Artist support",
     "route.feed.subtitle": "AI dashboard with recommendations and next steps.",
@@ -187,7 +225,7 @@ const i18n = {
 };
 
 const appLocale = {
-  current: "en",
+  current: "pt-BR",
   country: localStorage.getItem("ansend_country") || "UNKNOWN",
 };
 
@@ -216,7 +254,7 @@ function detectLocale() {
     localStorage.setItem("ansend_locale", fromUrl);
     return fromUrl;
   }
-  return browserLocale() || "en";
+  return browserLocale() || "pt-BR";
 }
 
 async function detectCountry() {
@@ -243,7 +281,7 @@ async function detectLocaleWithGeo() {
     return browser;
   }
   const geo = await detectCountry();
-  const geoLocale = geo.country === "BR" || geo.locale === "pt-BR" ? "pt-BR" : "en";
+  const geoLocale = "pt-BR";
   appLocale.country = geo.country || "UNKNOWN";
   localStorage.setItem("ansend_locale", geoLocale);
   localStorage.setItem("ansend_country", appLocale.country);
@@ -3121,14 +3159,15 @@ function renderCart() {
   const subtotal = items.reduce((sum, item) => sum + item.priceVal, 0);
   const serviceFee = parseFloat((subtotal * 0.12).toFixed(2));
   const total = subtotal + serviceFee;
+  const itemCountLabel = items.length === 1 ? t("cart.itemSingular") : t("cart.itemPlural");
 
   const itemMarkup = items.map(item => `
     <article class="cart-item" data-id="${item.id}">
       <img src="${item.cover}" alt="Capa de ${item.title}" class="cart-item-art">
       <div class="cart-item-details">
         <h3>${item.title}</h3>
-        <span>Track · Mp3 License (MP3) · Review License</span>
-        <small class="cart-item-producer">by ${item.producer}</small>
+        <span>${t("cart.trackLicense")}</span>
+        <small class="cart-item-producer">${t("cart.byProducer")} ${item.producer}</small>
       </div>
       <div class="cart-item-price">${item.priceText}</div>
       <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.id}">
@@ -3155,50 +3194,50 @@ function renderCart() {
     <section class="cart-page-layout">
       <div class="cart-left-col">
         <div class="cart-billing-header">
-          <span>Billing and licensing Information</span>
-          <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> Add Info</button>
+          <span>${t("cart.billing")}</span>
+          <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
         </div>
         <div class="cart-items-list">
           ${itemMarkup}
         </div>
         <div class="cart-discount-banner">
-          Adicione mais 1 TRACK para ativar a promoção de Compre 1 e Leve 2!
+          ${t("cart.discount")}
         </div>
       </div>
       
       <div class="cart-right-col">
         <div class="cart-summary-card">
           <div class="cart-summary-head">
-            <h3>Cart Summary</h3>
-            <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> Share cart</button>
+            <h3>${t("cart.summary")}</h3>
+            <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> ${t("cart.share")}</button>
           </div>
           <div class="cart-summary-row">
-            <span>Items Total</span>
+            <span>${t("cart.itemsTotal")}</span>
             <strong>$${subtotal.toFixed(2)}</strong>
           </div>
           <div class="cart-summary-row">
-            <span>Service Fee</span>
+            <span>${t("cart.serviceFee")}</span>
             <strong>$${serviceFee.toFixed(2)}</strong>
           </div>
           <div class="cart-summary-row cart-total-row">
-            <span>Subtotal (${items.length} item${items.length > 1 ? "s" : ""})</span>
+            <span>${t("cart.subtotal")} (${items.length} ${itemCountLabel})</span>
             <strong>$${total.toFixed(2)}</strong>
           </div>
           <div class="cart-auth-hint">
-            Continue as guest, <a href="#vendedor">Sign in</a> or <a href="#vendedor">Sign up</a>
+            ${t("cart.authHint")} <a href="#vendedor">${t("cart.signIn")}</a> ${t("cart.or")} <a href="#vendedor">${t("cart.signUp")}</a>
           </div>
           <button class="cart-checkout-btn" type="button" data-action="finalize-cart">
-            Proceed to Checkout
+            ${t("cart.checkout")}
           </button>
           <div class="cart-terms-hint">
-            By clicking the "Proceed to checkout" button, you agree to our Refund Policy, BeatStars Terms of Service, and BeatStars Privacy Policy. Taxes may apply.
+            ${t("cart.terms")}
           </div>
         </div>
       </div>
     </section>
     
     <section class="cart-promoted-section">
-      <h3>Promoted</h3>
+      <h3>${t("cart.promoted")}</h3>
       <div class="cart-promoted-grid">
         ${promotedBeatsHtml}
       </div>
