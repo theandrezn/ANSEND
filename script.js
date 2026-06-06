@@ -1945,14 +1945,17 @@ function roleDashboardStripMarkup(dashboard) {
 }
 function animateHeadlineReveal(titleElement, line1, line2) {
   if (!titleElement) return;
+  const nextKey = `${line1}|${line2}`;
+  if (titleElement.dataset.revealKey === nextKey) return;
+  titleElement.dataset.revealKey = nextKey;
   
   titleElement.innerHTML = '';
   
   const span = document.createElement('span');
-  span.style.display = 'block';
+  span.className = 'headline-reveal-line headline-reveal-brand';
   
   const strong = document.createElement('strong');
-  strong.style.display = 'block';
+  strong.className = 'headline-reveal-line headline-reveal-main';
   
   let charIndex = 0;
   
@@ -1960,14 +1963,13 @@ function animateHeadlineReveal(titleElement, line1, line2) {
     const words = text.split(' ');
     words.forEach((word, wordIdx) => {
       const wordSpan = document.createElement('span');
-      wordSpan.style.display = 'inline-block';
-      wordSpan.style.whiteSpace = 'nowrap';
+      wordSpan.className = 'reveal-word';
       
       for (let i = 0; i < word.length; i++) {
         const charSpan = document.createElement('span');
         charSpan.className = 'reveal-char';
         charSpan.textContent = word[i];
-        charSpan.style.animationDelay = `${charIndex * 0.02}s`;
+        charSpan.style.animationDelay = `${Math.min(charIndex * 0.026, 1.35)}s`;
         wordSpan.appendChild(charSpan);
         charIndex++;
       }
@@ -1979,7 +1981,7 @@ function animateHeadlineReveal(titleElement, line1, line2) {
         spaceSpan.className = 'reveal-char';
         spaceSpan.textContent = ' ';
         spaceSpan.style.whiteSpace = 'pre';
-        spaceSpan.style.animationDelay = `${charIndex * 0.02}s`;
+        spaceSpan.style.animationDelay = `${Math.min(charIndex * 0.026, 1.35)}s`;
         container.appendChild(spaceSpan);
         charIndex++;
       }
