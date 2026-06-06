@@ -7959,12 +7959,12 @@ body.modal-open {
 .feed > .nexo-recommendations-section::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -20px;
   z-index: -2;
   background-image: url('assets/nexo-recommendations-bg.png');
   background-size: cover;
   background-position: center;
-  filter: blur(55px) brightness(0.38) saturate(1.25);
+  filter: blur(12px) brightness(0.45) saturate(1.1);
   opacity: 0.85;
   pointer-events: none;
 }
