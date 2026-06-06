@@ -3,10 +3,8 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
-  full_name text not null,
-  account_role text not null check (
-    account_role in ('produtor', 'curador', 'artista', 'designer', 'beatmaker', 'manager', 'selo')
-  ),
+  full_name text not null default '',
+  account_role text not null default 'artista',
   artistic_name text,
   music_styles text[] not null default '{}',
   onboarding_goal text,
@@ -14,6 +12,10 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles alter column full_name set default '';
+alter table public.profiles alter column account_role set default 'artista';
+alter table public.profiles drop constraint if exists profiles_account_role_check;
 
 alter table public.profiles enable row level security;
 
@@ -56,6 +58,54 @@ with check ((select auth.uid()) = id);
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.profiles to authenticated;
+
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (
+    id,
+    email,
+    full_name,
+    account_role,
+    artistic_name,
+    music_styles
+  )
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    coalesce(new.raw_user_meta_data->>'account_role', 'artista'),
+    nullif(new.raw_user_meta_data->>'artistic_name', ''),
+    case
+      when jsonb_typeof(new.raw_user_meta_data->'music_styles') = 'array'
+        then array(select jsonb_array_elements_text(new.raw_user_meta_data->'music_styles'))
+      else '{}'
+    end
+  )
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    full_name = coalesce(nullif(excluded.full_name, ''), public.profiles.full_name),
+    account_role = coalesce(nullif(excluded.account_role, ''), public.profiles.account_role),
+    artistic_name = coalesce(excluded.artistic_name, public.profiles.artistic_name),
+    music_styles = case
+      when array_length(excluded.music_styles, 1) is null then public.profiles.music_styles
+      else excluded.music_styles
+    end,
+    updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_auth_user();
 
 create table if not exists public.catalog_items (
   id uuid primary key default gen_random_uuid(),

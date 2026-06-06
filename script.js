@@ -3363,7 +3363,7 @@ function renderSellerAuth() {
         <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
       </div>
       <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}">
-        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name" required></label>
+        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name"></label>
         <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
         <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
         <div class="account-style-picker" aria-label="Escolha estilos musicais">${styleOptions}</div>`}
@@ -3883,9 +3883,10 @@ function handleBuy(id, selectedPlan = "premium") {
 function profileFromAccountForm(form, email) {
   const selectedRole = form.querySelector('input[name="account-role"]:checked')?.value || "produtor";
   const styles = [...form.querySelectorAll('input[name="account-styles"]:checked')].map((input) => input.value);
+  const name = form.elements.name?.value?.trim() || email.split("@")[0] || "Usuario ANSEND";
   return {
     email,
-    full_name: form.elements.name?.value?.trim() || "Usuário ANSEND",
+    full_name: name,
     artistic_name: form.elements.store?.value?.trim() || null,
     account_role: selectedRole,
     music_styles: styles.length ? styles : preferredGenres(),
@@ -3940,6 +3941,7 @@ async function handleAccountSubmit(form) {
           full_name: profile.full_name,
           account_role: profile.account_role,
           artistic_name: profile.artistic_name,
+          music_styles: profile.music_styles,
         },
       },
     });
@@ -3951,7 +3953,8 @@ async function handleAccountSubmit(form) {
       showToast("Conta criada e perfil salvo no Supabase", "badge-check");
     } else if (data.user) {
       localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
-      showToast("Conta criada. Confirme seu e-mail para finalizar o perfil.", "mail-check");
+      setLocalPreviewProfile({ ...profile, id: data.user.id, created_at: new Date().toISOString() });
+      showToast("Conta criada no Supabase. Perfil liberado enquanto a sessao sincroniza.", "mail-check");
     }
     renderRoute();
     launchFirstAccountQuiz(profile, data.user);
