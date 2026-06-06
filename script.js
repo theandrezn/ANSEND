@@ -3042,44 +3042,159 @@ function renderAiWorkspace() {
   const license = licensePlans[plan.recommendedLicense] || licensePlans.premium;
   const pros = plan.recommendedProfessionals || professionalsForNeed(plan.prompt || "");
   const beats = plan.recommendedBeats || beatMatchesForNeed(plan.prompt || "");
-  appView.innerHTML = `${pageIntro("ia")}
-    <section class="nexo-workspace">
-      <div class="nexo-console">
-        <span><i data-lucide="brain-circuit"></i>NEXO IA / Ollama ${NEXO_OLLAMA_MODEL}</span>
-        <h2>Conte o objetivo. A NEXO monta o caminho e manda você para a pessoa certa.</h2>
-        <form class="ai-diagnostic-form nexo-console-form">
-          <label class="sr-only" for="nexoPrompt">Prompt para NEXO IA</label>
-          <div class="ai-input-shell">
-            <i data-lucide="bot"></i>
-            <textarea id="nexoPrompt" name="aiPrompt" rows="4" placeholder="Ex: Tenho uma música de trap pronta, preciso de capa, mixagem, licença e divulgação...">${plan.prompt || ""}</textarea>
-            <button class="ai-inline-submit" type="submit" aria-label="Gerar diagnóstico"><i data-lucide="arrow-right"></i></button>
+
+  const actionButtons = [
+    { icon: "disc-3", label: "Criar Capa (Design)", prompt: "Preciso de uma capa profissional com identidade visual para meu single de trap." },
+    { icon: "sparkles", label: "Finalizar Demo (Mix/Master)", prompt: "Tenho uma demo de trap gravada e preciso de mixagem e masterização." },
+    { icon: "megaphone", label: "Divulgar Lançamento", prompt: "Quero fazer a campanha de tráfego pago e marketing para meu novo som no Spotify." },
+    { icon: "boxes", label: "Encontrar Beatmaker", prompt: "Tenho uma letra pronta e preciso de um beatmaker para criar a base instrumental." },
+    { icon: "compass", label: "Plano de Lançamento", prompt: "Tenho uma ideia de música e quero o plano do início até a distribuição." }
+  ];
+
+  const actionButtonsMarkup = actionButtons.map(btn => `
+    <button type="button" class="nexo-action-btn" data-action="ai-chip" data-prompt="${btn.prompt}">
+      <i data-lucide="${btn.icon}"></i>
+      <span>${btn.label}</span>
+    </button>
+  `).join("");
+
+  appView.innerHTML = `
+    <div class="nexo-minimal-container">
+      <div class="nexo-minimal-chat-section">
+        <h1 class="nexo-minimal-title">O que podemos lançar hoje?</h1>
+        
+        <form class="ai-diagnostic-form nexo-minimal-form">
+          <div class="nexo-minimal-chat-box">
+            <textarea 
+              id="nexoPrompt" 
+              name="aiPrompt" 
+              placeholder="Descreva o seu objetivo musical (ex: Tenho uma letra de trap e preciso de beat, capa e mixagem...)"
+            >${plan.prompt || ""}</textarea>
+            
+            <div class="nexo-minimal-chat-toolbar">
+              <div class="nexo-minimal-toolbar-left">
+                <button type="button" class="nexo-toolbar-btn group" data-action="ai-chip" data-prompt="Quero fazer a análise da minha demo e receber dicas de mixagem e masterização.">
+                  <i data-lucide="paperclip"></i>
+                  <span class="tooltip-text">Anexar Demo</span>
+                </button>
+                <button type="button" class="nexo-toolbar-btn group" data-action="ai-chip" data-prompt="Me sugira referências de Beats e Produtores para o estilo Trap/Drill moderno.">
+                  <i data-lucide="sparkles"></i>
+                  <span class="tooltip-text">Referências</span>
+                </button>
+              </div>
+              
+              <div class="nexo-minimal-toolbar-right">
+                <button type="button" class="nexo-project-btn" data-action="ai-chip" data-prompt="Monte um plano completo de lançamento para mim.">
+                  <i data-lucide="plus"></i>
+                  <span>Lançamento</span>
+                </button>
+                
+                <button type="submit" class="nexo-send-btn ${plan.prompt ? "has-text" : ""}" aria-label="Enviar para NEXO IA">
+                  <i data-lucide="arrow-up"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </form>
-        <div class="nexo-status">
-          <b>${plan.source === "fallback-local" ? "NEXO local ativa" : "Ollama conectado"}</b>
-          <span>Confiança ${plan.confidence || "Alta"} / ${license.label}</span>
+
+        <div class="nexo-action-buttons-row">
+          ${actionButtonsMarkup}
+        </div>
+        
+        <div class="nexo-minimal-status-row">
+          <span class="status-indicator online"></span>
+          <span>NEXO IA Ativa</span>
+          <span class="status-divider">•</span>
+          <span>Confiança Alta</span>
+          <span class="status-divider">•</span>
+          <span>${license.label}</span>
         </div>
       </div>
-      <aside class="nexo-plan-panel" id="aiOutput">
-        <small>Plano recomendado</small>
-        <strong>${plan.genre || "Trap"} / ${plan.budget || "[VALOR] estimado"}</strong>
-        <ul>${(plan.match || []).map((item) => `<li>${item}</li>`).join("")}</ul>
-        <em>Combo sugerido: ${plan.combo || "Beatmaker / Designer / Produtor / Curador / Marketing"}</em>
-        <div class="ai-plan-actions">
-          ${pros[0] ? `<button type="button" data-action="producer" data-title="${pros[0].name}"><i data-lucide="user-check"></i>${pros[0].name}</button>` : ""}
-          ${beats[0] ? `<button type="button" data-action="open-beat" data-id="${beats[0].id}"><i data-lucide="disc-3"></i>${beats[0].title}</button>` : ""}
-          <button type="button" data-action="ai-next-route" data-route="${plan.nextAction?.route || "produtores"}"><i data-lucide="arrow-right"></i>${plan.nextAction?.label || "Abrir recomendação"}</button>
+
+      <div class="nexo-minimal-plan-container reveal-section">
+        <div class="nexo-minimal-plan-grid">
+          <!-- Coluna do Plano -->
+          <div class="nexo-minimal-plan-details">
+            <div class="nexo-minimal-plan-header">
+              <span class="nexo-minimal-plan-badge">PLANO RECOMENDADO</span>
+              <h2>${plan.genre || "Trap"} / ${plan.budget || "[VALOR] estimado"}</h2>
+              <p class="nexo-minimal-plan-combo">Combo sugerido: <strong>${plan.combo}</strong></p>
+            </div>
+            
+            <ul class="nexo-minimal-plan-list">
+              ${(plan.match || []).map((item) => `
+                <li>
+                  <i data-lucide="check-circle-2"></i>
+                  <span>${item}</span>
+                </li>
+              `).join("")}
+            </ul>
+
+            <div class="nexo-minimal-plan-actions">
+              ${pros[0] ? `<button type="button" class="nexo-plan-cta-btn" data-action="producer" data-title="${pros[0].name}"><i data-lucide="user-check"></i>${pros[0].name}</button>` : ""}
+              ${beats[0] ? `<button type="button" class="nexo-plan-cta-btn" data-action="open-beat" data-id="${beats[0].id}"><i data-lucide="disc-3"></i>${beats[0].title}</button>` : ""}
+              <button type="button" class="nexo-plan-cta-btn" data-action="ai-next-route" data-route="${plan.nextAction?.route || "produtores"}"><i data-lucide="arrow-right"></i>${plan.nextAction?.label || "Abrir recomendações"}</button>
+            </div>
+          </div>
+
+          <!-- Coluna do Cronograma -->
+          <div class="nexo-minimal-plan-timeline">
+            <span class="nexo-minimal-plan-badge">MAPA DE EXECUÇÃO</span>
+            <ol class="nexo-minimal-timeline-list">
+              ${(plan.steps || []).map((step, index) => `
+                <li>
+                  <div class="timeline-step-icon">
+                    <i data-lucide="${["disc-3", "image", "upload-cloud", "megaphone", "line-chart"][index] || "check-circle-2"}"></i>
+                  </div>
+                  <div class="timeline-step-content">
+                    <strong>${step.title}</strong>
+                    <span>${step.detail}</span>
+                  </div>
+                </li>
+              `).join("")}
+            </ol>
+          </div>
         </div>
-      </aside>
-      <section class="nexo-match-list">
-        <div class="section-head"><div><h2><i data-lucide="users-round"></i>Profissionais com maior match</h2><p>A NEXO prioriza função, score, entregas e intenção do pedido.</p></div></div>
-        <div class="professional-grid">${pros.slice(0, 3).map((profile) => professionalCard(findProfessional(profile.name))).join("")}</div>
-      </section>
-      <section class="nexo-match-list">
-        <div class="section-head"><div><h2><i data-lucide="flame"></i>Beats recomendados</h2><p>Catálogo manual alinhado ao diagnóstico.</p></div></div>
-        <div class="beat-row">${beats.slice(0, 4).map((item) => beatCard(findBeat(item.id))).join("")}</div>
-      </section>
-    </section>`;
+
+        <!-- Profissionais Recomendados -->
+        <div class="nexo-minimal-recommendations">
+          <div class="section-head">
+            <div>
+              <h2><i data-lucide="users-round"></i>Profissionais com maior match</h2>
+              <p>Conecte-se com as pessoas certas mapeadas pela inteligência da NEXO.</p>
+            </div>
+          </div>
+          <div class="professional-grid">${pros.slice(0, 3).map((profile) => professionalCard(findProfessional(profile.name))).join("")}</div>
+        </div>
+
+        <!-- Beats Recomendados -->
+        <div class="nexo-minimal-recommendations">
+          <div class="section-head">
+            <div>
+              <h2><i data-lucide="flame"></i>Beats recomendados</h2>
+              <p>Opções instrumentais alinhadas ao seu plano de lançamento.</p>
+            </div>
+          </div>
+          <div class="beat-row">${beats.slice(0, 4).map((item) => beatCard(findBeat(item.id))).join("")}</div>
+        </div>
+      </div>
+    </div>`;
+
+  // Autoresize textarea behaviour
+  const tx = document.querySelector("#nexoPrompt");
+  if (tx) {
+    tx.style.height = "auto";
+    tx.style.height = (tx.scrollHeight) + "px";
+    tx.addEventListener("input", function() {
+      this.style.height = "auto";
+      this.style.height = (this.scrollHeight) + "px";
+      const sendBtn = document.querySelector(".nexo-send-btn");
+      if (sendBtn) {
+        if (this.value.trim()) sendBtn.classList.add("has-text");
+        else sendBtn.classList.remove("has-text");
+      }
+    });
+  }
 }
 
 function professionalCard(profile) {
