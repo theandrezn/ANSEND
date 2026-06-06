@@ -4150,6 +4150,22 @@ function syncMiniPlayerState() {
   applyPlayerAudioSettings();
 }
 
+function showMiniPlayer() {
+  const player = document.querySelector(".mini-player");
+  if (!player) return;
+  player.classList.remove("is-closed");
+  player.classList.add("is-active");
+}
+
+function closeMiniPlayer() {
+  const player = document.querySelector(".mini-player");
+  if (!player) return;
+  pauseTopBeat({ quiet: true });
+  player.classList.remove("is-playing");
+  player.classList.add("is-closed");
+  showToast("Player fechado. Clique em play para abrir de novo.", "x");
+}
+
 function updateMiniProgress() {
   const player = document.querySelector(".mini-player");
   if (!player) return;
@@ -4195,7 +4211,7 @@ function seekMiniPlayerFromPointer(event) {
 function updateMiniPlayer(item) {
   const player = document.querySelector(".mini-player");
   if (!player || !item) return;
-  player.classList.add("is-active");
+  showMiniPlayer();
   player.dataset.currentBeat = item.id;
   player.querySelector(".mini-track img").src = item.cover;
   player.querySelector(".mini-track strong").textContent = item.title;
@@ -4221,7 +4237,11 @@ function setTopBeatPlaying(isPlaying) {
   if (appState.playing === topBeatOfDay.id && miniButton) {
     miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
   }
-  document.querySelector(".mini-player")?.classList.toggle("is-playing", isPlaying || Boolean(appState.playing));
+  const player = document.querySelector(".mini-player");
+  if (player) {
+    const previewPlaying = Boolean(appState.playing) && appState.playing !== topBeatOfDay.id;
+    player.classList.toggle("is-playing", isPlaying || previewPlaying);
+  }
   syncMiniPlayerState();
   lucide.createIcons();
 }
@@ -4233,6 +4253,7 @@ async function playTopBeat({ quiet = false } = {}) {
   appState.playing = topBeatOfDay.id;
   try {
     await audio.play();
+    showMiniPlayer();
     appState.topBeatUnlocked = true;
     setTopBeatPlaying(true);
     if (!quiet) showToast("Tocando top 1 do dia: PSIIIKO", "play");
@@ -4270,6 +4291,7 @@ function playBeatByOffset(offset) {
   appState.playing = next.id;
   updateMiniPlayer(next);
   document.querySelector(".mini-player")?.classList.add("is-playing");
+  showMiniPlayer();
   showToast(`Tocando agora: ${next.title}`, "play");
   if (next.id === topBeatOfDay.id) playTopBeat({ quiet: true });
 }
@@ -4652,6 +4674,10 @@ document.addEventListener("click", (event) => {
     toggleTopBeat();
     return;
   }
+  if (action === "close-mini-player") {
+    closeMiniPlayer();
+    return;
+  }
   if (action === "mini-play") {
     if (appState.playing === topBeatOfDay.id) {
       toggleTopBeat();
@@ -4659,6 +4685,7 @@ document.addEventListener("click", (event) => {
     }
     const player = document.querySelector(".mini-player");
     const nextPlaying = !player?.classList.contains("is-playing");
+    if (nextPlaying) showMiniPlayer();
     player?.classList.toggle("is-playing", nextPlaying);
     showToast(nextPlaying ? `Tocando ${playerActionBeat().title}` : "Preview pausado", nextPlaying ? "play" : "pause");
     return;

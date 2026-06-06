@@ -8162,6 +8162,44 @@ body.modal-open {
   align-items: center;
   justify-content: center;
   position: fixed;
+  transition: transform .28s ease, opacity .22s ease;
+}
+
+.mini-player.is-closed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(100% + 18px));
+}
+
+.mini-player .mini-close {
+  position: absolute;
+  top: 10px;
+  right: clamp(12px, 1.6vw, 28px);
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .72);
+  box-shadow: none;
+}
+
+.mini-player .mini-close:hover,
+.mini-player .mini-close:focus-visible {
+  color: #fff;
+  border-color: rgba(255, 106, 0, .62);
+  background: rgba(255, 106, 0, .12);
+  outline: none;
+}
+
+.mini-player .mini-close svg {
+  width: 16px;
+  height: 16px;
 }
 
 .mini-waveform {
