@@ -77,6 +77,7 @@ body.requires-auth .seller-auth {
 }
 body.requires-auth .seller-auth-panel {
   padding: clamp(26px, 4vw, 60px);
+  justify-content: center;
 }
 .ai-hero {
   height: clamp(560px, 38vw, 640px);
@@ -2054,7 +2055,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   font-weight: 900;
 }
 .seller-auth-copy p {
-  max-width: 470px;
+  max-width: 500px;
   margin: 0;
   color: var(--muted);
   font-size: 15px;
@@ -2063,7 +2064,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .seller-auth-form {
   display: grid;
   gap: 14px;
-  max-width: 430px;
+  max-width: 500px;
 }
 .seller-auth-form label {
   display: grid;
@@ -2133,7 +2134,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   width: 18px;
 }
 .seller-auth-actions {
-  max-width: 430px;
+  max-width: 500px;
   display: grid;
   gap: 13px;
 }
