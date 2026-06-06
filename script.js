@@ -3246,7 +3246,7 @@ function renderAiWorkspace() {
   appView.innerHTML = `
     <div class="nexo-minimal-container">
       <div class="nexo-minimal-chat-section">
-        <h1 class="nexo-minimal-title">O que podemos lançar hoje?</h1>
+        <h1 class="nexo-minimal-title"><strong>O que podemos lançar hoje?</strong></h1>
         
         <form class="ai-diagnostic-form nexo-minimal-form">
           <div class="nexo-minimal-chat-box">
@@ -3296,7 +3296,7 @@ function renderAiWorkspace() {
         </div>
       </div>
 
-      <div class="nexo-minimal-plan-container reveal-section">
+      <div class="nexo-minimal-plan-container">
         <div class="nexo-minimal-plan-grid">
           <!-- Coluna do Plano -->
           <div class="nexo-minimal-plan-details">

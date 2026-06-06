@@ -10228,17 +10228,23 @@ body.onboarding-open {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-bottom: 42px;
+  margin-bottom: 34px;
 }
 
 .nexo-minimal-title {
-  font-family: 'Poppins', sans-serif !important;
-  font-weight: 300 !important; /* Thin font */
-  font-size: clamp(32px, 3.8vw, 48px) !important;
+  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: clamp(34px, 3.6vw, 54px) !important;
+  line-height: 0.98 !important;
   color: #ffffff !important;
   text-align: center !important;
-  margin-bottom: 28px !important;
-  letter-spacing: -0.02em !important;
+  margin-bottom: 26px !important;
+  letter-spacing: -0.045em !important;
+  text-wrap: balance;
+}
+
+.nexo-minimal-title strong {
+  font-weight: 900;
 }
 
 .nexo-minimal-form {
@@ -10270,9 +10276,9 @@ body.onboarding-open {
   outline: none;
   resize: none;
   color: #f5f5f5;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
+  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 650;
+  font-size: 14.5px;
   line-height: 1.5;
   padding: 12px 14px;
   box-sizing: border-box;
@@ -10280,8 +10286,8 @@ body.onboarding-open {
 }
 
 .nexo-minimal-chat-box textarea::placeholder {
-  color: #7a7a7a;
-  font-weight: 300;
+  color: #8f8f8f;
+  font-weight: 500;
 }
 
 .nexo-minimal-chat-toolbar {
@@ -10330,9 +10336,9 @@ body.onboarding-open {
   color: #d4d4d8;
   padding: 6px 14px;
   border-radius: 8px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 750;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -10441,9 +10447,10 @@ body.onboarding-open {
 }
 
 .nexo-action-btn span {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 300;
-  font-size: 11px;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-weight: 650;
+  font-size: 11.5px;
+  letter-spacing: -0.01em;
 }
 
 .nexo-action-btn:hover {
@@ -10459,9 +10466,10 @@ body.onboarding-open {
   gap: 8px;
   margin-top: 24px;
   color: #737373;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 650;
+  letter-spacing: 0.01em;
 }
 
 .status-indicator {
@@ -10516,6 +10524,17 @@ body.onboarding-open {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+
+.nexo-minimal-container,
+.nexo-minimal-container button,
+.nexo-minimal-container textarea,
+.nexo-minimal-container input {
+  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 .nexo-minimal-plan-grid {
@@ -10551,17 +10570,18 @@ body.onboarding-open {
 }
 
 .nexo-minimal-plan-header h2 {
-  font-family: 'Poppins', sans-serif !important;
-  font-weight: 400 !important;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif !important;
+  font-weight: 850 !important;
   font-size: clamp(20px, 2.2vw, 28px) !important;
   color: #ffffff !important;
   margin: 0 0 10px 0 !important;
+  letter-spacing: -0.035em !important;
 }
 
 .nexo-minimal-plan-combo {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 300;
+  font-weight: 500;
   color: #a3a3a3;
   margin: 0 0 24px 0;
   line-height: 1.5;
@@ -10569,7 +10589,7 @@ body.onboarding-open {
 
 .nexo-minimal-plan-combo strong {
   color: #ffffff;
-  font-weight: 500;
+  font-weight: 800;
 }
 
 .nexo-minimal-plan-list {
@@ -10586,8 +10606,8 @@ body.onboarding-open {
   align-items: flex-start;
   gap: 12px;
   color: #e4e4e7;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 300;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-weight: 560;
   font-size: 13.5px;
   line-height: 1.45;
 }
@@ -10612,8 +10632,8 @@ body.onboarding-open {
   border-radius: 10px;
   color: #ffffff;
   padding: 10px 16px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-weight: 760;
   font-size: 12px;
   display: inline-flex;
   align-items: center;
