@@ -475,25 +475,6 @@ function avatarCard(name, i) {
   return `<article class="avatar-card"><button type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}"><img src="${img(avatarImages[i % avatarImages.length])}" alt="Avatar de ${name}"><h3>${name}<i data-lucide="badge-check"></i></h3><p>${420 + i * 137} vendas</p></button></article>`;
 }
 
-const featuredEbooks = [
-  { title: "Cardio Fitness", tag: "Saúde & Performance", cover: "assets/cover-cardio-fitness.png" },
-  { title: "Desafio 24 Dias", tag: "Emagrecimento Rápido", cover: "assets/cover-desafio-24-dias.png" },
-  { title: "Importação dos EUA", tag: "E-commerce & Business", cover: "assets/cover-importacao.png" },
-  { title: "Lista de Fornecedores", tag: "Dropshipping & Atacado", cover: "assets/cover-fornecedores.png" },
-  { title: "Elite das Manicures", tag: "Beleza & Estética", cover: "assets/cover-manicures.png" },
-  { title: "Fórmula Secreta", tag: "Psicologia & Atração", cover: "assets/cover-formula-secreta.png" },
-];
-
-function netflixCard(item) {
-  return `<article class="netflix-card" onclick="showToast('Abrindo e-book: ${item.title}', 'book-open')">
-    <img src="${item.cover}" alt="Capa de ${item.title}">
-    <div class="netflix-card-overlay">
-      <strong>${item.title}</strong>
-      <span>${item.tag}</span>
-    </div>
-  </article>`;
-}
-
 const quickActions = [
   ["brain-circuit", "Criar plano com IA", "Receba a ordem certa para lançar.", "ia"],
   ["audio-lines", "Encontrar beatmaker", "Ache beats e produtores com match.", "produtores"],
@@ -612,7 +593,7 @@ function renderHomeDashboard() {
   if (recommendations) recommendations.innerHTML = nexoRecommendations.slice(0, 6).map(nexoRecommendationCard).join("");
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = smartCombos.map(smartComboCard).join("");
-  if (featured) featured.innerHTML = featuredEbooks.map(netflixCard).join("");
+  if (featured) featured.innerHTML = preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
   if (professionals) professionals.innerHTML = avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
   if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
 }
