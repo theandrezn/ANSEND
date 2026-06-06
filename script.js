@@ -93,6 +93,8 @@ const i18n = {
     "route.favoritos.subtitle": "Tudo que você marcou para ouvir depois.",
     "route.compras.title": "Pedidos",
     "route.compras.subtitle": "Histórico de pedidos, licenças e serviços contratados.",
+    "route.carrinho.title": "Carrinho",
+    "route.carrinho.subtitle": "Revise seus beats e finalize seu pedido.",
     "route.biblioteca.title": "Biblioteca",
     "route.biblioteca.subtitle": "Playlists, históricos e itens salvos em um só lugar.",
     "route.produtores.title": "Profissionais",
@@ -169,6 +171,8 @@ const i18n = {
     "route.favoritos.subtitle": "Everything you saved to hear later.",
     "route.compras.title": "Orders",
     "route.compras.subtitle": "Your order history, licenses, and hired services.",
+    "route.carrinho.title": "Cart",
+    "route.carrinho.subtitle": "Review your beats and complete your order.",
     "route.biblioteca.title": "Library",
     "route.biblioteca.subtitle": "Saved playlists, history, and library items.",
     "route.produtores.title": "Professionals",
@@ -649,6 +653,7 @@ const appState = {
   playing: null,
   sellerMode: "login",
   topBeatUnlocked: false,
+  cart: JSON.parse(localStorage.getItem("ansend-cart") || "[]"),
   player: {
     loop: JSON.parse(localStorage.getItem("ansend-player-loop") || "false"),
     shuffle: JSON.parse(localStorage.getItem("ansend-player-shuffle") || "false"),
@@ -1810,6 +1815,7 @@ const routeTitles = {
   produtores: ["Produtores", "Conheça produtores verificados da comunidade ANSEND."],
   configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
+  carrinho: ["Carrinho", "Revise seus beats e finalize seu pedido."],
 };
 routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendacoes e proximos passos."];
 routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos contratados."];
@@ -3072,6 +3078,137 @@ function renderPurchases() {
   const hasItems = orderMarkup || contractMarkup;
   appView.innerHTML = `${pageIntro("compras")}${hasItems ? `<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
 }
+
+function addToCart(id) {
+  if (!appState.cart.includes(id)) {
+    appState.cart.push(id);
+    localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
+    showToast("Adicionado ao carrinho", "shopping-cart");
+  }
+}
+
+function removeFromCart(id) {
+  appState.cart = appState.cart.filter(item => item !== id);
+  localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
+  showToast("Removido do carrinho", "trash");
+  if (currentRoute() === "carrinho") renderCart();
+}
+
+function clearCart() {
+  appState.cart = [];
+  localStorage.setItem("ansend-cart", JSON.stringify([]));
+}
+
+function renderCart() {
+  const hasItems = appState.cart.length > 0;
+  
+  if (!hasItems) {
+    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho está vazio", "Adicione beats ou serviços ao carrinho para finalizar seu pedido.")}`;
+    return;
+  }
+
+  const items = appState.cart.map(id => {
+    const beatItem = findBeat(id) || topBeatOfDay;
+    const priceText = beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
+    const priceVal = parseFloat(priceText.replace("$", ""));
+    return {
+      ...beatItem,
+      priceVal,
+      priceText
+    };
+  });
+
+  const subtotal = items.reduce((sum, item) => sum + item.priceVal, 0);
+  const serviceFee = parseFloat((subtotal * 0.12).toFixed(2));
+  const total = subtotal + serviceFee;
+
+  const itemMarkup = items.map(item => `
+    <article class="cart-item" data-id="${item.id}">
+      <img src="${item.cover}" alt="Capa de ${item.title}" class="cart-item-art">
+      <div class="cart-item-details">
+        <h3>${item.title}</h3>
+        <span>Track · Mp3 License (MP3) · Review License</span>
+        <small class="cart-item-producer">by ${item.producer}</small>
+      </div>
+      <div class="cart-item-price">${item.priceText}</div>
+      <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.id}">
+        <i data-lucide="x"></i>
+      </button>
+    </article>
+  `).join("");
+
+  const promotedBeatsHtml = preferredBeats(6).map(item => `
+    <div class="promoted-beat-card">
+      <img src="${item.cover}" alt="${item.title}">
+      <div class="promoted-beat-info">
+        <strong>${item.title}</strong>
+        <span>${item.producer}</span>
+      </div>
+      <button type="button" data-action="buy" data-id="${item.id}">
+        <i data-lucide="shopping-cart"></i>
+        <span>${item.price || "$35.00"}</span>
+      </button>
+    </div>
+  `).join("");
+
+  const contentMarkup = `
+    <section class="cart-page-layout">
+      <div class="cart-left-col">
+        <div class="cart-billing-header">
+          <span>Billing and licensing Information</span>
+          <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> Add Info</button>
+        </div>
+        <div class="cart-items-list">
+          ${itemMarkup}
+        </div>
+        <div class="cart-discount-banner">
+          Adicione mais 1 TRACK para ativar a promoção de Compre 1 e Leve 2!
+        </div>
+      </div>
+      
+      <div class="cart-right-col">
+        <div class="cart-summary-card">
+          <div class="cart-summary-head">
+            <h3>Cart Summary</h3>
+            <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> Share cart</button>
+          </div>
+          <div class="cart-summary-row">
+            <span>Items Total</span>
+            <strong>$${subtotal.toFixed(2)}</strong>
+          </div>
+          <div class="cart-summary-row">
+            <span>Service Fee</span>
+            <strong>$${serviceFee.toFixed(2)}</strong>
+          </div>
+          <div class="cart-summary-row cart-total-row">
+            <span>Subtotal (${items.length} item${items.length > 1 ? "s" : ""})</span>
+            <strong>$${total.toFixed(2)}</strong>
+          </div>
+          <div class="cart-auth-hint">
+            Continue as guest, <a href="#vendedor">Sign in</a> or <a href="#vendedor">Sign up</a>
+          </div>
+          <button class="cart-checkout-btn" type="button" data-action="finalize-cart">
+            Proceed to Checkout
+          </button>
+          <div class="cart-terms-hint">
+            By clicking the "Proceed to checkout" button, you agree to our Refund Policy, BeatStars Terms of Service, and BeatStars Privacy Policy. Taxes may apply.
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <section class="cart-promoted-section">
+      <h3>Promoted</h3>
+      <div class="cart-promoted-grid">
+        ${promotedBeatsHtml}
+      </div>
+    </section>
+  `;
+
+  appView.innerHTML = `${pageIntro("carrinho")}${contentMarkup}`;
+  lucide.createIcons();
+}
+
 function renderLibraryLegacy() {
   const recent = allBeats.slice(3, 11);
   appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Coleções para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section><section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
@@ -3710,6 +3847,7 @@ function renderRoute() {
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
   if (route === "configuracoes") renderSettings();
+  if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
   if (route === "playlist") renderPlaylistDetail();
   if (route === "detalhe") renderBeatDetail();
@@ -4167,7 +4305,8 @@ function handleFavorite(id) {
 }
 
 function handleBuy(id, selectedPlan = "premium") {
-  openCheckout(id, selectedPlan);
+  addToCart(id);
+  location.hash = "carrinho";
 }
 
 function profileFromAccountForm(form, email) {
@@ -4476,6 +4615,30 @@ document.addEventListener("click", (event) => {
   }
   if (action === "favorite") handleFavorite(target.dataset.id);
   if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
+  if (action === "remove-from-cart") {
+    removeFromCart(target.dataset.id);
+    return;
+  }
+  if (action === "finalize-cart") {
+    if (appState.cart.length === 0) return;
+    appState.cart.forEach(beatId => {
+      if (!appState.purchases.includes(beatId)) {
+        appState.purchases.unshift(beatId);
+      }
+      appState.orders.unshift({
+        id: `order-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        beatId,
+        license: "premium",
+        status: "Disponivel",
+        createdAt: new Date().toISOString(),
+      });
+    });
+    clearCart();
+    persistState();
+    location.hash = "compras";
+    showToast("Pedido finalizado com sucesso!", "check-circle");
+    return;
+  }
   if (action === "play") {
     const item = findBeat(target.dataset.id);
     pauseTopBeat({ quiet: true });
