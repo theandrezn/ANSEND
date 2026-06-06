@@ -3871,22 +3871,12 @@ function playBeatByOffset(offset) {
   if (next.id === topBeatOfDay.id) playTopBeat({ quiet: true });
 }
 
-function shouldPrimeTopBeat() {
-  const route = location.hash.replace("#", "") || "feed";
-  return route === "feed" || route === "";
-}
-
 window.addEventListener("load", () => {
   topBeatAudio()?.addEventListener("ended", () => setTopBeatPlaying(false));
   topBeatAudio()?.addEventListener("timeupdate", updateMiniProgress);
   topBeatAudio()?.addEventListener("loadedmetadata", updateMiniProgress);
   applyPlayerAudioSettings();
   updateMiniPlayer(currentPlayingBeat());
-  if (shouldPrimeTopBeat()) playTopBeat({ quiet: true });
-}, { once: true });
-
-window.addEventListener("pointerdown", () => {
-  if (!appState.topBeatUnlocked && shouldPrimeTopBeat()) playTopBeat({ quiet: true });
 }, { once: true });
 
 function handleFavorite(id) {
