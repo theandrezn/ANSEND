@@ -1529,7 +1529,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .track-row {
   min-height: 58px;
   display: grid;
-  grid-template-columns: 46px minmax(150px, 1.1fr) minmax(150px, .8fr) 90px 90px 112px;
+  grid-template-columns: 46px minmax(180px, 1.5fr) minmax(140px, 1fr) 90px 100px 180px;
   gap: 12px;
   align-items: center;
   padding: 8px 12px;
@@ -3004,7 +3004,7 @@ body.onboarding-open { overflow: hidden; }
     width: min(360px, 100%);
     margin-top: 26px;
   }
-  .track-row { grid-template-columns: 46px minmax(150px, 1fr) 96px; }
+  .track-row { grid-template-columns: 46px minmax(120px, 1fr) 170px; }
   .track-prod, .track-genre, .track-bpm { display: none; }
   .view-grid,
   .producer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -8013,9 +8013,16 @@ body.modal-open {
 
 .feed > .recent-activity-section {
   padding-bottom: 132px;
+  padding-left: clamp(16px, 3vw, 36px);
+  padding-right: clamp(16px, 3vw, 36px);
   background:
     linear-gradient(90deg, rgba(255, 255, 255, .025), transparent 50%, rgba(255, 106, 0, .035)),
     linear-gradient(180deg, #171717 0%, #050505 100%);
+}
+.feed > .recent-activity-section .section-head,
+.feed > .recent-activity-section .track-list {
+  width: 100%;
+  max-width: 100%;
 }
 
 .feed > .home-section .section-head,
