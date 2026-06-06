@@ -9593,3 +9593,138 @@ body.onboarding-open {
   color: black !important;
 }
 
+/* --- PREMIUM GLOWING QUICK ACTION CARDS --- */
+.quick-action-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.quick-action-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  min-height: 174px !important;
+  padding: 22px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: linear-gradient(135deg, rgba(16, 14, 12, 0.75) 0%, rgba(8, 6, 4, 0.95) 100%) !important;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  overflow: hidden !important;
+  position: relative !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+/* Subtle background orb reflection on hover */
+.quick-action-card::before {
+  content: "" !important;
+  position: absolute !important;
+  top: -40px !important;
+  right: -40px !important;
+  width: 100px !important;
+  height: 100px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(255, 106, 0, 0.12) 0%, transparent 70%) !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+.quick-action-card:hover::before {
+  opacity: 1 !important;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-6px) !important;
+  border-color: rgba(255, 106, 0, 0.45) !important;
+  box-shadow: 
+    0 20px 40px rgba(255, 106, 0, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+.quick-action-icon-wrapper {
+  background: rgba(255, 106, 0, 0.08) !important;
+  border: 1px solid rgba(255, 106, 0, 0.22) !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 10px rgba(255, 106, 0, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  z-index: 2 !important;
+}
+
+.quick-action-icon-wrapper svg {
+  width: 22px !important;
+  height: 22px !important;
+  color: var(--orange) !important;
+  filter: drop-shadow(0 0 8px rgba(255, 106, 0, 0.25)) !important;
+  transition: all 0.3s ease !important;
+}
+
+.quick-action-card:hover .quick-action-icon-wrapper {
+  background: var(--orange) !important;
+  border-color: var(--orange) !important;
+  box-shadow: 0 0 15px rgba(255, 106, 0, 0.4) !important;
+}
+
+.quick-action-card:hover .quick-action-icon-wrapper svg {
+  color: black !important;
+  filter: none !important;
+  transform: scale(1.05) !important;
+}
+
+.quick-action-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin-top: 16px !important;
+  z-index: 2 !important;
+}
+
+.quick-action-card strong {
+  font-family: 'Schibsted Grotesk', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  color: white !important;
+  line-height: 1.25 !important;
+  transition: color 0.3s ease !important;
+}
+
+.quick-action-card:hover strong {
+  color: var(--orange) !important;
+}
+
+.quick-action-card span {
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 11.5px !important;
+  color: #a5a5a5 !important;
+  line-height: 1.45 !important;
+  font-weight: 450 !important;
+  margin: 0 !important;
+}
+
+/* Match the CTA card to look like a premium option */
+.quick-action-card.nexo-profile-cta {
+  background: linear-gradient(135deg, rgba(255, 106, 0, 0.06) 0%, rgba(14, 12, 10, 0.85) 100%) !important;
+  border-color: rgba(255, 106, 0, 0.2) !important;
+}
+
+.quick-action-card.nexo-profile-cta:hover {
+  border-color: var(--orange) !important;
+  box-shadow: 
+    0 20px 40px rgba(255, 106, 0, 0.12),
+    0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+

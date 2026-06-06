@@ -1213,17 +1213,25 @@ function musicProfileSummary(profile = getMusicProfile()) {
 
 function quizCtaCard() {
   return `<button class="quick-action-card nexo-profile-cta" type="button" data-action="start-nexo-match">
-    <i data-lucide="sparkles"></i>
-    <strong>Personalize sua experiencia com a NEXO</strong>
-    <span>Responda um quiz rapido para receber playlists, profissionais e combos com match.</span>
+    <div class="quick-action-icon-wrapper">
+      <i data-lucide="sparkles"></i>
+    </div>
+    <div class="quick-action-info">
+      <strong>Personalize sua experiencia com a NEXO</strong>
+      <span>Responda um quiz rapido para receber playlists, profissionais e combos com match.</span>
+    </div>
   </button>`;
 }
 
 function quickActionCard([icon, title, desc, route]) {
   return `<a class="quick-action-card" href="#${route}" data-route="${route}">
-    <i data-lucide="${icon}"></i>
-    <strong>${title}</strong>
-    <span>${desc}</span>
+    <div class="quick-action-icon-wrapper">
+      <i data-lucide="${icon}"></i>
+    </div>
+    <div class="quick-action-info">
+      <strong>${title}</strong>
+      <span>${desc}</span>
+    </div>
   </a>`;
 }
 
