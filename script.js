@@ -1358,14 +1358,13 @@ function smartComboCard(input, index) {
 }
 
 function professionalMatchCard(profile) {
-  return `<article class="featured-professional-card match-professional-card">
-    <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
-    <div>
-      <strong>${profile.name}<i data-lucide="badge-check"></i></strong>
-      <span>${profile.category} - ${profile.match.label} (${profile.match.score}%)</span>
-      <small>${profile.match.reasons[0]}</small>
-    </div>
-    <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
+  return `<article class="top-producer-card match-professional-card">
+    <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
+      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+    </button>
+    <strong>${profile.name}<i data-lucide="badge-check"></i></strong>
+    <span>${profile.match.score}% match</span>
+    <button class="top-producer-follow" type="button" data-action="producer" data-title="${profile.name}"><i data-lucide="user-plus"></i>Follow</button>
   </article>`;
 }
 
@@ -1404,6 +1403,18 @@ function featuredProfessionalCard(name, index) {
       <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
     </div>
     <button type="button" data-action="producer" data-title="${name}">Ver perfil</button>
+  </article>`;
+}
+
+function topProducerNameCard(name, index) {
+  const followerCounts = ["2.1K", "3.3K", "444", "2K", "2.5K", "612", "335", "1.8K"];
+  return `<article class="top-producer-card">
+    <button class="top-producer-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
+      <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
+    </button>
+    <strong>${name}<i data-lucide="badge-check"></i></strong>
+    <span>${followerCounts[index % followerCounts.length]} Followers</span>
+    <button class="top-producer-follow" type="button" data-action="producer" data-title="${name}"><i data-lucide="user-plus"></i>Follow</button>
   </article>`;
 }
 
@@ -1455,7 +1466,7 @@ function renderHomeDashboard() {
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = (hasProfile ? recs.combos : smartCombos).map(smartComboCard).join("");
   if (featured) featured.innerHTML = hasProfile ? recs.beats.slice(0, 6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Match IA" : item.badge })).join("") : preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
-  if (professionals) professionals.innerHTML = hasProfile ? recs.professionals.map(professionalMatchCard).join("") : avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(avatarCard).join("");
+  if (professionals) professionals.innerHTML = hasProfile ? recs.professionals.map(professionalMatchCard).join("") : avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(topProducerNameCard).join("");
   if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
 }
 
