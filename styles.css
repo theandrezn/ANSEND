@@ -6189,6 +6189,69 @@ body.onboarding-open { overflow: hidden; }
   display: block;
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 42px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 999px;
+  background: #101010;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.language-switcher svg {
+  width: 16px;
+  height: 16px;
+  margin-inline: 8px 3px;
+  color: rgba(245, 245, 245, .72);
+}
+
+.language-switcher button {
+  min-width: 36px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  color: #b8b8b8;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .03em;
+  cursor: pointer;
+}
+
+.language-switcher button.is-active {
+  color: #fff;
+  background: #ff6a00;
+  box-shadow: 0 8px 24px rgba(255, 106, 0, .24);
+}
+
+.language-switcher button:focus-visible {
+  outline: 2px solid #ff8a00;
+  outline-offset: 2px;
+}
+
+.inline-language-switcher {
+  width: fit-content;
+  margin: 12px 0 18px;
+}
+
+@media (max-width: 760px) {
+  .language-switcher {
+    height: 38px;
+  }
+
+  .language-switcher svg {
+    display: none;
+  }
+
+  .language-switcher button {
+    min-width: 32px;
+    height: 30px;
+  }
+}
+
 .feed .ai-hero .an-hero-copy h1 strong {
   color: var(--orange);
 }

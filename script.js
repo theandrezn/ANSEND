@@ -14,6 +14,426 @@ const supabaseClient = isSupabaseConfigured
   ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.publishableKey)
   : null;
 
+const localeConfig = {
+  "pt-BR": {
+    currency: "BRL",
+    countryFocus: "BR",
+    dateFormat: "dd/MM/yyyy",
+  },
+  en: {
+    currency: "USD",
+    countryFocus: "GLOBAL",
+    dateFormat: "MM/dd/yyyy",
+  },
+};
+
+const i18n = {
+  "pt-BR": {
+    "nav.home": "Home",
+    "nav.ia": "NEXO IA",
+    "nav.explore": "Explorar",
+    "nav.favorites": "Favoritos",
+    "nav.orders": "Pedidos",
+    "nav.library": "Biblioteca",
+    "nav.professionals": "Profissionais",
+    "nav.profile": "Meu perfil",
+    "nav.settings": "Configurações",
+    "sellerMini.title": "Venda seus serviços",
+    "sellerMini.subtitle": "Abra sua loja",
+    "sellerMini.cta": "Começar",
+    "search.placeholder": "Buscar serviços, artistas ou profissionais",
+    "hero.kicker": "NEXO IA",
+    "hero.titleLine1": "ANSEND |",
+    "hero.titleLine2": "O marketplace inteligente da música",
+    "hero.subtitle": "Descreva sua música, letra, demo ou objetivo. A NEXO IA conecta você aos profissionais certos.",
+    "hero.prompt": "Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente...",
+    "hero.primaryCta": "Começar com IA",
+    "hero.secondaryCta": "Explorar profissionais",
+    "hero.benefitPayment": "Pagamento protegido",
+    "hero.benefitVerified": "Profissionais verificados",
+    "hero.benefitDelivery": "Entrega acompanhada",
+    "hero.mapEyebrow": "MAPA DO LANÇAMENTO",
+    "hero.mapTitle": "Diagnóstico Musical IA",
+    "hero.mapSubtitle": "Conte sua ideia e receba uma ordem clara de execução.",
+    "hero.stepProduction": "Produção",
+    "hero.stepCover": "Capa",
+    "hero.stepDistribution": "Distribuição",
+    "hero.stepCuration": "Curadoria",
+    "hero.stepMarketing": "Divulgação",
+    "section.catalogs": "Catálogos em alta",
+    "section.catalogsSubtitle": "Beats, packs e referências subindo agora na ANSEND.",
+    "section.playlistsStyle": "Playlists para seu estilo",
+    "section.nextStep": "Qual seu próximo passo?",
+    "section.nextStepShort": "Seu próximo passo",
+    "section.recommended": "Recomendado pela NEXO",
+    "section.categories": "Explore por categoria",
+    "section.combos": "Combos para acelerar seu lançamento",
+    "section.professionals": "Profissionais recomendados",
+    "section.recent": "Lista recente",
+    "section.moreCatalog": "Ver catálogo completo",
+    "section.more": "Ver mais",
+    "category.beatmakers": "Beatmakers",
+    "category.designers": "Designers",
+    "category.producers": "Produtores Musicais",
+    "category.curators": "Curadores",
+    "category.marketing": "Marketing Musical",
+    "common.open": "Abrir",
+    "common.explore": "Explorar",
+    "common.findSolution": "Encontrar solução",
+    "common.exploreCategories": "Explorar categorias",
+    "common.startQuiz": "Começar quiz",
+    "common.refazerQuiz": "Refazer quiz",
+    "common.save": "Salvar",
+    "trust.aiRecommendations": "Recomendações com IA",
+    "trust.artistSupport": "Suporte ao artista",
+    "route.feed.subtitle": "Dashboard resumido com IA, recomendações e próximos passos.",
+    "route.explorar.title": "Explorar",
+    "route.explorar.subtitle": "Encontre novos sons por gênero, BPM ou produtor.",
+    "route.favoritos.title": "Favoritos",
+    "route.favoritos.subtitle": "Tudo que você marcou para ouvir depois.",
+    "route.compras.title": "Pedidos",
+    "route.compras.subtitle": "Histórico de pedidos, licenças e serviços contratados.",
+    "route.biblioteca.title": "Biblioteca",
+    "route.biblioteca.subtitle": "Playlists, históricos e itens salvos em um só lugar.",
+    "route.produtores.title": "Profissionais",
+    "route.produtores.subtitle": "Beatmakers, designers, produtores, curadores e marketing musical.",
+    "route.configuracoes.title": "Configurações",
+    "route.configuracoes.subtitle": "Personalize sua experiência na plataforma.",
+    "route.vendedor.title": "Conta ANSEND",
+    "route.vendedor.subtitle": "Cadastre, entre e escolha a função da sua conta na plataforma.",
+    "route.perfil.title": "Meu perfil",
+    "route.perfil.subtitle": "Sua conta, catálogo e publicações na ANSEND.",
+  },
+  en: {
+    "nav.home": "Home",
+    "nav.ia": "NEXO AI",
+    "nav.explore": "Explore",
+    "nav.favorites": "Favorites",
+    "nav.orders": "Orders",
+    "nav.library": "Library",
+    "nav.professionals": "Professionals",
+    "nav.profile": "My profile",
+    "nav.settings": "Settings",
+    "sellerMini.title": "Sell services",
+    "sellerMini.subtitle": "Open your shop",
+    "sellerMini.cta": "Start",
+    "search.placeholder": "Search services, artists, or professionals",
+    "hero.kicker": "NEXO AI",
+    "hero.titleLine1": "ANSEND |",
+    "hero.titleLine2": "The intelligent music marketplace",
+    "hero.subtitle": "Describe your song, lyrics, demo, or goal. NEXO AI connects you with the right professionals.",
+    "hero.prompt": "Ex: I have a trap song ready and need to release it professionally...",
+    "hero.primaryCta": "Start with AI",
+    "hero.secondaryCta": "Explore professionals",
+    "hero.benefitPayment": "Protected payment",
+    "hero.benefitVerified": "Verified professionals",
+    "hero.benefitDelivery": "Tracked delivery",
+    "hero.mapEyebrow": "RELEASE MAP",
+    "hero.mapTitle": "AI Music Diagnostic",
+    "hero.mapSubtitle": "Share your idea and get a clear execution order.",
+    "hero.stepProduction": "Production",
+    "hero.stepCover": "Cover",
+    "hero.stepDistribution": "Distribution",
+    "hero.stepCuration": "Curation",
+    "hero.stepMarketing": "Promotion",
+    "section.catalogs": "Trending catalogs",
+    "section.catalogsSubtitle": "Beats, packs, and references rising now on ANSEND.",
+    "section.playlistsStyle": "Playlists for your style",
+    "section.nextStep": "What is your next step?",
+    "section.nextStepShort": "Your next step",
+    "section.recommended": "Recommended by NEXO",
+    "section.categories": "Explore categories",
+    "section.combos": "Smart release combos",
+    "section.professionals": "Recommended professionals",
+    "section.recent": "Recent list",
+    "section.moreCatalog": "View full catalog",
+    "section.more": "See more",
+    "category.beatmakers": "Beatmakers",
+    "category.designers": "Designers",
+    "category.producers": "Music Producers",
+    "category.curators": "Curators",
+    "category.marketing": "Music Marketing",
+    "common.open": "Open",
+    "common.explore": "Explore",
+    "common.findSolution": "Find a solution",
+    "common.exploreCategories": "Explore categories",
+    "common.startQuiz": "Start quiz",
+    "common.refazerQuiz": "Retake quiz",
+    "common.save": "Save",
+    "trust.aiRecommendations": "AI recommendations",
+    "trust.artistSupport": "Artist support",
+    "route.feed.subtitle": "AI dashboard with recommendations and next steps.",
+    "route.explorar.title": "Explore",
+    "route.explorar.subtitle": "Find new sounds by genre, BPM, or producer.",
+    "route.favoritos.title": "Favorites",
+    "route.favoritos.subtitle": "Everything you saved to hear later.",
+    "route.compras.title": "Orders",
+    "route.compras.subtitle": "Your order history, licenses, and hired services.",
+    "route.biblioteca.title": "Library",
+    "route.biblioteca.subtitle": "Saved playlists, history, and library items.",
+    "route.produtores.title": "Professionals",
+    "route.produtores.subtitle": "Beatmakers, designers, producers, curators, and music marketing.",
+    "route.configuracoes.title": "Settings",
+    "route.configuracoes.subtitle": "Customize your platform experience.",
+    "route.vendedor.title": "ANSEND Account",
+    "route.vendedor.subtitle": "Create an account, sign in, and choose your role.",
+    "route.perfil.title": "My profile",
+    "route.perfil.subtitle": "Your account, catalog, and ANSEND publications.",
+  },
+};
+
+const appLocale = {
+  current: "en",
+  country: localStorage.getItem("ansend_country") || "UNKNOWN",
+};
+
+function supportedLocale(locale) {
+  return locale === "pt-BR" || locale === "en" ? locale : null;
+}
+
+function savedLocale() {
+  return supportedLocale(localStorage.getItem("ansend_locale"));
+}
+
+function urlLocale() {
+  return supportedLocale(new URLSearchParams(window.location.search).get("lang"));
+}
+
+function browserLocale() {
+  const langs = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
+  return langs.some((lang) => lang.toLowerCase().startsWith("pt")) ? "pt-BR" : null;
+}
+
+function detectLocale() {
+  const saved = savedLocale();
+  if (saved) return saved;
+  const fromUrl = urlLocale();
+  if (fromUrl) {
+    localStorage.setItem("ansend_locale", fromUrl);
+    return fromUrl;
+  }
+  return browserLocale() || "en";
+}
+
+async function detectCountry() {
+  try {
+    const response = await fetch("/api/geo", { cache: "no-store" });
+    if (!response.ok) throw new Error("geo unavailable");
+    return await response.json();
+  } catch (_error) {
+    return { country: "UNKNOWN", region: null, city: null, locale: null };
+  }
+}
+
+async function detectLocaleWithGeo() {
+  const saved = savedLocale();
+  if (saved) return saved;
+  const fromUrl = urlLocale();
+  if (fromUrl) {
+    localStorage.setItem("ansend_locale", fromUrl);
+    return fromUrl;
+  }
+  const browser = browserLocale();
+  if (browser === "pt-BR") {
+    localStorage.setItem("ansend_locale", browser);
+    return browser;
+  }
+  const geo = await detectCountry();
+  const geoLocale = geo.country === "BR" || geo.locale === "pt-BR" ? "pt-BR" : "en";
+  appLocale.country = geo.country || "UNKNOWN";
+  localStorage.setItem("ansend_locale", geoLocale);
+  localStorage.setItem("ansend_country", appLocale.country);
+  localStorage.setItem("ansend_locale_detected_at", new Date().toISOString());
+  return geoLocale;
+}
+
+function setLocale(locale, options = {}) {
+  const next = supportedLocale(locale) || "en";
+  appLocale.current = next;
+  document.documentElement.lang = next === "pt-BR" ? "pt-BR" : "en";
+  if (options.manual !== false) {
+    localStorage.setItem("ansend_locale", next);
+    localStorage.setItem("ansend_locale_detected_at", new Date().toISOString());
+  }
+  document.body?.setAttribute("data-locale", next);
+  return next;
+}
+
+function t(key, fallback = "") {
+  return i18n[appLocale.current]?.[key] || i18n.en[key] || fallback || key;
+}
+
+function getRegionalContent(locale = appLocale.current, country = appLocale.country) {
+  const config = localeConfig[locale] || localeConfig.en;
+  return {
+    ...config,
+    country,
+    genres: locale === "pt-BR"
+      ? ["Trap", "Funk", "Forro", "Gospel", "Sertanejo", "Piseiro"]
+      : ["Trap", "R&B", "Drill", "Pop", "Afrobeat", "Gospel"],
+    cta: t("hero.primaryCta"),
+  };
+}
+
+window.ANSEND_I18N = {
+  t,
+  get locale() {
+    return appLocale.current;
+  },
+  setLocale: (locale) => {
+    setLocale(locale, { manual: true });
+    renderRoute();
+  },
+  detectLocale,
+  detectLocaleWithGeo,
+  detectCountry,
+  getRegionalContent,
+  localeConfig,
+};
+
+function applyTranslations(root = document) {
+  ensureLanguageSwitcher();
+  document.title = appLocale.current === "pt-BR" ? "ANSEND - Feed musical" : "ANSEND - Music feed";
+  document.querySelector('meta[name="description"]')?.setAttribute(
+    "content",
+    appLocale.current === "pt-BR"
+      ? "Ecossistema musical inteligente ANSEND com IA, playlists, beats e profissionais."
+      : "ANSEND intelligent music ecosystem with AI, playlists, beats, and professionals."
+  );
+  root.querySelectorAll("[data-i18n]").forEach((node) => {
+    node.textContent = t(node.dataset.i18n, node.textContent);
+  });
+  root.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    node.setAttribute("placeholder", t(node.dataset.i18nPlaceholder, node.getAttribute("placeholder") || ""));
+  });
+  root.querySelectorAll("[data-i18n-aria]").forEach((node) => {
+    node.setAttribute("aria-label", t(node.dataset.i18nAria, node.getAttribute("aria-label") || ""));
+  });
+  root.querySelectorAll("[data-locale-option]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.localeOption === appLocale.current);
+    button.setAttribute("aria-pressed", String(button.dataset.localeOption === appLocale.current));
+  });
+  const navKeys = {
+    feed: "nav.home",
+    ia: "nav.ia",
+    explorar: "nav.explore",
+    favoritos: "nav.favorites",
+    compras: "nav.orders",
+    biblioteca: "nav.library",
+    produtores: "nav.professionals",
+    perfil: "nav.profile",
+    configuracoes: "nav.settings",
+  };
+  Object.entries(navKeys).forEach(([route, key]) => {
+    const label = document.querySelector(`.nav-link[data-route="${route}"] span`);
+    if (label) label.textContent = t(key);
+  });
+  const seller = document.querySelector(".seller-mini");
+  if (seller) {
+    seller.querySelector("strong").textContent = t("sellerMini.title");
+    seller.querySelector("span").textContent = t("sellerMini.subtitle");
+    seller.querySelector("button").textContent = t("sellerMini.cta");
+  }
+  const search = document.querySelector("#search");
+  if (search) search.placeholder = t("search.placeholder");
+  const hero = document.querySelector(".ai-hero");
+  if (hero) {
+    const title = hero.querySelector(".an-hero-copy h1");
+    const subtitle = hero.querySelector(".an-hero-copy > p");
+    const input = hero.querySelector("#aiPrompt");
+    const primary = hero.querySelector(".ai-actions .an-primary");
+    const secondary = hero.querySelector(".ai-actions .an-secondary");
+    const mapEyebrow = hero.querySelector(".ai-map-card > span");
+    const mapTitle = hero.querySelector(".ai-map-card > strong");
+    const mapSubtitle = hero.querySelector(".ai-map-card > p");
+    if (title) title.innerHTML = `<span>${t("hero.titleLine1")}</span><strong>${t("hero.titleLine2")}</strong>`;
+    if (subtitle) subtitle.textContent = t("hero.subtitle");
+    if (input) input.placeholder = t("hero.prompt");
+    if (primary) primary.innerHTML = `${t("hero.primaryCta")} <i data-lucide="arrow-right"></i>`;
+    if (secondary) secondary.innerHTML = `${t("hero.secondaryCta")} <i data-lucide="users-round"></i>`;
+    const benefits = hero.querySelectorAll(".an-benefits span");
+    [["hero.benefitPayment"], ["hero.benefitVerified"], ["trust.aiRecommendations"]].forEach(([key], index) => {
+      if (benefits[index]) setIconText(benefits[index], t(key));
+    });
+    if (mapEyebrow) mapEyebrow.textContent = t("hero.mapEyebrow");
+    if (mapTitle) mapTitle.textContent = t("hero.mapTitle");
+    if (mapSubtitle) mapSubtitle.textContent = t("hero.mapSubtitle");
+    const mapLabels = ["hero.stepProduction", "hero.stepCover", "hero.stepDistribution", "hero.stepCuration", "hero.stepMarketing"];
+    hero.querySelectorAll(".release-map li span").forEach((label, index) => {
+      label.textContent = t(mapLabels[index], label.textContent);
+    });
+  }
+  const authPanel = document.querySelector(".seller-auth-panel");
+  if (authPanel) {
+    const form = authPanel.querySelector(".seller-auth-form");
+    const isLogin = form?.dataset.mode !== "signup";
+    const title = authPanel.querySelector(".seller-auth-copy h1");
+    const copy = authPanel.querySelector(".seller-auth-copy p");
+    const submit = authPanel.querySelector(".seller-submit");
+    const google = authPanel.querySelector('[data-action="seller-google"]');
+    const modeButton = authPanel.querySelector('[data-action="seller-mode"]');
+    const modeText = modeButton?.parentElement || authPanel.querySelector(".seller-auth-form > p") || authPanel.querySelector(".seller-auth-form p:last-child");
+    const emailLabel = authPanel.querySelector('label[for="seller-email"]');
+    const passwordLabel = authPanel.querySelector('label[for="seller-password"]');
+    const emailInput = authPanel.querySelector("#seller-email");
+    const passwordInput = authPanel.querySelector("#seller-password");
+    if (title) title.textContent = appLocale.current === "pt-BR" ? (isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND") : (isLogin ? "Sign in to your account" : "Create your ANSEND account");
+    if (copy) copy.textContent = appLocale.current === "pt-BR"
+      ? (isLogin ? "Acesse playlists, compras, favoritos e recomendacoes adaptadas a sua funcao." : "Escolha sua funcao para montar uma experiencia personalizada.")
+      : (isLogin ? "Access playlists, orders, favorites, and recommendations adapted to your role." : "Choose your role to build a personalized ANSEND experience.");
+    if (emailLabel?.firstChild) emailLabel.firstChild.textContent = "E-mail";
+    if (passwordLabel?.firstChild) passwordLabel.firstChild.textContent = appLocale.current === "pt-BR" ? "Senha" : "Password";
+    if (emailInput) emailInput.placeholder = appLocale.current === "pt-BR" ? "voce@email.com" : "you@email.com";
+    if (passwordInput) passwordInput.placeholder = appLocale.current === "pt-BR" ? "Sua senha" : "Your password";
+    if (submit) submit.innerHTML = `${appLocale.current === "pt-BR" ? (isLogin ? "Entrar no painel" : "Criar conta") : (isLogin ? "Enter dashboard" : "Create account")}<i data-lucide="arrow-right"></i>`;
+    if (google) google.innerHTML = `<img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">${appLocale.current === "pt-BR" ? "Continuar com Google" : "Continue with Google"}`;
+    if (modeText) modeText.innerHTML = `${appLocale.current === "pt-BR" ? (isLogin ? "Ainda nao tem conta?" : "Ja tem conta?") : (isLogin ? "Do not have an account yet?" : "Already have an account?")} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${appLocale.current === "pt-BR" ? (isLogin ? "Criar conta" : "Entrar") : (isLogin ? "Create account" : "Sign in")}</button>`;
+    const showcase = document.querySelector(".seller-showcase-card");
+    if (showcase) {
+      const showcaseTitle = showcase.querySelector("strong");
+      const items = showcase.querySelectorAll("li");
+      const isPortuguese = appLocale.current === "pt-BR";
+      const showcaseItems = isPortuguese
+        ? ["Licencas seguras", "Catalogo profissional", "Entrega imediata"]
+        : ["Secure licenses", "Professional catalog", "Instant delivery"];
+      if (showcaseTitle) showcaseTitle.textContent = isPortuguese
+        ? "Venda beats, organize licencas e acompanhe downloads em tempo real."
+        : "Sell beats, organize licenses, and track downloads in real time.";
+      items.forEach((item, index) => setIconText(item, showcaseItems[index] || item.textContent));
+    }
+  }
+}
+
+function setIconText(element, text) {
+  const icon = element.firstElementChild;
+  element.textContent = "";
+  if (icon) element.appendChild(icon);
+  element.appendChild(document.createTextNode(text));
+}
+
+function ensureLanguageSwitcher() {
+  if (document.querySelector(".language-switcher")) return;
+  const topIcons = document.querySelector(".top-icons");
+  if (!topIcons) return;
+  const switcher = document.createElement("div");
+  switcher.className = "language-switcher";
+  switcher.setAttribute("aria-label", "Language");
+  switcher.innerHTML = languageSwitcherInnerHtml();
+  topIcons.prepend(switcher);
+}
+
+function languageSwitcherInnerHtml() {
+  return `
+    <i data-lucide="globe-2" aria-hidden="true"></i>
+    <button type="button" data-action="set-locale" data-locale-option="pt-BR" aria-pressed="false">PT</button>
+    <button type="button" data-action="set-locale" data-locale-option="en" aria-pressed="false">EN</button>
+  `;
+}
+
+function languageSwitcherMarkup() {
+  return `<div class="language-switcher inline-language-switcher" aria-label="Language">${languageSwitcherInnerHtml()}</div>`;
+}
+
 const accountRoles = [
   { id: "produtor", label: "Produtor", icon: "sliders-horizontal", desc: "Publica beats, gerencia licenças e acompanha vendas." },
   { id: "curador", label: "Curador", icon: "list-music", desc: "Monta playlists, salva catálogos e encontra novos sons." },
@@ -759,11 +1179,25 @@ function nexoRecommendationCard(item) {
 
 function categoryCard([icon, title, desc, route]) {
   const background = categoryBackgrounds[title] || "assets/category-beatmakers.png";
+  const categoryKeys = {
+    Beatmakers: "category.beatmakers",
+    Designers: "category.designers",
+    "Produtores Musicais": "category.producers",
+    Curadores: "category.curators",
+    "Marketing Musical": "category.marketing",
+  };
+  const description = appLocale.current === "pt-BR" ? desc : {
+    Beatmakers: "Beats, packs, and licenses to record.",
+    Designers: "Covers, identity, and assets for releases.",
+    "Produtores Musicais": "Production, mixing, and mastering.",
+    Curadores: "Playlists, selection, and positioning.",
+    "Marketing Musical": "Campaigns, content, and traffic.",
+  }[title] || desc;
   return `<article class="category-card" style="--category-bg: url('${background}')">
     <i data-lucide="${icon}"></i>
-    <strong>${title}</strong>
-    <p>${desc}</p>
-    <a href="#${route}" data-route="${route}">Explorar</a>
+    <strong>${t(categoryKeys[title], title)}</strong>
+    <p>${description}</p>
+    <a href="#${route}" data-route="${route}">${t("common.explore")}</a>
   </article>`;
 }
 
@@ -866,13 +1300,19 @@ function renderHomeDashboard() {
   };
 
   if (hasProfile) {
-    setText("featuredPreviewTitle", `<i data-lucide="list-music"></i>Playlists para seu estilo`, `NEXO Match baseado em ${musicProfileSummary(profile)}`);
-    setText("quickActionsTitle", `<i data-lucide="zap"></i>Seu proximo passo`, profile.objective || "Ordem sugerida pela NEXO");
-    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>Recomendado pela NEXO`, "Profissionais e servicos com maior match para voce");
-    setText("smartCombosTitle", `<i data-lucide="boxes"></i>Combos inteligentes`, "Pacotes montados para sua fase atual");
-    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, "Perfis verificados com fit para seu projeto");
+    setText("featuredPreviewTitle", `<i data-lucide="list-music"></i>${t("section.playlistsStyle")}`, `NEXO Match: ${musicProfileSummary(profile)}`);
+    setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStepShort")}`, profile.objective || "NEXO");
+    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Profissionais e servicos com maior match para voce" : "Professionals and services with the strongest fit for you");
+    setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes montados para sua fase atual" : "Packages shaped for your current stage");
+    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>${t("section.professionals")}`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
   } else {
-    setText("quickActionsTitle", `<i data-lucide="zap"></i>Personalize sua experiencia`, "Responda o quiz e desbloqueie recomendacoes reais");
+    setText("featuredPreviewTitle", `<i data-lucide="flame"></i>${t("section.catalogs")}`, t("section.catalogsSubtitle"));
+    setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStep")}`, appLocale.current === "pt-BR" ? "Responda o quiz e desbloqueie recomendacoes reais" : "Answer the quiz and unlock real recommendations");
+    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Seis sugestoes principais para resolver seu lancamento agora" : "Six top suggestions to move your release forward");
+    setText("categoryTitle", `<i data-lucide="layout-grid"></i>${t("section.categories")}`, appLocale.current === "pt-BR" ? "Os cinco pilares do marketplace musical da ANSEND." : "The five pillars of ANSEND's music marketplace.");
+    setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes inteligentes para sair da ideia ate a divulgacao." : "Smart packages from idea to promotion.");
+    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>${t("section.professionals")}`, appLocale.current === "pt-BR" ? "Perfis verificados para seguir" : "Verified profiles to follow");
+    setText("recentActivityTitle", `<i data-lucide="clock-3"></i>${t("section.recent")}`, appLocale.current === "pt-BR" ? "Ranking de faixas adicionadas agora" : "Recently added track ranking");
   }
 
   if (quick) quick.innerHTML = hasProfile ? recs.nextSteps.map(quickActionCard).join("") : [quizCtaCard(), ...(activeRoleKey() === "beatmaker" ? beatmakerQuickActions : quickActions).slice(0, 3).map(quickActionCard)].join("");
@@ -1575,7 +2015,23 @@ function accountRoleLabel(role = activeProfile()?.account_role) {
 
 function accountGreeting() {
   const profile = activeProfile();
-  if (!profile?.account_role) return "Sua selecao diaria de playlists, beats e profissionais.";
+  if (!profile?.account_role) {
+    return appLocale.current === "pt-BR"
+      ? "Sua selecao diaria de playlists, beats e profissionais."
+      : "Your daily selection of playlists, beats, and professionals.";
+  }
+  if (appLocale.current === "en") {
+    const role = normalizeRole(profile.account_role);
+    const map = {
+      artista: "Beats, licenses, and producers prioritized for your next release.",
+      beatmaker: "Catalogs and references to create, collaborate, and sell beats.",
+      designer: "Visual references, covers, and catalogs for music releases.",
+      produtor: "Projects, demos, mix, and master workflows organized for delivery.",
+      curador: "Playlists and discoveries organized for your curation work.",
+      marketing: "Campaigns, creatives, and release actions organized by NEXO.",
+    };
+    return map[role] || "Experience adapted to your role.";
+  }
   return roleDashboard(profile.account_role).subheadline;
 }
 
@@ -2007,7 +2463,10 @@ function findBeat(id) {
 }
 
 function pageIntro(route, actions = "") {
-  const [title, subtitle] = routeTitles[route];
+  const [fallbackTitle, fallbackSubtitle] = routeTitles[route];
+  const routeKey = route === "detalhe" ? "detalhe" : route;
+  const title = t(`route.${routeKey}.title`, fallbackTitle);
+  const subtitle = t(`route.${routeKey}.subtitle`, fallbackSubtitle);
   const resolvedSubtitle = route === "feed" ? accountGreeting() : subtitle;
   return `<header class="view-header"><div><span class="view-eyebrow">ANSEND</span><h1>${title}</h1><p>${resolvedSubtitle}</p></div>${actions}</header>`;
 }
@@ -2482,6 +2941,7 @@ function renderSellerAuth() {
   appView.innerHTML = `<section class="seller-auth" aria-label="Sistema de contas ANSEND">
     <div class="seller-auth-panel">
       <a class="seller-auth-logo" href="#feed" data-route="feed" aria-label="ANSEND inicio"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
+      ${languageSwitcherMarkup()}
       <div class="seller-auth-copy">
         <span>${isSupabaseConfigured ? `SUPABASE · ${SUPABASE_PROJECT_REF}` : "CONFIGURAÇÃO SUPABASE PENDENTE"}</span>
         <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
@@ -2532,6 +2992,7 @@ function hydrateView() {
   renderAiPlan();
   setupAutoScrollRows();
   setupScrollReveals();
+  applyTranslations();
   lucide.createIcons();
   setTimeout(() => appView.classList.remove("route-slide-in", "route-slide-left"), 620);
 }
@@ -2945,6 +3406,12 @@ document.addEventListener("click", (event) => {
     closeMusicPreferenceQuiz();
     return;
   }
+  if (action === "set-locale") {
+    setLocale(target.dataset.localeOption, { manual: true });
+    renderRoute();
+    showToast(appLocale.current === "pt-BR" ? "Idioma alterado para portugues" : "Language changed to English", "globe-2");
+    return;
+  }
   if (action === "seller") {
     appState.sellerMode = hasAccountAccess() ? "login" : "signup";
     location.hash = "vendedor";
@@ -3269,7 +3736,13 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-renderRoute();
-showOnboarding();
-initAuth();
+setLocale(detectLocale(), { manual: false });
+detectLocaleWithGeo()
+  .then((locale) => setLocale(locale, { manual: false }))
+  .catch(() => setLocale(detectLocale(), { manual: false }))
+  .finally(() => {
+    renderRoute();
+    showOnboarding();
+    initAuth();
+  });
 
