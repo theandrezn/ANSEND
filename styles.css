@@ -11353,4 +11353,17 @@ body.onboarding-open {
   }
 }
 
+/* Carrinho View Header Overrides (Gray theme, no orange) */
+.view-header-carrinho {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: 
+    radial-gradient(circle at 80% 0, rgba(255, 255, 255, 0.04), transparent 300px),
+    linear-gradient(135deg, #0d0d0d, #000000) !important;
+}
+
+.view-header-carrinho .view-eyebrow {
+  color: #737373 !important;
+}
+
+
 

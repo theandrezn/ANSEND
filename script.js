@@ -3027,7 +3027,7 @@ function pageIntro(route, actions = "") {
   const title = t(`route.${routeKey}.title`, fallbackTitle);
   const subtitle = t(`route.${routeKey}.subtitle`, fallbackSubtitle);
   const resolvedSubtitle = route === "feed" ? accountGreeting() : subtitle;
-  return `<header class="view-header"><div><span class="view-eyebrow">ANSEND</span><h1>${title}</h1><p>${resolvedSubtitle}</p></div>${actions}</header>`;
+  return `<header class="view-header view-header-${route}"><div><span class="view-eyebrow">ANSEND</span><h1>${title}</h1><p>${resolvedSubtitle}</p></div>${actions}</header>`;
 }
 
 function emptyState(icon, title, text, route = "explorar") {
