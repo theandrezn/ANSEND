@@ -1816,6 +1816,55 @@ function roleDashboardStripMarkup(dashboard) {
     <div class="role-dashboard-actions">${actions}</div>
   </section>`;
 }
+function animateHeadlineReveal(titleElement, line1, line2) {
+  if (!titleElement) return;
+  
+  titleElement.innerHTML = '';
+  
+  const span = document.createElement('span');
+  span.style.display = 'block';
+  
+  const strong = document.createElement('strong');
+  strong.style.display = 'block';
+  
+  let charIndex = 0;
+  
+  const processLine = (text, container) => {
+    const words = text.split(' ');
+    words.forEach((word, wordIdx) => {
+      const wordSpan = document.createElement('span');
+      wordSpan.style.display = 'inline-block';
+      wordSpan.style.whiteSpace = 'nowrap';
+      
+      for (let i = 0; i < word.length; i++) {
+        const charSpan = document.createElement('span');
+        charSpan.className = 'reveal-char';
+        charSpan.textContent = word[i];
+        charSpan.style.animationDelay = `${charIndex * 0.02}s`;
+        wordSpan.appendChild(charSpan);
+        charIndex++;
+      }
+      
+      container.appendChild(wordSpan);
+      
+      if (wordIdx < words.length - 1) {
+        const spaceSpan = document.createElement('span');
+        spaceSpan.className = 'reveal-char';
+        spaceSpan.textContent = ' ';
+        spaceSpan.style.whiteSpace = 'pre';
+        spaceSpan.style.animationDelay = `${charIndex * 0.02}s`;
+        container.appendChild(spaceSpan);
+        charIndex++;
+      }
+    });
+  };
+  
+  processLine(line1, span);
+  processLine(line2, strong);
+  
+  titleElement.appendChild(span);
+  titleElement.appendChild(strong);
+}
 
 function applyRoleDashboard() {
   const dashboard = roleDashboard();
@@ -1837,7 +1886,7 @@ function applyRoleDashboard() {
   const quickSubtitle = document.querySelector(".quick-actions-section .section-head p");
 
   if (kicker) kicker.textContent = role === "beatmaker" ? "NEXO IA PARA BEATMAKERS" : "NEXO IA";
-  if (title) title.innerHTML = `<span>${heroHeadline[0]}</span><strong>${heroHeadline[1]}</strong>`;
+  if (title) animateHeadlineReveal(title, heroHeadline[0], heroHeadline[1]);
   if (subtitle) subtitle.textContent = dashboard.subheadline;
   if (input) input.placeholder = dashboard.placeholder;
   if (chips) {
@@ -2304,153 +2353,376 @@ function quizOptions(name, options, current = [], type = "checkbox") {
   </label>`).join("");
 }
 
-function musicPreferenceQuizMarkup(profile = getMusicProfile()) {
-  const current = profile || createDefaultMusicProfile();
-  return `<section class="nexo-match-modal" role="dialog" aria-modal="true" aria-labelledby="nexoMatchTitle">
-    <div class="nexo-match-shell">
-      <button class="modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i data-lucide="x"></i></button>
-      <div class="nexo-match-intro">
-        <span><i data-lucide="sparkles"></i>NEXO Match</span>
-        <h2 id="nexoMatchTitle">Personalize sua experiencia musical.</h2>
-        <p>Responda rapido para a ANSEND adaptar playlists, profissionais, servicos e combos ao seu momento.</p>
-      </div>
-      <form class="nexo-match-form">
-        <fieldset><legend>1. Qual estilo musical mais combina com voce?</legend><div class="nexo-quiz-grid">${quizOptions("genres", musicQuiz.genres, current.genres)}</div></fieldset>
-        <fieldset><legend>2. Qual e seu objetivo agora?</legend><div class="nexo-quiz-grid">${quizOptions("objective", musicQuiz.objectives, [current.objective], "radio")}</div></fieldset>
-        <fieldset><legend>3. Em qual fase sua musica esta?</legend><div class="nexo-quiz-grid compact">${quizOptions("stage", musicQuiz.stages, [current.stage], "radio")}</div></fieldset>
-        <fieldset><legend>4. Qual vibe voce procura?</legend><div class="nexo-quiz-grid">${quizOptions("vibes", musicQuiz.vibes, current.vibes)}</div></fieldset>
-        <fieldset><legend>5. Referencias</legend><textarea name="references" rows="3" placeholder="Ex: Ryu, Travis Scott, Veigh, funk 150, beat triste...">${current.references || ""}</textarea></fieldset>
-        <fieldset><legend>6. Qual e seu orcamento?</legend><div class="nexo-quiz-grid compact">${quizOptions("budget", musicQuiz.budgets, [current.budget], "radio")}</div></fieldset>
-        <fieldset><legend>7. Qual tipo de usuario voce e?</legend><div class="nexo-quiz-grid compact">${quizOptions("userType", musicQuiz.userTypes, [current.userType], "radio")}</div></fieldset>
-        <div class="nexo-match-footer">
-          <button class="skip-onboarding" type="button" data-action="skip-nexo-match">Usar perfil inicial</button>
-          <button class="finish-onboarding" type="submit">Salvar e recomendar<i data-lucide="arrow-right"></i></button>
+const spotifyGradients = [
+  "linear-gradient(135deg, #1db954, #191414)", // Green
+  "linear-gradient(135deg, #8d67ab, #191414)", // Purple
+  "linear-gradient(135deg, #e8115b, #191414)", // Pink
+  "linear-gradient(135deg, #509bf5, #191414)", // Blue
+  "linear-gradient(135deg, #f59b23, #191414)", // Orange
+  "linear-gradient(135deg, #e1112c, #191414)", // Red
+  "linear-gradient(135deg, #1e3264, #191414)", // Dark blue
+  "linear-gradient(135deg, #7d4b32, #191414)", // Brown
+  "linear-gradient(135deg, #0d73ec, #191414)", // Sky blue
+  "linear-gradient(135deg, #e91429, #191414)"  // Bright red
+];
+
+class SpotifyQuizEngine {
+  constructor(config) {
+    this.config = config;
+    this.currentStep = 0;
+    this.answers = { ...config.initialData };
+    this.searchQuery = "";
+    
+    this.modal = document.createElement("div");
+    this.modal.className = "spotify-quiz-modal";
+    this.modal.setAttribute("role", "dialog");
+    this.modal.setAttribute("aria-modal", "true");
+    
+    document.body.appendChild(this.modal);
+    document.body.classList.add("onboarding-open");
+    
+    this.render();
+  }
+  
+  destroy() {
+    this.modal.remove();
+    document.body.classList.remove("onboarding-open");
+  }
+  
+  render() {
+    const step = this.config.steps[this.currentStep];
+    const totalSteps = this.config.steps.length;
+    const progress = ((this.currentStep + 1) / totalSteps) * 100;
+    const isFirstStep = this.currentStep === 0;
+    
+    this.modal.innerHTML = `
+      <div class="spotify-quiz-nav">
+        <button class="spotify-quiz-back" type="button" ${isFirstStep ? "disabled" : ""} aria-label="Voltar">
+          <i data-lucide="arrow-left"></i> Voltar
+        </button>
+        <div class="spotify-progress-container">
+          <div class="spotify-progress-bar" style="width: ${progress}%"></div>
         </div>
-      </form>
-    </div>
-  </section>`;
+        <button class="spotify-quiz-skip" type="button">
+          ${this.config.isOnboarding ? "Pular" : "Usar padrão"}
+        </button>
+      </div>
+      <div class="spotify-quiz-body">
+        <div class="spotify-step-content" key="step-${this.currentStep}">
+          <h2 class="spotify-quiz-title">${step.title}</h2>
+          ${step.subtitle ? `<p class="spotify-quiz-subtitle">${step.subtitle}</p>` : ""}
+          
+          ${step.searchable ? `
+            <div class="spotify-search-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" class="spotify-search-input" placeholder="Buscar" value="${this.searchQuery}">
+            </div>
+          ` : ""}
+          
+          <div class="spotify-options-container" style="width: 100%;">
+            ${this.renderOptions(step)}
+          </div>
+        </div>
+      </div>
+      <button class="spotify-action-btn" type="button" id="spotifyNextBtn">
+        <span>${this.currentStep === totalSteps - 1 ? "Concluido" : "Avancar"}</span>
+        <i data-lucide="arrow-right"></i>
+      </button>
+    `;
+    
+    lucide.createIcons({ attrs: { "stroke-width": 2.5 } });
+    this.bindEvents();
+    this.updateNextButtonState();
+  }
+  
+  renderOptions(step) {
+    const value = this.answers[step.name] || (step.type === "checkbox" ? [] : "");
+    const q = this.searchQuery.toLowerCase().trim();
+    
+    let options = step.options || [];
+    if (step.searchable && q) {
+      options = options.filter(opt => opt.label.toLowerCase().includes(q));
+    }
+    
+    if (options.length === 0 && step.searchable) {
+      return `<p style="text-align: center; color: #b3b3b3; margin-top: 20px;">Nenhuma opcao encontrada para "${this.searchQuery}"</p>`;
+    }
+    
+    if (step.type === "textarea") {
+      return `
+        <div class="spotify-textarea-wrapper" style="margin: 0 auto;">
+          <textarea class="spotify-textarea" placeholder="${step.placeholder || ""}" name="${step.name}">${value}</textarea>
+        </div>
+      `;
+    }
+    
+    const hasGradient = options.some(o => o.isGradient);
+    const hasCircle = options.some(o => o.isCircle);
+    
+    if (hasCircle) {
+      return `
+        <div class="spotify-card-grid is-circle">
+          ${options.map((opt, index) => {
+            const isChecked = Array.isArray(value) ? value.includes(opt.id) : value === opt.id;
+            return `
+              <label class="spotify-option-card is-circle">
+                <input type="${step.type}" name="${step.name}" value="${opt.id}" ${isChecked ? "checked" : ""}>
+                <div class="circle-avatar">
+                  ${opt.icon ? `<i data-lucide="${opt.icon}"></i>` : `<img src="assets/catalog-cover-0${(index % 8) + 1}.webp" alt="">`}
+                  <div class="select-indicator">
+                    <i data-lucide="check"></i>
+                  </div>
+                </div>
+                <span>${opt.label}</span>
+                ${opt.desc ? `<small>${opt.desc}</small>` : ""}
+              </label>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+    
+    if (hasGradient) {
+      return `
+        <div class="spotify-card-grid is-gradient">
+          ${options.map((opt, index) => {
+            const isChecked = Array.isArray(value) ? value.includes(opt.id) : value === opt.id;
+            const gradient = spotifyGradients[index % spotifyGradients.length];
+            return `
+              <label class="spotify-option-card is-gradient" style="background: ${gradient}">
+                <input type="${step.type}" name="${step.name}" value="${opt.id}" ${isChecked ? "checked" : ""}>
+                <span>${opt.label}</span>
+                ${opt.desc ? `<small>${opt.desc}</small>` : ""}
+                ${opt.icon ? `<i data-lucide="${opt.icon}"></i>` : `<i data-lucide="music"></i>`}
+                <div class="select-badge">
+                  <i data-lucide="check"></i>
+                </div>
+              </label>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="spotify-chip-flex">
+        ${options.map((opt) => {
+          const isChecked = Array.isArray(value) ? value.includes(opt.id) : value === opt.id;
+          return `
+            <label class="spotify-option-chip">
+              <input type="${step.type}" name="${step.name}" value="${opt.id}" ${isChecked ? "checked" : ""}>
+              <span>${opt.label}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+  
+  bindEvents() {
+    const backBtn = this.modal.querySelector(".spotify-quiz-back");
+    backBtn?.addEventListener("click", () => {
+      if (this.currentStep > 0) {
+        this.currentStep--;
+        this.searchQuery = "";
+        this.render();
+      }
+    });
+    
+    const skipBtn = this.modal.querySelector(".spotify-quiz-skip");
+    skipBtn?.addEventListener("click", () => {
+      this.config.onSkip();
+    });
+    
+    const nextBtn = this.modal.querySelector("#spotifyNextBtn");
+    nextBtn?.addEventListener("click", () => {
+      const step = this.config.steps[this.currentStep];
+      
+      if (step.type === "textarea") {
+        const textarea = this.modal.querySelector(".spotify-textarea");
+        this.answers[step.name] = textarea ? textarea.value.trim() : "";
+      }
+      
+      const totalSteps = this.config.steps.length;
+      if (this.currentStep < totalSteps - 1) {
+        this.currentStep++;
+        this.searchQuery = "";
+        this.render();
+      } else {
+        this.config.onComplete(this.answers);
+      }
+    });
+    
+    const searchInput = this.modal.querySelector(".spotify-search-input");
+    searchInput?.addEventListener("input", (e) => {
+      this.searchQuery = e.target.value;
+      const optionsContainer = this.modal.querySelector(".spotify-options-container");
+      if (optionsContainer) {
+        optionsContainer.innerHTML = this.renderOptions(this.config.steps[this.currentStep]);
+        lucide.createIcons({ attrs: { "stroke-width": 2.5 } });
+        this.bindInputs();
+      }
+    });
+    
+    this.bindInputs();
+  }
+  
+  bindInputs() {
+    const step = this.config.steps[this.currentStep];
+    const inputs = this.modal.querySelectorAll(`input[name="${step.name}"]`);
+    
+    inputs.forEach(input => {
+      input.addEventListener("change", () => {
+        if (step.type === "checkbox") {
+          const checked = Array.from(this.modal.querySelectorAll(`input[name="${step.name}"]:checked`)).map(i => i.value);
+          this.answers[step.name] = checked;
+        } else {
+          this.answers[step.name] = input.value;
+        }
+        this.updateNextButtonState();
+      });
+    });
+  }
+  
+  updateNextButtonState() {
+    const nextBtn = this.modal.querySelector("#spotifyNextBtn");
+    if (!nextBtn) return;
+    
+    const step = this.config.steps[this.currentStep];
+    if (!step.required) {
+      nextBtn.disabled = false;
+      return;
+    }
+    
+    const val = this.answers[step.name];
+    if (step.type === "checkbox") {
+      nextBtn.disabled = !val || val.length === 0;
+    } else if (step.type === "textarea") {
+      nextBtn.disabled = !val;
+    } else {
+      nextBtn.disabled = !val;
+    }
+  }
 }
 
 function showMusicPreferenceQuiz(force = false) {
   if (!force && hasMusicProfile()) return;
-  document.querySelector(".nexo-match-modal")?.remove();
-  document.body.insertAdjacentHTML("beforeend", musicPreferenceQuizMarkup());
-  document.body.classList.add("onboarding-open");
-  lucide.createIcons();
+  if (window.activeSpotifyQuiz) {
+    window.activeSpotifyQuiz.destroy();
+    window.activeSpotifyQuiz = null;
+  }
+  
+  const current = getMusicProfile() || createDefaultMusicProfile();
+  
+  const config = {
+    isOnboarding: false,
+    initialData: {
+      genres: current.genres || [],
+      objective: current.objective || "Receber orientacao da IA",
+      stage: current.stage || "So tenho uma ideia",
+      vibes: current.vibes || [],
+      references: current.references || "",
+      budget: current.budget || "Quero so explorar agora",
+      userType: current.userType || "Artista"
+    },
+    steps: [
+      {
+        id: "genres",
+        title: "Qual estilo musical mais combina com voce?",
+        subtitle: "Escolha seus generos favoritos para personalizarmos seu feed (selecione pelo menos um).",
+        type: "checkbox",
+        name: "genres",
+        searchable: true,
+        required: true,
+        options: musicQuiz.genres.map(g => ({ id: g, label: g, isGradient: true }))
+      },
+      {
+        id: "objective",
+        title: "Qual e seu objetivo agora?",
+        subtitle: "Selecione a meta principal do seu projeto no momento.",
+        type: "radio",
+        name: "objective",
+        required: true,
+        options: musicQuiz.objectives.map(o => ({ id: o, label: o }))
+      },
+      {
+        id: "stage",
+        title: "Em qual fase sua musica esta?",
+        subtitle: "Selecione o estagio atual de desenvolvimento do seu projeto.",
+        type: "radio",
+        name: "stage",
+        required: true,
+        options: musicQuiz.stages.map(s => ({ id: s, label: s }))
+      },
+      {
+        id: "vibes",
+        title: "Qual vibe voce procura?",
+        subtitle: "Escolha as vibes que melhor definem a atmosfera que voce quer criar.",
+        type: "checkbox",
+        name: "vibes",
+        searchable: true,
+        required: true,
+        options: musicQuiz.vibes.map(v => ({ id: v, label: v }))
+      },
+      {
+        id: "references",
+        title: "Quais sao suas referencias?",
+        subtitle: "Digite nomes de artistas, musicas, produtores ou albuns que te inspiram.",
+        type: "textarea",
+        name: "references",
+        placeholder: "Ex: Ryu, Travis Scott, Veigh, funk 150, beat triste...",
+        required: false
+      },
+      {
+        id: "budget",
+        title: "Qual e seu orcamento?",
+        subtitle: "Selecione a faixa ideal para combinarmos profissionais ao seu orcamento.",
+        type: "radio",
+        name: "budget",
+        required: true,
+        options: musicQuiz.budgets.map(b => ({ id: b, label: b }))
+      },
+      {
+        id: "userType",
+        title: "Qual tipo de usuario voce e?",
+        subtitle: "Como voce se classifica no mercado da musica?",
+        type: "radio",
+        name: "userType",
+        required: true,
+        options: musicQuiz.userTypes.map(u => ({ id: u, label: u }))
+      }
+    ],
+    onSkip: () => {
+      saveMusicProfile(createDefaultMusicProfile({ completed: true }));
+      closeMusicPreferenceQuiz();
+      renderRoute();
+      showToast("Perfil musical inicial criado pela NEXO", "sparkles");
+    },
+    onComplete: (data) => {
+      const profile = saveMusicProfile({
+        genres: data.genres.length ? data.genres : ["Trap"],
+        objective: data.objective,
+        stage: data.stage,
+        vibes: data.vibes.length ? data.vibes : ["Pesada"],
+        references: data.references,
+        budget: data.budget,
+        userType: data.userType,
+        completed: true
+      });
+      closeMusicPreferenceQuiz();
+      renderRoute();
+      showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
+    }
+  };
+  
+  window.activeSpotifyQuiz = new SpotifyQuizEngine(config);
 }
 
 function closeMusicPreferenceQuiz() {
-  document.body.classList.remove("onboarding-open");
-  document.querySelector(".nexo-match-modal")?.remove();
-}
-
-function profileFromForm(form) {
-  const genres = [...form.querySelectorAll('input[name="genres"]:checked')].map((input) => input.value);
-  const vibes = [...form.querySelectorAll('input[name="vibes"]:checked')].map((input) => input.value);
-  return {
-    genres: genres.length ? genres : ["Trap"],
-    objective: form.querySelector('input[name="objective"]:checked')?.value || form.elements.objective?.value || "Receber orientacao da IA",
-    stage: form.querySelector('input[name="stage"]:checked')?.value || form.elements.stage?.value || "So tenho uma ideia",
-    vibes: vibes.length ? vibes : ["Pesada"],
-    references: form.elements.references?.value?.trim() || "",
-    budget: form.querySelector('input[name="budget"]:checked')?.value || form.elements.budget?.value || "Quero so explorar agora",
-    userType: form.querySelector('input[name="userType"]:checked')?.value || form.elements.userType?.value || "Artista",
-  };
-}
-
-function onboardingMarkup() {
-  return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
-    <div class="onboarding-shell">
-      <div class="onboarding-orbit" aria-hidden="true"></div>
-      <div class="onboarding-copy">
-        <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
-        <span>PRIMEIRO ACESSO</span>
-        <h2 id="onboardingTitle">Monte seu feed antes de entrar.</h2>
-        <p>Escolha as vibes que combinam com você e a ANSEND adapta playlists, beats e produtores já na primeira tela.</p>
-        <div class="onboarding-preview">
-          <strong>Seu feed vai priorizar</strong>
-          <small>playlists por estilo, beats compatíveis e produtores próximos da sua intenção.</small>
-        </div>
-      </div>
-      <form class="onboarding-card">
-        <div class="onboarding-step">
-          <span>01</span>
-          <h3>Quais estilos você curte?</h3>
-          <div class="onboarding-options">
-            ${onboardingStyles.map((style, index) => `<label class="quiz-option">
-              <input type="checkbox" name="styles" value="${style.id}" ${index < 2 ? "checked" : ""}>
-              <b><i data-lucide="${style.icon}"></i>${style.label}</b>
-              <small>${style.desc}</small>
-            </label>`).join("")}
-          </div>
-        </div>
-        <div class="onboarding-step compact">
-          <span>02</span>
-          <h3>Qual é seu objetivo agora?</h3>
-          <div class="goal-row">
-            ${onboardingGoals.map(([value, label], index) => `<label><input type="radio" name="goal" value="${value}" ${index === 0 ? "checked" : ""}>${label}</label>`).join("")}
-          </div>
-        </div>
-        <div class="onboarding-footer">
-          <button class="skip-onboarding" type="button" data-action="skip-onboarding">Pular</button>
-          <button class="finish-onboarding" type="submit">Criar meu feed<i data-lucide="arrow-right"></i></button>
-        </div>
-      </form>
-    </div>
-  </section>`;
-}
-
-function onboardingMarkup() {
-  return `<section class="onboarding-quiz" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
-    <div class="onboarding-shell">
-      <div class="onboarding-orbit" aria-hidden="true"></div>
-      <div class="onboarding-copy">
-        <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
-        <span>PRIMEIRO ACESSO</span>
-        <h2 id="onboardingTitle">Como voce quer usar a ANSEND?</h2>
-        <p>Escolha sua funcao principal e a NEXO IA adapta atalhos, recomendacoes, metricas e catalogos para voce.</p>
-        <div class="onboarding-preview">
-          <strong>Sua dashboard vai priorizar</strong>
-          <small>profissionais, catalogos, acoes e mapas de execucao coerentes com sua funcao.</small>
-        </div>
-      </div>
-      <form class="onboarding-card">
-        <div class="onboarding-step role-step">
-          <span>01</span>
-          <h3>Como voce quer usar a ANSEND?</h3>
-          <div class="onboarding-options role-options">
-            ${roleChoices.map((role, index) => `<label class="quiz-option role-choice">
-              <input type="radio" name="account-role" value="${role.id}" ${index === 0 ? "checked" : ""}>
-              <b><i data-lucide="${role.icon}"></i>${role.label}</b>
-              <small>${role.desc}</small>
-            </label>`).join("")}
-          </div>
-        </div>
-        <div class="onboarding-step">
-          <span>02</span>
-          <h3>Quais estilos voce curte?</h3>
-          <div class="onboarding-options">
-            ${onboardingStyles.map((style, index) => `<label class="quiz-option">
-              <input type="checkbox" name="styles" value="${style.id}" ${index < 2 ? "checked" : ""}>
-              <b><i data-lucide="${style.icon}"></i>${style.label}</b>
-              <small>${style.desc}</small>
-            </label>`).join("")}
-          </div>
-        </div>
-        <div class="onboarding-step compact">
-          <span>03</span>
-          <h3>Qual e seu objetivo agora?</h3>
-          <div class="goal-row">
-            ${onboardingGoals.map(([value, label], index) => `<label><input type="radio" name="goal" value="${value}" ${index === 0 ? "checked" : ""}>${label}</label>`).join("")}
-          </div>
-        </div>
-        <div class="onboarding-footer">
-          <button class="skip-onboarding" type="button" data-action="skip-onboarding">Pular</button>
-          <button class="finish-onboarding" type="submit">Criar minha dashboard<i data-lucide="arrow-right"></i></button>
-        </div>
-      </form>
-    </div>
-  </section>`;
+  if (window.activeSpotifyQuiz) {
+    window.activeSpotifyQuiz.destroy();
+    window.activeSpotifyQuiz = null;
+  }
 }
 
 function showOnboarding(force = false) {
@@ -2459,15 +2731,104 @@ function showOnboarding(force = false) {
     if (!hasMusicProfile()) showMusicPreferenceQuiz(true);
     return;
   }
-  document.querySelector(".onboarding-quiz")?.remove();
-  document.body.insertAdjacentHTML("beforeend", onboardingMarkup());
-  document.body.classList.add("onboarding-open");
-  lucide.createIcons();
+  
+  if (window.activeSpotifyQuiz) {
+    window.activeSpotifyQuiz.destroy();
+    window.activeSpotifyQuiz = null;
+  }
+  
+  const config = {
+    isOnboarding: true,
+    initialData: {
+      "account-role": "artista",
+      "styles": ["trap"],
+      "goal": "descobrir"
+    },
+    steps: [
+      {
+        id: "role",
+        title: "Como voce quer usar a ANSEND?",
+        subtitle: "Escolha sua funcao principal para adaptarmos as suas recomendacoes e atalhos.",
+        type: "radio",
+        name: "account-role",
+        required: true,
+        options: roleChoices.map(r => ({ id: r.id, label: r.shortLabel, desc: r.desc, icon: r.icon, isCircle: true }))
+      },
+      {
+        id: "styles",
+        title: "Quais estilos voce curte?",
+        subtitle: "Selecione os estilos musicais de sua preferencia (selecione pelo menos um).",
+        type: "checkbox",
+        name: "styles",
+        searchable: true,
+        required: true,
+        options: onboardingStyles.map(s => ({ id: s.id, label: s.label, desc: s.desc, icon: s.icon, isGradient: true }))
+      },
+      {
+        id: "goal",
+        title: "Qual e seu objetivo agora?",
+        subtitle: "Qual e seu foco principal ao acessar a plataforma no momento?",
+        type: "radio",
+        name: "goal",
+        required: true,
+        options: onboardingGoals.map(([value, label]) => ({ id: value, label: label }))
+      }
+    ],
+    onSkip: () => {
+      persistOnboarding({
+        completed: true,
+        account_role: "artista",
+        userType: "artista",
+        roleLabel: "Artista",
+        styles: ["trap", "drill"],
+        genres: ["Trap", "Drill", "Type Beat"],
+        goal: "descobrir",
+        goalLabel: "Descobrir produtores"
+      });
+      saveMusicProfile(createDefaultMusicProfile({ completed: true }));
+      closeOnboarding();
+      if (currentRoute() === "feed") {
+        renderRoute();
+      }
+      showToast("Feed personalizado com uma curadoria inicial", "sparkles");
+    },
+    onComplete: (data) => {
+      const selectedRole = data["account-role"];
+      const styles = data["styles"];
+      const selectedGoal = data["goal"];
+      const selectedStyleData = onboardingStyles.filter((style) => styles.includes(style.id));
+      const selectedGoalData = onboardingGoals.find(([value]) => value === selectedGoal) || onboardingGoals[0];
+      
+      persistOnboarding({
+        completed: true,
+        account_role: selectedRole,
+        userType: selectedRole,
+        roleLabel: accountRoleLabel(selectedRole),
+        styles,
+        genres: [...new Set(selectedStyleData.flatMap((style) => style.genres))],
+        goal: selectedGoal,
+        goalLabel: selectedGoalData[1],
+        updatedAt: new Date().toISOString(),
+      });
+      
+      closeOnboarding();
+      if (!hasMusicProfile()) {
+        showMusicPreferenceQuiz(true);
+      } else {
+        if (currentRoute() === "feed") renderRoute();
+        showToast("Sua dashboard NEXO foi adaptada", "sparkles");
+      }
+    }
+  };
+  
+  window.activeSpotifyQuiz = new SpotifyQuizEngine(config);
 }
 
 function closeOnboarding() {
-  document.body.classList.remove("onboarding-open");
-  document.querySelector(".onboarding-quiz")?.remove();
+  if (window.activeSpotifyQuiz) {
+    window.activeSpotifyQuiz.destroy();
+    window.activeSpotifyQuiz = null;
+  }
 }
 
 function findBeat(id) {
