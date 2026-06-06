@@ -1476,13 +1476,50 @@ function sectionTemplate([title, subtitle, icon, content]) {
 }
 
 function trackRow(item, i) {
-  return `<article class="track-row">
-    <img src="${item.cover}" alt="Mini capa ${item.title}">
-    <div class="track-title"><strong>${i + 1}. ${item.title}</strong><span>${item.tags.join(" · ")}</span></div>
-    <div class="track-prod"><strong>${item.producer}</strong><span>verificado</span></div>
-    <div class="track-meta track-bpm">${item.tags[1]}</div>
-    <div class="track-meta track-genre">${item.tags[0]}</div>
-    <div class="track-actions"><button type="button" aria-label="Tocar"><i data-lucide="play"></i></button><button type="button" aria-label="Favoritar"><i data-lucide="heart"></i></button><button type="button" aria-label="Carrinho"><i data-lucide="shopping-cart"></i></button><button class="track-buy" type="button">[VALOR]</button></div>
+  const isNew = i < 3;
+  const coverHtml = isNew 
+    ? `<div class="airbit-cover airbit-cover-new" data-action="play" data-id="${item.id}">
+         <img src="${item.cover}" alt="Mini capa ${item.title}">
+         <span class="airbit-new-badge">NEW!</span>
+         <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
+       </div>`
+    : `<div class="airbit-cover" data-action="play" data-id="${item.id}">
+         <img src="${item.cover}" alt="Mini capa ${item.title}">
+         <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
+       </div>`;
+
+  const verifiedBadge = `<span class="airbit-verified"><i data-lucide="crown"></i></span>`;
+  const tagsHtml = item.tags.slice(0, 3).map(tag => `<span class="airbit-tag-chip">#${tag}</span>`).join("");
+  const price = item.price || "$39.95";
+
+  return `<article class="track-row airbit-track-row" data-beat-id="${item.id}">
+    ${coverHtml}
+    <div class="airbit-info">
+      <div class="airbit-title-row">
+        <strong class="airbit-track-title" data-action="play" data-id="${item.id}">${item.title}</strong>
+      </div>
+      <div class="airbit-meta-row">
+        <span class="airbit-producer" data-action="producer" data-title="${item.producer}">${item.producer}</span>
+        ${verifiedBadge}
+        <span class="airbit-divider">·</span>
+        <span class="airbit-details">${item.tags[1] || "98 BPM"} · ${item.tags[0]}</span>
+      </div>
+    </div>
+    <div class="airbit-tags">
+      ${tagsHtml}
+    </div>
+    <div class="airbit-actions">
+      <button class="airbit-favorite-btn" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar">
+        <i data-lucide="heart"></i>
+      </button>
+      <button class="airbit-buy-btn" type="button" data-action="buy" data-id="${item.id}">
+        <i data-lucide="shopping-cart"></i>
+        <span>${price}</span>
+      </button>
+      <button class="airbit-more-btn" type="button" aria-label="Mais opções" data-action="favorite" data-id="${item.id}">
+        <i data-lucide="more-vertical"></i>
+      </button>
+    </div>
   </article>`;
 }
 

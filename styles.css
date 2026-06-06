@@ -10574,3 +10574,306 @@ body.onboarding-open {
     box-shadow: 0 10px 35px rgba(255, 106, 0, 0.15);
   }
 }
+
+/* Airbit Explore Style Latest Releases */
+.recent-activity-section .home-track-list {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+
+.airbit-track-row {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  display: grid !important;
+  grid-template-columns: 46px minmax(200px, 1.2fr) minmax(200px, 1fr) auto !important;
+  gap: 16px !important;
+  align-items: center !important;
+  padding: 16px 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0 !important;
+  min-height: 72px !important;
+  transition: background 0.2s ease, padding 0.2s ease !important;
+}
+
+.airbit-track-row:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  border-radius: 6px !important;
+}
+
+.airbit-cover {
+  position: relative !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  background: #111111 !important;
+}
+
+.airbit-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.airbit-cover-hover {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+  color: #ffffff !important;
+}
+
+.airbit-cover-hover svg {
+  width: 16px !important;
+  height: 16px !important;
+  fill: currentColor !important;
+}
+
+.airbit-cover:hover .airbit-cover-hover {
+  opacity: 1 !important;
+}
+
+/* NEW! Red Badge Cover */
+.airbit-cover-new {
+  background: #ff2d37 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.airbit-cover-new img {
+  display: none !important;
+}
+
+.airbit-new-badge {
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px !important;
+  text-align: center !important;
+  font-family: 'Poppins', sans-serif !important;
+}
+
+/* Track Info */
+.airbit-info {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+.airbit-track-title {
+  color: #ffffff !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.15px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: inline-block !important;
+}
+
+.airbit-track-title:hover {
+  color: var(--orange) !important;
+}
+
+.airbit-meta-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: #a3a3a3 !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.airbit-producer {
+  cursor: pointer !important;
+}
+
+.airbit-producer:hover {
+  color: #ffffff !important;
+  text-decoration: underline !important;
+}
+
+.airbit-verified {
+  color: #d4af37 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.airbit-verified svg {
+  width: 12px !important;
+  height: 12px !important;
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+.airbit-divider {
+  color: #525252 !important;
+}
+
+.airbit-details {
+  color: #737373 !important;
+}
+
+/* Hashtags */
+.airbit-tags {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.airbit-tag-chip {
+  padding: 4px 10px !important;
+  border-radius: 99px !important;
+  background: #171717 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #a3a3a3 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.airbit-tag-chip:hover {
+  border-color: rgba(255, 106, 0, 0.4) !important;
+  color: var(--orange) !important;
+  background: rgba(255, 106, 0, 0.04) !important;
+}
+
+/* Actions */
+.airbit-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  justify-self: end !important;
+}
+
+.airbit-favorite-btn,
+.airbit-more-btn {
+  width: 34px !important;
+  height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #a3a3a3 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
+}
+
+.airbit-favorite-btn svg,
+.airbit-more-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  fill: none !important;
+}
+
+.airbit-favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ff3366 !important;
+}
+
+.airbit-favorite-btn:hover svg {
+  fill: #ff3366 !important;
+  stroke: #ff3366 !important;
+}
+
+.airbit-more-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.airbit-buy-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 16px !important;
+  height: 36px !important;
+  border-radius: 99px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.airbit-buy-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: none !important;
+}
+
+.airbit-buy-btn:hover {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+/* Custom view all button in header */
+.airbit-view-all {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 6px 16px !important;
+  border-radius: 99px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.airbit-view-all svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.airbit-view-all:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 900px) {
+  .airbit-track-row {
+    grid-template-columns: 46px 1fr auto !important;
+    gap: 12px !important;
+  }
+  .airbit-tags {
+    display: none !important;
+  }
+  .airbit-actions {
+    gap: 8px !important;
+  }
+  .airbit-favorite-btn {
+    display: none !important;
+  }
+}
+
