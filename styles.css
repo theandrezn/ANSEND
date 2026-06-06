@@ -7480,8 +7480,21 @@ body.modal-open {
   color: #fff;
 }
 
+.feed .ai-hero .an-hero-copy h1 span {
+  color: var(--orange);
+  font-size: 1.16em;
+  line-height: .84;
+  text-shadow:
+    0 0 18px rgba(255, 106, 0, .28),
+    0 8px 34px rgba(255, 106, 0, .18);
+}
+
+.feed .ai-hero .an-hero-copy h1 strong {
+  font-size: .92em;
+}
+
 .feed .ai-hero .an-hero-copy h1 strong::before {
-  content: " ";
+  content: "";
 }
 
 .feed .ai-hero .ai-diagnostic-form,
