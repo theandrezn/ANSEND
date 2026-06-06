@@ -8071,6 +8071,207 @@ body.modal-open {
     linear-gradient(180deg, #080808, #000);
 }
 
+.footer-links-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: clamp(18px, 2.4vw, 34px);
+  width: 100%;
+  max-width: 1180px;
+}
+
+.footer-links-grid nav {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.footer-links-grid strong {
+  color: #f5f5f5;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+}
+
+.footer-links-grid a {
+  color: rgba(245, 245, 245, .62);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.footer-links-grid a:hover,
+.footer-links-grid a:focus-visible {
+  color: var(--orange);
+  outline: none;
+}
+
+.legal-page-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.legal-page-hero {
+  min-height: 220px;
+  border: 1px solid rgba(255, 106, 0, .24);
+  border-radius: 22px;
+  padding: clamp(26px, 4vw, 52px);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(255, 106, 0, .18), transparent 34%),
+    linear-gradient(135deg, rgba(255, 106, 0, .09), rgba(8, 6, 4, .92) 34%, #030303);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .42);
+}
+
+.legal-page-hero span,
+.legal-info-card span {
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.legal-page-hero h1 {
+  max-width: 760px;
+  margin: 16px 0 12px;
+  color: #fff;
+  font-size: clamp(38px, 5vw, 76px);
+  line-height: .96;
+  letter-spacing: -.05em;
+}
+
+.legal-page-hero p {
+  max-width: 760px;
+  color: rgba(245, 245, 245, .74);
+  font-size: clamp(15px, 1.35vw, 18px);
+  line-height: 1.65;
+}
+
+.legal-card-grid,
+.legal-section-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.legal-info-card,
+.legal-section-card,
+.legal-step-card,
+.legal-note {
+  border: 1px solid rgba(255, 106, 0, .18);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(13, 12, 10, .96), rgba(2, 2, 2, .96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.legal-info-card,
+.legal-section-card {
+  padding: 22px;
+}
+
+.legal-info-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.legal-info-card svg {
+  width: 15px;
+  height: 15px;
+}
+
+.legal-info-card p,
+.legal-section-card p,
+.legal-step-card p,
+.legal-note p {
+  color: rgba(245, 245, 245, .68);
+  line-height: 1.62;
+}
+
+.legal-section-card h3,
+.legal-step-card h3 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+
+.legal-bullet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.legal-bullet-grid li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  border: 1px solid rgba(255, 106, 0, .14);
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: rgba(245, 245, 245, .82);
+  background: rgba(255, 255, 255, .025);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.legal-bullet-grid svg {
+  width: 15px;
+  height: 15px;
+  color: var(--orange);
+  flex: 0 0 auto;
+}
+
+.legal-step-list {
+  display: grid;
+  gap: 14px;
+}
+
+.legal-step-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+}
+
+.legal-step-card > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #000;
+  background: var(--orange);
+  font-weight: 950;
+}
+
+.legal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+}
+
+.legal-note svg {
+  width: 20px;
+  height: 20px;
+  color: var(--orange);
+  flex: 0 0 auto;
+}
+
+.legal-warning {
+  border-color: rgba(184, 184, 184, .18);
+  background: #080604;
+}
+
 @media (max-width: 1100px) {
   .feed .ai-hero .ai-hero-layout,
   .feed .ai-hero.is-beatmaker-hero .ai-hero-layout,
@@ -8136,6 +8337,21 @@ body.modal-open {
   .footer {
     margin-left: 0;
     padding-inline: 20px;
+  }
+
+  .footer-links-grid,
+  .legal-card-grid,
+  .legal-section-list,
+  .legal-bullet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-page-shell {
+    padding: 22px 14px 120px;
+  }
+
+  .legal-page-hero {
+    padding: 26px 20px;
   }
 }
 

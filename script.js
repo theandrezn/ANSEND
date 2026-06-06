@@ -1863,6 +1863,184 @@ routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
+routeTitles["central-ansend"] = ["Central ANSEND", "Serviços, segurança, pagamentos, licenças, privacidade e uso da plataforma."];
+routeTitles.servicos = ["Serviços", "Beatmakers, designers, produtores, curadores e marketing musical."];
+routeTitles["como-funciona"] = ["Como funciona", "Da ideia ao lançamento com diagnóstico da NEXO IA e profissionais recomendados."];
+routeTitles["central-legal"] = ["Central Legal", "Termos, políticas, licenças, pagamentos, direitos autorais e diretrizes."];
+routeTitles["termos-de-uso"] = ["Termos de Uso", "Regras gerais para uso seguro e responsável da ANSEND."];
+routeTitles["politica-de-privacidade"] = ["Política de Privacidade", "Como dados pessoais, navegação e dados enviados para a NEXO IA são tratados."];
+routeTitles["politica-de-cookies"] = ["Política de Cookies", "Uso de cookies essenciais, preferências, analytics e marketing."];
+routeTitles["termos-de-licenca-musical"] = ["Termos de Licença Musical", "Regras para beats, instrumentais, capas, artes e serviços contratados."];
+routeTitles["pagamentos-reembolsos"] = ["Pagamentos e Reembolsos", "Pagamento protegido, cancelamentos, disputas e liberação de valores."];
+routeTitles["direitos-autorais"] = ["Direitos Autorais", "Proteção de beats, samples, letras, capas, portfólios e materiais enviados."];
+routeTitles.seguranca = ["Segurança na ANSEND", "Pagamento protegido, histórico, avaliações, suporte e mediação."];
+routeTitles["diretrizes-profissionais"] = ["Diretrizes para Profissionais", "Boas práticas e regras para vender serviços dentro da ANSEND."];
+routeTitles["diretrizes-artistas"] = ["Diretrizes para Artistas", "Boas práticas para contratar serviços e usar a NEXO IA com clareza."];
+routeTitles.suporte = ["Suporte", "Ajuda para conta, pedidos, entregas, pagamentos, licenças e denúncias."];
+
+const institutionalRoutes = new Set([
+  "central-ansend",
+  "servicos",
+  "como-funciona",
+  "central-legal",
+  "termos-de-uso",
+  "politica-de-privacidade",
+  "politica-de-cookies",
+  "termos-de-licenca-musical",
+  "pagamentos-reembolsos",
+  "direitos-autorais",
+  "seguranca",
+  "diretrizes-profissionais",
+  "diretrizes-artistas",
+  "suporte",
+]);
+
+const legalPages = {
+  "central-ansend": {
+    eyebrow: "Central ANSEND",
+    title: "Central ANSEND",
+    intro: "Encontre informações sobre serviços, segurança, pagamentos, licenças, privacidade e uso da plataforma.",
+    cards: [
+      ["Como funciona a ANSEND", "Ideia, diagnóstico da NEXO IA, recomendação de profissionais, contratação, entrega e avaliação."],
+      ["Serviços disponíveis", "Categorias principais da plataforma: beatmakers, designers, produtores musicais, curadores e marketing musical."],
+      ["Termos e políticas", "Documentos legais e regras de uso centralizados em uma área clara."],
+      ["Segurança e confiança", "Pagamento protegido, avaliações, suporte, mediação e histórico de pedidos."],
+      ["Suporte", "Ajuda para problemas com conta, pedido, entrega, pagamento ou licença."],
+    ],
+  },
+  servicos: {
+    eyebrow: "Serviços",
+    title: "O que pode ser contratado na ANSEND",
+    intro: "A plataforma organiza serviços musicais por categoria para conectar artistas aos profissionais certos.",
+    sections: [
+      ["Beatmakers", "Vendam beats, instrumentais, licenças musicais, produções personalizadas, beat lease, beat exclusivo, type beat, instrumental sob encomenda e pacotes de beats."],
+      ["Designers", "Criam capas de single, capas de álbum, identidade visual de lançamento, artes para redes sociais, banners e materiais promocionais."],
+      ["Produtores Musicais", "Atuam com produção, direção musical, mixagem, masterização, gravação guiada, direção vocal e finalização de faixa."],
+      ["Curadores", "Ajudam no posicionamento em playlists, canais, blogs, páginas, comunidades musicais, feedback profissional e análise de lançamento."],
+      ["Marketing Musical", "Planejam lançamento, tráfego, divulgação em redes sociais, estratégia de conteúdo, posicionamento artístico e análise de público."],
+    ],
+  },
+  "como-funciona": {
+    eyebrow: "Fluxo",
+    title: "Como funciona a ANSEND",
+    intro: "O usuário entra com uma ideia, letra, demo, música pronta, imagem, objetivo ou necessidade. A NEXO IA transforma isso em um caminho de execução.",
+    steps: [
+      ["1", "O artista entra com uma ideia", "Exemplos: música pronta para lançar, letra precisando de beat, single para divulgar, capa profissional ou lançamento completo."],
+      ["2", "A NEXO IA analisa o objetivo", "A IA identifica etapas como produção, beat, mixagem, masterização, capa, curadoria, marketing, divulgação e combo ideal."],
+      ["3", "A plataforma recomenda profissionais", "A ANSEND recomenda profissionais compatíveis com estilo musical, orçamento, objetivo e tipo de serviço."],
+      ["4", "O usuário contrata com segurança", "A contratação fica registrada na plataforma, com pagamento protegido, histórico de pedido e suporte."],
+      ["5", "O profissional entrega o serviço", "A entrega acontece com prazo, descrição, arquivos e revisões combinadas."],
+      ["6", "O usuário avalia", "Após a entrega, o artista avalia o profissional e fortalece a reputação dentro da ANSEND."],
+    ],
+  },
+  "central-legal": {
+    eyebrow: "Legal",
+    title: "Central Legal",
+    intro: "Documentos jurídicos e regulatórios reunidos de forma clara, sem parecer burocrático.",
+    cards: [
+      ["Termos de Uso", "Regras gerais para utilização da ANSEND."],
+      ["Política de Privacidade", "Tratamento de dados pessoais, conta, navegação e NEXO IA."],
+      ["Política de Cookies", "Cookies essenciais, preferências, analytics e tecnologias semelhantes."],
+      ["Termos de Licença Musical", "Beats, licenças, serviços personalizados, exclusividade e direitos de uso."],
+      ["Pagamentos e Reembolsos", "Pagamento protegido, taxas, cancelamentos, disputas e reembolsos."],
+      ["Direitos Autorais", "Responsabilidade sobre beats, samples, capas, letras, demos, imagens e portfólios."],
+      ["Diretrizes para Profissionais", "Regras para quem vende serviços dentro da ANSEND."],
+      ["Diretrizes para Artistas", "Orientações para quem contrata serviços dentro da ANSEND."],
+    ],
+  },
+  "termos-de-uso": {
+    eyebrow: "Termos",
+    title: "Termos de Uso",
+    intro: "A ANSEND é uma plataforma digital que conecta artistas, criadores e profissionais da música, facilitando contratação de serviços musicais, recomendações por inteligência artificial, organização de projetos e intermediação de pagamentos.",
+    bullets: ["O que é a ANSEND", "Quem pode usar", "Cadastro de conta", "Conta de artista", "Conta de profissional", "Uso da NEXO IA", "Contratação de serviços", "Pagamentos", "Entregas", "Avaliações", "Comunicação entre usuários", "Condutas proibidas", "Suspensão ou remoção de conta", "Limitação de responsabilidade", "Atualizações dos termos", "Canal de suporte"],
+    note: "Ao utilizar a ANSEND, o usuário concorda em usar a plataforma de forma ética, segura e responsável, respeitando direitos de usuários, profissionais, artistas e terceiros.",
+  },
+  "politica-de-privacidade": {
+    eyebrow: "Privacidade",
+    title: "Política de Privacidade",
+    intro: "A ANSEND coleta, utiliza, armazena e protege dados para operar a plataforma, melhorar recomendações e apoiar contratações seguras.",
+    sections: [
+      ["Dados coletados", "Nome, e-mail, telefone, foto de perfil, tipo de conta, informações de cadastro, pagamento, histórico de pedidos, mensagens, briefings, avaliações, preferências, dados técnicos e dados enviados para a NEXO IA."],
+      ["Dados enviados para a NEXO IA", "Ideias musicais, letras, demos, músicas prontas, objetivos de lançamento, referências visuais, briefings e preferências musicais."],
+      ["Direitos do usuário", "Solicitar acesso, corrigir dados, excluir conta, remover informações, alterar preferências e entrar em contato com suporte."],
+    ],
+  },
+  "politica-de-cookies": {
+    eyebrow: "Cookies",
+    title: "Política de Cookies",
+    intro: "A ANSEND utiliza cookies e tecnologias semelhantes para manter a plataforma funcionando, lembrar preferências e analisar desempenho.",
+    sections: [
+      ["Cookies essenciais", "Login, segurança, sessão e funcionamento básico."],
+      ["Cookies de preferência", "Idioma, tema, região e preferências da conta."],
+      ["Cookies de analytics", "Uso da plataforma, páginas acessadas e melhorias de experiência."],
+      ["Cookies de marketing", "Campanhas, anúncios, remarketing e mensuração de tráfego quando ferramentas como Meta Pixel, Google Analytics ou TikTok Pixel forem utilizadas."],
+    ],
+  },
+  "termos-de-licenca-musical": {
+    eyebrow: "Licenças",
+    title: "Termos de Licença Musical",
+    intro: "Define regras para uso de beats, instrumentais, produções, capas, artes e serviços musicais contratados.",
+    sections: [
+      ["Licença básica", "Uso limitado do beat ou material contratado, com limites de distribuição, monetização, visualizações, streams ou plataformas definidos pelo profissional."],
+      ["Licença premium", "Uso mais amplo, podendo incluir monetização, distribuição em plataformas digitais e maior volume de uso."],
+      ["Licença exclusiva", "Direitos mais amplos quando disponível. Após venda exclusiva, o profissional não deve vender o mesmo beat como exclusivo para outros usuários."],
+      ["Serviço personalizado", "Beat sob encomenda, capa, identidade visual, mixagem, masterização ou campanha com prazo, entregáveis, revisões e direitos definidos no pedido."],
+      ["Responsabilidades", "O profissional garante que possui direitos sobre o conteúdo. O artista respeita os limites da licença adquirida."],
+    ],
+  },
+  "pagamentos-reembolsos": {
+    eyebrow: "Pagamentos",
+    title: "Pagamentos, Reembolsos e Cancelamentos",
+    intro: "A ANSEND pode atuar como intermediadora, mantendo registro da contratação e oferecendo mais segurança para artista e profissional.",
+    sections: [
+      ["Liberação do pagamento", "Pode ocorrer após entrega do serviço, aprovação do artista, fim do prazo de revisão ou encerramento do pedido."],
+      ["Reembolso", "Pode ser analisado em serviço não entregue, entrega fora do combinado, problema comprovado ou cancelamento antes do início."],
+      ["Casos sem reembolso", "Serviço aprovado, arquivo digital entregue e usado, mudança de ideia após início, pedido fora do escopo ou falta de briefing."],
+      ["Disputas", "A ANSEND pode analisar histórico do pedido, mensagens, briefing, prazo, arquivos entregues e demais informações disponíveis."],
+    ],
+  },
+  "direitos-autorais": {
+    eyebrow: "Direitos",
+    title: "Direitos Autorais e Propriedade Intelectual",
+    intro: "O usuário é responsável por garantir que possui os direitos necessários sobre qualquer conteúdo enviado, anunciado, vendido, licenciado ou entregue.",
+    bullets: ["Beats", "Samples", "Loops", "Letras", "Demos", "Capas", "Logos", "Artes", "Imagens", "Portfólios", "Campanhas", "Materiais promocionais"],
+    note: "É proibido vender conteúdo plagiado, usar samples não autorizados, copiar artes, publicar conteúdo sem permissão, fingir autoria ou usar imagem de terceiros sem autorização. A ANSEND deve possuir canal para denúncias.",
+  },
+  seguranca: {
+    eyebrow: "Confiança",
+    title: "Segurança na ANSEND",
+    intro: "Comprar e vender dentro da ANSEND ajuda a proteger artistas e profissionais com histórico, reputação, avaliações e mais segurança em cada contratação.",
+    bullets: ["Pagamento protegido", "Histórico de pedidos", "Avaliações reais", "Profissionais verificados", "Suporte", "Mediação", "Registro de entrega", "Reputação dentro da plataforma"],
+  },
+  "diretrizes-profissionais": {
+    eyebrow: "Profissionais",
+    title: "Diretrizes para Profissionais",
+    intro: "Regras para quem vende serviços dentro da ANSEND.",
+    bullets: ["Cadastrar informações verdadeiras", "Publicar portfólio próprio", "Definir preços com clareza", "Informar prazos reais", "Entregar conforme combinado", "Responder clientes com profissionalismo", "Respeitar direitos autorais", "Não vender conteúdo sem autorização", "Não tentar aplicar golpes", "Não manipular avaliações"],
+    note: "Profissionais ganham reputação, avaliações, histórico, visibilidade, melhor posicionamento nas recomendações da NEXO IA e mais segurança no recebimento.",
+  },
+  "diretrizes-artistas": {
+    eyebrow: "Artistas",
+    title: "Diretrizes para Artistas",
+    intro: "Orientações para contratar serviços dentro da ANSEND com clareza.",
+    bullets: ["Criar briefings claros", "Informar referências", "Respeitar o prazo do profissional", "Solicitar revisões dentro do escopo", "Aprovar entregas corretamente", "Avaliar com honestidade", "Evitar negociações inseguras fora da plataforma"],
+    note: "A NEXO IA ajuda a entender o próximo passo da música, criar plano de lançamento, encontrar profissionais, montar combos, estimar orçamento e organizar prioridades.",
+  },
+  suporte: {
+    eyebrow: "Suporte",
+    title: "Suporte ANSEND",
+    intro: "Área para resolver dúvidas e problemas com conta, pedido, entrega, pagamento, licença, NEXO IA ou denúncias.",
+    cards: [
+      ["Pagamento", "Problemas com pagamento, reembolso, taxa ou checkout."],
+      ["Entrega", "Problemas com prazo, arquivos, revisões ou aprovação."],
+      ["Profissional ou artista", "Conflitos, comunicação, avaliações e mediação."],
+      ["Licenças", "Dúvidas sobre uso, limites, exclusividade e arquivos."],
+      ["NEXO IA", "Dúvidas sobre diagnóstico, recomendações e mapa de lançamento."],
+      ["Denúncias", "Conteúdo irregular, plágio, direitos autorais ou uso indevido de imagem."],
+    ],
+    note: "A Central de Suporte deve conter busca, cards de categorias, perguntas rápidas, formulário de contato, status do atendimento e link para abrir chamado.",
+  },
+};
 
 function persistState() {
   localStorage.setItem("ansend-favorites", JSON.stringify([...appState.favorites]));
@@ -2380,7 +2558,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return !["vendedor"].includes(route);
+  return !["vendedor", ...institutionalRoutes].includes(route);
 }
 
 function renderAuthLoading() {
@@ -3261,6 +3439,57 @@ function renderLibrary() {
   appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Colecoes para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section>${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
 }
 
+function renderInfoCards(items = []) {
+  return items.length ? `<div class="legal-card-grid">${items.map(([title, text]) => `
+    <article class="legal-info-card">
+      <span><i data-lucide="badge-check"></i>${title}</span>
+      <p>${text}</p>
+    </article>
+  `).join("")}</div>` : "";
+}
+
+function renderLegalSections(items = []) {
+  return items.length ? `<div class="legal-section-list">${items.map(([title, text]) => `
+    <article class="legal-section-card">
+      <h3>${title}</h3>
+      <p>${text}</p>
+    </article>
+  `).join("")}</div>` : "";
+}
+
+function renderLegalBullets(items = []) {
+  return items.length ? `<ul class="legal-bullet-grid">${items.map((item) => `<li><i data-lucide="check-circle-2"></i>${item}</li>`).join("")}</ul>` : "";
+}
+
+function renderLegalSteps(items = []) {
+  return items.length ? `<div class="legal-step-list">${items.map(([number, title, text]) => `
+    <article class="legal-step-card">
+      <span>${number}</span>
+      <div><h3>${title}</h3><p>${text}</p></div>
+    </article>
+  `).join("")}</div>` : "";
+}
+
+function renderInstitutionalPage(route) {
+  const page = legalPages[route] || legalPages["central-ansend"];
+  appView.innerHTML = `
+    <section class="legal-page-shell">
+      <header class="legal-page-hero">
+        <span>${page.eyebrow || "ANSEND"}</span>
+        <h1>${page.title}</h1>
+        <p>${page.intro}</p>
+      </header>
+      ${renderInfoCards(page.cards)}
+      ${renderLegalSteps(page.steps)}
+      ${renderLegalSections(page.sections)}
+      ${renderLegalBullets(page.bullets)}
+      ${page.note ? `<aside class="legal-note"><i data-lucide="info"></i><p>${page.note}</p></aside>` : ""}
+      <aside class="legal-note legal-warning"><i data-lucide="scale"></i><p>Os textos servem como base estratégica, estrutural e de produto. Antes da publicação oficial, documentos legais devem ser revisados por um profissional jurídico.</p></aside>
+    </section>
+  `;
+  lucide.createIcons();
+}
+
 function renderAiWorkspace() {
   const plan = appState.aiPlan || fallbackNexoIntelligence("Tenho uma ideia musical e preciso lançar profissionalmente.");
   const license = licensePlans[plan.recommendedLicense] || licensePlans.premium;
@@ -3890,6 +4119,7 @@ function renderRoute() {
   if (route === "vendedor") renderSellerAuth();
   if (route === "playlist") renderPlaylistDetail();
   if (route === "detalhe") renderBeatDetail();
+  if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
   hydrateView();
 }
