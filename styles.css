@@ -13405,4 +13405,46 @@ body:has(.nexo-feed-page) .footer {
   }
 }
 
+/* TikTok-style play/pause feedback overlay inside feed card cover */
+.nexo-feed-play-feedback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 10;
+  pointer-events: none;
+  background: rgba(0, 0, 0, .05);
+}
+
+.nexo-feed-play-feedback svg {
+  width: 76px;
+  height: 76px;
+  color: #fff;
+  fill: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.5));
+  opacity: 0;
+  transform: scale(0.5);
+  animation: tikTokPlayPulse 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tikTokPlayPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  28% {
+    opacity: 0.95;
+    transform: scale(1.1);
+  }
+  38% {
+    opacity: 0.95;
+    transform: scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+
 

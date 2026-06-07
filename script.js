@@ -5469,9 +5469,14 @@ function syncMiniPlayerState() {
   const favoriteButton = player.querySelector('[data-action="favorite-current"]');
   const loopButton = player.querySelector('[data-action="loop-beat"]');
   const volumeButton = player.querySelector('[data-action="volume"]');
+  const miniButton = player.querySelector('[data-action="mini-play"]');
   favoriteButton?.classList.toggle("is-active", appState.favorites.has(current?.id));
   loopButton?.classList.toggle("is-active", appState.player.loop);
   player.classList.toggle("is-looping", appState.player.loop);
+  if (miniButton) {
+    const isPlaying = player.classList.contains("is-playing");
+    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+  }
   if (volumeButton) {
     const icon = appState.player.volume <= .02 ? "volume-x" : appState.player.volume < .45 ? "volume-1" : "volume-2";
     volumeButton.innerHTML = `<i data-lucide="${icon}"></i>`;
@@ -5853,11 +5858,63 @@ document.addEventListener("click", (event) => {
       const beatId = feedCard.dataset.feedItemId;
       const item = findBeat(beatId);
       if (item) {
-        pauseTopBeat({ quiet: true });
-        appState.playing = item.id;
-        updateMiniPlayer(item);
-        document.querySelector(".mini-player")?.classList.add("is-playing");
-        writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+        const player = document.querySelector(".mini-player");
+        const isCurrent = appState.playing === item.id;
+        const isPlaying = isCurrent && player && player.classList.contains("is-playing");
+        
+        let playAction = true;
+        if (isCurrent) {
+          if (isPlaying) {
+            if (item.id === topBeatOfDay.id) {
+              pauseTopBeat({ quiet: true });
+            } else {
+              player.classList.remove("is-playing");
+              syncMiniPlayerState();
+              lucide.createIcons();
+            }
+            playAction = false;
+          } else {
+            if (item.id === topBeatOfDay.id) {
+              playTopBeat({ quiet: true });
+            } else {
+              player.classList.add("is-playing");
+              showMiniPlayer();
+              syncMiniPlayerState();
+              lucide.createIcons();
+            }
+            playAction = true;
+          }
+        } else {
+          if (appState.playing === topBeatOfDay.id) {
+            pauseTopBeat({ quiet: true });
+          }
+          appState.playing = item.id;
+          updateMiniPlayer(item);
+          document.querySelector(".mini-player")?.classList.add("is-playing");
+          syncMiniPlayerState();
+          lucide.createIcons();
+          if (item.id === topBeatOfDay.id) {
+            playTopBeat({ quiet: true });
+          }
+          writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+          playAction = true;
+        }
+
+        const feedback = document.createElement("div");
+        feedback.className = "nexo-feed-play-feedback";
+        feedback.innerHTML = `<i data-lucide="${playAction ? "play" : "pause"}"></i>`;
+        clickedFeedMedia.appendChild(feedback);
+        
+        if (window.lucide) {
+          window.lucide.createIcons({
+            nameAttr: "data-lucide"
+          });
+        }
+        
+        setTimeout(() => {
+          feedback.remove();
+        }, 650);
+
         return;
       }
     }
@@ -6134,6 +6191,8 @@ document.addEventListener("click", (event) => {
     const nextPlaying = !player?.classList.contains("is-playing");
     if (nextPlaying) showMiniPlayer();
     player?.classList.toggle("is-playing", nextPlaying);
+    syncMiniPlayerState();
+    lucide.createIcons();
     showToast(nextPlaying ? `Tocando ${playerActionBeat().title}` : "Preview pausado", nextPlaying ? "play" : "pause");
     return;
   }
