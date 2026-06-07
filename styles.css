@@ -11920,5 +11920,34 @@ body.onboarding-open {
   z-index: 2 !important;
 }
 
+.favorites-section {
+  padding: clamp(16px, 2vw, 26px) !important;
+  background: #111111 !important;
+  border: 1px solid rgba(255, 255, 255, .07) !important;
+  border-radius: 0 !important;
+}
+
+.favorites-section .view-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 236px)) !important;
+  justify-content: start !important;
+  align-items: start !important;
+  gap: 24px !important;
+}
+
+.favorites-section .minimal-beat-card {
+  width: min(236px, 100%) !important;
+  justify-self: start !important;
+}
+
+.favorites-section .minimal-beat-card .card-cover-wrapper {
+  width: 100% !important;
+  max-width: 236px !important;
+  aspect-ratio: 1 / 1 !important;
+}
+
+.favorites-section .minimal-beat-card .card-info {
+  max-width: 236px !important;
+}
+
 
 
