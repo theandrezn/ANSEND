@@ -12749,7 +12749,8 @@ body:has(.nexo-feed-page) .footer {
   max-height: 100% !important;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
-  display: grid;
+  display: flex !important;
+  flex-direction: column !important;
   gap: 0px !important;
   padding: 0 !important;
   scrollbar-width: none;
@@ -12764,6 +12765,7 @@ body:has(.nexo-feed-page) .footer {
   height: 100% !important;
   min-height: 100% !important;
   max-height: 100% !important;
+  flex-shrink: 0 !important;
   overflow: hidden;
   scroll-snap-align: start;
   scroll-snap-stop: always;
