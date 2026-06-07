@@ -2758,19 +2758,19 @@ function catalogPayloadFromForm(form) {
     .map((tag) => tag.trim())
     .filter(Boolean);
   return {
-    kind: form.elements.kind.value,
-    title: form.elements.title.value.trim(),
-    artist_name: form.elements.artist.value.trim() || null,
-    producer_name: form.elements.producer.value.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || null,
-    genre: form.elements.genre.value.trim(),
-    bpm: form.elements.bpm.value ? Number(form.elements.bpm.value) : null,
-    musical_key: form.elements.key.value.trim() || null,
-    price: form.elements.price.value ? Number(form.elements.price.value) : 0,
-    license_type: form.elements.license.value,
-    status: form.elements.status.value,
-    audio_url: form.elements.audio_url.value.trim() || null,
-    cover_url: form.elements.cover_url.value.trim() || null,
-    description: form.elements.description.value.trim() || null,
+    kind: form.elements.kind?.value || "beat",
+    title: form.elements.title?.value?.trim() || "",
+    artist_name: form.elements.artist?.value?.trim() || null,
+    producer_name: form.elements.producer?.value?.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || null,
+    genre: form.elements.genre?.value?.trim() || "",
+    bpm: form.elements.bpm?.value ? Number(form.elements.bpm.value) : null,
+    musical_key: form.elements.key?.value?.trim() || null,
+    price: form.elements.price?.value ? Number(form.elements.price.value) : 0,
+    license_type: form.elements.license?.value || "premium",
+    status: form.elements.status?.value || "draft",
+    audio_url: form.elements.audio_url?.value?.trim() || null,
+    cover_url: form.elements.cover_url?.value?.trim() || null,
+    description: form.elements.description?.value?.trim() || null,
     tags,
   };
 }
@@ -4284,87 +4284,305 @@ function renderProfile() {
       ? "Entre para sincronizar sua conta"
       : "Modo local ativo";
 
-  const catalogCards = items.length ? items.map((item) => {
+  const userName = profile?.artistic_name || profile?.full_name || "FlackxBeats";
+  const userAvatar = (profile?.image !== undefined && avatarImages && avatarImages.length)
+    ? img(avatarImages[profile.image % avatarImages.length])
+    : "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80";
+
+  const role = profile?.account_role || "produtor";
+  let subtitleRole = "Produtor • Beatmaker • Sound Designer";
+  let bioText = "Produtor musical especializado em Trap, R&B e sons melódicos. Criando identidades sonoras, arranjos dinâmicos e mixagens profissionais de alta fidelidade para lançamentos urbanos.";
+  let specialties = ["Produção Musical", "Mixagem", "Masterização", "Sound Design"];
+  let location = "São Paulo, Brasil";
+  
+  if (role === "artista") {
+    subtitleRole = "Artista • Compositor • Intérprete";
+    bioText = "Compositor e vocalista independente focado em novos fluxos do Rap, Trap e R&B. Colaborando com produtores para desenvolver hooks marcantes e identidades autênticas.";
+    specialties = ["Composição", "Performance Vocal", "Toplining", "Direção de Voz"];
+    location = "Salvador, Brasil";
+  } else if (role === "curador") {
+    subtitleRole = "Curador • Playlist Manager • Editorial";
+    bioText = "Curador musical e criador de tendências. Gerenciando playlists influentes de Trap, Drill e R&B, conectando artistas independentes com novos ouvintes diariamente.";
+    specialties = ["Curadoria Editorial", "Playlist Placement", "Posicionamento", "Marketing"];
+    location = "Rio de Janeiro, Brasil";
+  } else if (role === "designer") {
+    subtitleRole = "Designer Visual • Diretor de Arte";
+    bioText = "Desenvolvedor de universos visuais para lançamentos musicais. Especializado em capas digitais 3D, canvas do Spotify, animações e branding completo para EPs e singles.";
+    specialties = ["Capa de Single/EP", "Modelagem 3D", "Canvas", "Motion Graphics"];
+    location = "Belo Horizonte, Brasil";
+  } else if (role === "marketing") {
+    subtitleRole = "Estrategista de Marketing • Gestor de Tráfego";
+    bioText = "Estrategista focado em impulsionar lançamentos musicais nas plataformas de streaming. Campanhas de tráfego pago, crescimento de audiência e análise de dados de funil.";
+    specialties = ["Tráfego Pago (ADS)", "Estratégia de Lançamento", "Growth", "Análise de Dados"];
+    location = "São Paulo, Brasil";
+  }
+
+  const catalogCards = items.length ? items.map((item, index) => {
     const fallbackCover = item.kind === "musica" ? img("photo-1511379938547-c1f69419868d") : img("photo-1493225457124-a3eb161ffa5f");
     const price = Number(item.price || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    return `<article class="profile-catalog-item">
-      <img src="${item.cover_url || fallbackCover}" alt="Capa de ${item.title}">
-      <div>
-        <span>${item.kind === "beat" ? "Beat" : "Musica"} - ${item.status === "published" ? "Publicado" : "Rascunho"}</span>
-        <h3>${item.title}</h3>
-        <p>${item.producer_name || item.artist_name || profile?.artistic_name || "ANSEND"} / ${item.genre}${item.bpm ? ` / ${item.bpm} BPM` : ""}</p>
-        <small>${item.license_type} / ${price}</small>
-      </div>
-      <div class="profile-catalog-actions">
-        <button type="button" data-action="play-catalog" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
-        <button type="button" data-action="toggle-catalog-status" data-id="${item.id}">${item.status === "published" ? "Rascunhar" : "Publicar"}</button>
-        <button type="button" data-action="delete-catalog" data-id="${item.id}" aria-label="Remover ${item.title}"><i data-lucide="trash-2"></i></button>
-      </div>
-    </article>`;
-  }).join("") : `<div class="profile-empty">
-    <i data-lucide="upload-cloud"></i>
-    <strong>Nenhum beat ou musica cadastrado ainda</strong>
-    <p>Use o formulario ao lado para montar seu catalogo ANSEND.</p>
-  </div>`;
+    const isPublished = item.status === "published";
+    
+    return `<tr class="profile-catalog-row">
+      <td class="col-play">
+        <div class="track-play-cell">
+          <span class="track-number">${index + 1}</span>
+          <button type="button" class="track-play-btn" data-action="play-catalog" data-id="${item.id}" aria-label="Tocar ${item.title}">
+            <i data-lucide="play"></i>
+          </button>
+        </div>
+      </td>
+      <td class="col-title">
+        <div class="track-title-cell">
+          <img class="track-cover-img" src="${item.cover_url || fallbackCover}" alt="Capa de ${item.title}">
+          <div class="track-title-info">
+            <strong>${item.title}</strong>
+            <small>${item.producer_name || item.artist_name || profile?.artistic_name || "ANSEND"}</small>
+          </div>
+        </div>
+      </td>
+      <td class="col-genre">
+        <span class="track-genre-tag">${item.genre}</span>
+        ${item.bpm ? `<span class="track-bpm-tag">${item.bpm} BPM</span>` : ""}
+      </td>
+      <td class="col-price">
+        <div class="track-price-cell">
+          <strong>${price}</strong>
+          <small>${item.license_type || "Premium"}</small>
+        </div>
+      </td>
+      <td class="col-status">
+        <span class="track-status-badge ${isPublished ? "is-published" : "is-draft"}">
+          ${isPublished ? "Publicado" : "Rascunho"}
+        </span>
+      </td>
+      <td class="col-actions">
+        <div class="track-actions-cell">
+          <button type="button" class="track-action-btn toggle-btn" data-action="toggle-catalog-status" data-id="${item.id}" title="${isPublished ? "Tornar Rascunho" : "Publicar"}">
+            <i data-lucide="${isPublished ? "eye-off" : "eye"}"></i>
+          </button>
+          <button type="button" class="track-action-btn delete-btn" data-action="delete-catalog" data-id="${item.id}" title="Excluir" aria-label="Remover ${item.title}">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6" class="profile-empty-cell">
+    <div class="profile-empty">
+      <i data-lucide="upload-cloud"></i>
+      <strong>Nenhum beat ou música cadastrado ainda</strong>
+      <p>Use o formulário na barra lateral para cadastrar sua primeira faixa.</p>
+    </div>
+  </td></tr>`;
 
   appView.innerHTML = `<section class="profile-page">
-    <div class="profile-hero">
-      <div>
-        <span><i data-lucide="${appState.authUser ? "cloud-check" : "cloud"}"></i>${accountStatus}</span>
-        <h1>${profile?.artistic_name || profile?.full_name || "Meu perfil ANSEND"}</h1>
-        <p>${accountGreeting()}</p>
-        <div class="profile-badges">
-          <b>${roleLabel}</b>
-          <b>${(profile?.music_styles || preferredGenres()).slice(0, 3).join(" + ")}</b>
-          <b>${profile?.email || appState.authUser?.email || "preview local"}</b>
+    <div class="profile-hero-banner">
+      <div class="profile-hero-content">
+        <div class="profile-avatar-wrapper">
+          <img class="profile-avatar-img" src="${userAvatar}" alt="Avatar de ${userName}">
+        </div>
+        
+        <div class="profile-hero-text">
+          <div class="profile-verification-status">
+            <i data-lucide="badge-check" class="verified-badge-blue"></i>
+            <span>${accountStatus}</span>
+          </div>
+          <h1>${userName}</h1>
+          <span class="profile-hero-role">${subtitleRole}</span>
+          <div class="profile-hero-meta">
+            <b>${roleLabel}</b>
+            <span class="meta-dot">•</span>
+            <b>${(profile?.music_styles || preferredGenres()).slice(0, 3).join(" + ")}</b>
+            <span class="meta-dot">•</span>
+            <b>${location}</b>
+          </div>
         </div>
       </div>
-      <button type="button" data-action="${appState.authUser || profile ? "logout-account" : "seller"}">
-        <i data-lucide="${appState.authUser || profile ? "log-out" : "user-plus"}"></i>${appState.authUser || profile ? "Sair" : "Criar conta"}
-      </button>
+      
+      <div class="profile-hero-actions">
+        <button type="button" class="profile-btn-secondary" data-action="toggle-edit-profile">
+          <i data-lucide="edit-3"></i>Editar perfil
+        </button>
+        <button type="button" class="profile-btn-secondary" data-action="share-profile">
+          <i data-lucide="share-2"></i>Compartilhar
+        </button>
+        <button type="button" class="profile-btn-primary" data-action="${appState.authUser || profile ? "logout-account" : "seller"}">
+          <i data-lucide="${appState.authUser || profile ? "log-out" : "user-plus"}"></i>${appState.authUser || profile ? "Sair" : "Criar conta"}
+        </button>
+      </div>
     </div>
 
-    <div class="profile-stats">
-      <article><span>Catalogo</span><strong>${items.length}</strong><small>itens cadastrados</small></article>
-      <article><span>Publicados</span><strong>${published}</strong><small>visiveis na loja</small></article>
-      <article><span>Beats</span><strong>${beats}</strong><small>licencas de beat</small></article>
-      <article><span>Musicas</span><strong>${musicas}</strong><small>faixas autorais</small></article>
+    <div class="profile-stats-grid">
+      <article class="profile-stat-card">
+        <div>
+          <span>Catálogo</span>
+          <strong>${items.length}</strong>
+        </div>
+        <small class="stat-increment increment-up">+${(items.length > 2 ? 2 : items.length)} este mês</small>
+      </article>
+      <article class="profile-stat-card">
+        <div>
+          <span>Seguidores</span>
+          <strong>${(1284 + (profile?.image || 0) * 45).toLocaleString("pt-BR")}</strong>
+        </div>
+        <small class="stat-increment increment-up">+${86 + (profile?.image || 0) * 5} este mês</small>
+      </article>
+      <article class="profile-stat-card">
+        <div>
+          <span>Vendas</span>
+          <strong>${312 + (profile?.image || 0) * 12}</strong>
+        </div>
+        <small class="stat-increment increment-up">+${18 + (profile?.image || 0) * 2} este mês</small>
+      </article>
+      <article class="profile-stat-card">
+        <div>
+          <span>Plays</span>
+          <strong>${(23.7 + (profile?.image || 0) * 1.5).toFixed(1)}K</strong>
+        </div>
+        <small class="stat-increment increment-up">+${(1.9 + (profile?.image || 0) * 0.2).toFixed(1)}K este mês</small>
+      </article>
+      <article class="profile-stat-card">
+        <div>
+          <span>Mensagens</span>
+          <strong>${27 + (profile?.image || 0) * 3}</strong>
+        </div>
+        <small class="stat-increment increment-up">+${6 + (profile?.image || 0)} este mês</small>
+      </article>
     </div>
-
-    ${musicProfilePanel()}
 
     <div class="profile-workspace">
-      <form class="profile-catalog-form">
-        <div class="profile-form-head">
-          <span><i data-lucide="badge-plus"></i>Novo cadastro</span>
-          <h2>Cadastrar musica ou beat</h2>
-          <p>Adicione as informacoes principais para publicar, vender licencas e organizar seu catalogo.</p>
-        </div>
-        <div class="profile-form-grid">
-          <label>Tipo<select name="kind"><option value="beat">Beat</option><option value="musica">Musica</option></select></label>
-          <label>Status<select name="status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></label>
-          <label>Titulo<input name="title" type="text" placeholder="Ex: Black Coupe" required></label>
-          <label>Genero<input name="genre" type="text" placeholder="Trap, Funk, Drill..." required></label>
-          <label>Artista<input name="artist" type="text" placeholder="Nome do artista"></label>
-          <label>Produtor<input name="producer" type="text" placeholder="prod. ANSEND"></label>
-          <label>BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
-          <label>Tom<input name="key" type="text" placeholder="Fm"></label>
-          <label>Preco<input name="price" type="number" min="0" step="0.01" placeholder="99.90"></label>
-          <label>Licenca<select name="license"><option value="basic">Basica</option><option value="premium">Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
-          <label class="profile-wide">URL da previa<input name="audio_url" type="url" placeholder="https://...mp3"></label>
-          <label class="profile-wide">URL da capa<input name="cover_url" type="url" placeholder="https://...jpg"></label>
-          <label class="profile-wide">Tags<input name="tags" type="text" placeholder="trap, 808, dark, type beat"></label>
-          <label class="profile-wide">Descricao<textarea name="description" rows="4" placeholder="Resumo do beat, vibe e arquivos incluidos"></textarea></label>
-        </div>
-        <button class="seller-submit" type="submit">Salvar no catalogo<i data-lucide="arrow-right"></i></button>
-      </form>
+      <div class="profile-workspace-sidebar">
+        <!-- SOBRE / BIO -->
+        <section class="profile-sidebar-card">
+          <div class="section-title"><i data-lucide="user-round"></i>Sobre</div>
+          <p class="profile-sidebar-bio">${bioText}</p>
+          <div class="profile-sidebar-specialties">
+            ${specialties.map(spec => `<span>${spec}</span>`).join("")}
+          </div>
+        </section>
 
-      <section class="profile-catalog-list">
-        <div class="section-head">
-          <div><h2><i data-lucide="library-big"></i>Meu catalogo</h2><p>Itens cadastrados para venda, curadoria e perfil publico</p></div>
+        <!-- DESTAQUES -->
+        <section class="profile-sidebar-card">
+          <div class="section-title"><i data-lucide="award"></i>Destaques do perfil</div>
+          <div class="profile-highlights-grid">
+            <article>
+              <i data-lucide="shield-check"></i>
+              <strong>312</strong>
+              <small>Licenças vendidas</small>
+            </article>
+            <article>
+              <i data-lucide="trending-up"></i>
+              <strong>5</strong>
+              <small>Beats em alta</small>
+            </article>
+            <article>
+              <i data-lucide="users-2"></i>
+              <strong>14</strong>
+              <small>Colaborações</small>
+            </article>
+          </div>
+        </section>
+
+        <!-- NOVO CADASTRO (FORM CONTAINER) -->
+        <div class="profile-catalog-form-container is-collapsed">
+          <button type="button" class="profile-form-toggle-btn" data-action="toggle-profile-form">
+            <i data-lucide="plus"></i>
+            <span>Cadastrar nova faixa</span>
+          </button>
+          
+          <form class="profile-catalog-form">
+            <div class="profile-form-head">
+              <span><i data-lucide="badge-plus"></i>Novo cadastro</span>
+              <h2>Cadastrar música ou beat</h2>
+              <p>Adicione as informações principais para publicar, vender licenças e organizar seu catálogo.</p>
+            </div>
+            <div class="profile-form-grid">
+              <label>Tipo<select name="kind"><option value="beat">Beat</option><option value="musica">Música</option></select></label>
+              <label>Status<select name="status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></label>
+              <label class="profile-wide">Título<input name="title" type="text" placeholder="Ex: Black Coupe" required></label>
+              <label>Gênero<input name="genre" type="text" placeholder="Trap, Funk, Drill..." required></label>
+              <label>BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
+              <label>Tom<input name="key" type="text" placeholder="Fm"></label>
+              <label>Preço<input name="price" type="number" min="0" step="0.01" placeholder="99.90"></label>
+              <label class="profile-wide">Licença<select name="license"><option value="basic">Básica</option><option value="premium">Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
+              <label class="profile-wide">URL da prévia<input name="audio_url" type="url" placeholder="https://...mp3"></label>
+              <label class="profile-wide">URL da capa<input name="cover_url" type="url" placeholder="https://...jpg"></label>
+              <label class="profile-wide">Tags<input name="tags" type="text" placeholder="trap, 808, dark, type beat"></label>
+            </div>
+            <button class="seller-submit" type="submit">Salvar no catálogo <i data-lucide="arrow-right"></i></button>
+          </form>
         </div>
-        ${catalogCards}
-      </section>
+
+        <!-- LINKS E PRESENÇA -->
+        <section class="profile-sidebar-card">
+          <div class="section-title"><i data-lucide="share-2"></i>Links e presença</div>
+          <ul class="profile-links-list">
+            <li><a href="https://instagram.com" target="_blank"><i data-lucide="instagram"></i><span>instagram.com/${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
+            <li><a href="https://youtube.com" target="_blank"><i data-lucide="youtube"></i><span>youtube.com/@${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
+            <li><a href="https://spotify.com" target="_blank"><i data-lucide="music-4"></i><span>open.spotify.com/artist/${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
+            <li><a href="https://ansend.com" target="_blank"><i data-lucide="globe"></i><span>${userName.toLowerCase().replace(/\s+/g, "")}.com</span><i data-lucide="external-link"></i></a></li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="profile-workspace-main">
+        <!-- NEXO MATCH QUIZ PANEL -->
+        ${musicProfilePanel()}
+
+        <!-- MEU CATÁLOGO (SPOTIFY-STYLE TRACKLIST) -->
+        <section class="profile-catalog-list-card">
+          <div class="section-head">
+            <div>
+              <h2><i data-lucide="library-big"></i>Meu catálogo</h2>
+              <p>Itens cadastrados para venda, curadoria e perfil público</p>
+            </div>
+          </div>
+          
+          <div class="profile-catalog-table-wrapper">
+            <table class="profile-catalog-table">
+              <thead>
+                <tr>
+                  <th class="col-play"></th>
+                  <th class="col-title">Título</th>
+                  <th class="col-genre">Gênero / BPM</th>
+                  <th class="col-price">Preço / Licença</th>
+                  <th class="col-status">Status</th>
+                  <th class="col-actions">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${catalogCards}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ATIVIDADE RECENTE -->
+        <section class="profile-workspace-card">
+          <div class="section-title"><i data-lucide="activity"></i>Atividade recente</div>
+          <ul class="profile-activity-list">
+            <li>
+              <span class="activity-icon-dot"><i data-lucide="user-plus"></i></span>
+              <div class="activity-content"><strong>Novo seguidor</strong><p>AN Beats começou a seguir você.</p></div>
+              <small>2h</small>
+            </li>
+            <li>
+              <span class="activity-icon-dot"><i data-lucide="shopping-bag"></i></span>
+              <div class="activity-content"><strong>Nova venda</strong><p>Licença Premium vendida para João R.</p></div>
+              <small>5h</small>
+            </li>
+            <li>
+              <span class="activity-icon-dot"><i data-lucide="message-square"></i></span>
+              <div class="activity-content"><strong>Nova mensagem</strong><p>Lucas M. enviou uma mensagem.</p></div>
+              <small>1d</small>
+            </li>
+            <li>
+              <span class="activity-icon-dot"><i data-lucide="eye"></i></span>
+              <div class="activity-content"><strong>Visita no perfil</strong><p>Seu perfil foi visitado 32 vezes hoje.</p></div>
+              <small>1d</small>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
   </section>`;
 }
@@ -5496,6 +5714,36 @@ document.addEventListener("click", (event) => {
   if (action === "seller") showToast("Sua loja de produtor está pronta para configurar", "store");
   if (action === "notifications") showToast("Você tem 3 novos lançamentos", "bell");
   if (action === "profile-edit") showToast("Edição de perfil habilitada", "user-round");
+  if (action === "toggle-profile-form") {
+    const container = document.querySelector(".profile-catalog-form-container");
+    if (container) {
+      container.classList.toggle("is-collapsed");
+      const icon = target.querySelector("i");
+      if (icon) {
+        if (container.classList.contains("is-collapsed")) {
+          icon.setAttribute("data-lucide", "plus");
+        } else {
+          icon.setAttribute("data-lucide", "minus");
+        }
+        lucide.createIcons();
+      }
+    }
+    return;
+  }
+  if (action === "toggle-edit-profile") {
+    location.hash = "configuracoes";
+    showToast("Configure seu perfil profissional nas configurações", "settings");
+    return;
+  }
+  if (action === "share-profile") {
+    const shareUrl = window.location.href;
+    navigator.clipboard?.writeText(shareUrl).then(() => {
+      showToast("Link do perfil copiado para a área de transferência!", "check-circle");
+    }).catch(() => {
+      showToast("Erro ao copiar link do perfil", "x");
+    });
+    return;
+  }
   if (action === "filter") {
     appState.genre = target.dataset.genre;
     if (currentRoute() !== "explorar") location.hash = "explorar";
