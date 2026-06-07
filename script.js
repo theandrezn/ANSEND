@@ -941,8 +941,8 @@ const roleDashboards = {
     secondaryCta: "Encontrar artistas",
     chips: [["Criar pack", "Quero montar um pack de beats para vender melhor."], ["Precificar beats", "Preciso definir preco e licencas para meus beats."], ["Achar artistas", "Quero encontrar artistas com match para meu som."]],
     benefits: [["shield-check", "Licencas claras"], ["bar-chart-3", "Catalogo otimizado"], ["users-round", "Match com artistas"]],
-    preview: ["Pack ideal - Trap Melodico", "Preco sugerido - [VALOR]", "Match - 18 artistas"],
-    mapSteps: [["Pack ideal", "Trap Melodico"], ["Preco sugerido", "[VALOR]"], ["Match", "18 artistas"]],
+    preview: ["Pack ideal - Trap Melodico", "Preco sugerido - R$ 499", "Match - 18 artistas"],
+    mapSteps: [["Pack ideal", "Trap Melodico"], ["Preco sugerido", "R$ 499"], ["Match", "18 artistas"]],
     compactRecommendation: true,
     recommendationTitle: "NEXO recomenda",
     recommendationSubtitle: "Diagnostico rapido para vender melhor.",
@@ -1899,7 +1899,7 @@ function getNexoFeedItems() {
     category: "Combo",
     genres: item.genres || musicQuiz.genres,
     vibes: item.vibes || musicQuiz.vibes,
-    priceLabel: "A partir de [VALOR]",
+    priceLabel: item.title.includes("Completo") ? "A partir de R$ 1.200" : item.title.includes("Beat") ? "A partir de R$ 490" : "A partir de R$ 350",
     coverImage: ["assets/category-producers.png", "assets/category-marketing.png", "assets/category-designers.png"][index % 3],
     durationSeconds: 35,
     tags: ["Combo", item.match ? `${item.match.score}% match` : "Plano", "Entrega guiada"],
@@ -3015,7 +3015,7 @@ function inferLaunchPlan(prompt) {
       prompt,
       role,
       genre: roleChoice(role).shortLabel,
-      budget: "[VALOR] estimado",
+      budget: "R$ 600 estimado",
       combo: dashboard.combo,
       match: dashboard.preview.map((item) => `${item}: recomendado pela NEXO IA`),
       steps: dashboard.mapSteps.map(([title, detail]) => ({ title, detail })),
@@ -3027,7 +3027,7 @@ function inferLaunchPlan(prompt) {
   const hasDemo = /demo|gravada|voz|previa/.test(text);
   const wantsMarketing = /divulg|marketing|ads|trafego|playlist|curadoria/.test(text);
   const genre = /drill/.test(text) ? "Drill" : /funk/.test(text) ? "Funk" : /r&b|rnb/.test(text) ? "R&B" : /boom bap/.test(text) ? "Boom Bap" : "Trap";
-  const budget = wantsMarketing ? "[VALOR] + campanha" : wantsRelease ? "[VALOR] lançamento" : "[VALOR] inicial";
+  const budget = wantsMarketing ? "R$ 800 + campanha" : wantsRelease ? "R$ 1.200 lançamento" : "R$ 500 inicial";
   const combo = [
     hasLyrics && !hasDemo ? "Beatmaker + produtor vocal" : "Produtor musical",
     "Designer de capa",
@@ -4343,6 +4343,20 @@ function closeOnboarding() {
   }
 }
 
+function mapCatalogItemToBeat(item) {
+  if (!item) return null;
+  if (item.cover !== undefined) return item;
+  return {
+    id: item.id,
+    title: item.title,
+    producer: item.producer_name || item.artist_name || activeProfile()?.artistic_name || activeProfile()?.full_name || "ANSEND",
+    cover: item.cover_url || img("photo-1493225457124-a3eb161ffa5f"),
+    price: item.price ? `R$ ${item.price}` : null,
+    badge: item.status === "draft" ? "Rascunho" : "Novo",
+    tags: [item.genre || "ANSEND", item.bpm ? `${item.bpm} BPM` : "98 BPM"],
+  };
+}
+
 function findBeat(id) {
   return searchableBeatPool().find((item) => item.id === id) || topBeatOfDay;
 }
@@ -4379,10 +4393,17 @@ function renderExplore() {
     return matchesQuery && matchesGenre;
   });
   const chips = ["Todos", ...availableGenres].map((genre) => `<button type="button" data-action="filter" data-genre="${genre}" class="${appState.genre === genre ? "is-active" : ""}">${genre}</button>`).join("");
+  const catalogBeats = preferredBeats(6).map((item, i) => beatCard({ ...item, badge: i === 0 ? "Destaque" : "" })).join("");
+  const catalogSection = `<section class="home-section trending-catalogs-section explore-catalogs" aria-label="Catálogos em alta">
+    <div class="section-head clean-head">
+      <div><h2><i data-lucide="flame"></i>${t("section.catalogs", "Catálogos em alta")}</h2><p>${t("section.catalogsSubtitle", "Beats, packs e referências subindo agora na ANSEND.")}</p></div>
+    </div>
+    <div class="featured-catalog-row">${catalogBeats}</div>
+  </section>`;
   const empty = catalog.length
     ? emptyState("search-x", "Nenhum item encontrado", "Tente outro nome, gênero ou BPM.", "explorar")
     : emptyState("upload-cloud", "Catálogo vazio", "Cadastre seu primeiro beat ou música para aparecer no marketplace.", "perfil");
-  appView.innerHTML = `${pageIntro("explorar")}${chips ? `<div class="chip-row route-chips">${chips}</div>` : ""}${filtered.length ? gridView(filtered) : empty}`;
+  appView.innerHTML = `${pageIntro("explorar")}${catalogSection}${chips ? `<div class="chip-row route-chips">${chips}</div>` : ""}${filtered.length ? gridView(filtered) : empty}`;
 }
 
 function renderFavorites() {
@@ -4616,6 +4637,9 @@ function renderInstitutionalPage(route) {
 
 function renderAiWorkspace() {
   const plan = appState.aiPlan || fallbackNexoIntelligence("Tenho uma ideia musical e preciso lançar profissionalmente.");
+  if (plan && plan.budget && plan.budget.includes("[VALOR]")) {
+    plan.budget = plan.budget.replace(/\[VALOR\]/g, "R$ 600");
+  }
   const license = licensePlans[plan.recommendedLicense] || licensePlans.premium;
   const pros = plan.recommendedProfessionals || professionalsForNeed(plan.prompt || "");
   const beats = plan.recommendedBeats || beatMatchesForNeed(plan.prompt || "");
@@ -4694,7 +4718,7 @@ function renderAiWorkspace() {
           <div class="nexo-minimal-plan-details">
             <div class="nexo-minimal-plan-header">
               <span class="nexo-minimal-plan-badge">PLANO RECOMENDADO</span>
-              <h2>${plan.genre || "Trap"} / ${plan.budget || "[VALOR] estimado"}</h2>
+              <h2>${plan.genre || "Trap"} / ${plan.budget || "R$ 600 estimado"}</h2>
               <p class="nexo-minimal-plan-combo">Combo sugerido: <strong>${plan.combo}</strong></p>
             </div>
             
@@ -5433,10 +5457,7 @@ function renderRoute() {
   if (route === "nexo-feed") {
     renderNexoFeed();
   }
-  if (route === "ia") {
-    appView.innerHTML = feedTemplate;
-    applyFeedPersonalization();
-  }
+
   if (route === "explorar") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
@@ -5939,7 +5960,11 @@ function handleFavorite(id) {
   }
   persistState();
   if (currentRoute() === "favoritos") renderRoute();
-  else document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`).forEach((button) => button.classList.toggle("is-favorite", appState.favorites.has(id)));
+  else {
+    document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`).forEach((button) => button.classList.toggle("is-favorite", appState.favorites.has(id)));
+    const isFav = appState.favorites.has(id);
+    document.querySelectorAll(`[data-feed-item-id="${id}"][data-action="nexo-feed-like"], [data-feed-item-id="${id}"][data-action="nexo-feed-save"]`).forEach((btn) => btn.classList.toggle("is-active", isFav));
+  }
 }
 
 function handleBuy(id, selectedPlan = "premium") {
@@ -6132,6 +6157,20 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const routeLink = event.target.closest("[data-route]");
+  if (routeLink) {
+    const targetRoute = routeLink.dataset.route;
+    if (targetRoute === "explorar") {
+      appState.query = "";
+      appState.genre = "Todos";
+      const searchInput = document.querySelector("#search");
+      if (searchInput) searchInput.value = "";
+    }
+    if (currentRoute() === targetRoute) {
+      renderRoute();
+    }
+  }
+
   const clickedFeedMedia = event.target.closest(".nexo-feed-media");
   if (clickedFeedMedia) {
     const feedCard = clickedFeedMedia.closest(".nexo-feed-card");
@@ -6338,12 +6377,10 @@ document.addEventListener("click", (event) => {
     if (action === "nexo-feed-like" || action === "nexo-feed-save") {
       if (item.type === "beat") {
         const beatId = item.metadata?.beatId || item.id;
-        if (!appState.favorites.has(beatId)) {
-          appState.favorites.add(beatId);
-          persistState();
-        }
+        handleFavorite(beatId);
+      } else {
+        target.classList.toggle("is-active");
       }
-      target.classList.toggle("is-active");
       return;
     }
     if (action === "nexo-feed-comments") {
