@@ -13631,5 +13631,116 @@ body:has(.nexo-feed-page) .footer {
   }
 }
 
+/* Hero morph headline: slow, readable glitch adapted from the 21st.dev prompt. */
+.feed .ai-hero .an-hero-copy h1.hero-morph-title,
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy h1.hero-morph-title,
+.feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1.hero-morph-title {
+  transform: translateY(-24px);
+}
+
+.hero-morph-title {
+  position: relative;
+}
+
+.hero-morph-title .hero-morph-brand {
+  color: var(--orange) !important;
+  font-size: 1.22em;
+  line-height: .8;
+  text-shadow:
+    0 0 18px rgba(255, 106, 0, .34),
+    0 14px 42px rgba(255, 106, 0, .18);
+}
+
+.hero-morph-title .hero-morph-main {
+  display: block;
+  max-width: min(720px, 100%);
+  min-height: 1.84em;
+  color: #fff !important;
+}
+
+.hero-morph-text {
+  display: inline;
+  white-space: normal;
+}
+
+.hero-morph-cursor {
+  display: inline-block;
+  width: .08em;
+  height: .75em;
+  margin-left: .06em;
+  vertical-align: -.04em;
+  border-radius: 999px;
+  background: var(--orange);
+  opacity: .42;
+  box-shadow: 0 0 18px rgba(255, 106, 0, .46);
+  animation: heroMorphCursor 2s ease-in-out infinite;
+}
+
+.hero-morph-title.is-glitching .hero-morph-main {
+  animation: heroMorphGlitch .52s steps(2, end);
+  text-shadow:
+    1px 0 rgba(255, 106, 0, .5),
+    -1px 0 rgba(255, 255, 255, .18),
+    0 12px 36px rgba(0, 0, 0, .72);
+}
+
+.feed .ai-hero .ai-hero-layout .top-beat-showcase,
+.feed .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
+  transform: translate(42px, 34px);
+}
+
+@keyframes heroMorphCursor {
+  0%,
+  100% {
+    opacity: .18;
+    transform: scaleY(.72);
+  }
+  50% {
+    opacity: .72;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes heroMorphGlitch {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    filter: none;
+  }
+  18% {
+    transform: translate3d(-2px, 1px, 0);
+    filter: contrast(1.18);
+  }
+  38% {
+    transform: translate3d(2px, -1px, 0);
+  }
+  62% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  82% {
+    transform: translate3d(1px, 1px, 0);
+    filter: contrast(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-morph-cursor,
+  .hero-morph-title.is-glitching .hero-morph-main {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .feed .ai-hero .an-hero-copy h1.hero-morph-title,
+  .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1.hero-morph-title,
+  .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1.hero-morph-title {
+    transform: none;
+  }
+
+  .feed .ai-hero .ai-hero-layout .top-beat-showcase,
+  .feed .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
+    transform: none;
+  }
+}
 
 
