@@ -2415,6 +2415,7 @@ renderHomeDashboard();
 const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let revealObserver = null;
+let homeScrollAnimationRaf = null;
 let lastRoute = null;
 let heroTypewriterTimer = null;
 let heroTypewriterToken = 0;
@@ -2620,8 +2621,90 @@ function setupAutoScrollRows() {
 prefersReducedMotion.addEventListener?.("change", setupAutoScrollRows);
 prefersReducedMotion.addEventListener?.("change", setupHeroShader);
 
+function clampScrollProgress(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function easeHomeScroll(value) {
+  const progress = clampScrollProgress(value);
+  return 1 - Math.pow(1 - progress, 3);
+}
+
+function buildHomeScrollText(section) {
+  const title = section.querySelector("[data-scroll-text]");
+  if (!title || title.dataset.built === "true") return;
+  const text = title.dataset.scrollText || title.textContent.trim();
+  const chars = Array.from(text);
+  const center = (chars.length - 1) / 2;
+  title.innerHTML = chars.map((char, index) => {
+    const distance = index - center;
+    const safeChar = char === " " ? "&nbsp;" : char;
+    return `<span class="scroll-char" data-distance="${distance.toFixed(2)}">${safeChar}</span>`;
+  }).join("");
+  title.dataset.built = "true";
+}
+
+function updateHomeScrollAnimation() {
+  homeScrollAnimationRaf = null;
+  const sections = document.querySelectorAll(".scroll-kinetic-section");
+  if (!sections.length) return;
+  if (prefersReducedMotion.matches) {
+    sections.forEach((section) => {
+      section.querySelectorAll(".scroll-char, .scroll-kinetic-icon").forEach((item) => {
+        item.style.transform = "";
+        item.style.opacity = "";
+        item.style.filter = "";
+      });
+    });
+    return;
+  }
+
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 1;
+  sections.forEach((section) => {
+    const rect = section.getBoundingClientRect();
+    const progress = easeHomeScroll((viewportHeight - rect.top) / (viewportHeight + rect.height * 0.58));
+    section.style.setProperty("--scroll-progress", progress.toFixed(3));
+
+    section.querySelectorAll(".scroll-char").forEach((char, index) => {
+      const distance = Number(char.dataset.distance || 0);
+      const direction = distance === 0 ? 0 : Math.sign(distance);
+      const spread = Math.min(1.85, Math.abs(distance) / 8);
+      const x = (1 - progress) * direction * (52 + spread * 46);
+      const y = (1 - progress) * Math.sin(index * 0.7) * 18;
+      const rotate = (1 - progress) * direction * (8 + spread * 10);
+      const blur = (1 - progress) * 3.8;
+      char.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rotate.toFixed(2)}deg) scale(${(0.88 + progress * 0.12).toFixed(3)})`;
+      char.style.opacity = (0.18 + progress * 0.82).toFixed(3);
+      char.style.filter = `blur(${blur.toFixed(2)}px)`;
+    });
+
+    section.querySelectorAll(".scroll-kinetic-icon").forEach((icon, index) => {
+      const side = index % 2 === 0 ? -1 : 1;
+      const x = (1 - progress) * side * (42 + index * 8);
+      const y = (1 - progress) * (26 + (index % 3) * 8);
+      const rotate = (1 - progress) * side * (index + 1) * 3;
+      icon.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rotate.toFixed(2)}deg) scale(${(0.92 + progress * 0.08).toFixed(3)})`;
+      icon.style.opacity = (0.28 + progress * 0.72).toFixed(3);
+    });
+  });
+}
+
+function requestHomeScrollAnimationTick() {
+  if (homeScrollAnimationRaf) return;
+  homeScrollAnimationRaf = requestAnimationFrame(updateHomeScrollAnimation);
+}
+
+function setupHomeScrollAnimation() {
+  document.querySelectorAll(".scroll-kinetic-section").forEach(buildHomeScrollText);
+  requestHomeScrollAnimationTick();
+}
+
+window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true });
+window.addEventListener("resize", requestHomeScrollAnimationTick);
+prefersReducedMotion.addEventListener?.("change", requestHomeScrollAnimationTick);
+
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".home-section, .catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
+  const targets = document.querySelectorAll(".home-section, .scroll-kinetic-section, .catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
   if (revealObserver) revealObserver.disconnect();
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
@@ -5310,6 +5393,7 @@ function hydrateView() {
   applyRoleDashboard();
   renderAiPlan();
   setupAutoScrollRows();
+  setupHomeScrollAnimation();
   setupScrollReveals();
   setupNexoFeedObservers();
   applyTranslations();

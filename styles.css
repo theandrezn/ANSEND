@@ -13814,3 +13814,184 @@ body:has(.nexo-feed-page) .footer {
     transform: none;
   }
 }
+
+/* Home kinetic scroll: vanilla adaptation of the requested 21st.dev scroll effect. */
+.scroll-kinetic-section {
+  position: relative;
+  min-height: 160vh;
+  margin: 0;
+  padding: 0 clamp(18px, 5vw, 96px);
+  overflow: clip;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 106, 0, .12), transparent 34%),
+    radial-gradient(circle at 12% 70%, rgba(255, 138, 0, .08), transparent 28%),
+    linear-gradient(180deg, #000 0%, #080604 42%, #000 100%);
+  border-top: 1px solid rgba(255, 106, 0, .12);
+  border-bottom: 1px solid rgba(255, 106, 0, .12);
+  isolation: isolate;
+}
+
+.scroll-kinetic-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 106, 0, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 106, 0, .035) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(circle at center, #000 0 42%, transparent 72%);
+  opacity: .65;
+  z-index: -1;
+}
+
+.scroll-kinetic-section::after {
+  content: "";
+  position: absolute;
+  inset: 18% 8%;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255, 106, 0, .18), transparent 58%);
+  filter: blur(54px);
+  opacity: .55;
+  z-index: -1;
+}
+
+.scroll-kinetic-sticky {
+  position: sticky;
+  top: 84px;
+  min-height: calc(100vh - 112px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.scroll-kinetic-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 106, 0, .32);
+  border-radius: 999px;
+  color: var(--orange);
+  background: rgba(8, 6, 4, .68);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255, 255, 255, .05);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.scroll-kinetic-title {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .02em;
+  max-width: 1180px;
+  margin: 0;
+  perspective: 900px;
+  color: #fff;
+  font-family: "Bebas Neue", "Poppins", sans-serif;
+  font-size: clamp(52px, 10vw, 148px);
+  line-height: .88;
+  letter-spacing: .012em;
+  text-transform: uppercase;
+  text-shadow: 0 22px 64px rgba(0, 0, 0, .72);
+}
+
+.scroll-kinetic-title .scroll-char {
+  display: inline-block;
+  min-width: .18em;
+  will-change: transform, opacity, filter;
+  transform-origin: center;
+  color: #fff;
+}
+
+.scroll-kinetic-title .scroll-char:nth-child(1),
+.scroll-kinetic-title .scroll-char:nth-child(2),
+.scroll-kinetic-title .scroll-char:nth-child(3),
+.scroll-kinetic-title .scroll-char:nth-child(4),
+.scroll-kinetic-title .scroll-char:nth-child(5),
+.scroll-kinetic-title .scroll-char:nth-child(6),
+.scroll-kinetic-title .scroll-char:nth-child(7),
+.scroll-kinetic-title .scroll-char:nth-child(8) {
+  color: var(--orange);
+  text-shadow: 0 0 24px rgba(255, 106, 0, .24);
+}
+
+.scroll-kinetic-copy {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(245, 245, 245, .76);
+  font-size: clamp(15px, 1.5vw, 20px);
+  line-height: 1.55;
+}
+
+.scroll-kinetic-icons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 920px;
+  margin-top: 8px;
+}
+
+.scroll-kinetic-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 106, 0, .24);
+  border-radius: 999px;
+  background: rgba(8, 6, 4, .74);
+  color: #fff;
+  box-shadow: 0 18px 52px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .04);
+  will-change: transform, opacity;
+}
+
+.scroll-kinetic-icon svg {
+  width: 18px;
+  height: 18px;
+  color: var(--orange);
+}
+
+.scroll-kinetic-icon strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .scroll-kinetic-section {
+    min-height: 120vh;
+    padding-inline: 18px;
+  }
+
+  .scroll-kinetic-sticky {
+    top: 76px;
+    min-height: calc(100vh - 96px);
+  }
+
+  .scroll-kinetic-title {
+    font-size: clamp(44px, 16vw, 78px);
+  }
+
+  .scroll-kinetic-icons {
+    gap: 8px;
+  }
+
+  .scroll-kinetic-icon {
+    min-height: 42px;
+    padding: 10px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-kinetic-title .scroll-char,
+  .scroll-kinetic-icon {
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}
