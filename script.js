@@ -5537,10 +5537,15 @@ function seekMiniPlayerFromPointer(event) {
   seekMiniPlayerToRatio(ratio);
 }
 
-function updateMiniPlayer(item) {
+function updateMiniPlayer(item, show = true) {
   const player = document.querySelector(".mini-player");
   if (!player || !item) return;
-  showMiniPlayer();
+  if (show) {
+    showMiniPlayer();
+  } else {
+    player.classList.add("is-closed");
+    player.classList.remove("is-active");
+  }
   player.dataset.currentBeat = item.id;
   player.querySelector(".mini-track img").src = item.cover;
   player.querySelector(".mini-track strong").textContent = item.title;
@@ -5639,7 +5644,7 @@ window.addEventListener("load", () => {
     updateMiniProgress();
   }, 500);
   applyPlayerAudioSettings();
-  updateMiniPlayer(currentPlayingBeat());
+  updateMiniPlayer(currentPlayingBeat(), Boolean(appState.playing));
 }, { once: true });
 
 function handleFavorite(id) {

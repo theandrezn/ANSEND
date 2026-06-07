@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260607-remove-play-btn" />
+    <link rel="stylesheet" href="styles.css?v=20260607-hide-play-bar-initially" />
   </head>
   <body>
     <!-- Ambient Background Glow -->
@@ -318,7 +318,7 @@
         <div class="socials"><a href="#" aria-label="Instagram"><i data-lucide="instagram"></i></a><a href="#" aria-label="Youtube"><i data-lucide="youtube"></i></a></div>
       </footer>
 
-      <aside class="mini-player" aria-label="Player atual">
+      <aside class="mini-player is-closed" aria-label="Player atual">
         <button class="mini-close" type="button" data-action="close-mini-player" aria-label="Fechar player"><i data-lucide="x"></i></button>
         <div class="mini-waveform" role="slider" tabindex="0" data-action="seek-player" aria-label="Ajustar tempo da música" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <span class="mini-current">0:00</span>
@@ -358,7 +358,7 @@
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",
       };
     </script>
-    <script src="script.js?v=20260607-remove-play-btn"></script>
+    <script src="script.js?v=20260607-hide-play-bar-initially"></script>
   </body>
 </html>
 
