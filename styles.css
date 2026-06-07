@@ -14781,11 +14781,16 @@ body:has(.nexo-feed-page) .footer {
 }
 
 /* Release screen correction: Amuse-like full app surface with its own sidebar. */
+body.release-mode,
 body:has(.amuse-release-shell) {
   overflow-x: hidden;
   background: #000 !important;
 }
 
+body.release-mode .ambient-glow,
+body.release-mode .sidebar,
+body.release-mode .topbar,
+body.release-mode .seller-mini,
 body:has(.amuse-release-shell) .ambient-glow,
 body:has(.amuse-release-shell) > .sidebar,
 body:has(.amuse-release-shell) .topbar,
@@ -14793,6 +14798,7 @@ body:has(.amuse-release-shell) .seller-mini {
   display: none !important;
 }
 
+body.release-mode .page,
 body:has(.amuse-release-shell) .page {
   margin-left: 0 !important;
   width: 100vw !important;
@@ -14801,6 +14807,7 @@ body:has(.amuse-release-shell) .page {
   overflow: hidden !important;
 }
 
+body.release-mode .feed,
 body:has(.amuse-release-shell) .feed {
   padding: 0 !important;
   margin: 0 !important;
@@ -14824,6 +14831,7 @@ body:has(.amuse-release-shell) .feed {
   overflow: hidden auto;
   background: #000 !important;
   font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+  z-index: 10;
 }
 
 .release-sidebar {
@@ -14984,6 +14992,7 @@ body:has(.amuse-release-shell) .feed {
   grid-template-rows: auto 1fr;
   background: #000;
   overflow: hidden auto;
+  z-index: 2;
 }
 
 .amuse-release-shell .release-top {
@@ -15022,11 +15031,15 @@ body:has(.amuse-release-shell) .feed {
 }
 
 .amuse-release-shell .release-upload-form {
+  display: block !important;
   width: min(920px, calc(100vw - 300px));
   max-width: 920px;
   margin: 56px auto 0;
   padding: 0 0 110px;
   min-height: calc(100vh - 138px);
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
 }
 
 .amuse-release-shell .release-plan-alert {

@@ -5698,17 +5698,19 @@ function renderRoute() {
   const route = currentRoute();
   const routeChanged = route !== lastRoute;
   lastRoute = route;
-  document.body.classList.toggle("is-authenticated", hasAccountAccess());
-  document.body.classList.toggle("requires-auth", !hasAccountAccess());
+  const accountAccess = hasAccountAccess();
+  document.body.classList.toggle("is-authenticated", accountAccess);
+  document.body.classList.toggle("requires-auth", !accountAccess);
+  document.body.classList.toggle("release-mode", route === "cadastrar" && accountAccess);
   appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
-  if (!appState.authReady && !hasAccountAccess() && protectedRoute(route)) {
+  if (!appState.authReady && !accountAccess && protectedRoute(route)) {
     renderAuthLoading();
     hydrateView();
     return;
   }
-  if (!hasAccountAccess() && protectedRoute(route)) {
+  if (!accountAccess && protectedRoute(route)) {
     appState.sellerMode = appState.sellerMode || "login";
     renderSellerAuth();
     window.scrollTo({ top: 0, behavior: "auto" });
