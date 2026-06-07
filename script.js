@@ -1029,20 +1029,6 @@ const roleDashboards = {
 };
 
 const heroHeadline = ["ANSEND", "O marketplace inteligente da música"];
-const heroMorphLines = {
-  "pt-BR": [
-    "O marketplace inteligente da música",
-    "O marketplace inteligente para transformar ideias em lançamentos musicais.",
-    "A plataforma que conecta sua música aos profissionais certos.",
-    "Entre com uma ideia. Encontre os serviços certos para sua música.",
-  ],
-  en: [
-    "The intelligent music marketplace",
-    "The intelligent marketplace for turning ideas into music releases.",
-    "The platform that connects your music with the right professionals.",
-    "Start with an idea. Find the right services for your music.",
-  ],
-};
 
 const playlists = [
   ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],
@@ -2423,9 +2409,6 @@ const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: f
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let revealObserver = null;
 let lastRoute = null;
-let heroMorphTimer = null;
-let heroMorphToken = 0;
-let heroMorphAnimating = false;
 
 function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
@@ -3054,98 +3037,25 @@ function roleDashboardStripMarkup(dashboard) {
   </section>`;
 }
 function stopHeroMorphTitle() {
-  if (heroMorphTimer) clearInterval(heroMorphTimer);
-  heroMorphTimer = null;
-  heroMorphAnimating = false;
-  heroMorphToken++;
-}
-
-function currentHeroMorphLines(fallbackLine = "") {
-  const locale = appLocale.current === "en" ? "en" : "pt-BR";
-  const lines = heroMorphLines[locale] || heroMorphLines["pt-BR"];
-  if (!fallbackLine || lines.includes(fallbackLine)) return lines;
-  return [fallbackLine, ...lines.filter((line) => line !== fallbackLine)];
-}
-
-function randomMorphChar() {
-  const chars = "ANSEND0123456789#@$%&+";
-  return chars[Math.floor(Math.random() * chars.length)];
-}
-
-function morphHeroLine(titleElement) {
-  if (!titleElement || heroMorphAnimating || prefersReducedMotion.matches) return;
-  const textElement = titleElement.querySelector(".hero-morph-text");
-  if (!textElement) return;
-  const lines = currentHeroMorphLines();
-  if (lines.length <= 1) return;
-
-  const currentIndex = Number(titleElement.dataset.morphIndex || "0") % lines.length;
-  const nextIndex = (currentIndex + 1) % lines.length;
-  const currentText = textElement.textContent || lines[currentIndex];
-  const nextText = lines[nextIndex];
-  const maxLength = Math.max(currentText.length, nextText.length);
-  const totalFrames = 30;
-  const token = ++heroMorphToken;
-  let frame = 0;
-
-  heroMorphAnimating = true;
-  titleElement.classList.add("is-glitching");
-
-  const step = () => {
-    if (token !== heroMorphToken) return;
-    if (frame <= totalFrames) {
-      const progress = frame / totalFrames;
-      const revealCount = Math.floor(nextText.length * progress);
-      let output = "";
-
-      for (let i = 0; i < maxLength; i++) {
-        if (i < revealCount) {
-          output += nextText[i] || "";
-        } else if (i < currentText.length && Math.random() > 0.58) {
-          output += randomMorphChar();
-        } else {
-          output += currentText[i] || "";
-        }
-      }
-
-      textElement.textContent = output.trimEnd();
-      frame++;
-      window.setTimeout(step, 72);
-      return;
-    }
-
-    textElement.textContent = nextText;
-    titleElement.dataset.morphIndex = String(nextIndex);
-    titleElement.classList.remove("is-glitching");
-    heroMorphAnimating = false;
-  };
-
-  step();
+  document.querySelector(".hero-morph-title")?.classList.remove("is-glitching");
 }
 
 function animateHeadlineReveal(titleElement, line1, line2) {
   if (!titleElement) return;
-  const lines = currentHeroMorphLines(line2);
-  const nextKey = `${appLocale.current}|${line1}|${lines.join("|")}`;
+  const nextKey = `${appLocale.current}|${line1}|${line2}`;
   const existingText = titleElement.querySelector(".hero-morph-text");
 
   if (titleElement.dataset.revealKey !== nextKey || !existingText) {
     titleElement.dataset.revealKey = nextKey;
-    titleElement.dataset.morphIndex = "0";
     titleElement.classList.add("hero-morph-title");
+    titleElement.classList.remove("is-glitching");
     titleElement.innerHTML = `
       <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${line1}</span>
       <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-        <span class="hero-morph-text">${lines[0]}</span>
-        <span class="hero-morph-cursor" aria-hidden="true"></span>
+        <span class="hero-morph-text">${line2}</span>
       </strong>
     `;
     requestAnimationFrame(() => titleElement.classList.add("is-ready"));
-  }
-
-  stopHeroMorphTitle();
-  if (!prefersReducedMotion.matches && lines.length > 1) {
-    heroMorphTimer = window.setInterval(() => morphHeroLine(titleElement), 5600);
   }
 }
 

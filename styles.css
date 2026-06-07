@@ -13743,4 +13743,21 @@ body:has(.nexo-feed-page) .footer {
   }
 }
 
+/* Static hero headline reset: ANSEND orange, message white, no glitch artifacts. */
+.feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-brand {
+  color: var(--orange) !important;
+}
+
+.feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-main,
+.feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-text {
+  color: #fff !important;
+  animation: none !important;
+  filter: none !important;
+  transform: none !important;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, .72);
+}
+
+.hero-morph-cursor {
+  display: none !important;
+}
 
