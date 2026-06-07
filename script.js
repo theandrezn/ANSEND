@@ -36,6 +36,7 @@ const i18n = {
     "nav.favorites": "Favoritos",
     "nav.orders": "Pedidos",
     "nav.library": "Biblioteca",
+    "nav.upload": "Lançar música",
     "nav.professionals": "Profissionais",
     "nav.profile": "Meu perfil",
     "nav.settings": "Configurações",
@@ -117,6 +118,8 @@ const i18n = {
     "route.carrinho.subtitle": "Revise seus beats e finalize seu pedido.",
     "route.biblioteca.title": "Biblioteca",
     "route.biblioteca.subtitle": "Playlists, históricos e itens salvos em um só lugar.",
+    "route.cadastrar.title": "Lançar música",
+    "route.cadastrar.subtitle": "Cadastre releases, capa, áudio e licenças para publicar no catálogo.",
     "route.produtores.title": "Profissionais",
     "route.produtores.subtitle": "Beatmakers, designers, produtores, curadores e marketing musical.",
     "route.configuracoes.title": "Configurações",
@@ -134,6 +137,7 @@ const i18n = {
     "nav.favorites": "Favorites",
     "nav.orders": "Orders",
     "nav.library": "Library",
+    "nav.upload": "Release music",
     "nav.professionals": "Professionals",
     "nav.profile": "My profile",
     "nav.settings": "Settings",
@@ -215,6 +219,8 @@ const i18n = {
     "route.carrinho.subtitle": "Review your beats and complete your order.",
     "route.biblioteca.title": "Library",
     "route.biblioteca.subtitle": "Saved playlists, history, and library items.",
+    "route.cadastrar.title": "Release music",
+    "route.cadastrar.subtitle": "Upload releases, artwork, audio, and licenses for your catalog.",
     "route.produtores.title": "Professionals",
     "route.produtores.subtitle": "Beatmakers, designers, producers, curators, and music marketing.",
     "route.configuracoes.title": "Settings",
@@ -367,6 +373,7 @@ function applyTranslations(root = document) {
     favoritos: "nav.favorites",
     compras: "nav.orders",
     biblioteca: "nav.library",
+    cadastrar: "nav.upload",
     produtores: "nav.professionals",
     perfil: "nav.profile",
     configuracoes: "nav.settings",
@@ -2775,6 +2782,7 @@ routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos con
 routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
+routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
@@ -5025,10 +5033,265 @@ function renderSettings() {
   </section>`;
 }
 
+function releaseStepMarkup(steps) {
+  return `<div class="release-stepper" aria-label="Etapas do cadastro">
+    ${steps.map((step, index) => `<button type="button" class="release-step ${index === 0 ? "is-active" : ""}" data-action="release-step" data-step="${index}" aria-label="Ir para ${step.label}">
+      <span>${index + 1}</span>
+      <strong>${step.label}</strong>
+    </button>`).join("")}
+  </div>`;
+}
+
+function renderMusicUpload() {
+  const profile = activeProfile();
+  const display = profileDisplayData(profile);
+  const steps = [
+    { label: "Detalhes" },
+    { label: "Capa" },
+    { label: "Faixa" },
+    { label: "Entrega" },
+    { label: "Revisão" },
+  ];
+  appView.innerHTML = `<section class="release-page" aria-label="Cadastrar música na ANSEND">
+    <header class="release-top">
+      <a class="release-logo" href="#feed" data-route="feed" aria-label="ANSEND"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
+      ${releaseStepMarkup(steps)}
+      <button class="release-close" type="button" data-route="perfil" aria-label="Fechar cadastro"><i data-lucide="x"></i></button>
+    </header>
+
+    <form class="release-upload-form" data-release-step="0">
+      <input type="hidden" name="kind" value="musica">
+      <input type="hidden" name="status" value="published">
+      <input type="hidden" name="cover_url">
+      <input type="hidden" name="audio_url">
+      <input type="hidden" name="tags">
+
+      <aside class="release-plan-alert">
+        <span><i data-lucide="sparkles"></i> Publicação ANSEND</span>
+        <strong>Seu release vai para o catálogo assim que a revisão terminar.</strong>
+        <button type="button" data-route="ia">Usar NEXO IA</button>
+      </aside>
+
+      <div class="release-workspace">
+        <div class="release-main">
+          <section class="release-panel is-active" data-panel="0">
+            <span class="release-eyebrow">Release details</span>
+            <h1>Detalhes do lançamento</h1>
+            <p>Comece com as informações essenciais da faixa. Mantivemos simples para o cadastro ficar rápido.</p>
+            <div class="release-form-grid">
+              <label class="release-field release-wide">Título do release<input name="title" type="text" placeholder="Ex: Minha nova música" required></label>
+              <label class="release-field">Artista<input name="artist" type="text" value="${display.name || ""}" placeholder="Nome artístico"></label>
+              <label class="release-field">Produtor<input name="producer" type="text" value="${display.name || ""}" placeholder="Produtor principal"></label>
+              <label class="release-field">Gênero<select name="genre" required>
+                <option value="">Selecione</option>
+                <option>Trap</option><option>Funk</option><option>Drill</option><option>R&B</option><option>Boom Bap</option><option>Afrobeat</option><option>Gospel Trap</option><option>Pop</option>
+              </select></label>
+              <label class="release-field">Idioma<select name="language"><option>Português</option><option>Inglês</option><option>Espanhol</option><option>Instrumental</option></select></label>
+              <label class="release-field">BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
+              <label class="release-field">Tom<input name="key" type="text" placeholder="Fm"></label>
+              <fieldset class="release-radio-group release-wide">
+                <legend>Essa faixa já foi lançada antes?</legend>
+                <label><input type="radio" name="released_before" value="yes"> Sim</label>
+                <label><input type="radio" name="released_before" value="no" checked> Não</label>
+              </fieldset>
+            </div>
+          </section>
+
+          <section class="release-panel" data-panel="1">
+            <span class="release-eyebrow">Cover art</span>
+            <h1>Capa do lançamento</h1>
+            <p>Envie uma capa quadrada em alta qualidade. A imagem já aparece no preview e será usada no card do catálogo.</p>
+            <div class="release-upload-layout">
+              <label class="release-dropzone release-cover-drop" data-upload-drop="cover">
+                <input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover">
+                <span class="release-upload-icon"><i data-lucide="upload-cloud"></i></span>
+                <strong>Arraste ou escolha sua capa</strong>
+                <small>JPG, PNG ou WEBP. Recomendado: 3000x3000.</small>
+                <img class="release-cover-preview" alt="">
+              </label>
+              <div class="release-requirements">
+                <strong>Requisitos de capa</strong>
+                <ul>
+                  <li>Imagem quadrada e sem borrado.</li>
+                  <li>Sem textos pequenos ilegíveis ou logos não autorizadas.</li>
+                  <li>Use uma capa própria ou licenciada para seu lançamento.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="release-panel" data-panel="2">
+            <span class="release-eyebrow">Track list</span>
+            <h1>Arquivo da música</h1>
+            <p>Suba o áudio principal. Ele fica disponível para prévia dentro do player da ANSEND.</p>
+            <div class="release-upload-layout">
+              <label class="release-dropzone release-audio-drop" data-upload-drop="audio">
+                <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/mp3,audio/flac" data-upload-type="audio">
+                <span class="release-upload-icon"><i data-lucide="file-audio"></i></span>
+                <strong>Arraste ou escolha seu áudio</strong>
+                <small>MP3, WAV ou FLAC. Use arquivo final ou prévia.</small>
+              </label>
+              <div class="release-audio-preview">
+                <span>Preview de áudio</span>
+                <strong data-audio-name>Nenhum arquivo selecionado</strong>
+                <audio controls preload="metadata"></audio>
+              </div>
+            </div>
+          </section>
+
+          <section class="release-panel" data-panel="3">
+            <span class="release-eyebrow">Delivery options</span>
+            <h1>Licença e entrega</h1>
+            <p>Defina como a faixa aparece para compra, download e licenciamento.</p>
+            <div class="release-form-grid">
+              <label class="release-field">Preço<input name="price" type="number" min="0" step="0.01" placeholder="49.99"></label>
+              <label class="release-field">Licença<select name="license"><option value="basic">Básica</option><option value="premium" selected>Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
+              <label class="release-field release-wide">Descrição<textarea name="description" rows="4" placeholder="Conte a vibe, referências e o melhor uso dessa faixa."></textarea></label>
+              <label class="release-field release-wide">Tags e referências<input name="release_tags" type="text" placeholder="trap, melódico, Ryu, 808, lançamento"></label>
+            </div>
+          </section>
+
+          <section class="release-panel" data-panel="4">
+            <span class="release-eyebrow">Review</span>
+            <h1>Revisar e publicar</h1>
+            <p>Confira o preview. Ao publicar, o item aparece em Explorar e no seu catálogo.</p>
+            <div class="release-review-card">
+              <img class="release-review-cover" src="assets/ansend-logo-square.png" alt="">
+              <div>
+                <span>Pronto para o catálogo</span>
+                <strong data-review-title>Novo release ANSEND</strong>
+                <p data-review-meta>Preencha os detalhes para gerar o preview.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="release-side-preview">
+          <span>Preview do card</span>
+          <article class="release-preview-card">
+            <img class="release-preview-cover" src="assets/ansend-logo-square.png" alt="">
+            <button type="button" data-action="release-preview-play" aria-label="Tocar preview"><i data-lucide="play"></i></button>
+            <div>
+              <strong data-preview-title>Novo release</strong>
+              <small data-preview-artist>${display.name || "ANSEND"}</small>
+            </div>
+          </article>
+          <dl>
+            <div><dt>Status</dt><dd>Publicado ao salvar</dd></div>
+            <div><dt>Destino</dt><dd>Catálogo ANSEND</dd></div>
+            <div><dt>Conta</dt><dd>${display.roleLabel}</dd></div>
+          </dl>
+        </aside>
+      </div>
+
+      <footer class="release-footer-bar">
+        <div class="release-footer-track">
+          <img class="release-footer-cover" src="assets/ansend-logo-square.png" alt="">
+          <div><strong data-footer-title>Novo release</strong><small data-footer-artist>${display.name || "ANSEND"}</small></div>
+        </div>
+        <div class="release-footer-actions">
+          <button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button>
+          <button type="button" class="release-next-btn" data-action="release-next">Próximo</button>
+          <button type="submit" class="release-submit-btn" hidden>Publicar no catálogo</button>
+        </div>
+      </footer>
+    </form>
+  </section>`;
+}
+
+function releaseFormElement() {
+  return document.querySelector(".release-upload-form");
+}
+
+function releaseCurrentStep(form = releaseFormElement()) {
+  return Math.max(0, Math.min(4, Number(form?.dataset.releaseStep || 0)));
+}
+
+function syncReleaseForm(form = releaseFormElement()) {
+  if (!form) return;
+  const title = form.elements.title?.value?.trim() || "Novo release";
+  const artist = form.elements.artist?.value?.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || "ANSEND";
+  const genre = form.elements.genre?.value || "ANSEND";
+  const bpm = form.elements.bpm?.value ? `${form.elements.bpm.value} BPM` : "";
+  const tags = [
+    genre,
+    bpm,
+    form.elements.language?.value,
+    ...String(form.elements.release_tags?.value || "").split(",").map((tag) => tag.trim()).filter(Boolean),
+  ].filter(Boolean);
+
+  if (form.elements.tags) form.elements.tags.value = tags.join(", ");
+  form.querySelectorAll("[data-preview-title], [data-review-title], [data-footer-title]").forEach((node) => { node.textContent = title; });
+  form.querySelectorAll("[data-preview-artist], [data-footer-artist]").forEach((node) => { node.textContent = artist; });
+  const meta = form.querySelector("[data-review-meta]");
+  if (meta) meta.textContent = `${genre}${bpm ? ` - ${bpm}` : ""} - ${form.elements.license?.value || "premium"}`;
+}
+
+function setReleaseStep(step, form = releaseFormElement()) {
+  if (!form) return;
+  const nextStep = Math.max(0, Math.min(4, Number(step)));
+  form.dataset.releaseStep = String(nextStep);
+  form.querySelectorAll(".release-panel").forEach((panel) => {
+    panel.classList.toggle("is-active", Number(panel.dataset.panel) === nextStep);
+  });
+  document.querySelectorAll(".release-step").forEach((button) => {
+    const isActive = Number(button.dataset.step) === nextStep;
+    button.classList.toggle("is-active", isActive);
+    button.classList.toggle("is-complete", Number(button.dataset.step) < nextStep);
+  });
+  const back = form.querySelector(".release-back-btn");
+  const next = form.querySelector(".release-next-btn");
+  const submit = form.querySelector(".release-submit-btn");
+  if (back) back.disabled = nextStep === 0;
+  if (next) next.hidden = nextStep === 4;
+  if (submit) submit.hidden = nextStep !== 4;
+  syncReleaseForm(form);
+  lucide.createIcons();
+}
+
+function setReleaseAssetPreview(type, url, fileName = "") {
+  const form = releaseFormElement();
+  if (!form || !url) return;
+  if (type === "cover") {
+    form.elements.cover_url.value = url;
+    form.querySelectorAll(".release-cover-preview, .release-preview-cover, .release-review-cover, .release-footer-cover").forEach((imgNode) => {
+      imgNode.src = url;
+      imgNode.classList.add("has-preview");
+    });
+    form.querySelector(".release-cover-drop")?.classList.add("has-file");
+  }
+  if (type === "audio") {
+    form.elements.audio_url.value = url;
+    const audio = form.querySelector(".release-audio-preview audio");
+    if (audio) {
+      audio.src = url;
+      audio.hidden = false;
+    }
+    const name = form.querySelector("[data-audio-name]");
+    if (name) name.textContent = fileName || "Áudio selecionado";
+    form.querySelector(".release-audio-drop")?.classList.add("has-file");
+  }
+}
+
+function handleReleaseFile(file, type) {
+  if (!file) return;
+  if (type === "cover") {
+    const reader = new FileReader();
+    reader.onload = () => setReleaseAssetPreview("cover", String(reader.result || ""), file.name);
+    reader.readAsDataURL(file);
+    return;
+  }
+  if (type === "audio") {
+    setReleaseAssetPreview("audio", URL.createObjectURL(file), file.name);
+  }
+}
+
+function handleReleaseFileInput(input) {
+  handleReleaseFile(input.files?.[0], input.dataset.uploadType);
+}
+
 function renderProfile() {
   const profile = activeProfile();
-  const shouldOpenCatalogForm = localStorage.getItem("ansend-open-catalog-form") === "true";
-  if (shouldOpenCatalogForm) localStorage.removeItem("ansend-open-catalog-form");
   const display = profileDisplayData(profile);
   const items = visibleCatalogItems();
   const published = items.filter((item) => item.status === "published").length;
@@ -5222,35 +5485,14 @@ function renderProfile() {
           </div>
         </section>
 
-        <!-- NOVO CADASTRO (FORM CONTAINER) -->
-        <div class="profile-catalog-form-container ${shouldOpenCatalogForm ? "" : "is-collapsed"}">
-          <button type="button" class="profile-form-toggle-btn" data-action="toggle-profile-form">
+        <section class="profile-sidebar-card profile-release-shortcut">
+          <div class="section-title"><i data-lucide="upload-cloud"></i>Lançamento</div>
+          <p class="profile-sidebar-bio">Cadastre músicas, beats, capas, áudio e licenças em uma área própria.</p>
+          <a class="profile-form-toggle-btn" href="#cadastrar" data-route="cadastrar">
             <i data-lucide="plus"></i>
-            <span>Cadastrar nova faixa</span>
-          </button>
-          
-          <form class="profile-catalog-form">
-            <div class="profile-form-head">
-              <span><i data-lucide="badge-plus"></i>Novo cadastro</span>
-              <h2>Cadastrar música ou beat</h2>
-              <p>Adicione as informações principais para publicar, vender licenças e organizar seu catálogo.</p>
-            </div>
-            <div class="profile-form-grid">
-              <label>Tipo<select name="kind"><option value="beat">Beat</option><option value="musica">Música</option></select></label>
-              <label>Status<select name="status"><option value="published" selected>Publicado</option><option value="draft">Rascunho</option></select></label>
-              <label class="profile-wide">Título<input name="title" type="text" placeholder="Ex: Black Coupe" required></label>
-              <label>Gênero<input name="genre" type="text" placeholder="Trap, Funk, Drill..." required></label>
-              <label>BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
-              <label>Tom<input name="key" type="text" placeholder="Fm"></label>
-              <label>Preço<input name="price" type="number" min="0" step="0.01" placeholder="99.90"></label>
-              <label class="profile-wide">Licença<select name="license"><option value="basic">Básica</option><option value="premium">Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
-              <label class="profile-wide">URL da prévia<input name="audio_url" type="url" placeholder="https://...mp3"></label>
-              <label class="profile-wide">URL da capa<input name="cover_url" type="url" placeholder="https://...jpg"></label>
-              <label class="profile-wide">Tags<input name="tags" type="text" placeholder="trap, 808, dark, type beat"></label>
-            </div>
-            <button class="seller-submit" type="submit">Salvar no catálogo <i data-lucide="arrow-right"></i></button>
-          </form>
-        </div>
+            <span>Lançar música</span>
+          </a>
+        </section>
 
         <!-- LINKS E PRESENÇA -->
         <section class="profile-sidebar-card">
@@ -5465,6 +5707,7 @@ function renderRoute() {
   if (route === "ia") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
+  if (route === "cadastrar") renderMusicUpload();
   if (route === "configuracoes") renderSettings();
   if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
@@ -6332,6 +6575,38 @@ document.addEventListener("click", (event) => {
     openProfessionalContract(target.dataset.title);
     return;
   }
+  if (action === "release-step") {
+    setReleaseStep(target.dataset.step);
+    return;
+  }
+  if (action === "release-next") {
+    const form = releaseFormElement();
+    setReleaseStep(releaseCurrentStep(form) + 1, form);
+    return;
+  }
+  if (action === "release-back") {
+    const form = releaseFormElement();
+    setReleaseStep(releaseCurrentStep(form) - 1, form);
+    return;
+  }
+  if (action === "release-preview-play") {
+    const form = releaseFormElement();
+    const src = form?.elements.audio_url?.value;
+    if (!src) {
+      showToast("Selecione um arquivo de audio primeiro", "file-audio");
+      return;
+    }
+    updateMiniPlayer({
+      id: `release-preview-${Date.now()}`,
+      title: form.elements.title?.value || "Preview do release",
+      producer: form.elements.artist?.value || "ANSEND",
+      cover: form.elements.cover_url?.value || "assets/ansend-logo-square.png",
+      audio: src,
+      tags: [form.elements.genre?.value || "Preview"],
+    });
+    document.querySelector(".mini-player")?.classList.add("is-playing");
+    return;
+  }
   if (action === "logout-account") {
     handleLogout();
     return;
@@ -6677,6 +6952,11 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const releaseFileInput = event.target.closest(".release-file-input");
+  if (releaseFileInput) {
+    handleReleaseFileInput(releaseFileInput);
+    return;
+  }
   const checkoutPlan = event.target.closest('.checkout-plan input[name="license"]');
   if (checkoutPlan) {
     document.querySelectorAll(".checkout-plan").forEach((plan) => plan.classList.toggle("is-selected", plan.contains(checkoutPlan)));
@@ -6687,8 +6967,33 @@ document.addEventListener("change", (event) => {
   }
 });
 
+document.addEventListener("dragover", (event) => {
+  const dropzone = event.target.closest(".release-dropzone");
+  if (!dropzone) return;
+  event.preventDefault();
+  dropzone.classList.add("is-dragging");
+});
+
+document.addEventListener("dragleave", (event) => {
+  const dropzone = event.target.closest(".release-dropzone");
+  if (!dropzone || dropzone.contains(event.relatedTarget)) return;
+  dropzone.classList.remove("is-dragging");
+});
+
+document.addEventListener("drop", (event) => {
+  const dropzone = event.target.closest(".release-dropzone");
+  if (!dropzone) return;
+  event.preventDefault();
+  dropzone.classList.remove("is-dragging");
+  const input = dropzone.querySelector(".release-file-input");
+  handleReleaseFile(event.dataTransfer?.files?.[0], input?.dataset.uploadType);
+});
+
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.closest(".release-upload-form")) {
+    syncReleaseForm(input.closest(".release-upload-form"));
+  }
   const action = input?.dataset?.action;
   if (!["player-speed", "player-pitch", "player-volume"].includes(action)) return;
   const value = Number(input.value);
@@ -6705,6 +7010,17 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const releaseUploadForm = event.target.closest(".release-upload-form");
+  if (releaseUploadForm) {
+    event.preventDefault();
+    syncReleaseForm(releaseUploadForm);
+    if (!releaseUploadForm.elements.cover_url.value || !releaseUploadForm.elements.audio_url.value) {
+      showToast("Envie a capa e o arquivo de audio antes de publicar.", "upload-cloud");
+      return;
+    }
+    await saveCatalogItem(releaseUploadForm);
+    return;
+  }
   const profileEditForm = event.target.closest(".profile-edit-form");
   if (profileEditForm) {
     event.preventDefault();
