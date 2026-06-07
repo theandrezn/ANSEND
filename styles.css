@@ -330,12 +330,72 @@ body.requires-auth .seller-auth-panel {
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 52% 0, rgba(255, 106, 0, .12), transparent 440px),
-    #000000;
+  background: #000000;
   color: var(--text);
   font-family: "Plus Jakarta Sans", sans-serif;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Ambient Background Glow with blurred animated blobs */
+.ambient-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: #000000;
+  overflow: hidden;
+}
+
+.glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.glow-1 {
+  top: -10%;
+  left: 20%;
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, rgba(255, 106, 0, 0.6) 0%, transparent 70%);
+  animation: float-glow-1 25s infinite alternate ease-in-out;
+}
+
+.glow-2 {
+  top: 35%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.45) 0%, transparent 70%);
+  animation: float-glow-2 30s infinite alternate ease-in-out;
+}
+
+.glow-3 {
+  bottom: -10%;
+  left: -5%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%);
+  animation: float-glow-3 28s infinite alternate ease-in-out;
+}
+
+@keyframes float-glow-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4vw, 3vh) scale(1.08); opacity: 0.22; }
+}
+
+@keyframes float-glow-2 {
+  0%, 100% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-3vw, -4vh) scale(0.95); opacity: 0.14; }
+}
+
+@keyframes float-glow-3 {
+  0%, 100% { transform: translate(0, 0) scale(0.95); }
+  50% { transform: translate(3vw, -2vh) scale(1.05); opacity: 0.2; }
 }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
@@ -8742,11 +8802,7 @@ body.modal-open {
   min-height: 520px;
   isolation: isolate;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 86% 18%, rgba(255, 106, 0, .12), transparent 360px),
-    radial-gradient(circle at 18% 50%, rgba(255, 106, 0, .045), transparent 420px),
-    linear-gradient(90deg, rgba(255, 106, 0, .035), transparent 26%, rgba(255, 255, 255, .018) 58%, transparent 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, .98) 0%, rgba(5, 5, 5, .96) 58%, rgba(0, 0, 0, .98) 100%);
+  background: transparent;
   backdrop-filter: blur(22px) saturate(1.05);
   -webkit-backdrop-filter: blur(22px) saturate(1.05);
   border-top-color: rgba(255, 255, 255, .045) !important;
@@ -8759,25 +8815,20 @@ body.modal-open {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, .72) 18%, transparent 52%, rgba(0, 0, 0, .78) 100%),
-    radial-gradient(circle at 72% 35%, rgba(255, 106, 0, .1), transparent 430px);
+  background: transparent;
   filter: blur(26px);
   opacity: .92;
 }
 
 .feed > .quick-actions-section {
-  background:
-    linear-gradient(90deg, rgba(255, 106, 0, .035), transparent 38%, rgba(255, 255, 255, .025) 100%),
-    radial-gradient(circle at 12% 8%, rgba(255, 106, 0, .1), transparent 290px),
-    linear-gradient(180deg, #060606 0%, #0d0d0d 100%);
+  background: transparent;
 }
 
 .feed > .nexo-recommendations-section {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #000000;
+  background: transparent;
   border-top: none !important;
   border-bottom: none !important;
 }
@@ -8807,30 +8858,22 @@ body.modal-open {
 }
 
 .feed > .category-section {
-  background:
-    linear-gradient(90deg, #0b0b0b 0%, #121212 55%, #090909 100%),
-    radial-gradient(circle at 78% 20%, rgba(255, 138, 0, .08), transparent 340px);
+  background: transparent;
 }
 
 .feed > .smart-combos-section {
-  background:
-    linear-gradient(90deg, rgba(255, 106, 0, .025), transparent 45%, rgba(255, 138, 0, .045)),
-    linear-gradient(180deg, #070707 0%, #151515 100%);
+  background: transparent;
 }
 
 .feed > .featured-professionals-section {
-  background:
-    radial-gradient(circle at 18% 22%, rgba(255, 106, 0, .09), transparent 330px),
-    linear-gradient(180deg, #0c0c0c, #050505);
+  background: transparent;
 }
 
 .feed > .recent-activity-section {
   padding-bottom: 132px;
   padding-left: clamp(16px, 3vw, 36px);
   padding-right: clamp(16px, 3vw, 36px);
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, .025), transparent 50%, rgba(255, 106, 0, .035)),
-    linear-gradient(180deg, #171717 0%, #050505 100%);
+  background: transparent;
 }
 .feed > .recent-activity-section .section-head,
 .feed > .recent-activity-section .track-list {
