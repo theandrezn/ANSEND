@@ -3671,7 +3671,8 @@ function renderExplore() {
 
 function renderFavorites() {
   const items = allBeats.filter((item) => appState.favorites.has(item.id));
-  appView.innerHTML = `${pageIntro("favoritos")}${items.length ? gridView(items) : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
+  const favoritesGrid = `<section class="catalog-section favorites-section">${gridView(items)}</section>`;
+  appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
 }
 
 function renderPurchases() {

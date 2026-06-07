@@ -11815,5 +11815,76 @@ body.onboarding-open {
   color: #737373 !important;
 }
 
+/* Keep route grids compact even when older cinematic card overrides are loaded. */
+.view-grid {
+  align-items: start !important;
+}
+
+.view-grid .minimal-beat-card {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.view-grid .minimal-beat-card .card-cover-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  background: #111 !important;
+}
+
+.view-grid .minimal-beat-card .card-art-source {
+  position: absolute !important;
+  inset: 0 !important;
+  top: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border-radius: 12px !important;
+  object-fit: cover !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.view-grid .minimal-beat-card .card-cover-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .05), rgba(0, 0, 0, .66));
+}
+
+.view-grid .minimal-beat-card .badge,
+.view-grid .minimal-beat-card .fav-over,
+.view-grid .minimal-beat-card .play-over {
+  z-index: 3 !important;
+}
+
+.view-grid .minimal-beat-card .card-info {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
 
 
