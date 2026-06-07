@@ -471,8 +471,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   50% { transform: scale(1.12); opacity: 1; filter: drop-shadow(0 0 8px var(--orange-glow)); }
   100% { transform: scale(1); opacity: 0.9; }
 }
-.nav-link[data-route="feed"]:hover svg,
-.nav-link[data-route="feed"].is-active svg {
+.nav-link[data-route="nexo-feed"]:hover svg,
+.nav-link[data-route="nexo-feed"].is-active svg {
   animation: radioWave 1.4s infinite ease-in-out;
 }
 

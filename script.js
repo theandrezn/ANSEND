@@ -30,6 +30,7 @@ const localeConfig = {
 const i18n = {
   "pt-BR": {
     "nav.home": "Início",
+    "nav.feed": "Feed",
     "nav.ia": "NEXO IA",
     "nav.explore": "Explorar",
     "nav.favorites": "Favoritos",
@@ -127,6 +128,7 @@ const i18n = {
   },
   en: {
     "nav.home": "Home",
+    "nav.feed": "Feed",
     "nav.ia": "NEXO AI",
     "nav.explore": "Explore",
     "nav.favorites": "Favorites",
@@ -359,6 +361,7 @@ function applyTranslations(root = document) {
   });
   const navKeys = {
     feed: "nav.home",
+    "nexo-feed": "nav.feed",
     ia: "nav.ia",
     explorar: "nav.explore",
     favoritos: "nav.favorites",
@@ -2687,6 +2690,7 @@ const routeTitles = {
   carrinho: ["Carrinho", "Revise seus beats e finalize seu pedido."],
 };
 routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendacoes e proximos passos."];
+routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais e solucoes recomendadas."];
 routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos contratados."];
 routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
@@ -5159,6 +5163,10 @@ function renderRoute() {
     return;
   }
   if (route === "feed") {
+    appView.innerHTML = feedTemplate;
+    applyFeedPersonalization();
+  }
+  if (route === "nexo-feed") {
     renderNexoFeed();
   }
   if (route === "ia") {
