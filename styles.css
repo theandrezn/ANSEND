@@ -8159,10 +8159,30 @@ body.modal-open {
 
 .feed > .trending-catalogs-section {
   min-height: 520px;
+  isolation: isolate;
+  overflow: hidden;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, .28), transparent 22%, rgba(255, 106, 0, .035) 52%, transparent 100%),
-    radial-gradient(circle at 84% 12%, rgba(255, 106, 0, .14), transparent 320px),
-    linear-gradient(180deg, #171717 0%, #101010 100%);
+    radial-gradient(circle at 86% 18%, rgba(255, 106, 0, .12), transparent 360px),
+    radial-gradient(circle at 18% 50%, rgba(255, 106, 0, .045), transparent 420px),
+    linear-gradient(90deg, rgba(255, 106, 0, .035), transparent 26%, rgba(255, 255, 255, .018) 58%, transparent 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, .98) 0%, rgba(5, 5, 5, .96) 58%, rgba(0, 0, 0, .98) 100%);
+  backdrop-filter: blur(22px) saturate(1.05);
+  -webkit-backdrop-filter: blur(22px) saturate(1.05);
+  border-top-color: rgba(255, 255, 255, .045) !important;
+  border-bottom-color: rgba(255, 255, 255, .035) !important;
+}
+
+.feed > .trending-catalogs-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, .72) 18%, transparent 52%, rgba(0, 0, 0, .78) 100%),
+    radial-gradient(circle at 72% 35%, rgba(255, 106, 0, .1), transparent 430px);
+  filter: blur(26px);
+  opacity: .92;
 }
 
 .feed > .quick-actions-section {
