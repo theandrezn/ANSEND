@@ -13773,6 +13773,11 @@ body:has(.nexo-feed-page) .footer {
   animation: heroTypewriterBlink .8s steps(1, end) infinite;
 }
 
+.hero-typewriter-cursor.is-finished {
+  opacity: 0 !important;
+  animation: none !important;
+}
+
 .hero-morph-title .hero-morph-text {
   color: #fff !important;
 }

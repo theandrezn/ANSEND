@@ -3047,8 +3047,11 @@ function stopHeroMorphTitle() {
 function runHeroTypewriter(textElement, text) {
   stopHeroMorphTitle();
   if (!textElement) return;
+  const cursor = textElement.parentElement?.querySelector(".hero-typewriter-cursor");
+  cursor?.classList.remove("is-finished");
   if (prefersReducedMotion.matches) {
     textElement.textContent = text;
+    cursor?.classList.add("is-finished");
     return;
   }
 
@@ -3063,6 +3066,8 @@ function runHeroTypewriter(textElement, text) {
     if (index <= text.length) {
       index++;
       heroTypewriterTimer = window.setTimeout(typeNext, speed);
+    } else {
+      cursor?.classList.add("is-finished");
     }
   };
 
