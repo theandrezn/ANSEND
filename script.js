@@ -3094,7 +3094,7 @@ function animateHeadlineReveal(titleElement, line1, line2) {
     titleElement.innerHTML = `
       <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${line1}</span>
       <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-        <span class="hero-morph-text"></span><span class="hero-typewriter-cursor" aria-hidden="true">|</span>
+        <span class="hero-morph-text"></span>
       </strong>
     `;
     runHeroTypewriter(titleElement.querySelector(".hero-morph-text"), line2);

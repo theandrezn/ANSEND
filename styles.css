@@ -13762,15 +13762,11 @@ body:has(.nexo-feed-page) .footer {
 }
 
 .hero-typewriter-cursor {
-  display: inline-block;
-  margin-left: .08em;
-  color: #fff;
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-size: .78em;
-  line-height: 1;
-  opacity: .92;
-  text-shadow: 0 0 18px rgba(255, 255, 255, .18);
-  animation: heroTypewriterBlink .8s steps(1, end) infinite;
+  display: none !important;
+  width: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  animation: none !important;
 }
 
 .hero-typewriter-cursor.is-finished {
@@ -13795,7 +13791,26 @@ body:has(.nexo-feed-page) .footer {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-typewriter-cursor {
-    animation: none !important;
-    opacity: .55;
+    display: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* Final hero polish: no typewriter bar and the NEXO prompt sits closer to the headline. */
+.feed .ai-hero .hero-typewriter-cursor {
+  display: none !important;
+}
+
+.feed .ai-hero .ai-diagnostic-form,
+.feed .ai-hero.is-beatmaker-hero .ai-diagnostic-form,
+.feed .ai-hero:not(.is-beatmaker-hero) .ai-diagnostic-form {
+  transform: translateY(-14px);
+}
+
+@media (max-width: 900px) {
+  .feed .ai-hero .ai-diagnostic-form,
+  .feed .ai-hero.is-beatmaker-hero .ai-diagnostic-form,
+  .feed .ai-hero:not(.is-beatmaker-hero) .ai-diagnostic-form {
+    transform: none;
   }
 }
