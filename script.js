@@ -5052,7 +5052,29 @@ function renderMusicUpload() {
     { label: "Entrega" },
     { label: "Revisão" },
   ];
-  appView.innerHTML = `<section class="release-page" aria-label="Cadastrar música na ANSEND">
+  appView.innerHTML = `<section class="release-page amuse-release-shell" aria-label="Cadastrar música na ANSEND">
+    <aside class="release-sidebar" aria-label="Menu de lançamento">
+      <div class="release-sidebar-top">
+        <button class="release-sidebar-menu" type="button" aria-label="Menu"><i data-lucide="menu"></i></button>
+        <a class="release-sidebar-logo" href="#feed" data-route="feed" aria-label="ANSEND"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
+      </div>
+      <button class="release-account-card" type="button" data-route="perfil">
+        <img src="${display.avatar}" alt="">
+        <span><strong>${display.name || "ANSEND"}</strong><small>${display.roleLabel}</small></span>
+        <i data-lucide="chevron-right"></i>
+      </button>
+      <button class="release-main-action" type="button" data-action="release-step" data-step="0"><i data-lucide="list-music"></i><span>RELEASE</span><i data-lucide="chevron-right"></i></button>
+      <nav class="release-sidebar-nav">
+        <a href="#vendedor" data-route="vendedor" class="is-muted"><i data-lucide="lock"></i><span>Upgrade</span><i data-lucide="chevron-right"></i></a>
+        <a href="#cadastrar" data-route="cadastrar" class="is-active"><i data-lucide="music"></i><span>Música</span></a>
+        <button type="button" data-action="release-step" data-step="1"><i data-lucide="badge-play"></i><span>Vídeo musical</span></button>
+        <a href="#perfil" data-route="perfil"><i data-lucide="user-round"></i><span>Artista</span></a>
+        <button type="button" data-action="release-step" data-step="4"><i data-lucide="bar-chart-3"></i><span>Insights</span><i data-lucide="chevron-right"></i></button>
+        <a href="#configuracoes" data-route="configuracoes"><i data-lucide="settings"></i><span>Ferramentas</span></a>
+      </nav>
+      <button class="release-language-row" type="button"><i data-lucide="globe-2"></i><span>Português</span><i data-lucide="chevron-right"></i></button>
+    </aside>
+    <div class="release-app">
     <header class="release-top">
       <a class="release-logo" href="#feed" data-route="feed" aria-label="ANSEND"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
       ${releaseStepMarkup(steps)}
@@ -5196,6 +5218,7 @@ function renderMusicUpload() {
         </div>
       </footer>
     </form>
+    </div>
   </section>`;
 }
 

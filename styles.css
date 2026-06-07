@@ -14779,3 +14779,442 @@ body:has(.nexo-feed-page) .footer {
     min-width: 0;
   }
 }
+
+/* Release screen correction: Amuse-like full app surface with its own sidebar. */
+body:has(.amuse-release-shell) {
+  overflow-x: hidden;
+  background: #000 !important;
+}
+
+body:has(.amuse-release-shell) .ambient-glow,
+body:has(.amuse-release-shell) > .sidebar,
+body:has(.amuse-release-shell) .topbar,
+body:has(.amuse-release-shell) .seller-mini {
+  display: none !important;
+}
+
+body:has(.amuse-release-shell) .page {
+  margin-left: 0 !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+  background: #000 !important;
+  overflow: hidden !important;
+}
+
+body:has(.amuse-release-shell) .feed {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 100vh !important;
+  max-width: none !important;
+  width: 100vw !important;
+  background: #000 !important;
+}
+
+.amuse-release-shell {
+  --release-accent: #ff6a00;
+  --release-panel: #101010;
+  --release-panel-2: #191919;
+  position: relative;
+  display: grid;
+  grid-template-columns: 218px minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100vw;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden auto;
+  background: #000 !important;
+  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+}
+
+.release-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #0b0b0b;
+  border-right: 1px solid rgba(255, 106, 0, .18);
+  color: #f7f7f7;
+}
+
+.release-sidebar-top {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  background: #050505;
+  border-bottom: 1px solid rgba(255, 106, 0, .14);
+}
+
+.release-sidebar-menu,
+.release-language-row,
+.release-sidebar-nav button,
+.release-account-card,
+.release-main-action {
+  font-family: inherit;
+}
+
+.release-sidebar-menu {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.release-sidebar-logo img {
+  width: 112px;
+  height: auto;
+  object-fit: contain;
+}
+
+.release-account-card {
+  margin: 14px 12px 10px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 4px;
+  background: #111;
+  border: 1px solid rgba(255, 106, 0, .16);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.release-account-card img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.release-account-card strong,
+.release-account-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.release-account-card strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.release-account-card small {
+  color: #b8b8b8;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.release-main-action {
+  margin: 0 12px 14px;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--release-accent);
+  color: #111;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .03em;
+  cursor: pointer;
+}
+
+.release-sidebar-nav {
+  display: grid;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+
+.release-sidebar-nav a,
+.release-sidebar-nav button,
+.release-language-row {
+  min-height: 58px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .055);
+  background: transparent;
+  color: #f5f5f5;
+  text-decoration: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.release-sidebar-nav a svg,
+.release-sidebar-nav button svg,
+.release-language-row svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.release-sidebar-nav .is-active {
+  background: #160b03;
+  color: var(--release-accent);
+  box-shadow: inset 3px 0 0 var(--release-accent);
+}
+
+.release-sidebar-nav .is-muted {
+  color: #fff;
+  background: #141414;
+}
+
+.release-language-row {
+  margin-top: auto;
+  color: #ddd;
+}
+
+.release-app {
+  min-width: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: #000;
+  overflow: hidden auto;
+}
+
+.amuse-release-shell .release-top {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  min-height: 82px;
+  padding: 0 clamp(26px, 6vw, 88px);
+  background: #141414 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .075);
+}
+
+.amuse-release-shell .release-logo {
+  display: none !important;
+}
+
+.amuse-release-shell .release-stepper {
+  max-width: 780px;
+  justify-content: center;
+}
+
+.amuse-release-shell .release-step {
+  min-width: 132px;
+}
+
+.amuse-release-shell .release-step.is-active,
+.amuse-release-shell .release-step.is-complete {
+  color: var(--release-accent);
+}
+
+.amuse-release-shell .release-step.is-active span,
+.amuse-release-shell .release-step.is-complete span {
+  border-color: var(--release-accent);
+  background: var(--release-accent);
+}
+
+.amuse-release-shell .release-upload-form {
+  width: min(920px, calc(100vw - 300px));
+  max-width: 920px;
+  margin: 56px auto 0;
+  padding: 0 0 110px;
+  min-height: calc(100vh - 138px);
+}
+
+.amuse-release-shell .release-plan-alert {
+  grid-template-columns: 1fr auto;
+  min-height: 66px;
+  margin-bottom: 74px;
+  border-color: rgba(255, 106, 0, .72);
+  background: rgba(255, 106, 0, .035);
+}
+
+.amuse-release-shell .release-plan-alert strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.amuse-release-shell .release-plan-alert strong svg {
+  color: var(--release-accent);
+}
+
+.amuse-release-shell .release-plan-alert > span {
+  display: none;
+}
+
+.amuse-release-shell .release-plan-alert button,
+.amuse-release-shell .release-next-btn,
+.amuse-release-shell .release-submit-btn {
+  background: var(--release-accent) !important;
+  color: #101010 !important;
+  border-radius: 3px;
+  box-shadow: none !important;
+}
+
+.amuse-release-shell .release-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.amuse-release-shell .release-main {
+  min-height: 440px;
+}
+
+.amuse-release-shell .release-panel h1 {
+  font-size: clamp(32px, 2.45vw, 44px);
+  letter-spacing: -.045em;
+}
+
+.amuse-release-shell .release-panel p {
+  font-size: 14px;
+}
+
+.amuse-release-shell .release-side-preview {
+  display: none;
+}
+
+.amuse-release-shell .release-field input,
+.amuse-release-shell .release-field select,
+.amuse-release-shell .release-field textarea {
+  min-height: 52px;
+  border-radius: 3px;
+  border-color: rgba(255, 255, 255, .54);
+  background: #050505;
+}
+
+.amuse-release-shell .release-upload-layout {
+  grid-template-columns: 320px minmax(0, 1fr);
+}
+
+.amuse-release-shell .release-dropzone {
+  border-color: var(--release-accent);
+  background: #141414;
+}
+
+.amuse-release-shell .release-footer-bar {
+  left: 218px !important;
+  min-height: 86px;
+  justify-content: space-between;
+  gap: 24px;
+  padding-inline: clamp(28px, 7vw, 120px);
+  background: #141414 !important;
+}
+
+.amuse-release-shell .release-footer-actions {
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .amuse-release-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .release-sidebar {
+    display: none;
+  }
+
+  .amuse-release-shell .release-upload-form {
+    width: min(92vw, 760px);
+  }
+
+  .amuse-release-shell .release-footer-bar {
+    left: 0 !important;
+  }
+}
+
+/* NEXO IA route correction: remove oversized orange haze and center the product surface. */
+body:has(.nexo-minimal-container) .ambient-glow {
+  display: none !important;
+}
+
+body:has(.nexo-minimal-container),
+body:has(.nexo-minimal-container) .page,
+body:has(.nexo-minimal-container) .feed {
+  background: #000 !important;
+}
+
+body:has(.nexo-minimal-container) .page::before,
+body:has(.nexo-minimal-container) .page::after,
+body:has(.nexo-minimal-container) .feed::before,
+body:has(.nexo-minimal-container) .feed::after,
+body:has(.nexo-minimal-container) .nexo-minimal-container::before,
+body:has(.nexo-minimal-container) .nexo-minimal-container::after {
+  display: none !important;
+  content: none !important;
+}
+
+.feed:has(.nexo-minimal-container) {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 255, 255, .035), transparent 24%),
+    linear-gradient(180deg, #000 0%, #020202 54%, #000 100%) !important;
+  min-height: calc(100vh - 84px);
+  display: grid;
+  place-items: start center;
+}
+
+.nexo-minimal-container {
+  max-width: 860px !important;
+  padding-top: clamp(54px, 8vh, 108px) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.nexo-minimal-title {
+  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+  font-weight: 760 !important;
+  letter-spacing: -.055em !important;
+}
+
+.nexo-minimal-plan-container,
+.nexo-minimal-plan-grid,
+.nexo-minimal-plan-details,
+.nexo-minimal-plan-timeline,
+.nexo-minimal-recommendations {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Hero headline correction: only ANSEND is orange; the marketplace line remains white. */
+.feed .ai-hero .hero-morph-title,
+.feed .ai-hero .hero-morph-title * {
+  animation: none !important;
+  filter: none !important;
+}
+
+.feed .ai-hero .hero-morph-title .hero-morph-brand {
+  color: var(--orange) !important;
+  -webkit-text-fill-color: var(--orange) !important;
+  text-shadow: 0 0 28px rgba(255, 106, 0, .32) !important;
+}
+
+.feed .ai-hero .hero-morph-title .hero-morph-main,
+.feed .ai-hero .hero-morph-title .hero-morph-main *,
+.feed .ai-hero .hero-morph-title .hero-morph-text {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: 0 10px 36px rgba(0, 0, 0, .8) !important;
+}
+
+.feed .ai-hero .an-hero-copy h1.hero-morph-title > span.hero-morph-brand {
+  color: #ff6a00 !important;
+  -webkit-text-fill-color: #ff6a00 !important;
+}
+
+.feed .ai-hero .an-hero-copy h1.hero-morph-title > strong.hero-morph-main {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
