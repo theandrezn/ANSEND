@@ -12817,13 +12817,24 @@ body:has(.nexo-feed-page) .footer {
   box-shadow: inset 0 0 0 1px rgba(255, 106, 0, .05), 0 20px 58px rgba(0, 0, 0, .42);
 }
 
+.nexo-feed-card[data-feed-type="beat"] .nexo-feed-media {
+  cursor: pointer;
+}
+
 .nexo-feed-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   filter: contrast(1.03) saturate(.92);
+  transition: transform .4s cubic-bezier(0.16, 1, 0.3, 1), filter .4s ease;
 }
+
+.nexo-feed-card[data-feed-type="beat"] .nexo-feed-media:hover img {
+  transform: scale(1.04);
+  filter: contrast(1.05) saturate(1) brightness(1.05);
+}
+
 
 .nexo-feed-play,
 .nexo-feed-type-icon {

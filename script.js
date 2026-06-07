@@ -2036,7 +2036,7 @@ function nexoFeedCard(item, index) {
   return `<article class="nexo-feed-card" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}" style="--feed-cover: url('${item.coverImage || item.cover || ""}')">
     <div class="nexo-feed-media">
       <img src="${item.coverImage || item.cover || ""}" alt="${item.title}">
-      ${isBeat ? `<button class="nexo-feed-play" type="button" data-action="nexo-feed-play" data-id="${item.metadata?.beatId || item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>`}
+      ${!isBeat ? `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>` : ""}
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
@@ -5841,6 +5841,23 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const clickedFeedMedia = event.target.closest(".nexo-feed-media");
+  if (clickedFeedMedia) {
+    const feedCard = clickedFeedMedia.closest(".nexo-feed-card");
+    if (feedCard && feedCard.dataset.feedType === "beat") {
+      const beatId = feedCard.dataset.feedItemId;
+      const item = findBeat(beatId);
+      if (item) {
+        pauseTopBeat({ quiet: true });
+        appState.playing = item.id;
+        updateMiniPlayer(item);
+        document.querySelector(".mini-player")?.classList.add("is-playing");
+        writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+        return;
+      }
+    }
+  }
+
   const clickedBeatCard = event.target.closest(".beat-card");
   const target = event.target.closest("button, a");
   if (!target && clickedBeatCard) {
