@@ -2409,6 +2409,8 @@ const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: f
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let revealObserver = null;
 let lastRoute = null;
+let heroTypewriterTimer = null;
+let heroTypewriterToken = 0;
 
 function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
@@ -3037,7 +3039,34 @@ function roleDashboardStripMarkup(dashboard) {
   </section>`;
 }
 function stopHeroMorphTitle() {
-  document.querySelector(".hero-morph-title")?.classList.remove("is-glitching");
+  if (heroTypewriterTimer) clearTimeout(heroTypewriterTimer);
+  heroTypewriterTimer = null;
+  heroTypewriterToken++;
+}
+
+function runHeroTypewriter(textElement, text) {
+  stopHeroMorphTitle();
+  if (!textElement) return;
+  if (prefersReducedMotion.matches) {
+    textElement.textContent = text;
+    return;
+  }
+
+  const token = heroTypewriterToken;
+  const speed = 54;
+  let index = 0;
+  textElement.textContent = "";
+
+  const typeNext = () => {
+    if (token !== heroTypewriterToken) return;
+    textElement.textContent = text.slice(0, index);
+    if (index <= text.length) {
+      index++;
+      heroTypewriterTimer = window.setTimeout(typeNext, speed);
+    }
+  };
+
+  typeNext();
 }
 
 function animateHeadlineReveal(titleElement, line1, line2) {
@@ -3052,9 +3081,10 @@ function animateHeadlineReveal(titleElement, line1, line2) {
     titleElement.innerHTML = `
       <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${line1}</span>
       <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-        <span class="hero-morph-text">${line2}</span>
+        <span class="hero-morph-text"></span><span class="hero-typewriter-cursor" aria-hidden="true">|</span>
       </strong>
     `;
+    runHeroTypewriter(titleElement.querySelector(".hero-morph-text"), line2);
     requestAnimationFrame(() => titleElement.classList.add("is-ready"));
   }
 }

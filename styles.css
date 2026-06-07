@@ -13761,3 +13761,36 @@ body:has(.nexo-feed-page) .footer {
   display: none !important;
 }
 
+.hero-typewriter-cursor {
+  display: inline-block;
+  margin-left: .08em;
+  color: #fff;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: .78em;
+  line-height: 1;
+  opacity: .92;
+  text-shadow: 0 0 18px rgba(255, 255, 255, .18);
+  animation: heroTypewriterBlink .8s steps(1, end) infinite;
+}
+
+.hero-morph-title .hero-morph-text {
+  color: #fff !important;
+}
+
+@keyframes heroTypewriterBlink {
+  0%,
+  48% {
+    opacity: .95;
+  }
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-typewriter-cursor {
+    animation: none !important;
+    opacity: .55;
+  }
+}
