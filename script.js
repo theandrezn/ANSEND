@@ -1072,7 +1072,7 @@ const beat = (i, badge = "") => ({
   badge,
 });
 
-const allBeats = Array.from({ length: beatNames.length }, (_, i) => beat(i, i % 7 === 0 ? "Hot" : i % 5 === 0 ? "Novo" : ""));
+const allBeats = [];
 const topBeatOfDay = {
   id: "top-beat-psiiiko",
   title: "PSIIIKO",
@@ -1124,22 +1124,9 @@ const onboardingGoals = [
   ["descobrir", "Descobrir produtores"],
 ];
 
-const sections = [
-  ["Últimas quentes", "Beats recentes subindo no feed", "flame", Array.from({ length: 6 }, (_, i) => beat(i, i % 2 ? "" : "Hot"))],
-  ["Novos beats", "Uploads frescos dos produtores", "badge-plus", Array.from({ length: 6 }, (_, i) => beat(i + 4, "Novo"))],
-  ["Trending em Trap", "Graves pesados e melodias escuras", "trending-up", Array.from({ length: 6 }, (_, i) => beat(i + 8, i === 1 ? "Em alta" : ""))],
-  ["Trending em Down Drop", "Capas urbanas e beats densos", "zap", Array.from({ length: 6 }, (_, i) => beat(i + 12, i === 3 ? "Exclusivo" : ""))],
-  ["Top vendedores", "Produtores com mais vendas no mês", "trophy", "avatars"],
-  ["Mais procurados", "Buscas que estão explodindo agora", "search-check", Array.from({ length: 6 }, (_, i) => beat(i + 2, i === 0 ? "Hot" : ""))],
-  ["Produtores em destaque", "Perfis verificados para seguir", "badge-check", "avatars"],
-];
+const sections = [];
 
-const lateSections = [
-  ["Amados pela comunidade", "Os favoritos de artistas independentes", "heart", Array.from({ length: 6 }, (_, i) => beat(i + 6, i % 3 === 0 ? "Hot" : ""))],
-  ["Mais bang", "Artistas e produtores no radar", "badge-dollar-sign", "avatars"],
-  ["Na pista frequentemente", "Beats recorrentes em playlists urbanas", "disc-3", Array.from({ length: 6 }, (_, i) => beat(i + 10, i === 2 ? "Novo" : ""))],
-  ["Colabs em alta", "Encontros entre produtores e artistas", "users-round", Array.from({ length: 6 }, (_, i) => beat(i + 14, i === 4 ? "Exclusivo" : ""))],
-];
+const lateSections = [];
 
 const avatarImages = [
   "photo-1527980965255-d3b416303d12", "photo-1500648767791-00dcc994a43e", "photo-1494790108377-be9c29b29330",
@@ -1156,20 +1143,7 @@ const professionalCategories = [
   { id: "curadores", label: "Curadores", icon: "list-music" },
   { id: "marketing", label: "Marketing", icon: "megaphone" },
 ];
-const professionalProfiles = [
-  { name: "Faijo Gonzales", role: "BeatMaker", category: "beatmakers", city: "SP", image: 0, rating: "4.9", jobs: 420, price: "R$ 180", specialty: "Trap melodico, type beats e packs exclusivos", tags: ["Trap", "Type Beat", "Licenca"], response: "2h" },
-  { name: "Akira Beat", role: "BeatMaker", category: "beatmakers", city: "RJ", image: 1, rating: "4.8", jobs: 557, price: "R$ 220", specialty: "Drill, funk consciente e instrumentais sob medida", tags: ["Drill", "Funk", "WAV"], response: "1h" },
-  { name: "Ghost Lab", role: "Produtor", category: "produtores", city: "BH", image: 3, rating: "5.0", jobs: 831, price: "R$ 350", specialty: "Mix, master e direcao vocal para lancamentos urbanos", tags: ["Mix", "Master", "Voz"], response: "3h" },
-  { name: "Rokstar", role: "Produtor", category: "produtores", city: "Curitiba", image: 4, rating: "4.9", jobs: 968, price: "R$ 480", specialty: "Producao musical completa para singles e EPs", tags: ["Producao", "EP", "Studio"], response: "Hoje" },
-  { name: "Noma", role: "Artista", category: "artistas", city: "Fortaleza", image: 6, rating: "4.7", jobs: 1242, price: "Collab", specialty: "Voz guia, feat, topline e referencia melodica", tags: ["Feat", "Topline", "Rap"], response: "4h" },
-  { name: "Ares", role: "Artista", category: "artistas", city: "Salvador", image: 7, rating: "4.8", jobs: 1379, price: "Collab", specialty: "Vocal urbano, hooks e composicao para trap/funk", tags: ["Hook", "Composicao", "Vocal"], response: "2h" },
-  { name: "Maya Keys", role: "Designer", category: "designers", city: "Recife", image: 2, rating: "5.0", jobs: 694, price: "R$ 160", specialty: "Capas premium, canvas e identidade visual para single", tags: ["Capa", "Canvas", "Brand"], response: "1h" },
-  { name: "DJ Shelby", role: "Curador", category: "curadores", city: "Goiania", image: 5, rating: "4.8", jobs: 1105, price: "R$ 120", specialty: "Curadoria de playlists, radios e posicionamento de vibe", tags: ["Playlist", "Radio", "Vibe"], response: "Hoje" },
-  { name: "Duzzi", role: "Curador", category: "curadores", city: "SP", image: 0, rating: "4.7", jobs: 1516, price: "R$ 140", specialty: "Selecao editorial para trap, drill e boom bap", tags: ["Editorial", "Trap", "Drill"], response: "5h" },
-  { name: "Milly Studio", role: "Designer", category: "designers", city: "Floripa", image: 1, rating: "4.9", jobs: 1653, price: "R$ 210", specialty: "Arte 3D, motion cover e pacote de redes", tags: ["3D", "Motion", "Redes"], response: "3h" },
-  { name: "Nocivo Beats", role: "Marketing", category: "marketing", city: "SP", image: 2, rating: "4.8", jobs: 1790, price: "R$ 300", specialty: "Planejamento de lancamento, criativos e ADS inicial", tags: ["ADS", "Lancamento", "Conteudo"], response: "1h" },
-  { name: "Apollo", role: "Marketing", category: "marketing", city: "RJ", image: 3, rating: "4.9", jobs: 1927, price: "R$ 420", specialty: "Crescimento, estrategia de funil e analise de resultado", tags: ["Growth", "Funil", "Dados"], response: "Hoje" },
-];
+const professionalProfiles = [];
 
 const licensePlans = {
   basic: {
@@ -1193,13 +1167,29 @@ const licensePlans = {
 };
 
 function professionalImage(profile) {
+  if (profile?.avatar) return profile.avatar;
+  if (profile?.avatar_url) return profile.avatar_url;
   return img(avatarImages[(profile?.image || 0) % avatarImages.length]);
 }
 
 function findProfessional(name) {
-  return professionalProfiles.find((profile) => profile.name === name)
-    || professionalProfiles.find((profile) => profile.name.toLowerCase() === String(name || "").toLowerCase())
-    || professionalProfiles[0];
+  const profiles = activeProfessionalProfiles();
+  return profiles.find((profile) => profile.name === name)
+    || profiles.find((profile) => profile.name.toLowerCase() === String(name || "").toLowerCase())
+    || profiles[0]
+    || {
+      name: name || "Profissional ANSEND",
+      role: "Profissional",
+      category: "produtores",
+      city: "Online",
+      image: 0,
+      rating: "Novo",
+      jobs: 0,
+      price: "Sob consulta",
+      specialty: "Perfil profissional ainda nao cadastrado.",
+      tags: ["ANSEND"],
+      response: "Disponivel",
+    };
 }
 
 function professionalsForNeed(prompt, limit = 5) {
@@ -1211,9 +1201,9 @@ function professionalsForNeed(prompt, limit = 5) {
   if (/playlist|curadoria|curador|radio/.test(text)) wanted.push("curadores");
   if (/divulg|marketing|ads|trafego|campanha|conteudo/.test(text)) wanted.push("marketing");
   const categories = wanted.length ? wanted : ["beatmakers", "produtores", "designers", "curadores", "marketing"];
-  return professionalProfiles
+  return activeProfessionalProfiles()
     .filter((profile) => categories.includes(profile.category))
-    .sort((a, b) => Number(b.rating) - Number(a.rating) || b.jobs - a.jobs)
+    .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0) || (b.jobs || 0) - (a.jobs || 0))
     .slice(0, limit);
 }
 
@@ -1241,8 +1231,8 @@ function nexoKnowledgeBase() {
       biblioteca: "Playlists salvas e histórico.",
     },
     licenses: licensePlans,
-    professionals: professionalProfiles.map(({ name, role, category, specialty, price, rating, jobs }) => ({ name, role, category, specialty, price, rating, jobs })),
-    beats: allBeats.map(({ id, title, producer, tags }) => ({ id, title, producer, tags })),
+    professionals: activeProfessionalProfiles().map(({ name, role, category, specialty, price, rating, jobs }) => ({ name, role, category, specialty, price, rating, jobs })),
+    beats: marketplaceBeats().map(({ id, title, producer, tags }) => ({ id, title, producer, tags })),
   };
 }
 
@@ -1664,7 +1654,7 @@ function professionalMatchCandidate(item) {
 
 function getRecommendedBeats(profile = getMusicProfile(), limit = 8) {
   const baseProfile = profile || createDefaultMusicProfile();
-  return allBeats
+  return marketplaceBeats()
     .map((item) => withMatch(baseProfile, beatMatchCandidate(item)))
     .sort((a, b) => b.match.score - a.match.score || a.title.localeCompare(b.title))
     .slice(0, limit);
@@ -1677,7 +1667,7 @@ function getRecommendedPlaylists(profile = getMusicProfile()) {
 
 function getRecommendedProfessionals(profile = getMusicProfile()) {
   const baseProfile = profile || createDefaultMusicProfile();
-  return professionalProfiles
+  return activeProfessionalProfiles()
     .map((item) => withMatch(baseProfile, professionalMatchCandidate(item)))
     .sort((a, b) => b.match.score - a.match.score)
     .slice(0, 6);
@@ -1835,7 +1825,8 @@ function nexoFeedCta(item) {
 function getNexoFeedItems() {
   const profile = getMusicProfile() || createDefaultMusicProfile();
   const recs = buildNexoRecommendations(profile, false);
-  const beatItems = allBeats.map((item, index) => ({
+  const catalog = marketplaceBeats();
+  const beatItems = catalog.map((item, index) => ({
     id: item.id,
     type: "beat",
     title: item.title,
@@ -2302,6 +2293,8 @@ function renderHomeDashboard() {
   const profile = getMusicProfile();
   const hasProfile = hasMusicProfile();
   const recs = buildNexoRecommendations(profile || createDefaultMusicProfile());
+  const catalogBeats = marketplaceBeats();
+  const realProfessionals = activeProfessionalProfiles();
   const setText = (id, title, subtitle) => {
     const head = document.querySelector(`#${id}`);
     const copy = head?.closest(".section-head")?.querySelector("p");
@@ -2329,9 +2322,23 @@ function renderHomeDashboard() {
   if (recommendations) recommendations.innerHTML = (hasProfile ? recs.services : nexoRecommendations).slice(0, 6).map(nexoRecommendationCard).join("");
   if (categories) categories.innerHTML = mainCategories.map(categoryCard).join("");
   if (combos) combos.innerHTML = (hasProfile ? recs.combos : smartCombos).map(smartComboCard).join("");
-  if (featured) featured.innerHTML = hasProfile ? recs.beats.slice(0, 6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Match IA" : item.badge })).join("") : preferredBeats(6).map((item, index) => beatCard({ ...item, badge: index === 0 ? "Destaque" : "" })).join("");
-  if (professionals) professionals.innerHTML = hasProfile ? recs.professionals.map(professionalMatchCard).join("") : avatars.concat(["Rokstar", "DJ Shelby", "Noma", "Ares"]).map(topProducerNameCard).join("");
-  if (activity) activity.innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join("");
+  if (featured) {
+    const items = hasProfile ? recs.beats.slice(0, 6) : catalogBeats.slice(0, 6);
+    featured.innerHTML = items.length
+      ? items.map((item, index) => beatCard({ ...item, badge: index === 0 && hasProfile ? "Match IA" : item.badge })).join("")
+      : emptyState("upload-cloud", "Nenhum catálogo publicado", "Cadastre beats ou músicas para alimentar esta vitrine.", "perfil");
+  }
+  if (professionals) {
+    const items = hasProfile ? recs.professionals : realProfessionals;
+    professionals.innerHTML = items.length
+      ? items.map((item) => professionalMatchCard(item.match ? item : { ...item, match: { score: 100, reasons: ["Perfil cadastrado"] } })).join("")
+      : emptyState("users-round", "Nenhum profissional cadastrado", "Crie sua conta profissional para aparecer nesta área.", "vendedor");
+  }
+  if (activity) {
+    activity.innerHTML = catalogBeats.length
+      ? catalogBeats.slice(0, 8).map(trackRow).join("")
+      : emptyState("clock-3", "Lista recente vazia", "Os novos cadastros publicados vão aparecer aqui.", "perfil");
+  }
 }
 
 function sectionTemplate([title, subtitle, icon, content]) {
@@ -2398,11 +2405,11 @@ function trackRow(item, i) {
   </article>`;
 }
 
-document.querySelector("#playlistRow") && (document.querySelector("#playlistRow").innerHTML = playlists.map(playlistCard).join(""));
-document.querySelector('[data-feed="explore"]') && (document.querySelector('[data-feed="explore"]').innerHTML = Array.from({ length: 6 }, (_, i) => beatCard(beat(i + 1, i === 4 ? "Em alta" : ""))).join(""));
-document.querySelector("#dynamicSections") && (document.querySelector("#dynamicSections").innerHTML = sections.map(sectionTemplate).join(""));
-document.querySelector("#trackList") && (document.querySelector("#trackList").innerHTML = Array.from({ length: 8 }, (_, i) => trackRow(beat(i + 3, ""), i)).join(""));
-document.querySelector("#lateSections") && (document.querySelector("#lateSections").innerHTML = lateSections.map(sectionTemplate).join(""));
+document.querySelector("#playlistRow") && (document.querySelector("#playlistRow").innerHTML = "");
+document.querySelector('[data-feed="explore"]') && (document.querySelector('[data-feed="explore"]').innerHTML = "");
+document.querySelector("#dynamicSections") && (document.querySelector("#dynamicSections").innerHTML = "");
+document.querySelector("#trackList") && (document.querySelector("#trackList").innerHTML = "");
+document.querySelector("#lateSections") && (document.querySelector("#lateSections").innerHTML = "");
 renderHomeDashboard();
 
 const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
@@ -2647,7 +2654,7 @@ function decorateControls() {
   const heroPlay = document.querySelector(".play-circle");
   if (heroPlay) {
     heroPlay.dataset.action = "play";
-    heroPlay.dataset.id = allBeats[0].id;
+    heroPlay.dataset.id = topBeatOfDay.id;
   }
   const openPlaylist = document.querySelector(".open-playlist");
   if (openPlaylist) {
@@ -2655,7 +2662,8 @@ function decorateControls() {
     openPlaylist.dataset.title = "Mainstreet Type Beats";
   }
   document.querySelectorAll("#trackList .track-row").forEach((row, index) => {
-    const item = allBeats[(index + 3) % allBeats.length];
+    const pool = marketplaceBeats();
+    const item = pool[index % Math.max(1, pool.length)] || topBeatOfDay;
     const buttons = row.querySelectorAll("button");
     if (buttons[0]) Object.assign(buttons[0].dataset, { action: "play", id: item.id });
     if (buttons[1]) Object.assign(buttons[1].dataset, { action: "favorite", id: item.id });
@@ -3165,6 +3173,95 @@ function visibleCatalogItems() {
   return appState.catalogItems.filter((item) => item.user_id === owner || (!appState.authUser && String(item.id || "").startsWith("local-")));
 }
 
+function publishedCatalogItems() {
+  return appState.catalogItems.filter((item) => item.status === "published");
+}
+
+function catalogItemToBeat(item) {
+  const active = activeProfile();
+  const producerName = item.producer_name || item.artist_name || active?.artistic_name || active?.full_name || "ANSEND";
+  const priceValue = Number(item.price || 0);
+  const price = priceValue
+    ? priceValue.toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+        style: "currency",
+        currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+      })
+    : (appLocale.current === "pt-BR" ? "Sob consulta" : "On request");
+  const tags = [
+    item.genre || (item.kind === "musica" ? "Musica" : "Beat"),
+    item.bpm ? `${item.bpm} BPM` : item.license_type || "Licenca",
+  ].filter(Boolean);
+  return {
+    id: String(item.id),
+    title: item.title || "Sem titulo",
+    producer: producerName,
+    cover: item.cover_url || "assets/ansend-logo-square.png",
+    audio: item.audio_url || "",
+    tags,
+    price,
+    badge: item.status === "published" ? "" : "Rascunho",
+    source: "catalog",
+    raw: item,
+  };
+}
+
+function dedupeById(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function marketplaceBeats() {
+  return publishedCatalogItems().map(catalogItemToBeat);
+}
+
+function userCatalogBeats() {
+  return visibleCatalogItems().map(catalogItemToBeat);
+}
+
+function searchableBeatPool() {
+  return dedupeById([...marketplaceBeats(), ...userCatalogBeats(), topBeatOfDay]);
+}
+
+function roleToProfessionalCategory(role) {
+  const map = {
+    beatmaker: "beatmakers",
+    produtor: "produtores",
+    artista: "artistas",
+    designer: "designers",
+    curador: "curadores",
+    marketing: "marketing",
+  };
+  return map[role] || "produtores";
+}
+
+function profileToProfessional(profile = activeProfile()) {
+  if (!profile?.account_role || profile.account_role === "artista") return null;
+  const styles = asArray(profile.music_styles || profile.styles).filter(Boolean);
+  return {
+    name: profile.artistic_name || profile.full_name || "Profissional ANSEND",
+    role: accountRoleLabel(profile.account_role),
+    category: roleToProfessionalCategory(profile.account_role),
+    city: profile.location || "Online",
+    image: 0,
+    avatar: profile.avatar_url || profile.avatar,
+    rating: "Novo",
+    jobs: 0,
+    price: "Sob consulta",
+    specialty: profile.bio || profile.headline || "Perfil profissional cadastrado na ANSEND.",
+    tags: styles.length ? styles.slice(0, 4) : ["ANSEND"],
+    response: "Disponivel",
+  };
+}
+
+function activeProfessionalProfiles() {
+  const current = profileToProfessional(activeProfile());
+  return current ? [current] : [];
+}
+
 async function loadCatalogItems() {
   if (!supabaseClient || !appState.authUser) return;
   const { data, error } = await supabaseClient
@@ -3194,7 +3291,7 @@ function catalogPayloadFromForm(form) {
     musical_key: form.elements.key?.value?.trim() || null,
     price: form.elements.price?.value ? Number(form.elements.price.value) : 0,
     license_type: form.elements.license?.value || "premium",
-    status: form.elements.status?.value || "draft",
+    status: form.elements.status?.value || "published",
     audio_url: form.elements.audio_url?.value?.trim() || null,
     cover_url: form.elements.cover_url?.value?.trim() || null,
     description: form.elements.description?.value?.trim() || null,
@@ -3235,7 +3332,12 @@ async function saveCatalogItem(form) {
 
   persistCatalogItems();
   form.reset();
-  renderRoute();
+  appState.genre = "Todos";
+  if (location.hash !== "#explorar") {
+    location.hash = "explorar";
+  } else {
+    renderRoute();
+  }
 }
 
 async function deleteCatalogItem(id) {
@@ -3529,8 +3631,9 @@ function preferredBeats(limit = 8) {
   const musicProfile = getMusicProfile();
   if (musicProfile?.completed) return getRecommendedBeats(musicProfile, limit);
   const selected = preferredGenres();
-  const exact = allBeats.filter((item) => selected.includes(item.tags[0]));
-  return exact.concat(allBeats.filter((item) => !selected.includes(item.tags[0]))).slice(0, limit);
+  const catalog = marketplaceBeats();
+  const exact = catalog.filter((item) => selected.includes(item.tags[0]));
+  return exact.concat(catalog.filter((item) => !selected.includes(item.tags[0]))).slice(0, limit);
 }
 
 function personalizedPlaylists() {
@@ -3555,22 +3658,34 @@ function personalizedPlaylists() {
 }
 
 function playlistLibrary() {
-  return [
-    ...playlists,
-    ...personalizedPlaylists(),
-    ["Mainstreet Type Beats", "Playlist oficial ANSEND", img("photo-1516280440614-37939bbacd81")],
-  ];
+  const catalog = marketplaceBeats();
+  const byGenre = [...new Set(catalog.map((item) => item.tags?.[0]).filter(Boolean))];
+  return byGenre.map((genre) => {
+    const items = catalog.filter((item) => item.tags?.[0] === genre);
+    return [`${genre} ANSEND`, `${items.length} itens publicados`, items[0]?.cover || "assets/ansend-logo-square.png"];
+  });
 }
 
 function findPlaylistPack(idOrTitle) {
   const requested = slugify(idOrTitle?.replace?.(/^playlist-/, "") || idOrTitle);
   const source = playlistLibrary();
   const found = source.find(([title]) => slugify(title) === requested) || source[0];
+  if (!found) {
+    return {
+      id: "catalogo-vazio",
+      title: "Catalogo vazio",
+      subtitle: "Nenhum item publicado",
+      cover: "assets/ansend-logo-square.png",
+      description: "Cadastre beats ou musicas para criar packs automaticamente.",
+      curator: "ANSEND",
+      tracks: [],
+    };
+  }
   const [title, subtitle, cover] = found;
   const seed = [...slugify(title)].reduce((total, char) => total + char.charCodeAt(0), 0);
-  const preferred = preferredBeats(allBeats.length);
-  const pool = preferred.length ? preferred : allBeats;
-  const trackCount = Math.min(12, Math.max(8, pool.length));
+  const preferred = preferredBeats(24);
+  const pool = preferred.length ? preferred : marketplaceBeats();
+  const trackCount = Math.min(12, pool.length);
   const tracks = Array.from({ length: trackCount }, (_, index) => {
     const item = pool[(seed + index) % pool.length];
     return {
@@ -4146,8 +4261,7 @@ function closeOnboarding() {
 }
 
 function findBeat(id) {
-  if (id === topBeatOfDay.id) return topBeatOfDay;
-  return allBeats.find((item) => item.id === id) || allBeats[0];
+  return searchableBeatPool().find((item) => item.id === id) || topBeatOfDay;
 }
 
 function pageIntro(route, actions = "") {
@@ -4160,7 +4274,12 @@ function pageIntro(route, actions = "") {
 }
 
 function emptyState(icon, title, text, route = "explorar") {
-  return `<section class="empty-state"><i data-lucide="${icon}"></i><h2>${title}</h2><p>${text}</p><a href="#${route}" data-route="${route}">Explorar catálogo</a></section>`;
+  const label = route === "perfil"
+    ? "Cadastrar agora"
+    : route === "vendedor"
+      ? "Criar conta profissional"
+      : "Explorar catálogo";
+  return `<section class="empty-state"><i data-lucide="${icon}"></i><h2>${title}</h2><p>${text}</p><a href="#${route}" data-route="${route}">${label}</a></section>`;
 }
 
 function gridView(items) {
@@ -4169,17 +4288,22 @@ function gridView(items) {
 
 function renderExplore() {
   const query = appState.query.trim().toLowerCase();
-  const filtered = allBeats.filter((item) => {
+  const catalog = marketplaceBeats();
+  const availableGenres = [...new Set(catalog.map((item) => item.tags?.[0]).filter(Boolean))];
+  const filtered = catalog.filter((item) => {
     const matchesQuery = !query || `${item.title} ${item.producer} ${item.tags.join(" ")}`.toLowerCase().includes(query);
     const matchesGenre = appState.genre === "Todos" || item.tags[0] === appState.genre;
     return matchesQuery && matchesGenre;
   });
-  const chips = ["Todos", ...genres].map((genre) => `<button type="button" data-action="filter" data-genre="${genre}" class="${appState.genre === genre ? "is-active" : ""}">${genre}</button>`).join("");
-  appView.innerHTML = `${pageIntro("explorar")}<div class="chip-row route-chips">${chips}</div>${filtered.length ? gridView(filtered) : emptyState("search-x", "Nenhum beat encontrado", "Tente outro nome, gênero ou BPM.", "explorar")}`;
+  const chips = ["Todos", ...availableGenres].map((genre) => `<button type="button" data-action="filter" data-genre="${genre}" class="${appState.genre === genre ? "is-active" : ""}">${genre}</button>`).join("");
+  const empty = catalog.length
+    ? emptyState("search-x", "Nenhum item encontrado", "Tente outro nome, gênero ou BPM.", "explorar")
+    : emptyState("upload-cloud", "Catálogo vazio", "Cadastre seu primeiro beat ou música para aparecer no marketplace.", "perfil");
+  appView.innerHTML = `${pageIntro("explorar")}${chips ? `<div class="chip-row route-chips">${chips}</div>` : ""}${filtered.length ? gridView(filtered) : empty}`;
 }
 
 function renderFavorites() {
-  const items = allBeats.filter((item) => appState.favorites.has(item.id));
+  const items = searchableBeatPool().filter((item) => appState.favorites.has(item.id));
   const favoritesGrid = `<section class="catalog-section favorites-section">${gridView(items)}</section>`;
   appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
 }
@@ -4240,7 +4364,9 @@ function renderCart() {
   const items = appState.cart.map(id => {
     const beatItem = findBeat(id) || topBeatOfDay;
     const priceText = beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
-    const priceVal = parseFloat(priceText.replace("$", ""));
+    const rawPrice = Number(beatItem.raw?.price || 0);
+    const normalizedPrice = String(priceText).replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+    const priceVal = rawPrice || Number.parseFloat(normalizedPrice) || 0;
     return {
       ...beatItem,
       priceVal,
@@ -4341,18 +4467,19 @@ function renderCart() {
 }
 
 function renderLibraryLegacy() {
-  const recent = allBeats.slice(3, 11);
-  appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Coleções para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section><section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
+  renderLibrary();
 }
 
 function renderLibrary() {
-  const recent = allBeats.slice(3, 11);
+  const recent = marketplaceBeats().slice(0, 8);
   const savedIds = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
-  const saved = savedIds.map(findBeat).filter(Boolean);
+  const saved = dedupeById(savedIds.map(findBeat).filter(Boolean)).filter((item) => item.id !== topBeatOfDay.id);
   const savedSection = saved.length ? `<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="bookmark-plus"></i>Salvos no player</h2><p>Beats adicionados pelo menu do player</p></div></div>${gridView(saved)}</section>` : "";
-  appView.innerHTML = `${pageIntro("biblioteca")}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="list-music"></i>Suas playlists</h2><p>Colecoes para ouvir novamente</p></div></div><div class="playlist-row">${playlists.slice(0, 5).map(playlistCard).join("")}</div></section>${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Continue de onde parou</p></div></div>${gridView(recent)}</section>`;
+  const recentSection = recent.length
+    ? gridView(recent)
+    : emptyState("library-big", "Biblioteca vazia", "Cadastre ou salve beats reais para montar sua biblioteca.", "perfil");
+  appView.innerHTML = `${pageIntro("biblioteca")}${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Conteudo real publicado na plataforma</p></div></div>${recentSection}</section>`;
 }
-
 function renderInfoCards(items = []) {
   return items.length ? `<div class="legal-card-grid">${items.map(([title, text]) => `
     <article class="legal-info-card">
@@ -4569,7 +4696,7 @@ function professionalCard(profile) {
     <button class="professional-save" type="button" data-action="producer" data-title="${profile.name}" aria-label="Salvar ${profile.name}"><i data-lucide="heart"></i></button>
     
     <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
-      <img src="${img(avatarImages[profile.image % avatarImages.length])}" alt="Avatar de ${profile.name}">
+      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
     </button>
     
     <span class="professional-role">${profile.role}</span>
@@ -4594,9 +4721,10 @@ function professionalCard(profile) {
 }
 
 function professionalCategorySummary(category) {
+  const profiles = activeProfessionalProfiles();
   const count = category.id === "todos"
-    ? professionalProfiles.length
-    : professionalProfiles.filter((profile) => profile.category === category.id).length;
+    ? profiles.length
+    : profiles.filter((profile) => profile.category === category.id).length;
   return `<button class="professional-tab ${category.id === appState.professionalCategory ? "is-active" : ""}" type="button" data-action="professional-filter" data-category="${category.id}">
     <i data-lucide="${category.icon}"></i>
     <span>${category.label}</span>
@@ -4607,10 +4735,20 @@ function professionalCategorySummary(category) {
 function renderProducers() {
   appState.professionalCategory = appState.professionalCategory || "todos";
   const selectedCategory = appState.professionalCategory;
+  const profiles = activeProfessionalProfiles();
   const visibleProfiles = selectedCategory === "todos"
-    ? professionalProfiles
-    : professionalProfiles.filter((profile) => profile.category === selectedCategory);
-  const featuredProfile = visibleProfiles[0] || professionalProfiles[0];
+    ? profiles
+    : profiles.filter((profile) => profile.category === selectedCategory);
+  if (!visibleProfiles.length) {
+    appView.innerHTML = `${pageIntro("produtores")}<section class="professionals-directory">
+      <div class="professional-tabs" aria-label="Categorias de profissionais">
+        ${professionalCategories.map(professionalCategorySummary).join("")}
+      </div>
+      ${emptyState("users-round", "Nenhum profissional cadastrado", "Crie uma conta profissional para aparecer no diretório real da ANSEND.", "vendedor")}
+    </section>`;
+    return;
+  }
+  const featuredProfile = visibleProfiles[0];
   appView.innerHTML = `
     ${pageIntro("produtores")}
     <section class="professionals-directory">
@@ -4638,7 +4776,7 @@ function renderProducers() {
 function renderPlaylistDetail() {
   const playlistId = location.hash.replace("#playlist-", "");
   const pack = findPlaylistPack(playlistId);
-  const firstTrack = pack.tracks[0] || allBeats[0];
+  const firstTrack = pack.tracks[0] || topBeatOfDay;
   const totalMinutes = pack.tracks.reduce((total, item) => total + Number(item.duration.split(":")[0] || 0), 0);
   const related = playlistLibrary().filter(([title]) => slugify(title) !== pack.id).slice(0, 6);
 
@@ -4701,7 +4839,7 @@ function renderBeatDetail() {
   const producerName = item.producer.replace("prod. ", "");
   const producerIndex = Math.max(0, producers.indexOf(item.producer)) % avatarImages.length;
   const producerAvatar = img(avatarImages[producerIndex]);
-  const related = allBeats.filter((beatItem) => beatItem.id !== item.id).slice(producerIndex, producerIndex + 6);
+  const related = marketplaceBeats().filter((beatItem) => beatItem.id !== item.id).slice(0, 6);
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
 
   appView.innerHTML = `
@@ -4782,6 +4920,8 @@ function renderSettings() {
 
 function renderProfile() {
   const profile = activeProfile();
+  const shouldOpenCatalogForm = localStorage.getItem("ansend-open-catalog-form") === "true";
+  if (shouldOpenCatalogForm) localStorage.removeItem("ansend-open-catalog-form");
   const display = profileDisplayData(profile);
   const items = visibleCatalogItems();
   const published = items.filter((item) => item.status === "published").length;
@@ -4976,7 +5116,7 @@ function renderProfile() {
         </section>
 
         <!-- NOVO CADASTRO (FORM CONTAINER) -->
-        <div class="profile-catalog-form-container is-collapsed">
+        <div class="profile-catalog-form-container ${shouldOpenCatalogForm ? "" : "is-collapsed"}">
           <button type="button" class="profile-form-toggle-btn" data-action="toggle-profile-form">
             <i data-lucide="plus"></i>
             <span>Cadastrar nova faixa</span>
@@ -4990,7 +5130,7 @@ function renderProfile() {
             </div>
             <div class="profile-form-grid">
               <label>Tipo<select name="kind"><option value="beat">Beat</option><option value="musica">Música</option></select></label>
-              <label>Status<select name="status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select></label>
+              <label>Status<select name="status"><option value="published" selected>Publicado</option><option value="draft">Rascunho</option></select></label>
               <label class="profile-wide">Título<input name="title" type="text" placeholder="Ex: Black Coupe" required></label>
               <label>Gênero<input name="genre" type="text" placeholder="Trap, Funk, Drill..." required></label>
               <label>BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
@@ -5402,7 +5542,7 @@ function openVolumePanel() {
 
 function queueItems() {
   const current = playerActionBeat();
-  return [current, ...allBeats.filter((item) => item.id !== current.id).slice(0, 8)];
+  return dedupeById([current, ...marketplaceBeats().filter((item) => item.id !== current.id).slice(0, 8)]);
 }
 
 function openQueuePanel() {
@@ -5500,7 +5640,7 @@ function formatTime(seconds) {
 
 function currentPlayingBeat() {
   if (appState.playing === topBeatOfDay.id) return topBeatOfDay;
-  return findBeat(appState.playing) || allBeats[10];
+  return findBeat(appState.playing) || topBeatOfDay;
 }
 
 function applyPlayerAudioSettings() {
@@ -5674,7 +5814,7 @@ function toggleTopBeat() {
 
 function playBeatByOffset(offset) {
   const current = currentPlayingBeat();
-  const queue = [topBeatOfDay, ...allBeats];
+  const queue = dedupeById([topBeatOfDay, ...marketplaceBeats()]);
   const index = Math.max(0, queue.findIndex((item) => item.id === current?.id));
   const next = appState.player.shuffle && offset > 0
     ? queue[Math.floor(Math.random() * queue.length)]
@@ -5758,6 +5898,8 @@ function unlockPreviewAccountFromProfile(profile, reason = "preview") {
     created_at: new Date().toISOString(),
   };
   setLocalPreviewProfile(previewProfile);
+  localStorage.setItem("ansend-open-catalog-form", "true");
+  if (location.hash !== "#perfil") location.hash = "perfil";
   renderRoute();
   launchFirstAccountQuiz(previewProfile);
   return previewProfile;
@@ -5819,6 +5961,8 @@ async function handleAccountSubmit(form) {
       setLocalPreviewProfile({ ...profile, id: data.user.id, created_at: new Date().toISOString() });
       showToast("Conta criada. Perfil liberado enquanto a sessão sincroniza.", "mail-check");
     }
+    localStorage.setItem("ansend-open-catalog-form", "true");
+    if (location.hash !== "#perfil") location.hash = "perfil";
     renderRoute();
     launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
