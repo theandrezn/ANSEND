@@ -4057,22 +4057,26 @@ function renderAiWorkspace() {
 
 function professionalCard(profile) {
   return `<article class="professional-card" data-category="${profile.category}">
-    <div class="professional-card-top">
+    <button class="professional-save" type="button" data-action="producer" data-title="${profile.name}" aria-label="Salvar ${profile.name}"><i data-lucide="heart"></i></button>
+    
+    <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
       <img src="${img(avatarImages[profile.image % avatarImages.length])}" alt="Avatar de ${profile.name}">
-      <div>
-        <span class="professional-role">${profile.role}</span>
-        <h3>${profile.name}<i data-lucide="badge-check"></i></h3>
-        <p>${profile.city} - responde em ${profile.response}</p>
-      </div>
-      <button class="professional-save" type="button" data-action="producer" data-title="${profile.name}" aria-label="Salvar ${profile.name}"><i data-lucide="heart"></i></button>
-    </div>
+    </button>
+    
+    <span class="professional-role">${profile.role}</span>
+    <h3>${profile.name}<i data-lucide="badge-check"></i></h3>
+    <p class="professional-location-response">${profile.city} - responde em ${profile.response}</p>
+    
     <p class="professional-specialty">${profile.specialty}</p>
+    
     <div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+    
     <div class="professional-metrics">
       <span><strong>${profile.rating}</strong><small>score</small></span>
       <span><strong>${profile.jobs}</strong><small>jobs</small></span>
       <span><strong>${profile.price}</strong><small>desde</small></span>
     </div>
+    
     <div class="professional-actions">
       <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
       <button type="button" data-action="professional-contact" data-title="${profile.name}">Contratar</button>
