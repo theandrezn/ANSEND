@@ -2238,10 +2238,10 @@ function musicProfilePanel(profile = getMusicProfile()) {
   const selected = (name, value) => current[name] === value ? "selected" : "";
   return `<section class="music-profile-panel">
     <div class="music-profile-copy">
-      <span><i data-lucide="sparkles"></i>Meu perfil musical</span>
-      <h2>NEXO Match</h2>
-      <p>${hasMusicProfile() ? `Recomendacoes baseadas em ${musicProfileSummary(current)}.` : "Personalize sua experiencia para destravar recomendacoes reais."}</p>
-      <button type="button" data-action="start-nexo-match">${hasMusicProfile() ? "Refazer quiz" : "Comecar quiz"}</button>
+      <span><i data-lucide="sliders-horizontal"></i>Preferencias</span>
+      <h2>Perfil musical</h2>
+      <p>${hasMusicProfile() ? `Base atual: ${musicProfileSummary(current)}.` : "Defina estilos, fase e objetivo para personalizar a plataforma."}</p>
+      <button type="button" data-action="start-nexo-match">${hasMusicProfile() ? "Ajustar preferencias" : "Configurar preferencias"}</button>
     </div>
     <form class="music-profile-form">
       <div class="music-profile-form-grid">
@@ -3331,6 +3331,88 @@ function clearLocalPreviewProfile() {
   localStorage.removeItem("ansend-profile-preview");
 }
 
+function profileDisplayData(profile = activeProfile()) {
+  const role = normalizeRole(profile?.account_role || "artista");
+  const styleList = asArray(profile?.music_styles || profile?.genres || preferredGenres()).slice(0, 5);
+  const avatarFromPreset = profile?.image !== undefined && avatarImages?.length
+    ? img(avatarImages[Number(profile.image) % avatarImages.length])
+    : img(avatarImages[0]);
+  return {
+    name: profile?.artistic_name || profile?.full_name || "Perfil ANSEND",
+    fullName: profile?.full_name || "",
+    role,
+    roleLabel: accountRoleLabel(role),
+    avatar: profile?.avatar_url || profile?.photo_url || avatarFromPreset,
+    location: profile?.location || "Localizacao nao definida",
+    headline: profile?.headline || accountGreeting(),
+    bio: profile?.bio || "Edite seu perfil para adicionar uma bio, links e detalhes do seu trabalho.",
+    styles: styleList,
+    links: {
+      instagram: profile?.instagram || "",
+      youtube: profile?.youtube || "",
+      spotify: profile?.spotify || "",
+      website: profile?.website || "",
+    },
+  };
+}
+
+function openProfileEditor() {
+  const profile = activeProfile() || {};
+  const display = profileDisplayData(profile);
+  const roleOptions = accountRoles.map((role) => `<option value="${role.id}" ${display.role === role.id ? "selected" : ""}>${role.label}</option>`).join("");
+  openModal(`<form class="profile-edit-form">
+    <span><i data-lucide="user-pen"></i>Editar perfil</span>
+    <h2>Atualize sua identidade na ANSEND</h2>
+    <div class="profile-edit-preview">
+      <img src="${display.avatar}" alt="Avatar atual">
+      <div><strong>${display.name}</strong><small>${display.roleLabel}</small></div>
+    </div>
+    <div class="profile-form-grid">
+      <label>Nome completo<input name="full_name" value="${display.fullName}" placeholder="Seu nome"></label>
+      <label>Nome artistico ou marca<input name="artistic_name" value="${profile?.artistic_name || ""}" placeholder="Ex: Viana Beats"></label>
+      <label>Funcao<select name="account_role">${roleOptions}</select></label>
+      <label>Localizacao<input name="location" value="${profile?.location || ""}" placeholder="Cidade, pais"></label>
+      <label class="profile-wide">Foto do perfil<input name="avatar_url" value="${profile?.avatar_url || profile?.photo_url || ""}" placeholder="https://...jpg ou png"></label>
+      <label class="profile-wide">Headline<input name="headline" value="${profile?.headline || ""}" placeholder="Uma frase curta sobre seu trabalho"></label>
+      <label class="profile-wide">Bio<textarea name="bio" rows="4" placeholder="Conte o que voce faz e como pode ajudar artistas.">${profile?.bio || ""}</textarea></label>
+      <label>Instagram<input name="instagram" value="${profile?.instagram || ""}" placeholder="https://instagram.com/..."></label>
+      <label>YouTube<input name="youtube" value="${profile?.youtube || ""}" placeholder="https://youtube.com/@..."></label>
+      <label>Spotify<input name="spotify" value="${profile?.spotify || ""}" placeholder="https://open.spotify.com/..."></label>
+      <label>Site<input name="website" value="${profile?.website || ""}" placeholder="https://..."></label>
+    </div>
+    <button class="seller-submit" type="submit">Salvar perfil<i data-lucide="arrow-right"></i></button>
+  </form>`);
+}
+
+async function saveProfileEdit(form) {
+  const current = activeProfile() || {};
+  const profile = {
+    ...current,
+    id: current.id || appState.authUser?.id || `local-profile-${Date.now()}`,
+    email: current.email || appState.authUser?.email || null,
+    full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
+    artistic_name: form.elements.artistic_name?.value.trim() || null,
+    account_role: form.elements.account_role?.value || current.account_role || "artista",
+    location: form.elements.location?.value.trim() || null,
+    avatar_url: form.elements.avatar_url?.value.trim() || null,
+    headline: form.elements.headline?.value.trim() || null,
+    bio: form.elements.bio?.value.trim() || null,
+    instagram: form.elements.instagram?.value.trim() || null,
+    youtube: form.elements.youtube?.value.trim() || null,
+    spotify: form.elements.spotify?.value.trim() || null,
+    website: form.elements.website?.value.trim() || null,
+    music_styles: current.music_styles || preferredGenres(),
+    updated_at: new Date().toISOString(),
+  };
+  setLocalPreviewProfile(profile);
+  if (supabaseClient && appState.authUser) {
+    const { data } = await upsertProfile(profile);
+    setLocalPreviewProfile({ ...profile, ...(data || {}) });
+  }
+  closeModal();
+  renderRoute();
+}
+
 async function upsertProfile(profile) {
   if (!supabaseClient || !appState.authUser) return { error: new Error("Supabase não configurado") };
   const payload = {
@@ -3939,7 +4021,7 @@ function showMusicPreferenceQuiz(force = false, profile = getMusicProfile()) {
       markFirstAccountQuizCompleted();
       closeMusicPreferenceQuiz();
       renderRoute();
-      showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
+      showToast(`Perfil musical salvo: ${musicProfileSummary(profile)}`, "sparkles");
     }
   };
   
@@ -4691,19 +4773,23 @@ function renderSettings() {
 
 function renderProfile() {
   const profile = activeProfile();
+  const display = profileDisplayData(profile);
   const items = visibleCatalogItems();
   const published = items.filter((item) => item.status === "published").length;
+  const drafts = items.filter((item) => item.status !== "published").length;
+  const favoritesCount = appState.favorites.size;
+  const purchasesCount = appState.purchases.length;
   const beats = items.filter((item) => item.kind === "beat").length;
   const musicas = items.filter((item) => item.kind === "musica").length;
-  const roleLabel = profile?.account_role ? accountRoleLabel(profile.account_role) : "Visitante";
+  const roleLabel = display.roleLabel;
   const accountStatus = appState.authUser
     ? "Conta conectada"
     : isSupabaseConfigured
       ? "Entre para sincronizar sua conta"
       : "Modo local ativo";
 
-  const userName = profile?.artistic_name || profile?.full_name || "FlackxBeats";
-  const userAvatar = (profile?.image !== undefined && avatarImages && avatarImages.length)
+  let userName = profile?.artistic_name || profile?.full_name || "Perfil ANSEND";
+  let userAvatar = (profile?.image !== undefined && avatarImages && avatarImages.length)
     ? img(avatarImages[profile.image % avatarImages.length])
     : "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80";
 
@@ -4734,6 +4820,23 @@ function renderProfile() {
     specialties = ["Tráfego Pago (ADS)", "Estratégia de Lançamento", "Growth", "Análise de Dados"];
     location = "São Paulo, Brasil";
   }
+
+  userName = display.name;
+  userAvatar = display.avatar;
+  subtitleRole = display.headline;
+  bioText = display.bio;
+  specialties = display.styles;
+  location = display.location;
+  const socialLinks = [
+    ["instagram", "Instagram", display.links.instagram],
+    ["youtube", "YouTube", display.links.youtube],
+    ["music-4", "Spotify", display.links.spotify],
+    ["globe", "Site", display.links.website],
+  ].filter(([, , url]) => url);
+  const recentProfileItems = [
+    ...items.slice(0, 3).map((item) => ["music", item.title, item.status === "published" ? "Publicado no catalogo" : "Salvo como rascunho"]),
+    ...appState.orders.slice(0, 2).map((order) => ["shopping-bag", findBeat(order.beatId).title, order.status || "Pedido registrado"]),
+  ];
 
   const catalogCards = items.length ? items.map((item, index) => {
     const fallbackCover = item.kind === "musica" ? img("photo-1511379938547-c1f69419868d") : img("photo-1493225457124-a3eb161ffa5f");
@@ -4809,7 +4912,7 @@ function renderProfile() {
           <div class="profile-hero-meta">
             <b>${roleLabel}</b>
             <span class="meta-dot">•</span>
-            <b>${(profile?.music_styles || preferredGenres()).slice(0, 3).join(" + ")}</b>
+            <b>${specialties.length ? specialties.slice(0, 3).join(" + ") : "Estilos nao definidos"}</b>
             <span class="meta-dot">•</span>
             <b>${location}</b>
           </div>
@@ -4831,39 +4934,24 @@ function renderProfile() {
 
     <div class="profile-stats-grid">
       <article class="profile-stat-card">
-        <div>
-          <span>Catálogo</span>
-          <strong>${items.length}</strong>
-        </div>
-        <small class="stat-increment increment-up">+${(items.length > 2 ? 2 : items.length)} este mês</small>
+        <div><span>Catalogo</span><strong>${items.length}</strong></div>
+        <small class="stat-increment">itens cadastrados</small>
       </article>
       <article class="profile-stat-card">
-        <div>
-          <span>Seguidores</span>
-          <strong>${(1284 + (profile?.image || 0) * 45).toLocaleString("pt-BR")}</strong>
-        </div>
-        <small class="stat-increment increment-up">+${86 + (profile?.image || 0) * 5} este mês</small>
+        <div><span>Publicados</span><strong>${published}</strong></div>
+        <small class="stat-increment">visiveis no perfil</small>
       </article>
       <article class="profile-stat-card">
-        <div>
-          <span>Vendas</span>
-          <strong>${312 + (profile?.image || 0) * 12}</strong>
-        </div>
-        <small class="stat-increment increment-up">+${18 + (profile?.image || 0) * 2} este mês</small>
+        <div><span>Rascunhos</span><strong>${drafts}</strong></div>
+        <small class="stat-increment">em preparacao</small>
       </article>
       <article class="profile-stat-card">
-        <div>
-          <span>Plays</span>
-          <strong>${(23.7 + (profile?.image || 0) * 1.5).toFixed(1)}K</strong>
-        </div>
-        <small class="stat-increment increment-up">+${(1.9 + (profile?.image || 0) * 0.2).toFixed(1)}K este mês</small>
+        <div><span>Favoritos</span><strong>${favoritesCount}</strong></div>
+        <small class="stat-increment">beats salvos</small>
       </article>
       <article class="profile-stat-card">
-        <div>
-          <span>Mensagens</span>
-          <strong>${27 + (profile?.image || 0) * 3}</strong>
-        </div>
-        <small class="stat-increment increment-up">+${6 + (profile?.image || 0)} este mês</small>
+        <div><span>Pedidos</span><strong>${purchasesCount}</strong></div>
+        <small class="stat-increment">compras e licencas</small>
       </article>
     </div>
 
@@ -4874,29 +4962,7 @@ function renderProfile() {
           <div class="section-title"><i data-lucide="user-round"></i>Sobre</div>
           <p class="profile-sidebar-bio">${bioText}</p>
           <div class="profile-sidebar-specialties">
-            ${specialties.map(spec => `<span>${spec}</span>`).join("")}
-          </div>
-        </section>
-
-        <!-- DESTAQUES -->
-        <section class="profile-sidebar-card">
-          <div class="section-title"><i data-lucide="award"></i>Destaques do perfil</div>
-          <div class="profile-highlights-grid">
-            <article>
-              <i data-lucide="shield-check"></i>
-              <strong>312</strong>
-              <small>Licenças vendidas</small>
-            </article>
-            <article>
-              <i data-lucide="trending-up"></i>
-              <strong>5</strong>
-              <small>Beats em alta</small>
-            </article>
-            <article>
-              <i data-lucide="users-2"></i>
-              <strong>14</strong>
-              <small>Colaborações</small>
-            </article>
+            ${specialties.length ? specialties.map(spec => `<span>${spec}</span>`).join("") : `<span>Adicione estilos no perfil</span>`}
           </div>
         </section>
 
@@ -4934,16 +5000,13 @@ function renderProfile() {
         <section class="profile-sidebar-card">
           <div class="section-title"><i data-lucide="share-2"></i>Links e presença</div>
           <ul class="profile-links-list">
-            <li><a href="https://instagram.com" target="_blank"><i data-lucide="instagram"></i><span>instagram.com/${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
-            <li><a href="https://youtube.com" target="_blank"><i data-lucide="youtube"></i><span>youtube.com/@${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
-            <li><a href="https://spotify.com" target="_blank"><i data-lucide="music-4"></i><span>open.spotify.com/artist/${userName.toLowerCase().replace(/\s+/g, "")}</span><i data-lucide="external-link"></i></a></li>
-            <li><a href="https://ansend.com" target="_blank"><i data-lucide="globe"></i><span>${userName.toLowerCase().replace(/\s+/g, "")}.com</span><i data-lucide="external-link"></i></a></li>
+            ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${url}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i><span>${label}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
           </ul>
         </section>
       </div>
 
       <div class="profile-workspace-main">
-        <!-- NEXO MATCH QUIZ PANEL -->
+        <!-- PREFERENCIAS MUSICAIS -->
         ${musicProfilePanel()}
 
         <!-- MEU CATÁLOGO (SPOTIFY-STYLE TRACKLIST) -->
@@ -4976,28 +5039,9 @@ function renderProfile() {
 
         <!-- ATIVIDADE RECENTE -->
         <section class="profile-workspace-card">
-          <div class="section-title"><i data-lucide="activity"></i>Atividade recente</div>
+          <div class="section-title"><i data-lucide="activity"></i>Atividade real</div>
           <ul class="profile-activity-list">
-            <li>
-              <span class="activity-icon-dot"><i data-lucide="user-plus"></i></span>
-              <div class="activity-content"><strong>Novo seguidor</strong><p>AN Beats começou a seguir você.</p></div>
-              <small>2h</small>
-            </li>
-            <li>
-              <span class="activity-icon-dot"><i data-lucide="shopping-bag"></i></span>
-              <div class="activity-content"><strong>Nova venda</strong><p>Licença Premium vendida para João R.</p></div>
-              <small>5h</small>
-            </li>
-            <li>
-              <span class="activity-icon-dot"><i data-lucide="message-square"></i></span>
-              <div class="activity-content"><strong>Nova mensagem</strong><p>Lucas M. enviou uma mensagem.</p></div>
-              <small>1d</small>
-            </li>
-            <li>
-              <span class="activity-icon-dot"><i data-lucide="eye"></i></span>
-              <div class="activity-content"><strong>Visita no perfil</strong><p>Seu perfil foi visitado 32 vezes hoje.</p></div>
-              <small>1d</small>
-            </li>
+            ${recentProfileItems.length ? recentProfileItems.map(([icon, title, text]) => `<li><span class="activity-icon-dot"><i data-lucide="${icon}"></i></span><div class="activity-content"><strong>${title}</strong><p>${text}</p></div></li>`).join("") : `<li><span class="activity-icon-dot"><i data-lucide="clock"></i></span><div class="activity-content"><strong>Nenhuma atividade ainda</strong><p>Cadastre uma faixa, compre uma licenca ou edite seu perfil para iniciar.</p></div></li>`}
           </ul>
         </section>
       </div>
@@ -6314,7 +6358,10 @@ document.addEventListener("click", (event) => {
     target.textContent = target.classList.contains("is-following") ? "Seguindo" : "Seguir";
   }
   if (action === "download") showToast("Download preparado com sucesso", "download");
-  if (action === "seller") showToast("Sua loja de produtor está pronta para configurar", "store");
+  if (action === "seller") {
+    location.hash = "vendedor";
+    return;
+  }
   if (action === "notifications") showToast("Você tem 3 novos lançamentos", "bell");
   if (action === "profile-edit") showToast("Edição de perfil habilitada", "user-round");
   if (action === "toggle-profile-form") {
@@ -6334,17 +6381,13 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "toggle-edit-profile") {
-    location.hash = "configuracoes";
-    showToast("Configure seu perfil profissional nas configurações", "settings");
+    openProfileEditor();
     return;
   }
   if (action === "share-profile") {
     const shareUrl = window.location.href;
-    navigator.clipboard?.writeText(shareUrl).then(() => {
-      showToast("Link do perfil copiado para a área de transferência!", "check-circle");
-    }).catch(() => {
-      showToast("Erro ao copiar link do perfil", "x");
-    });
+    navigator.clipboard?.writeText(shareUrl);
+    target.classList.add("is-active");
     return;
   }
   if (action === "filter") {
@@ -6388,6 +6431,12 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const profileEditForm = event.target.closest(".profile-edit-form");
+  if (profileEditForm) {
+    event.preventDefault();
+    await saveProfileEdit(profileEditForm);
+    return;
+  }
   const commentForm = event.target.closest(".comment-form");
   if (commentForm) {
     event.preventDefault();
@@ -6407,7 +6456,7 @@ document.addEventListener("submit", async (event) => {
     markFirstAccountQuizCompleted();
     closeMusicPreferenceQuiz();
     renderRoute();
-    showToast(`NEXO Match salvo: ${musicProfileSummary(profile)}`, "sparkles");
+    showToast(`Perfil musical salvo: ${musicProfileSummary(profile)}`, "sparkles");
     return;
   }
   const musicForm = event.target.closest(".music-profile-form");

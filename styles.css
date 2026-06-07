@@ -3077,7 +3077,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 
 .profile-form-grid input,
-.profile-form-grid select {
+.profile-form-grid select,
+.profile-form-grid textarea {
   height: 38px;
   padding: 0 10px;
   background: #121212;
@@ -3089,7 +3090,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 
 .profile-form-grid input:focus,
-.profile-form-grid select:focus {
+.profile-form-grid select:focus,
+.profile-form-grid textarea:focus {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -13076,6 +13078,189 @@ body:has(.nexo-feed-page) .footer {
   .nexo-feed-actions {
     right: 12px;
     bottom: 26px;
+  }
+}
+
+/* Profile: cleaner professional workspace */
+.profile-page {
+  max-width: 1280px;
+  gap: 18px;
+}
+
+.profile-hero-banner,
+.profile-sidebar-card,
+.profile-stat-card,
+.profile-catalog-list-card,
+.profile-workspace-card,
+.music-profile-panel {
+  background: rgba(5, 5, 5, .88) !important;
+  border-color: rgba(255, 255, 255, .08) !important;
+  box-shadow: none !important;
+}
+
+.profile-hero-banner {
+  min-height: 188px;
+  align-items: center;
+}
+
+.profile-avatar-wrapper {
+  width: 92px;
+  height: 92px;
+  background: rgba(255, 106, 0, .16);
+  box-shadow: none;
+}
+
+.profile-hero-text h1 {
+  font-size: clamp(30px, 3.4vw, 48px);
+}
+
+.profile-hero-role,
+.profile-sidebar-bio {
+  max-width: 680px;
+}
+
+.profile-verification-status {
+  color: var(--orange);
+}
+
+.verified-badge-blue {
+  color: var(--orange);
+  fill: rgba(255, 106, 0, .12);
+}
+
+.profile-btn-primary,
+.profile-btn-secondary {
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.profile-btn-primary {
+  background: #f5f5f5;
+  color: #000;
+}
+
+.profile-btn-secondary.is-active,
+.profile-btn-secondary:hover {
+  border-color: rgba(255, 106, 0, .4);
+  background: rgba(255, 106, 0, .08);
+}
+
+.profile-stat-card {
+  min-height: 84px;
+  padding: 16px;
+}
+
+.profile-stat-card span {
+  color: #8f8f8f;
+}
+
+.stat-increment {
+  color: #a8a8a8;
+}
+
+.profile-workspace {
+  grid-template-columns: minmax(260px, 320px) 1fr;
+}
+
+.profile-sidebar-specialties:empty {
+  display: none;
+}
+
+.profile-highlights-grid {
+  display: none;
+}
+
+.music-profile-panel {
+  grid-template-columns: minmax(190px, .62fr) minmax(0, 1.8fr);
+  border-radius: 18px;
+}
+
+.music-profile-copy h2 {
+  font-size: clamp(24px, 2.6vw, 36px);
+}
+
+.music-profile-copy p {
+  font-size: 14px;
+}
+
+.music-profile-copy button,
+.music-profile-form .seller-submit {
+  min-height: 42px;
+  box-shadow: none;
+}
+
+.profile-edit-form {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(84vh, 760px);
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #080604;
+  color: #f5f5f5;
+  display: grid;
+  gap: 18px;
+}
+
+.profile-edit-form > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.profile-edit-form h2 {
+  margin: 0;
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1;
+}
+
+.profile-edit-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .03);
+}
+
+.profile-edit-preview img {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.profile-edit-preview div {
+  display: grid;
+  gap: 3px;
+}
+
+.profile-edit-preview small {
+  color: #a8a8a8;
+}
+
+.profile-form-grid textarea {
+  height: auto;
+  min-height: 112px;
+  padding: 12px 10px;
+  resize: vertical;
+}
+
+.profile-edit-form .seller-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .profile-workspace,
+  .music-profile-panel {
+    grid-template-columns: 1fr;
   }
 }
 
