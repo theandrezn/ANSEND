@@ -4529,7 +4529,13 @@ function renderRoute() {
   hydrateView();
 }
 
+const TOASTS_ENABLED = false;
+
 function showToast(message, icon = "check-circle-2") {
+  if (!TOASTS_ENABLED) {
+    console.debug("[ANSEND toast silenced]", icon, translateToastText(message));
+    return;
+  }
   const region = document.querySelector("#toastRegion");
   const toast = document.createElement("div");
   toast.className = "toast";
