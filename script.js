@@ -2023,37 +2023,38 @@ function getRankedNexoFeed(limit = 14) {
 
 function nexoFeedCard(item, index) {
   const isBeat = item.type === "beat";
-  const action = isBeat ? "buy" : item.type === "professional" ? "producer" : item.type === "pack" ? "playlist" : item.type === "combo" ? "ai-chip" : item.metadata?.route ? "ai-next-route" : "ai-professionals";
-  const ctaData = isBeat
-    ? `data-id="${item.metadata?.beatId || item.id}"`
+  const beatId = item.metadata?.beatId || item.id;
+  const isSavedBeat = isBeat && appState.favorites.has(beatId);
+  const author = item.creatorName || "ANSEND";
+  const authorProfile = findProfessional(author);
+  const authorImage = author === "NEXO IA" || author === "Curadoria ANSEND"
+    ? "assets/ansend-logo-square.png"
     : item.type === "professional"
-      ? `data-title="${item.metadata?.professionalName || item.title}"`
-      : item.type === "pack"
-        ? `data-title="${item.metadata?.title || item.title}" data-playlist-id="${item.metadata?.playlistId || slugify(item.title)}"`
-        : item.type === "combo"
-          ? `data-prompt="${item.metadata?.prompt || item.description}"`
-          : `data-route="${item.metadata?.route || "produtores"}"`;
+      ? item.coverImage
+      : professionalImage(authorProfile);
+  const meta = [item.category, item.bpm ? `${item.bpm} BPM` : item.priceLabel].filter(Boolean).slice(0, 2).join(" - ");
   return `<article class="nexo-feed-card" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}" style="--feed-cover: url('${item.coverImage || item.cover || ""}')">
     <div class="nexo-feed-media">
       <img src="${item.coverImage || item.cover || ""}" alt="${item.title}">
       ${isBeat ? `<button class="nexo-feed-play" type="button" data-action="nexo-feed-play" data-id="${item.metadata?.beatId || item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>`}
     </div>
     <div class="nexo-feed-copy">
-      <span class="nexo-feed-kicker">${item.type.toUpperCase()} - ${item.feedMatch?.score || 70}% MATCH</span>
+      <div class="nexo-feed-author">
+        <img src="${authorImage}" alt="">
+        <div>
+          <strong>${author}</strong>
+          <span>${meta || "Recomendado pela NEXO"}</span>
+        </div>
+        <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}">Ver</button>
+      </div>
       <h2>${item.title}</h2>
       <p>${item.description}</p>
-      <div class="nexo-feed-tags">${asArray(item.tags).slice(0, 4).map((tag) => `<span>${tag}</span>`).join("")}</div>
-      <small><i data-lucide="sparkles"></i>${item.feedMatch?.reasons?.[0] || "Recomendado pela NEXO"}</small>
-      <button class="nexo-feed-main-cta" type="button" data-action="${action}" ${ctaData}>${nexoFeedCta(item)}<i data-lucide="arrow-right"></i></button>
     </div>
     <div class="nexo-feed-actions" aria-label="Acoes do feed">
-      <button type="button" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
-      <button type="button" data-action="nexo-feed-save" data-feed-item-id="${item.id}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>Salvar</span></button>
+      <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
+      <button type="button" data-action="nexo-feed-comments" data-feed-item-id="${item.id}" aria-label="Comentarios"><i data-lucide="message-circle"></i><span>Comentar</span></button>
       <button type="button" data-action="nexo-feed-share" data-feed-item-id="${item.id}" aria-label="Compartilhar"><i data-lucide="send"></i><span>Enviar</span></button>
-      <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}" aria-label="Abrir perfil"><i data-lucide="user-round"></i><span>Perfil</span></button>
-      <button type="button" data-action="nexo-feed-plan" data-feed-item-id="${item.id}" aria-label="Adicionar ao plano"><i data-lucide="plus-circle"></i><span>Plano</span></button>
-      <button type="button" data-action="nexo-feed-similar" data-feed-item-id="${item.id}" aria-label="Ver similares"><i data-lucide="shuffle"></i><span>Similar</span></button>
-      <button type="button" data-action="nexo-feed-hide" data-feed-item-id="${item.id}" aria-label="Nao tenho interesse"><i data-lucide="eye-off"></i><span>Ocultar</span></button>
+      <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-save" data-feed-item-id="${item.id}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>Salvar</span></button>
     </div>
   </article>`;
 }
@@ -2073,45 +2074,31 @@ function nexoFeedDetailPanel(item) {
 
 function renderNexoFeed() {
   const items = getRankedNexoFeed();
-  const first = items[0];
-  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
-  const profile = getMusicProfile() || createDefaultMusicProfile();
   appView.innerHTML = `<section class="nexo-feed-page" aria-label="NEXO Feed">
-    <aside class="nexo-feed-rail">
-      <span>NEXO Feed</span>
-      <h1>Seu For You musical.</h1>
-      <p>O feed aprende com seus plays, saves e escolhas para recomendar beats, profissionais e solucoes para seu proximo lancamento.</p>
-      <div class="nexo-feed-mini-profile">
-        <strong>${musicProfileSummary(profile)}</strong>
-        <small>${profile.objective || "Receber orientacao da IA"}</small>
-      </div>
-      <button type="button" data-action="start-nexo-match"><i data-lucide="sparkles"></i>Personalizar feed</button>
-    </aside>
     <main class="nexo-feed-stream" id="nexoFeedStream">
       ${items.map(nexoFeedCard).join("")}
     </main>
-    <aside class="nexo-feed-context" id="nexoFeedContext">
-      ${first ? nexoFeedDetailPanel(first) : ""}
-      <div class="nexo-feed-signal-card">
-        <span>Sinais locais</span>
-        <strong>${readFeedList(NEXO_FEED_EVENTS_KEY).length}</strong>
-        <p>eventos de personalizacao salvos neste dispositivo.</p>
-        <small>Preferencias: ${preferredFeedEntries(taste.genres, 3).join(", ") || "em aprendizado"}</small>
-      </div>
-    </aside>
+    <div class="nexo-feed-scroll-controls" aria-label="Navegar no feed">
+      <button type="button" data-action="nexo-feed-prev" aria-label="Subir no feed"><i data-lucide="chevron-up"></i></button>
+      <button type="button" data-action="nexo-feed-next" aria-label="Descer no feed"><i data-lucide="chevron-down"></i></button>
+    </div>
   </section>`;
 }
 
 function setActiveNexoFeedCard(card) {
   if (!card) return;
   document.querySelectorAll(".nexo-feed-card").forEach((item) => item.classList.toggle("is-active", item === card));
-  const item = getRankedNexoFeed(20).find((entry) => entry.id === card.dataset.feedItemId) || feedItemForEvent(card.dataset.feedItemId);
-  const context = document.querySelector("#nexoFeedContext");
-  if (context && item) {
-    context.querySelector(".nexo-feed-detail-card")?.remove();
-    context.insertAdjacentHTML("afterbegin", nexoFeedDetailPanel(item));
-    lucide.createIcons();
-  }
+}
+
+function scrollNexoFeed(direction = 1) {
+  const stream = document.querySelector("#nexoFeedStream");
+  const cards = [...(stream?.querySelectorAll(".nexo-feed-card") || [])];
+  if (!stream || !cards.length) return;
+  const activeIndex = cards.findIndex((card) => card.classList.contains("is-active"));
+  const fallbackIndex = Math.max(0, Math.round(stream.scrollTop / Math.max(1, stream.clientHeight)));
+  const currentIndex = activeIndex >= 0 ? activeIndex : fallbackIndex;
+  const nextIndex = Math.max(0, Math.min(cards.length - 1, currentIndex + direction));
+  cards[nextIndex]?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
 }
 
 function setupNexoFeedObservers() {
@@ -5969,6 +5956,10 @@ document.addEventListener("click", (event) => {
     writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
     return;
   }
+  if (action === "nexo-feed-prev" || action === "nexo-feed-next") {
+    scrollNexoFeed(action === "nexo-feed-next" ? 1 : -1);
+    return;
+  }
   if (action?.startsWith("nexo-feed-")) {
     const itemId = target.dataset.feedItemId;
     const item = feedItemForEvent(itemId);
@@ -5977,18 +5968,48 @@ document.addEventListener("click", (event) => {
       "nexo-feed-like": "like",
       "nexo-feed-save": "save",
       "nexo-feed-share": "share",
+      "nexo-feed-comments": "click_cta",
       "nexo-feed-profile": "open_profile",
       "nexo-feed-plan": "add_to_plan",
       "nexo-feed-hide": "not_interested",
       "nexo-feed-similar": "view_similar",
     };
     writeNexoFeedEvent(itemId, eventMap[action] || "click_cta", { item });
-    if (action === "nexo-feed-like" || action === "nexo-feed-save" || action === "nexo-feed-plan") {
+    if (action === "nexo-feed-like" || action === "nexo-feed-save") {
+      if (item.type === "beat") {
+        const beatId = item.metadata?.beatId || item.id;
+        if (!appState.favorites.has(beatId)) {
+          appState.favorites.add(beatId);
+          persistState();
+        }
+      }
       target.classList.toggle("is-active");
       return;
     }
+    if (action === "nexo-feed-comments") {
+      if (item.type === "beat") {
+        const beat = findBeat(item.metadata?.beatId || item.id);
+        appState.playing = beat.id;
+        updateMiniPlayer(beat);
+        openCommentsPanel();
+      } else {
+        openModal(`<section class="player-tool-modal comments-tool-modal">
+          <span><i data-lucide="message-circle"></i>Comentarios</span>
+          <h2>${item.title}</h2>
+          <div class="comment-list">
+            <article><strong>ANSEND</strong><p>Conte para a NEXO se esse perfil combina com seu projeto.</p></article>
+            <article><strong>NEXO IA</strong><p>Use este espaco para salvar feedback e pedir recomendacoes parecidas.</p></article>
+          </div>
+          <form class="comment-form">
+            <input type="text" placeholder="Escreva um comentario">
+            <button type="submit" data-action="comment-preview">Enviar</button>
+          </form>
+        </section>`);
+      }
+      return;
+    }
     if (action === "nexo-feed-share") {
-      navigator.clipboard?.writeText(`${location.origin}${location.pathname}#feed`);
+      navigator.clipboard?.writeText(`${location.origin}${location.pathname}#nexo-feed`);
       target.classList.add("is-active");
       return;
     }
