@@ -1719,6 +1719,433 @@ function buildNexoRecommendations(profile = getMusicProfile(), persist = true) {
   return result;
 }
 
+const NEXO_FEED_EVENTS_KEY = "ansend_feed_events";
+const NEXO_FEED_HISTORY_KEY = "ansend_feed_history";
+const NEXO_FEED_NOT_INTERESTED_KEY = "ansend_not_interested";
+const NEXO_FEED_TASTE_KEY = "ansend_user_taste_profile";
+const NEXO_FEED_SESSION_KEY = "ansend_feed_session";
+let nexoFeedObserver = null;
+const nexoFeedTimers = new Map();
+
+function feedSessionId() {
+  const existing = sessionStorage.getItem(NEXO_FEED_SESSION_KEY);
+  if (existing) return existing;
+  const created = `feed-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  sessionStorage.setItem(NEXO_FEED_SESSION_KEY, created);
+  return created;
+}
+
+function readFeedList(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function readFeedObject(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "{}");
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function feedItemForEvent(id) {
+  return getNexoFeedItems().find((item) => item.id === id);
+}
+
+function writeNexoFeedEvent(itemId, eventType, meta = {}) {
+  if (!itemId || !eventType) return;
+  const item = meta.item || feedItemForEvent(itemId);
+  const duration = Number(meta.itemDurationMs || (item?.durationSeconds || 45) * 1000);
+  const watchTime = Number(meta.watchTimeMs || 0);
+  const event = {
+    userId: appState.authUser?.id || appState.profile?.id || "local-preview",
+    itemId,
+    itemType: item?.type || "unknown",
+    eventType,
+    timestamp: new Date().toISOString(),
+    watchTimeMs: watchTime,
+    itemDurationMs: duration,
+    completionRate: duration ? Math.min(1, watchTime / duration) : 0,
+    sessionId: feedSessionId(),
+    deviceType: window.innerWidth <= 760 ? "mobile" : "desktop",
+    source: "nexo-feed",
+    userMusicProfile: getMusicProfile(),
+  };
+  const events = readFeedList(NEXO_FEED_EVENTS_KEY);
+  events.push(event);
+  localStorage.setItem(NEXO_FEED_EVENTS_KEY, JSON.stringify(events.slice(-260)));
+
+  const history = readFeedObject(NEXO_FEED_HISTORY_KEY);
+  const current = history[itemId] || { impressions: 0, likes: 0, saves: 0, ctas: 0, skips: 0 };
+  if (eventType === "impression") current.impressions += 1;
+  if (eventType === "like") current.likes += 1;
+  if (eventType === "save") current.saves += 1;
+  if (eventType === "click_cta" || eventType === "open_profile" || eventType === "add_to_plan") current.ctas += 1;
+  if (eventType === "skip_fast" || eventType === "not_interested") current.skips += 1;
+  current.lastEvent = eventType;
+  current.updatedAt = event.timestamp;
+  history[itemId] = current;
+  localStorage.setItem(NEXO_FEED_HISTORY_KEY, JSON.stringify(history));
+  updateNexoTasteFromEvent(item, eventType);
+}
+
+function updateNexoTasteFromEvent(item, eventType) {
+  if (!item || !["view_50", "view_75", "view_complete", "like", "save", "share", "click_cta", "open_profile", "add_to_plan", "view_similar"].includes(eventType)) return;
+  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
+  taste.genres = taste.genres || {};
+  taste.vibes = taste.vibes || {};
+  taste.categories = taste.categories || {};
+  const weight = ["like", "save", "click_cta", "add_to_plan"].includes(eventType) ? 4 : 1;
+  asArray(item.genres).forEach((genre) => { taste.genres[genre] = (taste.genres[genre] || 0) + weight; });
+  asArray(item.vibes).forEach((vibe) => { taste.vibes[vibe] = (taste.vibes[vibe] || 0) + weight; });
+  if (item.category) taste.categories[item.category] = (taste.categories[item.category] || 0) + weight;
+  taste.updatedAt = new Date().toISOString();
+  localStorage.setItem(NEXO_FEED_TASTE_KEY, JSON.stringify(taste));
+}
+
+function preferredFeedEntries(collection, limit = 3) {
+  return Object.entries(collection || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([key]) => key);
+}
+
+function nexoFeedCta(item) {
+  const map = {
+    beat: "Comprar licenca",
+    professional: "Ver perfil",
+    service: "Contratar servico",
+    combo: "Montar combo",
+    pack: "Abrir pack",
+    education: "Ver guia",
+    curation: "Abrir curadoria",
+    marketing: "Contratar marketing",
+  };
+  return map[item.type] || "Abrir";
+}
+
+function getNexoFeedItems() {
+  const profile = getMusicProfile() || createDefaultMusicProfile();
+  const recs = buildNexoRecommendations(profile, false);
+  const beatItems = allBeats.map((item, index) => ({
+    id: item.id,
+    type: "beat",
+    title: item.title,
+    subtitle: `${item.producer} - ${item.tags?.[0] || "Beat"}`,
+    description: `Beat ${item.tags?.[0] || "urbano"} com ${item.tags?.[1] || "BPM mapeado"} para gravar sua proxima faixa.`,
+    creatorName: item.producer,
+    category: item.tags?.[0] || "Beat",
+    genres: [item.tags?.[0] || "Trap"],
+    vibes: genreVibeMap[item.tags?.[0]] || ["Comercial"],
+    bpm: Number(String(item.tags?.[1] || "").match(/\d+/)?.[0]) || 120,
+    priceLabel: item.price || `$${(24.95 + (index % 5) * 5).toFixed(2)}`,
+    coverImage: item.cover,
+    audioUrl: item.audio,
+    durationSeconds: 165,
+    tags: [item.tags?.[0], item.tags?.[1], item.badge].filter(Boolean),
+    verified: true,
+    popularityScore: 76 + (index % 8) * 3,
+    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
+    metadata: { beatId: item.id },
+  }));
+
+  const professionalItems = recs.professionals.map((profile, index) => ({
+    id: `pro-${slugify(profile.name)}`,
+    type: "professional",
+    title: profile.name,
+    subtitle: `${profile.role} - ${profile.match?.score || 74}% match`,
+    description: profile.specialty,
+    creatorName: profile.name,
+    category: profile.category,
+    genres: profile.tags,
+    vibes: profile.tags,
+    priceLabel: `A partir de ${profile.price}`,
+    coverImage: professionalImage(profile),
+    durationSeconds: 42,
+    tags: [profile.role, profile.city, `${profile.jobs} jobs`],
+    rating: Number(profile.rating),
+    verified: true,
+    popularityScore: 82 + index * 4,
+    createdAt: new Date(Date.now() - index * 172800000).toISOString(),
+    metadata: { professionalName: profile.name },
+  }));
+
+  const serviceItems = recs.services.map((item, index) => ({
+    id: `service-${slugify(item.title)}`,
+    type: item.type === "Marketing musical" ? "marketing" : item.type === "Curador" ? "curation" : "service",
+    title: item.title,
+    subtitle: item.type,
+    description: item.reason,
+    creatorName: "NEXO IA",
+    category: item.type,
+    genres: item.genres || musicQuiz.genres,
+    vibes: item.stages || musicQuiz.vibes,
+    priceLabel: "Recomendado pela NEXO",
+    coverImage: ["assets/category-beatmakers.png", "assets/category-designers.png", "assets/category-producers.png", "assets/category-curators.png", "assets/category-marketing.png"][index % 5],
+    durationSeconds: 38,
+    tags: [item.type, item.match ? `${item.match.score}% match` : "IA", "Servico"],
+    verified: true,
+    popularityScore: 70 + index * 5,
+    createdAt: new Date(Date.now() - index * 93600000).toISOString(),
+    metadata: { route: item.route },
+  }));
+
+  const comboItems = recs.combos.map((item, index) => ({
+    id: `combo-${slugify(item.title)}`,
+    type: "combo",
+    title: item.title,
+    subtitle: item.services,
+    description: item.economy || "Sequencia inteligente para acelerar seu lancamento.",
+    creatorName: "NEXO IA",
+    category: "Combo",
+    genres: item.genres || musicQuiz.genres,
+    vibes: item.vibes || musicQuiz.vibes,
+    priceLabel: "A partir de [VALOR]",
+    coverImage: ["assets/category-producers.png", "assets/category-marketing.png", "assets/category-designers.png"][index % 3],
+    durationSeconds: 35,
+    tags: ["Combo", item.match ? `${item.match.score}% match` : "Plano", "Entrega guiada"],
+    verified: true,
+    popularityScore: 84 + index * 6,
+    createdAt: new Date(Date.now() - index * 5400000).toISOString(),
+    metadata: { prompt: `Quero montar o ${item.title.toLowerCase()} para meu lancamento.` },
+  }));
+
+  const playlistItems = getRecommendedPlaylists(profile).slice(0, 4).map((item, index) => ({
+    id: `pack-${slugify(item.title)}`,
+    type: "pack",
+    title: item.title,
+    subtitle: item.subtitle,
+    description: `Pack curado para ${asArray(item.genres).slice(0, 2).join(" e ")} com vibe ${asArray(item.vibes)[0] || "urbana"}.`,
+    creatorName: "Curadoria ANSEND",
+    category: "Pack",
+    genres: item.genres,
+    vibes: item.vibes,
+    priceLabel: "Abrir pack",
+    coverImage: item.cover,
+    durationSeconds: 48,
+    tags: ["Pack", item.match ? `${item.match.score}% match` : "Curadoria", "Playlist"],
+    verified: true,
+    popularityScore: 74 + index * 4,
+    createdAt: new Date(Date.now() - index * 4600000).toISOString(),
+    metadata: { playlistId: slugify(item.title), title: item.title },
+  }));
+
+  const educationItems = [
+    {
+      id: "edu-release-map",
+      type: "education",
+      title: "Mapa do lancamento",
+      subtitle: "Guia NEXO",
+      description: "Entenda a ordem certa: producao, capa, distribuicao, curadoria e divulgacao.",
+      creatorName: "NEXO IA",
+      category: "Educativo",
+      genres: musicQuiz.genres,
+      vibes: ["Comercial", "Cinematografica"],
+      priceLabel: "Ver guia",
+      coverImage: "assets/category-marketing.png",
+      durationSeconds: 30,
+      tags: ["Guia", "Lancamento", "IA"],
+      verified: true,
+      popularityScore: 88,
+      createdAt: new Date().toISOString(),
+      metadata: { route: "ia" },
+    },
+  ];
+
+  return [...beatItems, ...professionalItems, ...serviceItems, ...comboItems, ...playlistItems, ...educationItems];
+}
+
+function calculateNexoFeedScore(item, profile = getMusicProfile()) {
+  const baseProfile = profile || createDefaultMusicProfile();
+  const history = readFeedObject(NEXO_FEED_HISTORY_KEY)[item.id] || {};
+  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
+  const profileGenres = asArray(baseProfile.genres).map(normalizeToken);
+  const profileVibes = asArray(baseProfile.vibes).map(normalizeToken);
+  const objective = normalizeToken(baseProfile.objective);
+  let score = Number(item.popularityScore || 50);
+  const reasons = [];
+
+  if (asArray(item.genres).some((genre) => profileGenres.includes(normalizeToken(genre)))) {
+    score += 22;
+    reasons.push("combina com seu estilo musical");
+  }
+  if (asArray(item.vibes).some((vibe) => profileVibes.includes(normalizeToken(vibe)))) {
+    score += 14;
+    reasons.push("bate com a vibe do seu perfil");
+  }
+  const haystack = normalizeToken(`${item.title} ${item.subtitle} ${item.description} ${item.category} ${asArray(item.tags).join(" ")}`);
+  if (objective && haystack.includes(objective.split(" ")[0])) {
+    score += 10;
+    reasons.push("serve para seu objetivo atual");
+  }
+  preferredFeedEntries(taste.genres, 4).forEach((genre) => {
+    if (asArray(item.genres).includes(genre)) score += 7;
+  });
+  preferredFeedEntries(taste.categories, 4).forEach((category) => {
+    if (item.category === category || item.type === category) score += 6;
+  });
+  score += (history.likes || 0) * 6 + (history.saves || 0) * 8 + (history.ctas || 0) * 10;
+  score -= (history.skips || 0) * 18;
+  if (item.verified) {
+    score += 5;
+    reasons.push("perfil verificado na ANSEND");
+  }
+  if (!reasons.length) reasons.push("boa porta de entrada para sua jornada");
+  return { score: Math.max(1, Math.min(99, Math.round(score))), reasons: reasons.slice(0, 3) };
+}
+
+function getRankedNexoFeed(limit = 14) {
+  const profile = getMusicProfile() || createDefaultMusicProfile();
+  const hidden = new Set(readFeedList(NEXO_FEED_NOT_INTERESTED_KEY));
+  const pool = getNexoFeedItems()
+    .filter((item) => !hidden.has(item.id))
+    .map((item) => ({ ...item, feedMatch: calculateNexoFeedScore(item, profile) }))
+    .sort((a, b) => b.feedMatch.score - a.feedMatch.score || b.popularityScore - a.popularityScore);
+  const result = [];
+  const typeCount = {};
+  for (const item of pool) {
+    const count = typeCount[item.type] || 0;
+    if (count >= 3 && result.length < 8) continue;
+    result.push(item);
+    typeCount[item.type] = count + 1;
+    if (result.length >= limit) break;
+  }
+  return result.length ? result : pool.slice(0, limit);
+}
+
+function nexoFeedCard(item, index) {
+  const isBeat = item.type === "beat";
+  const action = isBeat ? "buy" : item.type === "professional" ? "producer" : item.type === "pack" ? "playlist" : item.type === "combo" ? "ai-chip" : item.metadata?.route ? "ai-next-route" : "ai-professionals";
+  const ctaData = isBeat
+    ? `data-id="${item.metadata?.beatId || item.id}"`
+    : item.type === "professional"
+      ? `data-title="${item.metadata?.professionalName || item.title}"`
+      : item.type === "pack"
+        ? `data-title="${item.metadata?.title || item.title}" data-playlist-id="${item.metadata?.playlistId || slugify(item.title)}"`
+        : item.type === "combo"
+          ? `data-prompt="${item.metadata?.prompt || item.description}"`
+          : `data-route="${item.metadata?.route || "produtores"}"`;
+  return `<article class="nexo-feed-card" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}" style="--feed-cover: url('${item.coverImage || item.cover || ""}')">
+    <div class="nexo-feed-media">
+      <img src="${item.coverImage || item.cover || ""}" alt="${item.title}">
+      ${isBeat ? `<button class="nexo-feed-play" type="button" data-action="nexo-feed-play" data-id="${item.metadata?.beatId || item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>`}
+    </div>
+    <div class="nexo-feed-copy">
+      <span class="nexo-feed-kicker">${item.type.toUpperCase()} - ${item.feedMatch?.score || 70}% MATCH</span>
+      <h2>${item.title}</h2>
+      <p>${item.description}</p>
+      <div class="nexo-feed-tags">${asArray(item.tags).slice(0, 4).map((tag) => `<span>${tag}</span>`).join("")}</div>
+      <small><i data-lucide="sparkles"></i>${item.feedMatch?.reasons?.[0] || "Recomendado pela NEXO"}</small>
+      <button class="nexo-feed-main-cta" type="button" data-action="${action}" ${ctaData}>${nexoFeedCta(item)}<i data-lucide="arrow-right"></i></button>
+    </div>
+    <div class="nexo-feed-actions" aria-label="Acoes do feed">
+      <button type="button" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
+      <button type="button" data-action="nexo-feed-save" data-feed-item-id="${item.id}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>Salvar</span></button>
+      <button type="button" data-action="nexo-feed-share" data-feed-item-id="${item.id}" aria-label="Compartilhar"><i data-lucide="send"></i><span>Enviar</span></button>
+      <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}" aria-label="Abrir perfil"><i data-lucide="user-round"></i><span>Perfil</span></button>
+      <button type="button" data-action="nexo-feed-plan" data-feed-item-id="${item.id}" aria-label="Adicionar ao plano"><i data-lucide="plus-circle"></i><span>Plano</span></button>
+      <button type="button" data-action="nexo-feed-similar" data-feed-item-id="${item.id}" aria-label="Ver similares"><i data-lucide="shuffle"></i><span>Similar</span></button>
+      <button type="button" data-action="nexo-feed-hide" data-feed-item-id="${item.id}" aria-label="Nao tenho interesse"><i data-lucide="eye-off"></i><span>Ocultar</span></button>
+    </div>
+  </article>`;
+}
+
+function nexoFeedDetailPanel(item) {
+  return `<div class="nexo-feed-detail-card" data-feed-detail="${item.id}">
+    <span>NEXO entende</span>
+    <strong>${item.title}</strong>
+    <p>${item.feedMatch?.reasons?.join(". ") || "Recomendacao baseada no seu perfil musical."}</p>
+    <ul>
+      <li><i data-lucide="radio"></i>${item.category}</li>
+      <li><i data-lucide="activity"></i>${item.priceLabel || "Plano sugerido"}</li>
+      <li><i data-lucide="badge-check"></i>${item.verified ? "Verificado" : "Novo na plataforma"}</li>
+    </ul>
+  </div>`;
+}
+
+function renderNexoFeed() {
+  const items = getRankedNexoFeed();
+  const first = items[0];
+  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
+  const profile = getMusicProfile() || createDefaultMusicProfile();
+  appView.innerHTML = `<section class="nexo-feed-page" aria-label="NEXO Feed">
+    <aside class="nexo-feed-rail">
+      <span>NEXO Feed</span>
+      <h1>Seu For You musical.</h1>
+      <p>O feed aprende com seus plays, saves e escolhas para recomendar beats, profissionais e solucoes para seu proximo lancamento.</p>
+      <div class="nexo-feed-mini-profile">
+        <strong>${musicProfileSummary(profile)}</strong>
+        <small>${profile.objective || "Receber orientacao da IA"}</small>
+      </div>
+      <button type="button" data-action="start-nexo-match"><i data-lucide="sparkles"></i>Personalizar feed</button>
+    </aside>
+    <main class="nexo-feed-stream" id="nexoFeedStream">
+      ${items.map(nexoFeedCard).join("")}
+    </main>
+    <aside class="nexo-feed-context" id="nexoFeedContext">
+      ${first ? nexoFeedDetailPanel(first) : ""}
+      <div class="nexo-feed-signal-card">
+        <span>Sinais locais</span>
+        <strong>${readFeedList(NEXO_FEED_EVENTS_KEY).length}</strong>
+        <p>eventos de personalizacao salvos neste dispositivo.</p>
+        <small>Preferencias: ${preferredFeedEntries(taste.genres, 3).join(", ") || "em aprendizado"}</small>
+      </div>
+    </aside>
+  </section>`;
+}
+
+function setActiveNexoFeedCard(card) {
+  if (!card) return;
+  document.querySelectorAll(".nexo-feed-card").forEach((item) => item.classList.toggle("is-active", item === card));
+  const item = getRankedNexoFeed(20).find((entry) => entry.id === card.dataset.feedItemId) || feedItemForEvent(card.dataset.feedItemId);
+  const context = document.querySelector("#nexoFeedContext");
+  if (context && item) {
+    context.querySelector(".nexo-feed-detail-card")?.remove();
+    context.insertAdjacentHTML("afterbegin", nexoFeedDetailPanel(item));
+    lucide.createIcons();
+  }
+}
+
+function setupNexoFeedObservers() {
+  if (nexoFeedObserver) nexoFeedObserver.disconnect();
+  nexoFeedTimers.forEach((timers) => timers.forEach(clearTimeout));
+  nexoFeedTimers.clear();
+  const cards = [...document.querySelectorAll(".nexo-feed-card")];
+  if (!cards.length) return;
+  nexoFeedObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const card = entry.target;
+      const id = card.dataset.feedItemId;
+      if (!id) return;
+      if (entry.isIntersecting && entry.intersectionRatio >= .62) {
+        setActiveNexoFeedCard(card);
+        if (!card.dataset.impressed) {
+          writeNexoFeedEvent(id, "impression");
+          writeNexoFeedEvent(id, "view_start");
+          card.dataset.impressed = "true";
+        }
+        const timers = [
+          setTimeout(() => writeNexoFeedEvent(id, "view_25", { watchTimeMs: 11000 }), 1100),
+          setTimeout(() => writeNexoFeedEvent(id, "view_50", { watchTimeMs: 22000 }), 2400),
+          setTimeout(() => writeNexoFeedEvent(id, "view_75", { watchTimeMs: 33000 }), 4200),
+        ];
+        nexoFeedTimers.set(id, timers);
+      } else if (entry.intersectionRatio < .28 && nexoFeedTimers.has(id)) {
+        nexoFeedTimers.get(id).forEach(clearTimeout);
+        nexoFeedTimers.delete(id);
+        if (card.dataset.impressed && !card.dataset.completed) writeNexoFeedEvent(id, "skip_fast", { watchTimeMs: 1200 });
+      }
+    });
+  }, { threshold: [.25, .62, .9] });
+  cards.forEach((card) => nexoFeedObserver.observe(card));
+  setActiveNexoFeedCard(cards[0]);
+}
+
 function musicProfileSummary(profile = getMusicProfile()) {
   const baseProfile = profile || createDefaultMusicProfile();
   return `${asArray(baseProfile.genres).slice(0, 3).join(", ")} - ${asArray(baseProfile.vibes).slice(0, 2).join(", ")}`;
@@ -4700,6 +5127,7 @@ function hydrateView() {
   renderAiPlan();
   setupAutoScrollRows();
   setupScrollReveals();
+  setupNexoFeedObservers();
   applyTranslations();
   lucide.createIcons();
   setTimeout(() => appView.classList.remove("route-slide-in", "route-slide-left"), 620);
@@ -4730,7 +5158,10 @@ function renderRoute() {
     hydrateView();
     return;
   }
-  if (route === "feed" || route === "ia") {
+  if (route === "feed") {
+    renderNexoFeed();
+  }
+  if (route === "ia") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
   }
@@ -5423,6 +5854,12 @@ document.addEventListener("click", (event) => {
   }
   if (!target) return;
   const action = target.dataset.action;
+  const feedHost = target.closest(".nexo-feed-card");
+  if (feedHost && action && !action.startsWith("nexo-feed-")) {
+    const feedItemId = feedHost.dataset.feedItemId;
+    const feedItem = feedItemForEvent(feedItemId);
+    writeNexoFeedEvent(feedItemId, action === "buy" ? "purchase_intent" : "click_cta", { item: feedItem });
+  }
   if (action === "close-modal") {
     closeModal();
     closeMusicPreferenceQuiz();
@@ -5514,6 +5951,62 @@ document.addEventListener("click", (event) => {
       lucide.createIcons();
     }
     return;
+  }
+  if (action === "nexo-feed-play") {
+    const item = findBeat(target.dataset.id);
+    pauseTopBeat({ quiet: true });
+    appState.playing = item.id;
+    updateMiniPlayer(item);
+    document.querySelector(".mini-player")?.classList.add("is-playing");
+    writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+    return;
+  }
+  if (action?.startsWith("nexo-feed-")) {
+    const itemId = target.dataset.feedItemId;
+    const item = feedItemForEvent(itemId);
+    if (!item) return;
+    const eventMap = {
+      "nexo-feed-like": "like",
+      "nexo-feed-save": "save",
+      "nexo-feed-share": "share",
+      "nexo-feed-profile": "open_profile",
+      "nexo-feed-plan": "add_to_plan",
+      "nexo-feed-hide": "not_interested",
+      "nexo-feed-similar": "view_similar",
+    };
+    writeNexoFeedEvent(itemId, eventMap[action] || "click_cta", { item });
+    if (action === "nexo-feed-like" || action === "nexo-feed-save" || action === "nexo-feed-plan") {
+      target.classList.toggle("is-active");
+      return;
+    }
+    if (action === "nexo-feed-share") {
+      navigator.clipboard?.writeText(`${location.origin}${location.pathname}#feed`);
+      target.classList.add("is-active");
+      return;
+    }
+    if (action === "nexo-feed-profile") {
+      if (item.type === "professional") openProfessionalProfile(item.metadata?.professionalName || item.title);
+      else if (item.creatorName && item.creatorName !== "NEXO IA" && item.creatorName !== "Curadoria ANSEND") openProfessionalProfile(item.creatorName);
+      else location.hash = "produtores";
+      return;
+    }
+    if (action === "nexo-feed-hide") {
+      const hidden = new Set(readFeedList(NEXO_FEED_NOT_INTERESTED_KEY));
+      hidden.add(itemId);
+      localStorage.setItem(NEXO_FEED_NOT_INTERESTED_KEY, JSON.stringify([...hidden]));
+      renderNexoFeed();
+      hydrateView();
+      return;
+    }
+    if (action === "nexo-feed-similar") {
+      const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
+      taste.categories = taste.categories || {};
+      taste.categories[item.category] = (taste.categories[item.category] || 0) + 8;
+      localStorage.setItem(NEXO_FEED_TASTE_KEY, JSON.stringify(taste));
+      renderNexoFeed();
+      hydrateView();
+      return;
+    }
   }
   if (target.dataset.route && target.tagName === "BUTTON") location.hash = target.dataset.route;
   if (action === "play-catalog") {
