@@ -12639,18 +12639,29 @@ body.onboarding-open {
 .nexo-feed-page {
   --feed-orange: #ff6a00;
   --feed-green: #12d66f;
-  min-height: calc(100vh - 74px);
+  height: calc(100vh - 64px) !important;
+  min-height: calc(100vh - 64px) !important;
+  max-height: calc(100vh - 64px) !important;
   width: 100%;
   margin: 0;
-  padding: clamp(18px, 2.5vw, 36px);
+  padding: 16px clamp(18px, 2.5vw, 36px) !important;
   display: grid;
   grid-template-columns: minmax(210px, 280px) minmax(420px, 640px) minmax(250px, 340px);
   gap: clamp(18px, 2.2vw, 34px);
-  align-items: start;
+  align-items: stretch !important;
   color: #f5f5f5;
   background:
     radial-gradient(circle at 50% 20%, rgba(255, 106, 0, .1), transparent 28%),
     linear-gradient(180deg, #000 0%, #050505 48%, #000 100%);
+  overflow: hidden !important;
+}
+
+/* Force body overflow hidden and hide footer on NEXO Feed page */
+body:has(.nexo-feed-page) {
+  overflow: hidden !important;
+}
+body:has(.nexo-feed-page) .footer {
+  display: none !important;
 }
 
 .nexo-feed-rail,
@@ -12734,12 +12745,13 @@ body.onboarding-open {
 }
 
 .nexo-feed-stream {
-  height: calc(100vh - 94px);
+  height: 100% !important;
+  max-height: 100% !important;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   display: grid;
-  gap: 18px;
-  padding: 0 4px 16px;
+  gap: 0px !important;
+  padding: 0 !important;
   scrollbar-width: none;
 }
 
@@ -12749,13 +12761,15 @@ body.onboarding-open {
 
 .nexo-feed-card {
   position: relative;
-  min-height: calc(100vh - 112px);
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
   overflow: hidden;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: grid;
   align-content: end;
-  border-radius: 32px;
+  border-radius: 24px;
   background: #050505;
   border: 1px solid rgba(255, 255, 255, .075);
   box-shadow: 0 26px 80px rgba(0, 0, 0, .52);
@@ -13000,7 +13014,9 @@ body.onboarding-open {
   .nexo-feed-page {
     grid-template-columns: 1fr;
     padding: 0;
-    min-height: calc(100vh - 70px);
+    height: calc(100vh - 64px) !important;
+    min-height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
   }
 
   .nexo-feed-rail {
@@ -13016,13 +13032,16 @@ body.onboarding-open {
   }
 
   .nexo-feed-stream {
-    height: calc(100vh - 86px);
-    padding: 0;
-    gap: 0;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 0 !important;
+    gap: 0px !important;
   }
 
   .nexo-feed-card {
-    min-height: calc(100vh - 86px);
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0;
     border-left: 0;
     border-right: 0;
@@ -13330,21 +13349,24 @@ body.onboarding-open {
 
 @media (max-width: 820px) {
   .nexo-feed-page {
-    min-height: calc(100vh - 70px);
-    padding: 0 0 72px;
+    height: calc(100vh - 64px) !important;
+    min-height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
+    padding: 0 0 72px !important;
   }
 
   .nexo-feed-stream {
     width: 100%;
-    height: calc(100vh - 70px);
-    padding: 0;
-    gap: 0;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 0 !important;
+    gap: 0px !important;
   }
 
   .nexo-feed-card {
-    height: calc(100vh - 70px);
-    min-height: calc(100vh - 70px);
-    max-height: none;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0;
     border-left: 0;
     border-right: 0;

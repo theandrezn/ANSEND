@@ -6439,6 +6439,37 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// Intercept wheel/scroll & arrow keys to navigate the vertical NEXO feed (Instagram Reels style)
+let lastNexoFeedScrollTime = 0;
+
+window.addEventListener("wheel", (e) => {
+  const stream = document.querySelector("#nexoFeedStream");
+  if (!stream) return;
+
+  e.preventDefault();
+
+  const now = Date.now();
+  if (now - lastNexoFeedScrollTime < 500) return;
+
+  if (Math.abs(e.deltaY) > 8) {
+    lastNexoFeedScrollTime = now;
+    scrollNexoFeed(e.deltaY > 0 ? 1 : -1);
+  }
+}, { passive: false });
+
+window.addEventListener("keydown", (e) => {
+  const stream = document.querySelector("#nexoFeedStream");
+  if (!stream) return;
+
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastNexoFeedScrollTime < 500) return;
+    lastNexoFeedScrollTime = now;
+    scrollNexoFeed(e.key === "ArrowDown" ? 1 : -1);
+  }
+});
+
 setLocale(detectLocale(), { manual: false });
 detectLocaleWithGeo()
   .then((locale) => setLocale(locale, { manual: false }))
