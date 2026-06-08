@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ANSEND - O Marketplace Inteligente da música</title>
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="ANSEND - O Marketplace Inteligente da música, com NEXO IA, beats, serviços e profissionais." />
+    <link rel="icon" type="image/png" href="assets/ansend-logo-square.png" />
+    <link rel="apple-touch-icon" href="assets/ansend-logo-square.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260608-cadastrar-critical" />
+  </head>
+  <body>
+    <!-- Ambient Background Glow -->
+    <div class="ambient-glow" aria-hidden="true">
+      <div class="glow-blob glow-1"></div>
+      <div class="glow-blob glow-2"></div>
+      <div class="glow-blob glow-3"></div>
+    </div>
+
+    <aside class="sidebar" aria-label="Navegação principal">
+      <a class="brand" href="#feed" data-route="feed" aria-label="ANSEND início">
+        <img class="brand-logo-square" src="assets/ansend-logo-square.png" alt="ANSEND" />
+        <span>ANSEND</span>
+      </a>
+
+      <nav class="nav-menu">
+        <a class="nav-link is-active" data-route="feed" href="#feed">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5.5 10.5L12 4.5L18.5 10.5V18.5C18.5 19.6 17.6 20.5 16.5 20.5H7.5C6.4 20.5 5.5 19.6 5.5 18.5V10.5Z" />
+            <circle cx="12" cy="14" r="1.5" fill="currentColor" />
+          </svg>
+          <span>Home</span>
+        </a>
+        <a class="nav-link" data-route="nexo-feed" href="#nexo-feed">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 6.5H14.5" />
+            <path d="M5 11.5H12.5" />
+            <path d="M5 16.5H10.5" />
+            <path d="M17 5.5V15.5C17 17.2 15.6 18.5 13.9 18.5C12.5 18.5 11.5 17.7 11.5 16.6C11.5 15.4 12.7 14.5 14.2 14.5C15.2 14.5 16.1 14.8 17 15.4" />
+            <path d="M17 5.5L20.5 6.8V9.8L17 8.5" />
+          </svg>
+          <span>Feed</span>
+        </a>
+        <a class="nav-link" data-route="ia" href="#ia">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="3" r="1" fill="currentColor" />
+            <circle cx="12" cy="21" r="1" fill="currentColor" />
+            <circle cx="3" cy="12" r="1" fill="currentColor" />
+            <circle cx="21" cy="12" r="1" fill="currentColor" />
+            <path d="M12 7.5C12 9.8 10.2 12 7.5 12C10.2 12 12 14.2 12 16.5C12 14.2 13.8 12 16.5 12C13.8 12 12 9.8 12 7.5Z" />
+            <path d="M12 4.5V6.5M12 17.5V19.5M4.5 12H6.5M17.5 12H19.5" opacity="0.5" />
+          </svg>
+          <span>NEXO IA</span>
+        </a>
+        <a class="nav-link" data-route="explorar" href="#explorar">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M14.5 9.5L11 11L9.5 14.5L13 13L14.5 9.5Z" />
+            <line x1="12" y1="3.5" x2="12" y2="4.5" />
+            <line x1="12" y1="19.5" x2="12" y2="20.5" />
+            <line x1="3.5" y1="12" x2="4.5" y2="12" />
+            <line x1="19.5" y1="12" x2="20.5" y2="12" />
+          </svg>
+          <span>Explorar</span>
+        </a>
+        <a class="nav-link" data-route="favoritos" href="#favoritos">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20.5C12 20.5 4.5 14.2 4.5 8.5C4.5 5.5 6.5 3.5 9.5 3.5C11.2 3.5 11.8 4.5 12 5C12.2 4.5 12.8 3.5 14.5 3.5C17.5 3.5 19.5 5.5 19.5 8.5C19.5 14.2 12 20.5 12 20.5Z" />
+          </svg>
+          <span>Favoritos</span>
+        </a>
+        <a class="nav-link" data-route="compras" href="#compras">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8.5H18V18.5C18 19.6 17.1 20.5 16 20.5H8C6.9 20.5 6 19.6 6 18.5V8.5Z" />
+            <path d="M9.5 8.5V6C9.5 4.6 10.6 3.5 12 3.5C13.4 3.5 14.5 4.6 14.5 6V8.5" />
+            <path d="M9.5 12.5C9.5 13.9 10.6 15 12 15C13.4 15 14.5 13.9 14.5 12.5" />
+          </svg>
+          <span>Pedidos</span>
+        </a>
+        <a class="nav-link" data-route="biblioteca" href="#biblioteca">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5.5" y="4.5" width="3" height="15.5" rx="1.5" />
+            <rect x="10.5" y="4.5" width="3" height="15.5" rx="1.5" />
+            <rect x="14.8" y="4.8" width="3" height="15.5" rx="1.5" transform="rotate(15 14.8 4.8)" />
+            <line x1="3.5" y1="20" x2="20.5" y2="20" />
+          </svg>
+          <span>Biblioteca</span>
+        </a>
+        <a class="nav-link" data-route="cadastrar" href="#cadastrar">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3.5V15.5" />
+            <path d="M7.5 8L12 3.5L16.5 8" />
+            <path d="M5 14.5V18.5C5 19.6 5.9 20.5 7 20.5H17C18.1 20.5 19 19.6 19 18.5V14.5" />
+            <path d="M8.5 17.5H15.5" />
+          </svg>
+          <span>Lançar música</span>
+        </a>
+        <a class="nav-link" data-route="produtores" href="#produtores">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="7.5" cy="8.5" r="3.5" />
+            <path d="M2.5 18.5C2.5 15.5 5 14 7.5 14C9.5 14 11 15 12 16.5" />
+            <circle cx="16.5" cy="8.5" r="3.5" />
+            <path d="M21.5 18.5C21.5 15.5 19 14 16.5 14C14.5 14 13 15 12 16.5" />
+            <path d="M10.5 17.5C11 18 13 18 13.5 17.5" stroke-width="2" />
+          </svg>
+          <span>Profissionais</span>
+        </a>
+        <a class="nav-link" data-route="perfil" href="#perfil">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="12" cy="9.5" r="2.8" />
+            <path d="M6.5 17.5C7.8 15.2 10.1 14 12 14C13.9 14 16.2 15.2 17.5 17.5" />
+          </svg>
+          <span>Meu perfil</span>
+        </a>
+        <a class="nav-link" data-route="configuracoes" href="#configuracoes">
+          <svg class="ansend-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span>Configurações</span>
+        </a>
+      </nav>
+
+      <div class="seller-mini">
+        <strong>Venda seus serviços</strong>
+        <span>Abra sua loja</span>
+        <button type="button" data-action="seller">Começar</button>
+      </div>
+    </aside>
+
+    <div class="page">
+      <header class="topbar">
+        <button class="icon-btn menu-toggle" type="button" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
+        <a class="mobile-brand" href="#feed" data-route="feed" aria-label="ANSEND início">
+          <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+        </a>
+        <form class="search" role="search">
+          <label class="sr-only" for="search">Buscar</label>
+          <i data-lucide="search"></i>
+          <input id="search" type="search" placeholder="Buscar beats, artistas, serviços, BPM ou vibe" />
+        </form>
+        <div class="top-icons">
+          <button class="icon-btn" type="button" data-action="notifications" aria-label="Notificações"><i data-lucide="bell"></i></button>
+          <button class="icon-btn" type="button" data-route="favoritos" aria-label="Favoritos"><i data-lucide="heart"></i></button>
+          <button class="icon-btn" type="button" data-route="carrinho" aria-label="Carrinho"><i data-lucide="shopping-cart"></i></button>
+          <button class="icon-btn" type="button" data-route="perfil" aria-label="Conta"><i data-lucide="user-round"></i></button>
+          <button class="avatar-btn" type="button" data-route="perfil" aria-label="Avatar do perfil">
+            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80" alt="" />
+          </button>
+        </div>
+      </header>
+
+      <main class="feed" id="appView">
+        <section class="playlist-hero an-theater-hero ai-hero" aria-label="NEXO IA - Diagnóstico Musical Inteligente">
+          <div class="hero-particles" aria-hidden="true"></div>
+          <div class="hero-eq" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="hero-wave-scene" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+
+          <div class="ai-hero-layout">
+            <div class="an-hero-copy">
+              <div class="an-hero-brand">
+                <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+              </div>
+
+              <div class="an-kicker">
+                <i data-lucide="sparkles"></i>
+                <span>NEXO IA</span>
+              </div>
+
+              <h1 class="hero-morph-title">
+                <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">ANSEND</span>
+                <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
+                  <span class="hero-morph-text">O marketplace inteligente da m&uacute;sica</span>
+                </strong>
+              </h1>
+              <p>Descreva sua música, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lançar e divulgar.</p>
+
+              <form class="ai-diagnostic-form" aria-label="Diagnóstico Musical NEXO IA">
+                <label class="sr-only" for="aiPrompt">Diagnóstico Musical NEXO IA</label>
+                <div class="ai-input-shell">
+                  <i data-lucide="bot"></i>
+                  <textarea id="aiPrompt" name="aiPrompt" rows="3" placeholder="Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente..."></textarea>
+                  <button class="ai-inline-submit" type="submit" aria-label="Enviar para NEXO IA"><i data-lucide="arrow-right"></i></button>
+                </div>
+                <div class="ai-chip-row" aria-label="Atalhos do diagnóstico">
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma ideia de música e preciso transformar em lançamento.">Tenho uma ideia</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma letra de trap e preciso encontrar beat, capa e produção.">Tenho uma letra</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma demo gravada e quero finalizar com mixagem, master e capa.">Tenho uma demo</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Quero lançar no Spotify com distribuição, curadoria e divulgação.">Quero lançar</button>
+                  <button type="button" data-action="ai-chip" data-prompt="Preciso divulgar minha música com curadoria, marketing musical e tráfego.">Preciso divulgar</button>
+                </div>
+                <div class="an-hero-actions ai-actions">
+                  <button class="an-primary" type="submit">Gerar meu plano <i data-lucide="arrow-right"></i></button>
+                  <button class="an-secondary" type="button" data-action="ai-professionals">Explorar serviços <i data-lucide="users-round"></i></button>
+                </div>
+              </form>
+
+              <div class="an-benefits" aria-label="Benefícios">
+                <span><i data-lucide="shield-check"></i>Pagamento protegido</span>
+                <span><i data-lucide="badge-check"></i>Profissionais avaliados</span>
+                <span><i data-lucide="brain-circuit"></i>Recomendações por IA</span>
+              </div>
+            </div>
+
+            <div class="an-hero-art top-beat-showcase">
+              <article class="top-beat-card" aria-label="Beat top 1 do dia">
+                <div class="top-beat-cover">
+                  <img src="assets/top-beat-psiiiko-cover.jpg" alt="Capa do beat PSIIIKO" />
+                  <button class="top-beat-play" type="button" data-action="hero-beat-play" aria-label="Tocar beat top 1 do dia">
+                    <i data-lucide="play"></i>
+                  </button>
+                </div>
+                <div class="top-beat-copy">
+                  <span>Top 1 do dia</span>
+                  <strong>PSIIIKO</strong>
+                  <p>Ryu, The Runner x DESSIIIK Type Beat</p>
+                </div>
+                <div class="top-beat-meter" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </article>
+            </div>
+
+            <aside class="hero-playlist-card ai-map-card" aria-label="Mapa do lançamento">
+              <span>MAPA DO LANÇAMENTO</span>
+              <strong>Diagnóstico Musical IA</strong>
+              <p>Conte sua ideia e receba uma ordem clara de execução.</p>
+              <ol class="release-map" id="releaseMap">
+                <li><i data-lucide="disc-3"></i><span>Produção</span><b>Beatmaker</b></li>
+                <li><i data-lucide="image"></i><span>Capa</span><b>Designer</b></li>
+                <li><i data-lucide="upload-cloud"></i><span>Distribuição</span><b>Lançamento</b></li>
+                <li><i data-lucide="list-music"></i><span>Curadoria</span><b>Playlists</b></li>
+                <li><i data-lucide="megaphone"></i><span>Divulgação</span><b>Marketing</b></li>
+              </ol>
+              <div class="ai-output" id="aiOutput">
+                <small>Prévia do plano</small>
+                <ul>
+                  <li>Beatmaker recomendado</li>
+                  <li>Designer recomendado</li>
+                  <li>Produtor musical</li>
+                  <li>Curador</li>
+                  <li>Marketing musical</li>
+                </ul>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <div class="nexo-blocks-container">
+          <section class="home-section featured-preview-section trending-catalogs-section" aria-labelledby="featuredPreviewTitle">
+            <div class="section-head clean-head">
+              <div><h2 id="featuredPreviewTitle"><i data-lucide="flame"></i>Catálogos em alta</h2><p>Beats, packs e referências subindo agora na ANSEND.</p></div>
+              <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
+            </div>
+            <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
+          </section>
+
+          <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
+            <div class="section-head clean-head">
+              <div><h2 id="quickActionsTitle"><i data-lucide="zap"></i>Qual seu próximo passo?</h2><p>Escolha uma ação e a ANSEND guia o caminho certo.</p></div>
+            </div>
+            <div class="quick-action-grid" id="quickActionGrid"></div>
+          </section>
+
+          <section class="home-section nexo-recommendations-section" aria-labelledby="nexoRecommendationsTitle">
+            <div class="section-head clean-head">
+              <div><h2 id="nexoRecommendationsTitle"><i data-lucide="sparkles"></i>Recomendado pela NEXO</h2><p>Seis sugestões principais para resolver seu lançamento agora.</p></div>
+              <a class="section-link" href="#explorar" data-route="explorar">Ver mais</a>
+            </div>
+            <div class="nexo-recommendation-grid" id="nexoRecommendationGrid"></div>
+          </section>
+        </div>
+
+        <section class="home-section category-section" aria-labelledby="categoryTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="categoryTitle"><i data-lucide="layout-grid"></i>Explore por categoria</h2><p>Os cinco pilares do marketplace musical da ANSEND.</p></div>
+          </div>
+          <div class="category-grid" id="categoryGrid"></div>
+        </section>
+
+        <section class="home-section smart-combos-section" aria-labelledby="smartCombosTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="smartCombosTitle"><i data-lucide="boxes"></i>Combos para acelerar seu lançamento</h2><p>Pacotes inteligentes para sair da ideia até a divulgação.</p></div>
+          </div>
+          <div class="smart-combo-grid" id="smartComboGrid"></div>
+        </section>
+
+        <section class="home-section featured-professionals-section" aria-labelledby="featuredProfessionalsTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="featuredProfessionalsTitle"><i data-lucide="badge-check"></i>Produtores em destaque</h2><p>Perfis verificados para seguir</p></div>
+            <div class="arrow-pair">
+              <button type="button" data-action="scroll-prev" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
+              <button type="button" data-action="scroll-next" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
+            </div>
+            <a class="section-link" href="#produtores" data-route="produtores">Ver profissionais</a>
+          </div>
+          <div class="featured-professional-grid" id="featuredProfessionals"></div>
+        </section>
+
+        <section class="home-section recent-activity-section" aria-labelledby="recentActivityTitle">
+          <div class="section-head clean-head">
+            <div><h2 id="recentActivityTitle"><i data-lucide="clock-3"></i>Lista recente</h2><p>Ranking de faixas adicionadas agora</p></div>
+            <a class="section-link airbit-view-all" href="#explorar" data-route="explorar">Ver tudo <i data-lucide="arrow-right"></i></a>
+          </div>
+          <div class="track-list home-track-list" id="recentActivity"></div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-brand"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND" /><span>Ecossistema musical inteligente para artistas e profissionais.</span></div>
+        <div class="footer-links-grid" aria-label="Links institucionais ANSEND">
+          <nav><strong>Plataforma</strong><a href="#feed">Início</a><a href="#ia">NEXO IA</a><a href="#explorar">Explorar</a><a href="#servicos">Serviços</a><a href="#produtores">Profissionais</a></nav>
+          <nav><strong>Para artistas</strong><a href="#como-funciona">Como contratar</a><a href="#como-funciona">Criar briefing</a><a href="#termos-de-licenca-musical">Licenças musicais</a><a href="#pagamentos-reembolsos">Pagamento protegido</a><a href="#central-ansend">Mapa do lançamento</a></nav>
+          <nav><strong>Para profissionais</strong><a href="#vendedor">Vender na ANSEND</a><a href="#diretrizes-profissionais">Diretrizes profissionais</a><a href="#perfil">Criar loja</a><a href="#pagamentos-reembolsos">Receber pagamentos</a><a href="#seguranca">Reputação</a></nav>
+          <nav><strong>Legal</strong><a href="#termos-de-uso">Termos de Uso</a><a href="#politica-de-privacidade">Política de Privacidade</a><a href="#politica-de-cookies">Política de Cookies</a><a href="#termos-de-licenca-musical">Termos de Licença Musical</a><a href="#pagamentos-reembolsos">Pagamentos e Reembolsos</a><a href="#direitos-autorais">Direitos Autorais</a></nav>
+          <nav><strong>Confiança</strong><a href="#seguranca">Segurança na ANSEND</a><a href="#suporte">Suporte</a><a href="#suporte">Denunciar problema</a><a href="#central-legal">Central Legal</a><a href="#suporte">Contato</a></nav>
+        </div>
+        <div class="socials"><a href="#" aria-label="Instagram"><i data-lucide="instagram"></i></a><a href="#" aria-label="Youtube"><i data-lucide="youtube"></i></a></div>
+      </footer>
+
+      <aside class="mini-player is-closed" aria-label="Player atual">
+        <button class="mini-close" type="button" data-action="close-mini-player" aria-label="Fechar player"><i data-lucide="x"></i></button>
+        <div class="mini-waveform" role="slider" tabindex="0" data-action="seek-player" aria-label="Ajustar tempo da música" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="mini-current">0:00</span>
+          <div class="mini-wave-bars"></div>
+          <span class="mini-duration">2:45</span>
+        </div>
+        <div class="mini-track">
+          <img src="assets/catalog-cover-07.webp" alt="" />
+          <div><strong>Neon Alley</strong><span>prod. Viana · 98 BPM</span></div>
+        </div>
+        <div class="mini-controls" aria-label="Controles do player">
+          <button type="button" data-action="favorite-current" aria-label="Favoritar beat atual"><i data-lucide="heart"></i></button>
+          <button type="button" data-action="prev-track" aria-label="Faixa anterior"><i data-lucide="skip-back"></i></button>
+          <button class="mini-play-button" type="button" data-action="mini-play" aria-label="Tocar"><i data-lucide="play"></i></button>
+          <button type="button" data-action="next-track" aria-label="Próxima faixa"><i data-lucide="skip-forward"></i></button>
+          <button type="button" data-action="queue" aria-label="Fila"><i data-lucide="list-music"></i></button>
+        </div>
+        <div class="mini-tools" aria-label="Ferramentas do beat">
+          <button type="button" data-action="edit-beat"><i data-lucide="gauge"></i><span>Edit</span></button>
+          <button type="button" data-action="loop-beat"><i data-lucide="repeat-2"></i><span>Loop</span></button>
+          <button type="button" data-action="lyrics"><i data-lucide="scroll-text"></i><span>Lyrics</span></button>
+          <button type="button" data-action="volume"><i data-lucide="volume-2"></i></button>
+          <button type="button" data-action="more-player"><i data-lucide="ellipsis"></i></button>
+          <button class="mini-buy" type="button" data-action="buy-current"><i data-lucide="shopping-bag"></i><span>$44.95</span></button>
+        </div>
+      </aside>
+      <audio id="topBeatAudio" src="assets/top-beat-psiiiko.mp3" preload="auto"></audio>
+      <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/three@0.124.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.min.js"></script>
+    <script>
+      window.ANSEND_SUPABASE = {
+        url: "https://qxujynzqdursxaehchik.supabase.co",
+        publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",
+      };
+    </script>
+    <script src="script.js?v=20260608-route-stability-suite"></script>
+  </body>
+</html>
+
