@@ -1,0 +1,8 @@
+name = "ansend"
+compatibility_date = "2026-06-08"
+main = "src/worker.mjs"
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
