@@ -29,6 +29,7 @@ const routes = [
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
   { hash: "cadastrar", required: ["Lan", "música"], selector: ".release-fallback-page" },
   { hash: "carrinho", required: ["Carrinho"], selector: ".view-header-carrinho" },
+  { hash: "vendedor", required: ["ANSEND"], selector: ".seller-auth" },
 ];
 
 function serveStatic(req, res) {
@@ -112,8 +113,32 @@ async function run() {
         })
         .catch(() => ({ className: "", height: 0, visibleElementCount: 0 }));
       const routeSelectorVisible = await page.locator(route.selector).first().isVisible().catch(() => false);
+      await page.mouse.click(720, 360);
+      await page.waitForTimeout(1800);
+      const postClickMetrics = await page
+        .locator("#appView")
+        .evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const visibleElementCount = [...element.querySelectorAll("*")].filter((child) => {
+            const childRect = child.getBoundingClientRect();
+            const style = window.getComputedStyle(child);
+            return (
+              childRect.width > 20 &&
+              childRect.height > 20 &&
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              Number(style.opacity) > 0.05
+            );
+          }).length;
+
+          return {
+            height: Math.round(rect.height),
+            visibleElementCount,
+          };
+        })
+        .catch(() => ({ height: 0, visibleElementCount: 0 }));
       const missing = route.required.filter((text) => !bodyText.includes(text));
-      const loginGate = bodyText.includes("ACESSO ANSEND") && !["compras", "perfil", "configuracoes"].includes(route.hash);
+      const loginGate = bodyText.includes("ACESSO ANSEND") && !["compras", "perfil", "configuracoes", "vendedor"].includes(route.hash);
       const feedClassLeak = route.hash !== "feed" && appMetrics.className.split(/\s+/).includes("feed");
 
       if (
@@ -122,12 +147,15 @@ async function run() {
         loginGate ||
         appMetrics.height < 120 ||
         appMetrics.visibleElementCount < 4 ||
+        postClickMetrics.height < 120 ||
+        postClickMetrics.visibleElementCount < 4 ||
         !routeSelectorVisible ||
         feedClassLeak
       ) {
         failures.push({
           route: route.hash,
           appMetrics,
+          postClickMetrics,
           routeSelectorVisible,
           feedClassLeak,
           missing,

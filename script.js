@@ -332,7 +332,7 @@ window.ANSEND_I18N = {
   },
   setLocale: (locale) => {
     setLocale(locale, { manual: true });
-    renderRoute();
+    renderRoutePreservingAuthFocus();
   },
   detectLocale,
   detectLocaleWithGeo,
@@ -2744,8 +2744,10 @@ function setupScrollReveals() {
   const targets = document.querySelectorAll(".home-section, .scroll-kinetic-section");
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
-    target.classList.add("is-visible");
     target.style.setProperty("--reveal-delay", `${Math.min(index * 34, 170)}ms`);
+    const rect = target.getBoundingClientRect();
+    const isInViewport = rect.top < window.innerHeight * 1.08 && rect.bottom > -window.innerHeight * 0.08;
+    if (isInViewport) target.classList.add("is-visible");
   });
   if (prefersReducedMotion.matches) {
     targets.forEach((target) => target.classList.add("is-visible"));
@@ -2759,6 +2761,9 @@ function setupScrollReveals() {
     });
   }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
   targets.forEach((target) => revealObserver.observe(target));
+  window.setTimeout(() => {
+    document.querySelectorAll(".reveal-section:not(.is-visible)").forEach((target) => target.classList.add("is-visible"));
+  }, 900);
 }
 
 function decorateControls() {
@@ -2795,6 +2800,7 @@ function decorateControls() {
 decorateControls();
 const appView = document.querySelector("#appView");
 const feedTemplate = appView.innerHTML;
+let sellerAuthInteractionAt = 0;
 const routeTitles = {
   feed: ["Feed", "Sua seleção diária de playlists, beats e produtores."],
   explorar: ["Explorar", "Encontre novos sons por gênero, BPM ou produtor."],
@@ -3708,15 +3714,33 @@ function renderAuthLoading() {
   </section>`;
 }
 
+function isEditingSellerAuth() {
+  const active = document.activeElement;
+  return Boolean(active?.closest?.(".seller-auth-form"));
+}
+
+function shouldPreserveSellerAuthRoute() {
+  return Boolean(document.querySelector(".seller-auth-form")) && (isEditingSellerAuth() || Date.now() - sellerAuthInteractionAt < 4200);
+}
+
+function renderRoutePreservingAuthFocus(force = false) {
+  if (!force && shouldPreserveSellerAuthRoute()) {
+    syncAccountUi();
+    return;
+  }
+  renderRoute();
+}
+
 async function initAuth() {
   if (!supabaseClient) {
     appState.profile = localPreviewProfile();
     appState.authReady = true;
     syncAccountUi();
-    renderRoute();
+    renderRoutePreservingAuthFocus();
     return;
   }
   const { data } = await supabaseClient.auth.getSession();
+  const previousUserId = appState.authUser?.id || null;
   appState.authUser = data.session?.user || null;
   if (appState.authUser) {
     await loadProfile(appState.authUser);
@@ -3726,8 +3750,9 @@ async function initAuth() {
   }
   appState.authReady = true;
   syncAccountUi();
-  renderRoute();
+  renderRoutePreservingAuthFocus(previousUserId !== (appState.authUser?.id || null));
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    const oldUserId = appState.authUser?.id || null;
     appState.authUser = session?.user || null;
     if (appState.authUser) {
       await loadProfile(appState.authUser);
@@ -3736,7 +3761,7 @@ async function initAuth() {
       appState.profile = localPreviewProfile();
     }
     syncAccountUi();
-    renderRoute();
+    renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
   });
 }
 
@@ -5834,7 +5859,7 @@ function renderRoute() {
   document.body.dataset.route = route;
   document.body.classList.remove("release-mode");
   appView.classList.toggle("route-slide-left", routeChanged);
-  document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
+  document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
   if (!appState.authReady && authRequiredForRoute) {
     renderAuthLoading();
@@ -6511,7 +6536,15 @@ function scrollCatalog(button, direction) {
 
 const menuToggle = document.querySelector(".menu-toggle");
 menuToggle?.addEventListener("click", () => document.body.classList.toggle("menu-open"));
-window.addEventListener("hashchange", renderRoute);
+window.addEventListener("hashchange", () => renderRoutePreservingAuthFocus());
+
+document.addEventListener("pointerdown", (event) => {
+  if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
+}, true);
+
+document.addEventListener("focusin", (event) => {
+  if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
+}, true);
 
 document.querySelector(".search")?.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -6558,8 +6591,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  const routeLink = event.target.closest("[data-route]");
-  if (routeLink && routeLink !== document.body) {
+  const routeLink = event.target.closest("a[data-route], button[data-route]");
+  if (routeLink) {
     const targetRoute = routeLink.dataset.route;
     if (targetRoute === "explorar") {
       appState.query = "";
@@ -6662,7 +6695,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "set-locale") {
     setLocale(target.dataset.localeOption, { manual: true });
-    renderRoute();
+    renderRoutePreservingAuthFocus();
     showToast(appLocale.current === "pt-BR" ? "Idioma alterado para portugues" : "Language changed to English", "globe-2");
     return;
   }
@@ -7353,7 +7386,7 @@ detectLocaleWithGeo()
   .then((locale) => setLocale(locale, { manual: false }))
   .catch(() => setLocale(detectLocale(), { manual: false }))
   .finally(() => {
-    renderRoute();
+    renderRoutePreservingAuthFocus();
     initAuth();
   });
 

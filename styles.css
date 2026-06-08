@@ -291,6 +291,96 @@ body.requires-auth .seller-auth-panel {
   }
 }
 
+/* Deployment proof and permanent Home reset: white surface, ANSEND stays orange. */
+body[data-route="feed"] {
+  background: #fff !important;
+  color: #101010 !important;
+}
+
+body[data-route="feed"] .main,
+body[data-route="feed"] main,
+body[data-route="feed"] #appView,
+body[data-route="feed"] .feed {
+  background: #fff !important;
+  color: #101010 !important;
+}
+
+body[data-route="feed"] .topbar,
+body[data-route="feed"] .search,
+body[data-route="feed"] .icon-btn,
+body[data-route="feed"] .locale-switch {
+  background: rgba(255, 255, 255, .96) !important;
+  border-color: rgba(0, 0, 0, .12) !important;
+  color: #101010 !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .08) !important;
+}
+
+body[data-route="feed"] .ai-hero,
+body[data-route="feed"] .home-section,
+body[data-route="feed"] .catalog-section,
+body[data-route="feed"] .scroll-kinetic-section {
+  background: #fff !important;
+  color: #101010 !important;
+  border-color: rgba(0, 0, 0, .12) !important;
+  box-shadow: none !important;
+}
+
+body[data-route="feed"] .nexo-blocks-container,
+body[data-route="feed"] .nexo-blocks-container .home-section {
+  background: #fff !important;
+  background-image: none !important;
+}
+
+body[data-route="feed"] .ai-hero::before,
+body[data-route="feed"] .ai-hero::after,
+body[data-route="feed"] .scroll-kinetic-section::before,
+body[data-route="feed"] .scroll-kinetic-section::after,
+body[data-route="feed"] .nexo-blocks-container::before,
+body[data-route="feed"] .an-hero-bg,
+body[data-route="feed"] .hero-shader,
+body[data-route="feed"] [data-hero-shader] {
+  display: none !important;
+}
+
+body[data-route="feed"] .ai-hero *,
+body[data-route="feed"] .home-section *,
+body[data-route="feed"] .catalog-section *,
+body[data-route="feed"] .scroll-kinetic-section * {
+  color: #101010 !important;
+  text-shadow: none !important;
+}
+
+body[data-route="feed"] .hero-morph-brand,
+body[data-route="feed"] .headline-reveal-brand,
+body[data-route="feed"] .view-eyebrow,
+body[data-route="feed"] .section-eyebrow,
+body[data-route="feed"] .scroll-kinetic-hint,
+body[data-route="feed"] .ai-hero [data-lucide],
+body[data-route="feed"] .home-section [data-lucide] {
+  color: #ff6a00 !important;
+  stroke: #ff6a00 !important;
+}
+
+body[data-route="feed"] .hero-morph-title .hero-morph-text,
+body[data-route="feed"] .hero-morph-title .hero-morph-main,
+body[data-route="feed"] .headline-reveal-line:not(.headline-reveal-brand) {
+  color: #101010 !important;
+}
+
+body[data-route="feed"] .ai-diagnostic-form,
+body[data-route="feed"] .top-beat-showcase,
+body[data-route="feed"] .beat-card,
+body[data-route="feed"] .playlist-card,
+body[data-route="feed"] .category-card,
+body[data-route="feed"] .nexo-recommendation-card,
+body[data-route="feed"] .professional-card,
+body[data-route="feed"] .quick-action-card {
+  background: #fff !important;
+  border-color: rgba(0, 0, 0, .14) !important;
+  color: #101010 !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .08) !important;
+}
+
 @media (max-width: 720px) {
   body.requires-auth .feed {
     padding: 0;
@@ -1261,9 +1351,9 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   overflow: hidden;
 }
 .reveal-section {
-  opacity: 0;
+  opacity: .94;
   transform: translate3d(0, 16px, 0) scale(.998);
-  filter: blur(2px);
+  filter: blur(.6px);
   transition:
     opacity .6s cubic-bezier(.16, 1, .3, 1) var(--reveal-delay, 0ms),
     transform .6s cubic-bezier(.16, 1, .3, 1) var(--reveal-delay, 0ms),
@@ -1276,13 +1366,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .catalog-section.reveal-section:nth-of-type(even),
 .view-grid.reveal-section,
 .producer-grid.reveal-section {
-  transform: translate3d(24px, 14px, 0) scale(.996);
+  transform: translate3d(18px, 16px, 0) scale(.998);
 }
 .catalog-section.reveal-section:nth-of-type(odd),
 .purchase-list.reveal-section,
 .settings-panel.reveal-section,
 .seller-auth.reveal-section {
-  transform: translate3d(-18px, 14px, 0) scale(.996);
+  transform: translate3d(-18px, 16px, 0) scale(.998);
 }
 .reveal-section.is-visible {
   opacity: 1;
