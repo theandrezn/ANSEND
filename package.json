@@ -7,7 +7,8 @@
     "build": "node scripts/build-worker.js",
     "deploy": "npm run build && wrangler deploy",
     "test:routes": "node tests/route-stability-check.js",
-    "test:auth-focus": "node tests/auth-focus-check.js"
+    "test:auth-focus": "node tests/auth-focus-check.js",
+    "test:paint-layer": "node tests/paint-layer-check.js"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

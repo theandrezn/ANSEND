@@ -756,6 +756,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 
 .page {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   margin-left: 86px;
   overflow-x: hidden;
