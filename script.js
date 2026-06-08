@@ -5808,10 +5808,12 @@ function hydrateView() {
   renderAiPlan();
   setupAutoScrollRows();
   setupHomeScrollAnimation();
-  setupScrollReveals();
   setupNexoFeedObservers();
   applyTranslations();
   lucide.createIcons();
+  // Defer reveal setup to next frame so DOM layout is computed after innerHTML changes.
+  // This ensures getBoundingClientRect() returns accurate positions for viewport checks.
+  requestAnimationFrame(() => setupScrollReveals());
   setTimeout(() => appView.classList.remove("route-slide-in", "route-slide-left"), 620);
 }
 
@@ -6557,7 +6559,7 @@ document.addEventListener("keydown", (event) => {
 
 document.addEventListener("click", (event) => {
   const routeLink = event.target.closest("[data-route]");
-  if (routeLink) {
+  if (routeLink && routeLink !== document.body) {
     const targetRoute = routeLink.dataset.route;
     if (targetRoute === "explorar") {
       appState.query = "";
