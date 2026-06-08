@@ -3650,8 +3650,11 @@ async function loadProfile(user) {
 
 function syncAccountUi() {
   document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
+  const route = currentRoute();
+  const authRequiredForRoute = !hasAccountAccess() && protectedRoute(route);
   document.body.classList.toggle("is-authenticated", hasAccountAccess());
-  document.body.classList.toggle("requires-auth", !hasAccountAccess());
+  document.body.classList.toggle("requires-auth", authRequiredForRoute);
+  document.body.dataset.route = route;
   const avatar = document.querySelector(".avatar-btn");
   const profile = activeProfile();
   if (avatar && profile?.full_name) {
@@ -3664,7 +3667,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return !["vendedor", ...institutionalRoutes].includes(route);
+  return !["vendedor", "cadastrar", ...institutionalRoutes].includes(route);
 }
 
 function renderAuthLoading() {
@@ -3686,6 +3689,8 @@ async function initAuth() {
   if (appState.authUser) {
     await loadProfile(appState.authUser);
     await loadCatalogItems();
+  } else {
+    appState.profile = localPreviewProfile();
   }
   appState.authReady = true;
   syncAccountUi();
@@ -5222,6 +5227,69 @@ function renderMusicUpload() {
   </section>`;
 }
 
+function renderMusicUploadFallback(error) {
+  const display = profileDisplayData(activeProfile());
+  const errorNote = error?.message
+    ? `<small class="release-fallback-error">Render seguro ativado: ${error.message}</small>`
+    : "";
+  appView.innerHTML = `${pageIntro("cadastrar")}
+  <section class="release-fallback-page" aria-label="Cadastrar música">
+    <div class="release-fallback-head">
+      <span>ANSEND release</span>
+      <h2>Lançar música</h2>
+      <p>Cadastre capa, áudio, licença e preço para publicar no seu catálogo.</p>
+      ${errorNote}
+    </div>
+    <form class="release-upload-form release-fallback-form" data-release-step="0">
+      <input type="hidden" name="kind" value="musica">
+      <input type="hidden" name="status" value="published">
+      <input type="hidden" name="cover_url">
+      <input type="hidden" name="audio_url">
+      <input type="hidden" name="tags">
+      <section class="release-panel is-active" data-panel="0">
+        <div class="release-form-grid">
+          <label class="release-field release-wide">Título do release<input name="title" type="text" placeholder="Ex: Minha nova música" required></label>
+          <label class="release-field">Artista<input name="artist" type="text" value="${display.name || ""}" placeholder="Nome artístico"></label>
+          <label class="release-field">Produtor<input name="producer" type="text" value="${display.name || ""}" placeholder="Produtor principal"></label>
+          <label class="release-field">Gênero<select name="genre" required>
+            <option value="">Selecione</option>
+            <option>Trap</option><option>Funk</option><option>Drill</option><option>R&B</option><option>Boom Bap</option><option>Afrobeat</option><option>Gospel Trap</option><option>Pop</option>
+          </select></label>
+          <label class="release-field">BPM<input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
+          <label class="release-field">Preço<input name="price" type="number" min="0" step="0.01" placeholder="49.99"></label>
+          <label class="release-field">Licença<select name="license"><option value="basic">Básica</option><option value="premium" selected>Premium</option><option value="exclusive">Exclusiva</option><option value="free">Free</option></select></label>
+          <label class="release-field release-wide">Descrição<textarea name="description" rows="4" placeholder="Conte a vibe, referências e o melhor uso dessa faixa."></textarea></label>
+          <label class="release-field release-wide">Tags<input name="release_tags" type="text" placeholder="trap, melódico, 808, lançamento"></label>
+        </div>
+      </section>
+      <section class="release-fallback-files">
+        <label class="release-dropzone release-cover-drop" data-upload-drop="cover">
+          <input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover">
+          <span class="release-upload-icon"><i data-lucide="upload-cloud"></i></span>
+          <strong>Capa do lançamento</strong>
+          <small>JPG, PNG ou WEBP.</small>
+          <img class="release-cover-preview" alt="">
+        </label>
+        <label class="release-dropzone release-audio-drop" data-upload-drop="audio">
+          <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/mp3,audio/flac" data-upload-type="audio">
+          <span class="release-upload-icon"><i data-lucide="file-audio"></i></span>
+          <strong>Arquivo de áudio</strong>
+          <small>MP3, WAV ou FLAC.</small>
+        </label>
+      </section>
+      <div class="release-audio-preview">
+        <span>Preview de áudio</span>
+        <strong data-audio-name>Nenhum arquivo selecionado</strong>
+        <audio controls preload="metadata"></audio>
+      </div>
+      <footer class="release-fallback-actions">
+        <button type="button" data-route="perfil">Voltar ao perfil</button>
+        <button type="submit" class="release-submit-btn">Publicar no catálogo</button>
+      </footer>
+    </form>
+  </section>`;
+}
+
 function releaseFormElement() {
   return document.querySelector(".release-upload-form");
 }
@@ -5699,18 +5767,20 @@ function renderRoute() {
   const routeChanged = route !== lastRoute;
   lastRoute = route;
   const accountAccess = hasAccountAccess();
+  const authRequiredForRoute = !accountAccess && protectedRoute(route);
   document.body.classList.toggle("is-authenticated", accountAccess);
-  document.body.classList.toggle("requires-auth", !accountAccess);
-  document.body.classList.toggle("release-mode", route === "cadastrar" && accountAccess);
+  document.body.classList.toggle("requires-auth", authRequiredForRoute);
+  document.body.dataset.route = route;
+  document.body.classList.remove("release-mode");
   appView.classList.toggle("route-slide-left", routeChanged);
   document.querySelectorAll("[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
-  if (!appState.authReady && !accountAccess && protectedRoute(route)) {
+  if (!appState.authReady && authRequiredForRoute) {
     renderAuthLoading();
     hydrateView();
     return;
   }
-  if (!accountAccess && protectedRoute(route)) {
+  if (authRequiredForRoute) {
     appState.sellerMode = appState.sellerMode || "login";
     renderSellerAuth();
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -5732,7 +5802,14 @@ function renderRoute() {
   if (route === "ia") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
-  if (route === "cadastrar") renderMusicUpload();
+  if (route === "cadastrar") {
+    try {
+      renderMusicUpload();
+    } catch (error) {
+      console.error("[ANSEND] renderMusicUpload failed", error);
+      renderMusicUploadFallback(error);
+    }
+  }
   if (route === "configuracoes") renderSettings();
   if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
