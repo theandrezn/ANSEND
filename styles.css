@@ -6551,7 +6551,7 @@ body.onboarding-open { overflow: hidden; }
 }
 
 /* Restored feed modules: highlighted producers + recent ranking. */
-.feed > .home-section .featured-professional-grid {
+.feed .home-section .featured-professional-grid {
   display: grid !important;
   grid-auto-flow: column !important;
   grid-auto-columns: minmax(118px, 150px) !important;
@@ -6564,7 +6564,7 @@ body.onboarding-open { overflow: hidden; }
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
-.feed > .home-section .featured-professional-grid::-webkit-scrollbar {
+.feed .home-section .featured-professional-grid::-webkit-scrollbar {
   display: none !important;
 }
 .featured-professional-grid .avatar-card {
@@ -8799,8 +8799,8 @@ body[data-route="cadastrar"] .feed {
   min-height: 430px;
 }
 
-.feed > .home-section,
-.feed > .catalog-section {
+.feed .home-section,
+.feed .catalog-section {
   width: 100%;
   margin: 0;
   padding: clamp(48px, 5vw, 86px) clamp(42px, 6vw, 120px);
@@ -8810,7 +8810,7 @@ body[data-route="cadastrar"] .feed {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
 }
 
-.feed > .trending-catalogs-section {
+.feed .trending-catalogs-section {
   min-height: 520px;
   isolation: isolate;
   overflow: hidden;
@@ -8821,7 +8821,7 @@ body[data-route="cadastrar"] .feed {
   border-bottom-color: rgba(255, 255, 255, .035) !important;
 }
 
-.feed > .trending-catalogs-section::before {
+.feed .trending-catalogs-section::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -8832,11 +8832,11 @@ body[data-route="cadastrar"] .feed {
   opacity: .92;
 }
 
-.feed > .quick-actions-section {
+.feed .quick-actions-section {
   background: transparent;
 }
 
-.feed > .nexo-recommendations-section {
+.feed .nexo-recommendations-section {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -8845,7 +8845,7 @@ body[data-route="cadastrar"] .feed {
   border-bottom: none !important;
 }
 
-.feed > .nexo-recommendations-section::before {
+.feed .nexo-recommendations-section::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -8858,7 +8858,7 @@ body[data-route="cadastrar"] .feed {
   pointer-events: none;
 }
 
-.feed > .nexo-recommendations-section::after {
+.feed .nexo-recommendations-section::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -8869,42 +8869,42 @@ body[data-route="cadastrar"] .feed {
   pointer-events: none;
 }
 
-.feed > .category-section {
+.feed .category-section {
   background: transparent;
 }
 
-.feed > .smart-combos-section {
+.feed .smart-combos-section {
   background: transparent;
 }
 
-.feed > .featured-professionals-section {
+.feed .featured-professionals-section {
   background: transparent;
 }
 
-.feed > .recent-activity-section {
+.feed .recent-activity-section {
   padding-bottom: 132px;
   padding-left: clamp(16px, 3vw, 36px);
   padding-right: clamp(16px, 3vw, 36px);
   background: transparent;
 }
-.feed > .recent-activity-section .section-head,
-.feed > .recent-activity-section .track-list {
+.feed .recent-activity-section .section-head,
+.feed .recent-activity-section .track-list {
   width: 100%;
   max-width: 100%;
 }
 
-.feed > .home-section .section-head,
-.feed > .catalog-section .section-head,
-.feed > .home-section .featured-catalog-row,
-.feed > .home-section .quick-action-grid,
-.feed > .home-section .nexo-recommendation-grid,
-.feed > .home-section .category-grid,
-.feed > .home-section .smart-combo-grid,
-.feed > .home-section .featured-professional-grid,
-.feed > .home-section .track-list,
-.feed > .catalog-section .playlist-row,
-.feed > .catalog-section .beat-row,
-.feed > .catalog-section .track-list {
+.feed .home-section .section-head,
+.feed .catalog-section .section-head,
+.feed .home-section .featured-catalog-row,
+.feed .home-section .quick-action-grid,
+.feed .home-section .nexo-recommendation-grid,
+.feed .home-section .category-grid,
+.feed .home-section .smart-combo-grid,
+.feed .home-section .featured-professional-grid,
+.feed .home-section .track-list,
+.feed .catalog-section .playlist-row,
+.feed .catalog-section .beat-row,
+.feed .catalog-section .track-list {
   width: min(100%, 1680px);
   max-width: 1680px;
   margin-inline: auto;
@@ -9178,8 +9178,8 @@ body[data-route="cadastrar"] .feed {
     font-size: clamp(42px, 13vw, 62px);
   }
 
-  .feed > .home-section,
-  .feed > .catalog-section {
+  .feed .home-section,
+  .feed .catalog-section {
     padding: 38px 18px;
   }
 
@@ -10892,13 +10892,13 @@ body.onboarding-open {
 }
 
 /* --- VERTICAL & CIRCULAR FEATURED PROFESSIONALS CARDS (FIX SQUISHED PROPORTIONS) --- */
-.feed > .home-section .featured-professional-grid {
+.feed .home-section .featured-professional-grid {
   grid-auto-columns: minmax(180px, 220px) !important;
   gap: 20px !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card,
-.feed > .home-section .featured-professional-grid .featured-professional-card {
+.feed .home-section .featured-professional-grid .avatar-card,
+.feed .home-section .featured-professional-grid .featured-professional-card {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -10914,14 +10914,14 @@ body.onboarding-open {
   transition: all 0.3s ease !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card:hover,
-.feed > .home-section .featured-professional-grid .featured-professional-card:hover {
+.feed .home-section .featured-professional-grid .avatar-card:hover,
+.feed .home-section .featured-professional-grid .featured-professional-card:hover {
   background: rgba(255, 106, 0, 0.05) !important;
   border-color: rgba(255, 106, 0, 0.35) !important;
   transform: translateY(-4px) !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card button {
+.feed .home-section .featured-professional-grid .avatar-card button {
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
@@ -10933,8 +10933,8 @@ body.onboarding-open {
   justify-content: space-between !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card img,
-.feed > .home-section .featured-professional-grid .featured-professional-card img {
+.feed .home-section .featured-professional-grid .avatar-card img,
+.feed .home-section .featured-professional-grid .featured-professional-card img {
   width: 90px !important;
   height: 90px !important;
   border-radius: 50% !important;
@@ -10945,14 +10945,14 @@ body.onboarding-open {
   transition: transform 0.3s ease !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card:hover img,
-.feed > .home-section .featured-professional-grid .featured-professional-card:hover img {
+.feed .home-section .featured-professional-grid .avatar-card:hover img,
+.feed .home-section .featured-professional-grid .featured-professional-card:hover img {
   transform: scale(1.05) !important;
   box-shadow: 0 0 20px rgba(255, 106, 0, 0.4) !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card h3,
-.feed > .home-section .featured-professional-grid .featured-professional-card strong {
+.feed .home-section .featured-professional-grid .avatar-card h3,
+.feed .home-section .featured-professional-grid .featured-professional-card strong {
   font-size: 15px !important;
   font-weight: 700 !important;
   color: white !important;
@@ -10963,22 +10963,22 @@ body.onboarding-open {
   gap: 5px !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card h3 svg,
-.feed > .home-section .featured-professional-grid .featured-professional-card strong svg {
+.feed .home-section .featured-professional-grid .avatar-card h3 svg,
+.feed .home-section .featured-professional-grid .featured-professional-card strong svg {
   width: 15px !important;
   height: 15px !important;
   color: #1d9bf0 !important;
   fill: #1d9bf0 !important;
 }
 
-.feed > .home-section .featured-professional-grid .avatar-card p,
-.feed > .home-section .featured-professional-grid .featured-professional-card span {
+.feed .home-section .featured-professional-grid .avatar-card p,
+.feed .home-section .featured-professional-grid .featured-professional-card span {
   font-size: 12px !important;
   color: var(--muted) !important;
   margin: 0 0 10px 0 !important;
 }
 
-.feed > .home-section .featured-professional-grid .featured-professional-card small {
+.feed .home-section .featured-professional-grid .featured-professional-card small {
   font-size: 11px !important;
   color: var(--muted) !important;
   opacity: 0.8 !important;
@@ -10990,8 +10990,8 @@ body.onboarding-open {
   text-overflow: ellipsis !important;
 }
 
-.feed > .home-section .featured-professional-grid .featured-professional-card button,
-.feed > .home-section .featured-professional-grid .avatar-card .profile-btn {
+.feed .home-section .featured-professional-grid .featured-professional-card button,
+.feed .home-section .featured-professional-grid .avatar-card .profile-btn {
   width: 100% !important;
   min-height: 34px !important;
   padding: 0 16px !important;
@@ -11006,15 +11006,15 @@ body.onboarding-open {
   margin-top: auto !important;
 }
 
-.feed > .home-section .featured-professional-grid .featured-professional-card button:hover,
-.feed > .home-section .featured-professional-grid .avatar-card .profile-btn:hover {
+.feed .home-section .featured-professional-grid .featured-professional-card button:hover,
+.feed .home-section .featured-professional-grid .avatar-card .profile-btn:hover {
   background: var(--orange) !important;
   border-color: var(--orange) !important;
   color: black !important;
 }
 
 /* Top Producers inspired layout for recommended professionals. */
-.feed > .featured-professionals-section {
+.feed .featured-professionals-section {
   min-height: clamp(330px, 25vw, 430px) !important;
   padding-top: clamp(36px, 4vw, 62px) !important;
   padding-bottom: clamp(34px, 4vw, 58px) !important;
@@ -11023,24 +11023,24 @@ body.onboarding-open {
   border-bottom: 1px solid rgba(255, 255, 255, .05) !important;
 }
 
-.feed > .featured-professionals-section .section-head {
+.feed .featured-professionals-section .section-head {
   grid-template-columns: minmax(0, 1fr) auto auto !important;
   align-items: start !important;
   margin-bottom: 26px !important;
 }
 
-.feed > .featured-professionals-section .section-head h2 {
+.feed .featured-professionals-section .section-head h2 {
   font-size: clamp(26px, 2vw, 36px) !important;
   letter-spacing: 0 !important;
 }
 
-.feed > .featured-professionals-section .section-head p {
+.feed .featured-professionals-section .section-head p {
   margin-top: 6px !important;
   color: rgba(245, 245, 245, .72) !important;
   font-size: 14px !important;
 }
 
-.feed > .featured-professionals-section .section-link {
+.feed .featured-professionals-section .section-link {
   min-height: 36px !important;
   padding: 0 16px !important;
   border-color: transparent !important;
@@ -11048,18 +11048,18 @@ body.onboarding-open {
   background: rgba(255, 255, 255, .055) !important;
 }
 
-.feed > .featured-professionals-section .section-link::after {
+.feed .featured-professionals-section .section-link::after {
   content: "→";
   margin-left: 8px;
   font-weight: 900;
 }
 
-.feed > .featured-professionals-section .arrow-pair {
+.feed .featured-professionals-section .arrow-pair {
   order: 3 !important;
   gap: 8px !important;
 }
 
-.feed > .featured-professionals-section .arrow-pair button {
+.feed .featured-professionals-section .arrow-pair button {
   width: 42px !important;
   height: 42px !important;
   border: 0 !important;
@@ -11067,7 +11067,7 @@ body.onboarding-open {
   background: rgba(255, 255, 255, .07) !important;
 }
 
-.feed > .home-section .featured-professional-grid {
+.feed .home-section .featured-professional-grid {
   grid-auto-columns: clamp(136px, 8.8vw, 164px) !important;
   gap: clamp(20px, 2vw, 34px) !important;
   padding: 4px 2px 10px !important;
@@ -11303,8 +11303,8 @@ body.onboarding-open {
 }
 
 /* --- CAROUSEL NAVIGATION ARROWS ON BOTH ENDS (LEFT & RIGHT) --- */
-.feed > .home-section,
-.feed > .catalog-section {
+.feed .home-section,
+.feed .catalog-section {
   position: relative !important;
 }
 
@@ -15509,5 +15509,72 @@ body[data-route="cadastrar"] .release-upload-form {
   body[data-route="cadastrar"] .release-upload-form {
     width: min(100%, 760px) !important;
     margin-top: 24px !important;
+
+/* --- NEXO BLOCKS CONTAINER WITH ARTWORK BACKGROUND --- */
+.nexo-blocks-container {
+  position: relative;
+  width: 100%;
+  margin: 12px 0 28px;
+  padding: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  background-image: url('assets/nexo-blocks-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  border: 1px solid rgba(255, 106, 0, 0.22);
+  box-shadow: 0 32px 88px rgba(0, 0, 0, 0.9);
+  display: grid;
+  gap: 0;
+  isolation: isolate;
+}
+
+/* Premium Dark Backdrop Gradient Overlay */
+.nexo-blocks-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.74) 50%, rgba(0, 0, 0, 0.92) 100%),
+    linear-gradient(135deg, rgba(255, 106, 0, 0.12) 0%, transparent 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Adjust paddings and styles for sections inside the container */
+.nexo-blocks-container .home-section {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  padding: clamp(38px, 4.5vw, 68px) clamp(30px, 5.5vw, 88px) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Divider borders between sections */
+.nexo-blocks-container .home-section:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 106, 0, 0.08) !important;
+}
+
+/* Disable old background on nexo-recommendations-section so it doesn't cover our new container bg */
+.feed .nexo-recommendations-section::before,
+.feed .nexo-recommendations-section::after {
+  display: none !important;
+}
+
+/* Disable backdrop blur in trending catalogs inside the container so artwork is visible */
+.nexo-blocks-container .trending-catalogs-section {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 900px) {
+  .nexo-blocks-container {
+    border-radius: 16px;
+    margin: 8px 0 20px;
+    background-attachment: scroll; /* Scroll is better on mobile devices */
   }
+  .nexo-blocks-container .home-section {
+    padding: clamp(24px, 3.5vw, 42px) clamp(16px, 4vw, 32px) !important;  }
 }
