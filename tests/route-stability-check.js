@@ -20,15 +20,15 @@ const mimeTypes = {
 };
 
 const routes = [
-  { hash: "feed", required: ["ANSEND"] },
-  { hash: "nexo-feed", required: ["NEXO IA"] },
-  { hash: "explorar", required: ["Explorar"] },
-  { hash: "favoritos", required: ["Favoritos"] },
-  { hash: "biblioteca", required: ["Biblioteca"] },
-  { hash: "ia", required: ["O que podemos"] },
-  { hash: "produtores", required: ["Profissionais"] },
-  { hash: "cadastrar", required: ["Lançar música", "Publicar no catálogo"] },
-  { hash: "carrinho", required: ["Carrinho"] },
+  { hash: "feed", required: ["ANSEND"], selector: ".ai-hero" },
+  { hash: "nexo-feed", required: ["NEXO IA"], selector: ".nexo-feed-page" },
+  { hash: "explorar", required: ["Explorar"], selector: ".view-header" },
+  { hash: "favoritos", required: ["Favoritos"], selector: ".view-header-favoritos" },
+  { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
+  { hash: "ia", required: ["O que podemos"], selector: ".nexo-minimal-container" },
+  { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
+  { hash: "cadastrar", required: ["Lan", "música"], selector: ".release-fallback-page" },
+  { hash: "carrinho", required: ["Carrinho"], selector: ".view-header-carrinho" },
 ];
 
 function serveStatic(req, res) {
@@ -85,20 +85,51 @@ async function run() {
         waitUntil: "domcontentloaded",
         timeout: 60000,
       });
-      await page.waitForTimeout(4500);
+      await page.waitForTimeout(5000);
 
       const bodyText = await page.locator("body").innerText().catch(() => "");
-      const appHeight = await page
+      const appMetrics = await page
         .locator("#appView")
-        .evaluate((element) => Math.round(element.getBoundingClientRect().height))
-        .catch(() => 0);
+        .evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const visibleElementCount = [...element.querySelectorAll("*")].filter((child) => {
+            const childRect = child.getBoundingClientRect();
+            const style = window.getComputedStyle(child);
+            return (
+              childRect.width > 20 &&
+              childRect.height > 20 &&
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              Number(style.opacity) > 0.05
+            );
+          }).length;
+
+          return {
+            className: element.className,
+            height: Math.round(rect.height),
+            visibleElementCount,
+          };
+        })
+        .catch(() => ({ className: "", height: 0, visibleElementCount: 0 }));
+      const routeSelectorVisible = await page.locator(route.selector).first().isVisible().catch(() => false);
       const missing = route.required.filter((text) => !bodyText.includes(text));
       const loginGate = bodyText.includes("ACESSO ANSEND") && !["compras", "perfil", "configuracoes"].includes(route.hash);
+      const feedClassLeak = route.hash !== "feed" && appMetrics.className.split(/\s+/).includes("feed");
 
-      if (errors.length || missing.length || loginGate || appHeight < 120) {
+      if (
+        errors.length ||
+        missing.length ||
+        loginGate ||
+        appMetrics.height < 120 ||
+        appMetrics.visibleElementCount < 4 ||
+        !routeSelectorVisible ||
+        feedClassLeak
+      ) {
         failures.push({
           route: route.hash,
-          appHeight,
+          appMetrics,
+          routeSelectorVisible,
+          feedClassLeak,
           missing,
           loginGate,
           errors,
@@ -118,7 +149,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log(`Route stability OK: ${routes.length} routes stayed rendered after delayed auth/locale refresh.`);
+  console.log(`Route stability OK: ${routes.length} routes stayed visible without feed-class leakage.`);
 }
 
 run().catch((error) => {

@@ -5825,6 +5825,8 @@ function renderRoute() {
   lastRoute = route;
   const accountAccess = hasAccountAccess();
   const authRequiredForRoute = !accountAccess && protectedRoute(route);
+  appView.classList.add("app-view");
+  appView.classList.toggle("feed", route === "feed");
   document.body.classList.toggle("is-authenticated", accountAccess);
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
