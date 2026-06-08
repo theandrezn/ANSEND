@@ -2431,7 +2431,36 @@ function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
-  return routeTitles?.[route] ? route : "feed";
+  const knownRoutes = new Set([
+    "feed",
+    "nexo-feed",
+    "explorar",
+    "favoritos",
+    "compras",
+    "biblioteca",
+    "ia",
+    "produtores",
+    "perfil",
+    "cadastrar",
+    "configuracoes",
+    "carrinho",
+    "vendedor",
+    "central-ansend",
+    "servicos",
+    "como-funciona",
+    "central-legal",
+    "termos-de-uso",
+    "politica-de-privacidade",
+    "politica-de-cookies",
+    "termos-de-licenca-musical",
+    "pagamentos-reembolsos",
+    "direitos-autorais",
+    "seguranca",
+    "diretrizes-profissionais",
+    "diretrizes-artistas",
+    "suporte",
+  ]);
+  return knownRoutes.has(route) || routeTitles?.[route] ? route : "feed";
 }
 
 function updateSpotlight(event) {
@@ -3680,8 +3709,10 @@ function renderAuthLoading() {
 
 async function initAuth() {
   if (!supabaseClient) {
+    appState.profile = localPreviewProfile();
     appState.authReady = true;
     syncAccountUi();
+    renderRoute();
     return;
   }
   const { data } = await supabaseClient.auth.getSession();
@@ -5232,7 +5263,32 @@ function renderMusicUploadFallback(error) {
   const errorNote = error?.message
     ? `<small class="release-fallback-error">Render seguro ativado: ${error.message}</small>`
     : "";
-  appView.innerHTML = `${pageIntro("cadastrar")}
+  const criticalCss = `<style id="release-stable-critical-css">
+    body[data-route="cadastrar"] #appView{display:block!important;min-height:calc(100vh - 84px)!important;padding:18px 0 120px!important;overflow:visible!important}
+    body[data-route="cadastrar"] #appView>.view-header{width:min(1440px,calc(100% - 32px))!important;margin:0 auto 18px!important}
+    body[data-route="cadastrar"] .release-fallback-page{width:min(1440px,calc(100% - 32px))!important;margin:24px auto 96px!important;padding:clamp(28px,4vw,56px)!important;display:grid!important;grid-template-columns:minmax(280px,.72fr) minmax(360px,1fr)!important;gap:clamp(24px,4vw,56px)!important;border:1px solid rgba(255,106,0,.24)!important;border-radius:24px!important;background:radial-gradient(circle at 82% 0%,rgba(255,106,0,.16),transparent 38%),linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.012))!important;color:#f5f5f5!important}
+    body[data-route="cadastrar"] .release-fallback-head span{display:inline-flex!important;margin-bottom:18px!important;color:#ff6a00!important;font-size:12px!important;font-weight:950!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+    body[data-route="cadastrar"] .release-fallback-head h2{margin:0!important;color:#fff!important;font-size:clamp(44px,5.8vw,82px)!important;line-height:.92!important;letter-spacing:-.055em!important}
+    body[data-route="cadastrar"] .release-fallback-head p{max-width:460px!important;margin:22px 0 0!important;color:#b8b8b8!important;font-size:16px!important;line-height:1.55!important}
+    body[data-route="cadastrar"] .release-fallback-form{display:grid!important;gap:22px!important;width:100%!important;margin:0!important;padding:22px!important;border:1px solid rgba(255,106,0,.25)!important;border-radius:20px!important;background:rgba(0,0,0,.76)!important;box-shadow:0 28px 90px rgba(0,0,0,.46)!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-panel{display:block!important;visibility:visible!important;opacity:1!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-form-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-wide{grid-column:1/-1!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-field{display:grid!important;gap:8px!important;color:rgba(245,245,245,.88)!important;font-size:12px!important;font-weight:900!important}
+    body[data-route="cadastrar"] .release-fallback-form input,body[data-route="cadastrar"] .release-fallback-form select,body[data-route="cadastrar"] .release-fallback-form textarea{width:100%!important;min-height:46px!important;padding:0 14px!important;border:1px solid rgba(255,106,0,.28)!important;border-radius:12px!important;background:rgba(255,255,255,.04)!important;color:#fff!important;font:800 13px/1.4 "Schibsted Grotesk","Poppins",system-ui,sans-serif!important;outline:0!important}
+    body[data-route="cadastrar"] .release-fallback-form textarea{min-height:104px!important;padding-top:12px!important;resize:vertical!important}
+    body[data-route="cadastrar"] .release-fallback-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-dropzone{min-height:190px!important;display:grid!important;place-items:center!important;gap:8px!important;padding:18px!important;border:1px dashed rgba(255,106,0,.45)!important;border-radius:18px!important;background:rgba(255,255,255,.035)!important;text-align:center!important;cursor:pointer!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-dropzone input{position:absolute!important;inline-size:1px!important;block-size:1px!important;opacity:0!important;pointer-events:none!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-upload-icon{width:42px!important;height:42px!important;display:grid!important;place-items:center!important;border-radius:50%!important;background:rgba(255,106,0,.12)!important;color:#ff6a00!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-audio-preview{display:grid!important;gap:8px!important;padding:14px!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:16px!important;background:rgba(255,255,255,.035)!important}
+    body[data-route="cadastrar"] .release-fallback-form .release-audio-preview audio{width:100%!important}
+    body[data-route="cadastrar"] .release-fallback-actions{display:flex!important;justify-content:flex-end!important;gap:12px!important}
+    body[data-route="cadastrar"] .release-fallback-actions button{min-height:46px!important;padding:0 18px!important;border:1px solid rgba(255,106,0,.35)!important;border-radius:999px!important;background:transparent!important;color:#fff!important;font-weight:900!important;cursor:pointer!important}
+    body[data-route="cadastrar"] .release-fallback-actions .release-submit-btn{background:#ff6a00!important;color:#050505!important;border-color:#ff6a00!important}
+    @media(max-width:980px){body[data-route="cadastrar"] .release-fallback-page{grid-template-columns:1fr!important;width:min(100%,calc(100% - 24px))!important;padding:22px!important}body[data-route="cadastrar"] .release-fallback-form .release-form-grid,body[data-route="cadastrar"] .release-fallback-files{grid-template-columns:1fr!important}}
+  </style>`;
+  appView.innerHTML = `${criticalCss}${pageIntro("cadastrar")}
   <section class="release-fallback-page" aria-label="Cadastrar música">
     <div class="release-fallback-head">
       <span>ANSEND release</span>
@@ -5803,12 +5859,7 @@ function renderRoute() {
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
   if (route === "cadastrar") {
-    try {
-      renderMusicUpload();
-    } catch (error) {
-      console.error("[ANSEND] renderMusicUpload failed", error);
-      renderMusicUploadFallback(error);
-    }
+    renderMusicUploadFallback();
   }
   if (route === "configuracoes") renderSettings();
   if (route === "carrinho") renderCart();
