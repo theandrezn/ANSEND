@@ -2412,13 +2412,6 @@ function trackRow(item, i) {
   </article>`;
 }
 
-document.querySelector("#playlistRow") && (document.querySelector("#playlistRow").innerHTML = "");
-document.querySelector('[data-feed="explore"]') && (document.querySelector('[data-feed="explore"]').innerHTML = "");
-document.querySelector("#dynamicSections") && (document.querySelector("#dynamicSections").innerHTML = "");
-document.querySelector("#trackList") && (document.querySelector("#trackList").innerHTML = "");
-document.querySelector("#lateSections") && (document.querySelector("#lateSections").innerHTML = "");
-renderHomeDashboard();
-
 const supportsPrecisePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let revealObserver = null;
@@ -2740,10 +2733,18 @@ window.addEventListener("resize", requestHomeScrollAnimationTick);
 prefersReducedMotion.addEventListener?.("change", requestHomeScrollAnimationTick);
 
 function setupScrollReveals() {
-  const targets = document.querySelectorAll(".home-section, .scroll-kinetic-section, .catalog-section, .view-header, .view-grid, .purchase-list, .producer-grid, .settings-panel, .seller-auth, .profile-page, .profile-catalog-form, .profile-catalog-list, .beat-detail-layout, .producer-profile, .playlist-detail-layout, .playlist-detail-side");
   if (revealObserver) revealObserver.disconnect();
+  document.querySelectorAll(".reveal-section").forEach((target) => {
+    target.classList.remove("reveal-section");
+    target.classList.add("is-visible");
+    target.style.removeProperty("--reveal-delay");
+  });
+  const route = currentRouteFromHash();
+  if (route !== "feed") return;
+  const targets = document.querySelectorAll(".home-section, .scroll-kinetic-section");
   targets.forEach((target, index) => {
     target.classList.add("reveal-section");
+    target.classList.add("is-visible");
     target.style.setProperty("--reveal-delay", `${Math.min(index * 34, 170)}ms`);
   });
   if (prefersReducedMotion.matches) {
@@ -3696,7 +3697,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return !["vendedor", "cadastrar", ...institutionalRoutes].includes(route);
+  return ["compras", "perfil", "configuracoes"].includes(route);
 }
 
 function renderAuthLoading() {
