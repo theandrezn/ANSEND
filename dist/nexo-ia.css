@@ -53,6 +53,8 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
 .nexo-chat-thread {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -61,16 +63,7 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
 }
 
 .nexo-chat-thread::-webkit-scrollbar {
-  width: 8px;
-}
-
-.nexo-chat-thread::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.nexo-chat-thread::-webkit-scrollbar-thumb {
-  background: rgba(255, 106, 0, 0.32);
-  border-radius: 999px;
+  display: none;
 }
 
 .nexo-chat-welcome {
