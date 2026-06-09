@@ -490,6 +490,12 @@ function languageSwitcherMarkup() {
 }
 
 const englishTextPairs = [
+  ["Minhas Músicas", "My Music"],
+  ["Marketplace", "Marketplace"],
+  ["Insights", "Insights"],
+  ["Ferramentas", "Tools"],
+  ["Ofertas para membros", "Member Offers"],
+  ["Lançar Música", "Release Music"],
   ["In\u00edcio", "Home"],
   ["Feed", "Home"],
   ["NEXO IA", "NEXO AI"],
@@ -2452,6 +2458,11 @@ function currentRouteFromHash() {
     "diretrizes-profissionais",
     "diretrizes-artistas",
     "suporte",
+    "insights",
+    "ferramentas",
+    "ofertas",
+    "musicas",
+    "marketplace"
   ]);
   return knownRoutes.has(route) || routeTitles?.[route] ? route : "feed";
 }
@@ -5834,6 +5845,7 @@ function hydrateView() {
   setupAutoScrollRows();
   setupHomeScrollAnimation();
   setupNexoFeedObservers();
+  updateSidebarProfile();
   applyTranslations();
   lucide.createIcons();
   // Defer reveal setup to next frame so DOM layout is computed after innerHTML changes.
@@ -5873,7 +5885,7 @@ function renderRoute() {
     hydrateView();
     return;
   }
-  if (route === "feed") {
+  if (route === "feed" || route === "insights") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
   }
@@ -5881,11 +5893,11 @@ function renderRoute() {
     renderNexoFeed();
   }
 
-  if (route === "explorar") renderExplore();
+  if (route === "explorar" || route === "marketplace" || route === "ofertas") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
-  if (route === "biblioteca") renderLibrary();
-  if (route === "ia") renderAiWorkspace();
+  if (route === "biblioteca" || route === "musicas") renderLibrary();
+  if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
   if (route === "cadastrar") {
@@ -7381,11 +7393,41 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+function updateSidebarProfile() {
+  const profile = activeProfile();
+  const display = profileDisplayData(profile);
+  
+  const nameEl = document.querySelector(".sidebar-profile-name");
+  const avatarEl = document.querySelector(".sidebar-profile-avatar");
+  
+  if (nameEl) {
+    nameEl.textContent = display.name;
+  }
+  if (avatarEl) {
+    avatarEl.src = display.avatar;
+  }
+}
+
+function initSidebarListeners() {
+  // Language toggle inside the sidebar
+  document.querySelector(".sidebar-lang-btn")?.addEventListener("click", () => {
+    const nextLocale = appLocale.current === "pt-BR" ? "en" : "pt-BR";
+    setLocale(nextLocale, { manual: true });
+    renderRoute();
+  });
+  
+  // Hamburger toggle inside the sidebar to close the mobile menu
+  document.querySelector(".sidebar-menu-toggle")?.addEventListener("click", () => {
+    document.body.classList.remove("menu-open");
+  });
+}
+
 setLocale(detectLocale(), { manual: false });
 detectLocaleWithGeo()
   .then((locale) => setLocale(locale, { manual: false }))
   .catch(() => setLocale(detectLocale(), { manual: false }))
   .finally(() => {
+    initSidebarListeners();
     renderRoutePreservingAuthFocus();
     initAuth();
   });
