@@ -13947,9 +13947,145 @@ body:has(.nexo-feed-page) .footer {
 
 .nexo-feed-tags,
 .nexo-feed-copy small,
-.nexo-feed-main-cta,
 .nexo-feed-kicker {
   display: none !important;
+}
+
+.nexo-feed-tags {
+  display: flex !important;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.nexo-feed-tags span {
+  max-width: 120px;
+  overflow: hidden;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(0, 0, 0, .34);
+  color: rgba(245, 245, 245, .88);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexo-feed-main-cta {
+  width: fit-content;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--feed-orange);
+  color: #080604;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 16px 38px rgba(255, 106, 0, .22);
+}
+
+.nexo-feed-avatar-fallback {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 106, 0, .28);
+  background: rgba(255, 106, 0, .12);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.nexo-feed-official-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 106, 0, .18), transparent 34%),
+    linear-gradient(160deg, #050505, #000 62%, #100600);
+  color: #fff;
+}
+
+.nexo-feed-official-fallback svg {
+  width: 72px;
+  height: 72px;
+  color: var(--feed-orange);
+}
+
+.nexo-feed-official-fallback span {
+  color: rgba(245, 245, 245, .72);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.nexo-feed-empty {
+  width: min(100%, 560px);
+  min-height: min(620px, calc(100vh - 118px));
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 22px;
+  background: #030303;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
+}
+
+.nexo-feed-empty-mark {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 106, 0, .26);
+  background: rgba(255, 106, 0, .08);
+  color: var(--feed-orange);
+}
+
+.nexo-feed-empty h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+}
+
+.nexo-feed-empty p {
+  max-width: 46ch;
+  margin: 0;
+  color: rgba(245, 245, 245, .72);
+  line-height: 1.55;
+}
+
+.nexo-feed-empty div {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nexo-feed-empty button {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .06);
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.nexo-feed-empty button:first-child {
+  border: 0;
+  background: var(--feed-orange);
+  color: #080604;
 }
 
 .nexo-feed-actions {

@@ -1950,6 +1950,7 @@ const NEXO_FEED_HISTORY_KEY = "ansend_feed_history";
 const NEXO_FEED_NOT_INTERESTED_KEY = "ansend_not_interested";
 const NEXO_FEED_TASTE_KEY = "ansend_user_taste_profile";
 const NEXO_FEED_SESSION_KEY = "ansend_feed_session";
+const NEXO_FEED_ITEMS_KEY = "ansend-feed-items";
 let nexoFeedObserver = null;
 const nexoFeedTimers = new Map();
 
@@ -1977,6 +1978,154 @@ function readFeedObject(key) {
   } catch {
     return {};
   }
+}
+
+function writeFeedItems(items) {
+  localStorage.setItem(NEXO_FEED_ITEMS_KEY, JSON.stringify(asArray(items).slice(0, 260)));
+}
+
+function readStoredFeedItems() {
+  return readFeedList(NEXO_FEED_ITEMS_KEY).filter((item) => item && item.id && item.isPublished !== false);
+}
+
+function isRealFeedMedia(url) {
+  const value = String(url || "").trim();
+  if (!value) return false;
+  if (/ansend-logo|placeholder|unsplash|pexels/i.test(value)) return false;
+  return /^(https?:|blob:|data:image\/|\/|\.\/|\.\.\/|assets\/uploads\/|storage\/)/i.test(value);
+}
+
+function currentCreatorIdentity(source = {}) {
+  const profile = activeProfile() || {};
+  return {
+    creatorId: source.user_id || appState.authUser?.id || profile.id || "local-preview",
+    creatorName: source.producer_name || source.artist_name || profile.artistic_name || profile.full_name || "ANSEND",
+    creatorAvatar: profile.avatar_url || profile.avatar || "",
+    creatorRole: accountRoleLabel(profile.account_role) || "Criador",
+  };
+}
+
+function normalizeFeedItem(item) {
+  if (!item?.id) return null;
+  const sourceType = item.sourceType || item.type || "post";
+  const sourceId = item.sourceId || item.id;
+  return {
+    id: String(item.id),
+    creatorId: item.creatorId || "local-preview",
+    creatorName: item.creatorName || "ANSEND",
+    creatorAvatar: item.creatorAvatar || "",
+    creatorRole: item.creatorRole || "Criador",
+    type: item.type || "post",
+    title: item.title || "Publicacao ANSEND",
+    description: item.description || "",
+    mediaUrl: item.mediaUrl || item.coverUrl || "",
+    coverUrl: item.coverUrl || item.mediaUrl || "",
+    audioUrl: item.audioUrl || "",
+    price: item.price || item.priceLabel || "",
+    priceLabel: item.priceLabel || item.price || "",
+    tags: asArray(item.tags).filter(Boolean).slice(0, 6),
+    sourceId: String(sourceId),
+    sourceType,
+    createdAt: item.createdAt || item.published_at || item.created_at || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.updated_at || new Date().toISOString(),
+    likesCount: Number(item.likesCount || 0),
+    commentsCount: Number(item.commentsCount || 0),
+    savesCount: Number(item.savesCount || 0),
+    sharesCount: Number(item.sharesCount || 0),
+    isPublished: item.isPublished !== false,
+    metadata: item.metadata || {},
+  };
+}
+
+function createFeedItemFromMusic(source) {
+  const creator = currentCreatorIdentity(source);
+  const coverUrl = source.cover_url || source.coverUrl || "";
+  const audioUrl = source.audio_url || source.audioUrl || "";
+  if (!isRealFeedMedia(coverUrl) && !isRealFeedMedia(audioUrl)) return null;
+  const type = source.kind === "musica" ? "music" : "beat";
+  const tags = [
+    source.genre || (type === "music" ? "Musica" : "Beat"),
+    source.bpm ? `${source.bpm} BPM` : "",
+    source.musical_key || "",
+    ...asArray(source.tags),
+  ].filter(Boolean);
+  return normalizeFeedItem({
+    id: `feed-${source.source_table || "catalog"}-${source.id}`,
+    ...creator,
+    type,
+    title: source.title || "Sem titulo",
+    description: source.description || (type === "music" ? "Musica publicada na ANSEND." : "Beat publicado na ANSEND."),
+    mediaUrl: coverUrl,
+    coverUrl,
+    audioUrl,
+    price: source.price ? Number(source.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+      style: "currency",
+      currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+    }) : "",
+    tags,
+    sourceId: source.id,
+    sourceType: source.source_table || "catalog_items",
+    createdAt: source.published_at || source.created_at || new Date().toISOString(),
+    updatedAt: source.updated_at || new Date().toISOString(),
+    isPublished: source.status === "published",
+    metadata: { beatId: source.id, route: source.id ? `beat-${source.id}` : "explorar" },
+  });
+}
+
+function createFeedItemFromBeat(source) {
+  return createFeedItemFromMusic({ ...source, kind: source.kind || "beat" });
+}
+
+function createFeedItemFromService(source) {
+  const creator = currentCreatorIdentity(source);
+  const coverUrl = source.cover_url || source.image_url || "";
+  return normalizeFeedItem({
+    id: `feed-service-${source.id}`,
+    ...creator,
+    type: "service",
+    title: source.title || source.service || "Servico ANSEND",
+    description: source.description || source.briefing || "",
+    mediaUrl: isRealFeedMedia(coverUrl) ? coverUrl : "",
+    coverUrl: isRealFeedMedia(coverUrl) ? coverUrl : "",
+    price: source.price || source.priceLabel || "",
+    tags: asArray(source.tags || source.categories).filter(Boolean),
+    sourceId: source.id,
+    sourceType: "service",
+    createdAt: source.created_at || new Date().toISOString(),
+    updatedAt: source.updated_at || new Date().toISOString(),
+    isPublished: source.status !== "draft",
+  });
+}
+
+function upsertFeedItem(feedItem) {
+  const normalized = normalizeFeedItem(feedItem);
+  if (!normalized) return null;
+  const items = readFeedList(NEXO_FEED_ITEMS_KEY);
+  const sourceKey = `${normalized.sourceType}:${normalized.sourceId}`;
+  const next = items.filter((item) => item.id !== normalized.id && `${item.sourceType}:${item.sourceId}` !== sourceKey);
+  if (normalized.isPublished) next.unshift(normalized);
+  writeFeedItems(next);
+  return normalized;
+}
+
+function removeFeedItemForSource(sourceId, sourceType) {
+  const key = `${sourceType}:${sourceId}`;
+  writeFeedItems(readFeedList(NEXO_FEED_ITEMS_KEY).filter((item) => `${item.sourceType}:${item.sourceId}` !== key));
+}
+
+function syncFeedItemsFromCatalog() {
+  const generated = publishedCatalogItems()
+    .map((item) => createFeedItemFromBeat(item))
+    .filter(Boolean);
+  if (!generated.length) return readStoredFeedItems();
+  const existing = readFeedList(NEXO_FEED_ITEMS_KEY);
+  const generatedKeys = new Set(generated.map((item) => `${item.sourceType}:${item.sourceId}`));
+  const merged = [
+    ...generated,
+    ...existing.filter((item) => !generatedKeys.has(`${item.sourceType}:${item.sourceId}`)),
+  ];
+  writeFeedItems(merged);
+  return merged.filter((item) => item.isPublished !== false);
 }
 
 function feedItemForEvent(id) {
@@ -2043,187 +2192,36 @@ function preferredFeedEntries(collection, limit = 3) {
 
 function nexoFeedCta(item) {
   const map = {
-    beat: "Comprar licenca",
-    professional: "Ver perfil",
-    service: "Contratar servico",
-    combo: "Montar combo",
-    pack: "Abrir pack",
-    education: "Ver guia",
-    curation: "Abrir curadoria",
-    marketing: "Contratar marketing",
+    music: "Ouvir",
+    beat: "Ouvir",
+    service: "Contratar",
+    image: "Ver arte",
+    post: "Ver detalhes",
+    portfolio: "Ver detalhes",
   };
-  return map[item.type] || "Abrir";
+  return map[item.type] || "Ver detalhes";
 }
 
 function getNexoFeedItems() {
-  const profile = getMusicProfile() || createDefaultMusicProfile();
-  const recs = buildNexoRecommendations(profile, false);
-  const catalog = marketplaceBeats();
-  const beatItems = catalog.map((item, index) => ({
-    id: item.id,
-    type: "beat",
-    title: item.title,
-    subtitle: `${item.producer} - ${item.tags?.[0] || "Beat"}`,
-    description: `Beat ${item.tags?.[0] || "urbano"} com ${item.tags?.[1] || "BPM mapeado"} para gravar sua proxima faixa.`,
-    creatorName: item.producer,
-    category: item.tags?.[0] || "Beat",
-    genres: [item.tags?.[0] || "Trap"],
-    vibes: genreVibeMap[item.tags?.[0]] || ["Comercial"],
-    bpm: Number(String(item.tags?.[1] || "").match(/\d+/)?.[0]) || 120,
-    priceLabel: item.price || `$${(24.95 + (index % 5) * 5).toFixed(2)}`,
-    coverImage: item.cover,
-    audioUrl: item.audio,
-    durationSeconds: 165,
-    tags: [item.tags?.[0], item.tags?.[1], item.badge].filter(Boolean),
-    verified: true,
-    popularityScore: 76 + (index % 8) * 3,
-    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-    metadata: { beatId: item.id },
-  }));
-
-  const professionalItems = recs.professionals.map((profile, index) => ({
-    id: `pro-${slugify(profile.name)}`,
-    type: "professional",
-    title: profile.name,
-    subtitle: `${profile.role} - ${profile.match?.score || 74}% match`,
-    description: profile.specialty,
-    creatorName: profile.name,
-    category: profile.category,
-    genres: profile.tags,
-    vibes: profile.tags,
-    priceLabel: `A partir de ${profile.price}`,
-    coverImage: professionalImage(profile),
-    durationSeconds: 42,
-    tags: [profile.role, profile.city, `${profile.jobs} jobs`],
-    rating: Number(profile.rating),
-    verified: true,
-    popularityScore: 82 + index * 4,
-    createdAt: new Date(Date.now() - index * 172800000).toISOString(),
-    metadata: { professionalName: profile.name },
-  }));
-
-  const serviceItems = recs.services.map((item, index) => ({
-    id: `service-${slugify(item.title)}`,
-    type: item.type === "Marketing musical" ? "marketing" : item.type === "Curador" ? "curation" : "service",
-    title: item.title,
-    subtitle: item.type,
-    description: item.reason,
-    creatorName: "NEXO IA",
-    category: item.type,
-    genres: item.genres || musicQuiz.genres,
-    vibes: item.stages || musicQuiz.vibes,
-    priceLabel: "Recomendado pela NEXO",
-    coverImage: ["assets/category-beatmakers.png", "assets/category-designers.png", "assets/category-producers.png", "assets/category-curators.png", "assets/category-marketing.png"][index % 5],
-    durationSeconds: 38,
-    tags: [item.type, item.match ? `${item.match.score}% match` : "IA", "Servico"],
-    verified: true,
-    popularityScore: 70 + index * 5,
-    createdAt: new Date(Date.now() - index * 93600000).toISOString(),
-    metadata: { route: item.route },
-  }));
-
-  const comboItems = recs.combos.map((item, index) => ({
-    id: `combo-${slugify(item.title)}`,
-    type: "combo",
-    title: item.title,
-    subtitle: item.services,
-    description: item.economy || "Sequencia inteligente para acelerar seu lancamento.",
-    creatorName: "NEXO IA",
-    category: "Combo",
-    genres: item.genres || musicQuiz.genres,
-    vibes: item.vibes || musicQuiz.vibes,
-    priceLabel: item.title.includes("Completo") ? "A partir de R$ 1.200" : item.title.includes("Beat") ? "A partir de R$ 490" : "A partir de R$ 350",
-    coverImage: ["assets/category-producers.png", "assets/category-marketing.png", "assets/category-designers.png"][index % 3],
-    durationSeconds: 35,
-    tags: ["Combo", item.match ? `${item.match.score}% match` : "Plano", "Entrega guiada"],
-    verified: true,
-    popularityScore: 84 + index * 6,
-    createdAt: new Date(Date.now() - index * 5400000).toISOString(),
-    metadata: { prompt: `Quero montar o ${item.title.toLowerCase()} para meu lancamento.` },
-  }));
-
-  const playlistItems = getRecommendedPlaylists(profile).slice(0, 4).map((item, index) => ({
-    id: `pack-${slugify(item.title)}`,
-    type: "pack",
-    title: item.title,
-    subtitle: item.subtitle,
-    description: `Pack curado para ${asArray(item.genres).slice(0, 2).join(" e ")} com vibe ${asArray(item.vibes)[0] || "urbana"}.`,
-    creatorName: "Curadoria ANSEND",
-    category: "Pack",
-    genres: item.genres,
-    vibes: item.vibes,
-    priceLabel: "Abrir pack",
-    coverImage: item.cover,
-    durationSeconds: 48,
-    tags: ["Pack", item.match ? `${item.match.score}% match` : "Curadoria", "Playlist"],
-    verified: true,
-    popularityScore: 74 + index * 4,
-    createdAt: new Date(Date.now() - index * 4600000).toISOString(),
-    metadata: { playlistId: slugify(item.title), title: item.title },
-  }));
-
-  const educationItems = [
-    {
-      id: "edu-release-map",
-      type: "education",
-      title: "Mapa do lancamento",
-      subtitle: "Guia NEXO",
-      description: "Entenda a ordem certa: producao, capa, distribuicao, curadoria e divulgacao.",
-      creatorName: "NEXO IA",
-      category: "Educativo",
-      genres: musicQuiz.genres,
-      vibes: ["Comercial", "Cinematografica"],
-      priceLabel: "Ver guia",
-      coverImage: "assets/category-marketing.png",
-      durationSeconds: 30,
-      tags: ["Guia", "Lancamento", "IA"],
-      verified: true,
-      popularityScore: 88,
-      createdAt: new Date().toISOString(),
-      metadata: { route: "ia" },
-    },
-  ];
-
-  return [...beatItems, ...professionalItems, ...serviceItems, ...comboItems, ...playlistItems, ...educationItems];
+  return syncFeedItemsFromCatalog()
+    .map(normalizeFeedItem)
+    .filter(Boolean)
+    .filter((item) => {
+      if (["music", "beat", "image", "portfolio"].includes(item.type)) {
+        return isRealFeedMedia(item.coverUrl) || isRealFeedMedia(item.mediaUrl) || isRealFeedMedia(item.audioUrl);
+      }
+      return item.isPublished !== false;
+    });
 }
 
 function calculateNexoFeedScore(item, profile = getMusicProfile()) {
-  const baseProfile = profile || createDefaultMusicProfile();
   const history = readFeedObject(NEXO_FEED_HISTORY_KEY)[item.id] || {};
-  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
-  const profileGenres = asArray(baseProfile.genres).map(normalizeToken);
-  const profileVibes = asArray(baseProfile.vibes).map(normalizeToken);
-  const objective = normalizeToken(baseProfile.objective);
-  let score = Number(item.popularityScore || 50);
-  const reasons = [];
-
-  if (asArray(item.genres).some((genre) => profileGenres.includes(normalizeToken(genre)))) {
-    score += 22;
-    reasons.push("combina com seu estilo musical");
-  }
-  if (asArray(item.vibes).some((vibe) => profileVibes.includes(normalizeToken(vibe)))) {
-    score += 14;
-    reasons.push("bate com a vibe do seu perfil");
-  }
-  const haystack = normalizeToken(`${item.title} ${item.subtitle} ${item.description} ${item.category} ${asArray(item.tags).join(" ")}`);
-  if (objective && haystack.includes(objective.split(" ")[0])) {
-    score += 10;
-    reasons.push("serve para seu objetivo atual");
-  }
-  preferredFeedEntries(taste.genres, 4).forEach((genre) => {
-    if (asArray(item.genres).includes(genre)) score += 7;
-  });
-  preferredFeedEntries(taste.categories, 4).forEach((category) => {
-    if (item.category === category || item.type === category) score += 6;
-  });
-  score += (history.likes || 0) * 6 + (history.saves || 0) * 8 + (history.ctas || 0) * 10;
-  score -= (history.skips || 0) * 18;
-  if (item.verified) {
-    score += 5;
-    reasons.push("perfil verificado na ANSEND");
-  }
-  if (!reasons.length) reasons.push("boa porta de entrada para sua jornada");
-  return { score: Math.max(1, Math.min(99, Math.round(score))), reasons: reasons.slice(0, 3) };
+  const createdAt = Date.parse(item.createdAt || "") || 0;
+  const ageHours = createdAt ? Math.max(0, (Date.now() - createdAt) / 3600000) : 999;
+  let score = 100 - Math.min(60, ageHours / 2);
+  score += (history.likes || item.likesCount || 0) * 3 + (history.saves || item.savesCount || 0) * 4 + (history.ctas || 0) * 2;
+  score -= (history.skips || 0) * 10;
+  return { score: Math.max(1, Math.min(100, Math.round(score))), reasons: ["publicacao real da plataforma"] };
 }
 
 function getRankedNexoFeed(limit = 14) {
@@ -2232,47 +2230,38 @@ function getRankedNexoFeed(limit = 14) {
   const pool = getNexoFeedItems()
     .filter((item) => !hidden.has(item.id))
     .map((item) => ({ ...item, feedMatch: calculateNexoFeedScore(item, profile) }))
-    .sort((a, b) => b.feedMatch.score - a.feedMatch.score || b.popularityScore - a.popularityScore);
-  const result = [];
-  const typeCount = {};
-  for (const item of pool) {
-    const count = typeCount[item.type] || 0;
-    if (count >= 3 && result.length < 8) continue;
-    result.push(item);
-    typeCount[item.type] = count + 1;
-    if (result.length >= limit) break;
-  }
-  return result.length ? result : pool.slice(0, limit);
+    .sort((a, b) => (Date.parse(b.createdAt || "") || 0) - (Date.parse(a.createdAt || "") || 0));
+  return pool.slice(0, limit);
 }
 
 function nexoFeedCard(item, index) {
-  const isBeat = item.type === "beat";
+  const isBeat = item.type === "beat" || item.type === "music";
   const beatId = item.metadata?.beatId || item.id;
   const isSavedBeat = isBeat && appState.favorites.has(beatId);
   const author = item.creatorName || "ANSEND";
-  const authorProfile = findProfessional(author);
-  const authorImage = author === "NEXO IA" || author === "Curadoria ANSEND"
-    ? "assets/ansend-logo-square.png"
-    : item.type === "professional"
-      ? item.coverImage
-      : professionalImage(authorProfile);
-  const meta = [item.category, item.bpm ? `${item.bpm} BPM` : item.priceLabel].filter(Boolean).slice(0, 2).join(" - ");
-  return `<article class="nexo-feed-card" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}" style="--feed-cover: url('${item.coverImage || item.cover || ""}')">
+  const authorImage = isRealFeedMedia(item.creatorAvatar) ? item.creatorAvatar : "";
+  const media = item.coverUrl || item.mediaUrl || "";
+  const hasVisualMedia = isRealFeedMedia(media);
+  const meta = [item.creatorRole, item.priceLabel || item.price].filter(Boolean).slice(0, 2).join(" - ");
+  const typeIcon = item.type === "service" ? "briefcase-business" : item.type === "image" ? "image" : item.type === "portfolio" ? "gallery-horizontal-end" : "sparkles";
+  return `<article class="nexo-feed-card ${hasVisualMedia ? "" : "has-system-fallback"}" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}">
     <div class="nexo-feed-media">
-      <img src="${item.coverImage || item.cover || ""}" alt="${item.title}">
-      ${!isBeat ? `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>` : ""}
+      ${hasVisualMedia ? `<img src="${htmlEscape(media)}" alt="${htmlEscape(item.title)}">` : `<div class="nexo-feed-official-fallback"><i data-lucide="radio-tower"></i><span>ANSEND</span></div>`}
+      ${isBeat && item.audioUrl ? `<button type="button" class="nexo-feed-play" data-action="nexo-feed-play" data-feed-item-id="${item.id}" aria-label="Ouvir ${htmlEscape(item.title)}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
-        <img src="${authorImage}" alt="">
+        ${authorImage ? `<img src="${htmlEscape(authorImage)}" alt="">` : `<span class="nexo-feed-avatar-fallback">${htmlEscape(author.slice(0, 1).toUpperCase())}</span>`}
         <div>
-          <strong>${author}</strong>
-          <span>${meta || "Recomendado pela NEXO"}</span>
+          <strong>${htmlEscape(author)}</strong>
+          <span>${htmlEscape(meta || "Publicacao real")}</span>
         </div>
         <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}">Ver</button>
       </div>
-      <h2>${item.title}</h2>
-      <p>${item.description}</p>
+      <h2>${htmlEscape(item.title)}</h2>
+      <p>${htmlEscape(item.description || "Publicado na ANSEND.")}</p>
+      ${item.tags?.length ? `<div class="nexo-feed-tags">${item.tags.slice(0, 4).map((tag) => `<span>${htmlEscape(tag)}</span>`).join("")}</div>` : ""}
+      <button type="button" class="nexo-feed-main-cta" data-action="nexo-feed-open" data-feed-item-id="${item.id}">${nexoFeedCta(item)}</button>
     </div>
     <div class="nexo-feed-actions" aria-label="Acoes do feed">
       <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
@@ -2299,13 +2288,21 @@ function nexoFeedDetailPanel(item) {
 function renderNexoFeed() {
   const items = getRankedNexoFeed();
   appView.innerHTML = `<section class="nexo-feed-page" aria-label="NEXO Feed">
-    <main class="nexo-feed-stream" id="nexoFeedStream">
+    ${items.length ? `<main class="nexo-feed-stream" id="nexoFeedStream">
       ${items.map(nexoFeedCard).join("")}
-    </main>
-    <div class="nexo-feed-scroll-controls" aria-label="Navegar no feed">
+    </main>` : `<main class="nexo-feed-empty" id="nexoFeedStream">
+      <div class="nexo-feed-empty-mark"><i data-lucide="radio-tower"></i></div>
+      <h1>Nenhuma publicacao ainda.</h1>
+      <p>Quando artistas, produtores e profissionais publicarem musicas, beats, servicos ou artes, elas aparecerao aqui.</p>
+      <div>
+        <button type="button" data-route="cadastrar">Publicar agora</button>
+        <button type="button" data-route="marketplace">Explorar marketplace</button>
+      </div>
+    </main>`}
+    ${items.length > 1 ? `<div class="nexo-feed-scroll-controls" aria-label="Navegar no feed">
       <button type="button" data-action="nexo-feed-prev" aria-label="Subir no feed"><i data-lucide="chevron-up"></i></button>
       <button type="button" data-action="nexo-feed-next" aria-label="Descer no feed"><i data-lucide="chevron-down"></i></button>
-    </div>
+    </div>` : ""}
   </section>`;
 }
 
@@ -6230,6 +6227,7 @@ async function saveBeatRelease(status = "published") {
   }
   
   const beatId = form.dataset.beatId;
+  let savedCatalogItem = null;
   
   if (supabaseClient && appState.authUser) {
     const dbPayload = {
@@ -6252,6 +6250,7 @@ async function saveBeatRelease(status = "published") {
     
     // Add source_table property
     data.source_table = "beats";
+    savedCatalogItem = data;
     
     // Update local state list
     appState.catalogItems = appState.catalogItems.filter(item => item.id !== beatId);
@@ -6267,12 +6266,21 @@ async function saveBeatRelease(status = "published") {
       created_at: new Date().toISOString(),
       source_table: "beats"
     };
+    savedCatalogItem = localBeat;
     
     appState.catalogItems = appState.catalogItems.filter(item => item.id !== localBeat.id && item.id !== beatId);
     appState.catalogItems.unshift(localBeat);
     persistCatalogItems();
     
     showToast(status === "published" ? "Beat publicado localmente!" : "Rascunho salvo localmente!", "hard-drive");
+  }
+
+  if (savedCatalogItem) {
+    if (status === "published") {
+      upsertFeedItem(createFeedItemFromBeat(savedCatalogItem));
+    } else {
+      removeFeedItemForSource(savedCatalogItem.id, savedCatalogItem.source_table || "beats");
+    }
   }
   
   await loadCatalogItems();
@@ -8157,12 +8165,14 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "nexo-feed-play") {
-    const item = findBeat(target.dataset.id);
+    const feedItem = feedItemForEvent(target.dataset.feedItemId);
+    const item = findBeat(feedItem?.metadata?.beatId || feedItem?.sourceId || target.dataset.id);
+    if (!item) return;
     pauseTopBeat({ quiet: true });
     appState.playing = item.id;
     updateMiniPlayer(item);
     document.querySelector(".mini-player")?.classList.add("is-playing");
-    writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+    writeNexoFeedEvent(feedItem?.id || item.id, "click_cta", { item: feedItem || item, watchTimeMs: 0 });
     return;
   }
   if (action === "nexo-feed-prev" || action === "nexo-feed-next") {
@@ -8179,6 +8189,7 @@ document.addEventListener("click", (event) => {
       "nexo-feed-share": "share",
       "nexo-feed-comments": "click_cta",
       "nexo-feed-profile": "open_profile",
+      "nexo-feed-open": "click_cta",
       "nexo-feed-plan": "add_to_plan",
       "nexo-feed-hide": "not_interested",
       "nexo-feed-similar": "view_similar",
@@ -8194,10 +8205,12 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "nexo-feed-comments") {
-      if (item.type === "beat") {
+      if (item.type === "beat" || item.type === "music") {
         const beat = findBeat(item.metadata?.beatId || item.id);
-        appState.playing = beat.id;
-        updateMiniPlayer(beat);
+        if (beat) {
+          appState.playing = beat.id;
+          updateMiniPlayer(beat);
+        }
         openCommentsPanel();
       } else {
         openModal(`<section class="player-tool-modal comments-tool-modal">
@@ -8215,15 +8228,25 @@ document.addEventListener("click", (event) => {
       }
       return;
     }
+    if (action === "nexo-feed-open") {
+      if (item.type === "beat" || item.type === "music") {
+        const beatId = item.metadata?.beatId || item.sourceId || item.id;
+        location.hash = `beat-${beatId}`;
+      } else if (item.type === "service") {
+        location.hash = "produtores";
+      } else {
+        showToast("Detalhes preparados para esta publicacao.", "external-link");
+      }
+      return;
+    }
     if (action === "nexo-feed-share") {
       navigator.clipboard?.writeText(`${location.origin}${location.pathname}#nexo-feed`);
       target.classList.add("is-active");
       return;
     }
     if (action === "nexo-feed-profile") {
-      if (item.type === "professional") openProfessionalProfile(item.metadata?.professionalName || item.title);
-      else if (item.creatorName && item.creatorName !== "NEXO IA" && item.creatorName !== "Curadoria ANSEND") openProfessionalProfile(item.creatorName);
-      else location.hash = "produtores";
+      if (item.creatorName && item.creatorName !== "ANSEND") openProfessionalProfile(item.creatorName);
+      else location.hash = "perfil";
       return;
     }
     if (action === "nexo-feed-hide") {
