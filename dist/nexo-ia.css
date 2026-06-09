@@ -40,14 +40,14 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
 
 .nexo-chat-shell {
   width: min(1180px, calc(100% - 32px));
-  height: min(560px, 100%);
+  height: min(640px, 100%);
   min-height: 0;
   margin: 0 auto;
   display: grid;
-  grid-template-rows: minmax(230px, 0.68fr) auto auto;
+  grid-template-rows: minmax(380px, 1fr) auto auto;
   align-content: center;
   gap: 10px;
-  padding: clamp(10px, 1.8vw, 22px) 0 12px;
+  padding: clamp(18px, 2.2vw, 30px) 0 8px;
 }
 
 .nexo-chat-thread {
@@ -64,6 +64,12 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
 
 .nexo-chat-thread::-webkit-scrollbar {
   display: none;
+}
+
+.nexo-chat-thread:has(.nexo-chat-welcome) {
+  overflow: hidden;
+  justify-content: center;
+  scroll-behavior: auto;
 }
 
 .nexo-chat-welcome {
@@ -84,11 +90,11 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
 }
 
 .nexo-chat-welcome h1 {
-  max-width: 760px;
+  max-width: 900px;
   margin: 0;
   color: #fff;
   font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif;
-  font-size: clamp(42px, 6.8vw, 78px);
+  font-size: clamp(42px, 5.8vw, 76px);
   line-height: 0.96;
   letter-spacing: 0;
 }
@@ -359,11 +365,11 @@ body[data-route="ia"] .footer-brand::after {
 
   .nexo-chat-shell {
     width: min(100%, calc(100% - 14px));
-    height: min(600px, 100%);
+    height: min(640px, 100%);
     min-height: 0;
-    grid-template-rows: minmax(240px, 0.82fr) auto auto;
+    grid-template-rows: minmax(430px, 1fr) auto auto;
     gap: 10px;
-    padding: 10px 0 12px;
+    padding: 16px 0 8px;
   }
 
   .nexo-chat-thread {

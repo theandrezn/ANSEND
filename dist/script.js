@@ -5607,7 +5607,12 @@ function setupNexoChatInput() {
 
 function scrollNexoChatToBottom() {
   const thread = document.querySelector("#nexoChatThread");
-  if (thread) thread.scrollTop = thread.scrollHeight;
+  if (!thread) return;
+  if (thread.querySelector(".nexo-chat-welcome")) {
+    thread.scrollTop = 0;
+    return;
+  }
+  thread.scrollTop = thread.scrollHeight;
 }
 
 async function callNexoChatApi(messages) {
