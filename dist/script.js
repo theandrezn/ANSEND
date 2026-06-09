@@ -1103,6 +1103,9 @@ const appState = {
   musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
   catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
+  nexoChatMessages: [],
+  nexoChatLoading: false,
+  nexoChatError: "",
   authUser: null,
   profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
   authReady: !supabaseClient,
@@ -5514,25 +5517,139 @@ function renderAiWorkspace() {
 }
 
 function renderAiWorkspace() {
-  if (appState.nexoQuizGenerating) {
-    appView.innerHTML = `<div class="nexo-minimal-container nexo-quiz-shell">
-      <header class="nexo-quiz-hero">
-        <span class="nexo-quiz-eyebrow">NEXO IA</span>
-        <h1><strong>O que podemos lancar hoje?</strong></h1>
-        <p>A NEXO esta lendo seu contexto e montando uma rota musical objetiva.</p>
-      </header>
-      <div class="nexo-quiz-card nexo-result-loading"><i data-lucide="loader-2"></i>Gerando diagnostico musical...</div>
-    </div>`;
-    return;
-  }
+  appView.innerHTML = renderNexoChat();
+  requestAnimationFrame(() => {
+    setupNexoChatInput();
+    scrollNexoChatToBottom();
+    lucide.createIcons();
+  });
+}
 
-  const savedResult = readNexoDiagnosis();
-  if (savedResult && !appState.nexoQuizEditing) {
-    appView.innerHTML = renderNexoDiagnosisResult(savedResult);
-    return;
-  }
+const nexoChatSuggestions = [
+  "Quero lancar uma musica do zero",
+  "Me ajude a montar um plano de lancamento",
+  "Quero encontrar produtores, designers e curadores",
+  "Analise minha ideia musical",
+  "Monte um diagnostico para meu proximo single",
+];
 
-  appView.innerHTML = renderNexoQuiz(appState.nexoQuiz || readNexoQuiz());
+function nexoChatMessages() {
+  if (!Array.isArray(appState.nexoChatMessages)) appState.nexoChatMessages = [];
+  return appState.nexoChatMessages;
+}
+
+function nexoChatId(prefix = "msg") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function nexoFormatMessage(content = "") {
+  return htmlEscape(content)
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function renderNexoChatMessage(message) {
+  const isUser = message.role === "user";
+  return `<article class="nexo-chat-message ${isUser ? "is-user" : "is-assistant"}" data-message-id="${htmlEscape(message.id || "")}">
+    <div class="nexo-chat-avatar">${isUser ? `<i data-lucide="circle-user-round"></i>` : `<span>N</span>`}</div>
+    <div class="nexo-chat-bubble">
+      <p>${nexoFormatMessage(message.content || "")}</p>
+    </div>
+  </article>`;
+}
+
+function renderNexoChatWelcome() {
+  return `<section class="nexo-chat-welcome" aria-label="Introducao da NEXO IA">
+    <span>NEXO IA</span>
+    <h1>Converse com a inteligencia musical da ANSEND</h1>
+    <p>Transforme uma ideia em um plano real de lancamento, com orientacao sobre beat, capa, mix/master, marketing, curadoria e proximos passos.</p>
+    <div class="nexo-chat-suggestions">
+      ${nexoChatSuggestions.map((prompt) => `<button type="button" data-action="nexo-chat-suggestion" data-prompt="${htmlEscape(prompt)}"><i data-lucide="sparkles"></i>${htmlEscape(prompt)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderNexoChat() {
+  const messages = nexoChatMessages();
+  const isLoading = Boolean(appState.nexoChatLoading);
+  return `<section class="nexo-chat-page" aria-label="NEXO IA">
+    <main class="nexo-chat-shell">
+      <div class="nexo-chat-thread" id="nexoChatThread">
+        ${messages.length ? messages.map(renderNexoChatMessage).join("") : renderNexoChatWelcome()}
+        ${isLoading ? `<article class="nexo-chat-message is-assistant is-typing">
+          <div class="nexo-chat-avatar"><span>N</span></div>
+          <div class="nexo-chat-bubble"><p>NEXO IA esta pensando<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
+        </article>` : ""}
+      </div>
+      ${appState.nexoChatError ? `<p class="nexo-chat-error"><i data-lucide="circle-alert"></i>${htmlEscape(appState.nexoChatError)}</p>` : ""}
+      <form class="nexo-chat-form" autocomplete="off">
+        <div class="nexo-chat-input-wrap">
+          <textarea id="nexoChatInput" name="message" rows="1" ${isLoading ? "disabled" : ""} placeholder="Conte sua ideia, seu momento ou o que voce quer lancar..."></textarea>
+          <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar mensagem para NEXO IA"><i data-lucide="${isLoading ? "loader-2" : "send"}"></i></button>
+        </div>
+      </form>
+    </main>
+  </section>`;
+}
+
+function setupNexoChatInput() {
+  const input = document.querySelector("#nexoChatInput");
+  if (!input) return;
+  const resize = () => {
+    input.style.height = "48px";
+    input.style.height = `${Math.min(180, Math.max(48, input.scrollHeight))}px`;
+  };
+  resize();
+  input.addEventListener("input", resize);
+  input.focus({ preventScroll: true });
+}
+
+function scrollNexoChatToBottom() {
+  const thread = document.querySelector("#nexoChatThread");
+  if (thread) thread.scrollTop = thread.scrollHeight;
+}
+
+async function callNexoChatApi(messages) {
+  const response = await fetch("/api/nexo/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: messages.map(({ role, content }) => ({ role, content })),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.");
+  }
+  return data.message;
+}
+
+async function sendNexoChatMessage(rawMessage) {
+  const content = String(rawMessage || "").trim();
+  if (!content || appState.nexoChatLoading) return;
+  const messages = nexoChatMessages();
+  messages.push({ id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() });
+  appState.nexoChatLoading = true;
+  appState.nexoChatError = "";
+  renderAiWorkspace();
+  hydrateView();
+
+  try {
+    const answer = await callNexoChatApi(messages);
+    messages.push({
+      id: nexoChatId("assistant"),
+      role: "assistant",
+      content: answer?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
+      createdAt: answer?.createdAt || new Date().toISOString(),
+    });
+  } catch (error) {
+    appState.nexoChatError = error?.message || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.";
+  } finally {
+    appState.nexoChatLoading = false;
+    renderAiWorkspace();
+    hydrateView();
+  }
 }
 
 function professionalCard(profile) {
@@ -7966,6 +8083,12 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.target?.matches?.("#nexoChatInput") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    const form = event.target.closest(".nexo-chat-form");
+    form?.requestSubmit();
+    return;
+  }
   const customSelect = event.target.closest?.(".nexo-dark-select");
   if (customSelect) {
     const field = customSelect.closest(".nexo-custom-select-field");
@@ -8012,6 +8135,13 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const chatSuggestion = event.target.closest("[data-action='nexo-chat-suggestion']");
+  if (chatSuggestion) {
+    event.preventDefault();
+    sendNexoChatMessage(chatSuggestion.dataset.prompt || chatSuggestion.textContent);
+    return;
+  }
+
   const selectToggle = event.target.closest("[data-action='nexo-select-toggle']");
   if (selectToggle) {
     event.preventDefault();
@@ -8771,6 +8901,16 @@ document.addEventListener("submit", async (event) => {
       input.value = "";
       showToast("Comentario publicado no preview", "message-circle");
     }
+    return;
+  }
+  const nexoChatForm = event.target.closest(".nexo-chat-form");
+  if (nexoChatForm) {
+    event.preventDefault();
+    const input = nexoChatForm.elements.message;
+    const message = input?.value || "";
+    if (!message.trim()) return;
+    input.value = "";
+    await sendNexoChatMessage(message);
     return;
   }
   const nexoMatchForm = event.target.closest(".nexo-match-form");

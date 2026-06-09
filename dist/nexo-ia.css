@@ -10,6 +10,385 @@ body[data-route="ia"] #appView {
   overflow: visible !important;
 }
 
+body[data-route="ia"] #appView:has(.nexo-chat-page) {
+  min-height: calc(100vh - 64px);
+  padding: 0 !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 48% 0%, rgba(255, 106, 0, 0.11), transparent 34%),
+    linear-gradient(180deg, #000 0%, #030303 52%, #000 100%);
+}
+
+.nexo-chat-page {
+  width: 100%;
+  height: calc(100vh - 64px);
+  min-height: 620px;
+  color: #f5f5f5;
+  display: grid;
+  overflow: hidden;
+}
+
+.nexo-chat-shell {
+  width: min(1180px, calc(100% - 32px));
+  height: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  padding: clamp(18px, 2.6vw, 30px) 0 18px;
+}
+
+.nexo-chat-thread {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px clamp(2px, 1vw, 12px) 16px;
+  scroll-behavior: smooth;
+}
+
+.nexo-chat-thread::-webkit-scrollbar {
+  width: 8px;
+}
+
+.nexo-chat-thread::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nexo-chat-thread::-webkit-scrollbar-thumb {
+  background: rgba(255, 106, 0, 0.32);
+  border-radius: 999px;
+}
+
+.nexo-chat-welcome {
+  flex: 1;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.nexo-chat-welcome > span {
+  color: #ff6a00;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.nexo-chat-welcome h1 {
+  max-width: 760px;
+  margin: 0;
+  color: #fff;
+  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif;
+  font-size: clamp(42px, 6.8vw, 78px);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.nexo-chat-welcome p {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(245, 245, 245, 0.68);
+  font-size: clamp(15px, 1.5vw, 18px);
+  line-height: 1.55;
+}
+
+.nexo-chat-suggestions {
+  width: min(780px, 100%);
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.nexo-chat-suggestions button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(245, 245, 245, 0.78);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.nexo-chat-suggestions button svg {
+  width: 15px;
+  color: #ff6a00;
+}
+
+.nexo-chat-suggestions button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 106, 0, 0.42);
+  background: rgba(255, 106, 0, 0.08);
+  color: #fff;
+}
+
+.nexo-chat-message {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  width: min(840px, 100%);
+}
+
+.nexo-chat-message.is-user {
+  align-self: flex-end;
+  grid-template-columns: minmax(0, 1fr) 36px;
+}
+
+.nexo-chat-message.is-user .nexo-chat-avatar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.nexo-chat-message.is-user .nexo-chat-bubble {
+  grid-column: 1;
+  justify-self: end;
+  background: rgba(255, 106, 0, 0.15);
+  border-color: rgba(255, 106, 0, 0.26);
+}
+
+.nexo-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 106, 0, 0.22);
+  background: rgba(255, 106, 0, 0.08);
+  color: #ff6a00;
+  font-weight: 950;
+}
+
+.nexo-chat-avatar svg {
+  width: 18px;
+  color: rgba(245, 245, 245, 0.72);
+}
+
+.nexo-chat-bubble {
+  width: fit-content;
+  max-width: min(720px, 100%);
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(245, 245, 245, 0.9);
+  line-height: 1.58;
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
+}
+
+.nexo-chat-bubble p {
+  margin: 0;
+}
+
+.nexo-chat-bubble strong {
+  color: #fff;
+}
+
+.nexo-chat-error {
+  width: min(920px, calc(100% - 16px));
+  margin: 0 auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 106, 0, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 106, 0, 0.08);
+  color: #ffd7bd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.nexo-chat-error svg {
+  width: 16px;
+  color: #ff6a00;
+}
+
+.nexo-chat-form {
+  width: min(920px, calc(100% - 16px));
+  margin: 0 auto;
+}
+
+.nexo-chat-input-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid rgba(255, 106, 0, 0.18);
+  border-radius: 22px;
+  background: rgba(8, 8, 8, 0.86);
+  box-shadow: 0 24px 76px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
+}
+
+.nexo-chat-input-wrap textarea {
+  width: 100%;
+  min-height: 48px;
+  max-height: 180px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  padding: 12px 8px 10px 12px;
+  font: 700 15px/1.45 "Poppins", system-ui, sans-serif;
+}
+
+.nexo-chat-input-wrap textarea::placeholder {
+  color: rgba(245, 245, 245, 0.35);
+}
+
+.nexo-chat-input-wrap button {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 16px;
+  background: #ff6a00;
+  color: #090909;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(255, 106, 0, 0.26);
+}
+
+.nexo-chat-input-wrap button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nexo-chat-input-wrap button svg {
+  width: 18px;
+}
+
+.nexo-chat-input-wrap button:has(.lucide-loader-2) svg {
+  animation: nexo-chat-spin 1s linear infinite;
+}
+
+.nexo-typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.nexo-typing-dots b {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff6a00;
+  animation: nexo-chat-pulse 1s ease-in-out infinite;
+}
+
+.nexo-typing-dots b:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.nexo-typing-dots b:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes nexo-chat-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nexo-chat-pulse {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+
+@media (max-width: 760px) {
+  body[data-route="ia"] #appView:has(.nexo-chat-page) {
+    min-height: calc(100vh - 58px);
+  }
+
+  .nexo-chat-page {
+    height: calc(100vh - 58px);
+    min-height: 520px;
+  }
+
+  .nexo-chat-shell {
+    width: min(100%, calc(100% - 14px));
+    gap: 10px;
+    padding: 10px 0 12px;
+  }
+
+  .nexo-chat-thread {
+    gap: 14px;
+    padding: 6px 2px 10px;
+  }
+
+  .nexo-chat-welcome {
+    min-height: 300px;
+    gap: 12px;
+  }
+
+  .nexo-chat-welcome h1 {
+    font-size: clamp(34px, 11vw, 48px);
+  }
+
+  .nexo-chat-welcome p {
+    font-size: 14px;
+  }
+
+  .nexo-chat-suggestions {
+    justify-content: stretch;
+  }
+
+  .nexo-chat-suggestions button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .nexo-chat-message,
+  .nexo-chat-message.is-user {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 9px;
+    width: 100%;
+  }
+
+  .nexo-chat-message.is-user {
+    grid-template-columns: minmax(0, 1fr) 30px;
+  }
+
+  .nexo-chat-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .nexo-chat-bubble {
+    max-width: 100%;
+    padding: 12px 13px;
+    border-radius: 16px;
+    font-size: 14px;
+  }
+
+  .nexo-chat-form,
+  .nexo-chat-error {
+    width: 100%;
+  }
+
+  .nexo-chat-input-wrap {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    border-radius: 18px;
+    padding: 8px;
+  }
+
+  .nexo-chat-input-wrap button {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+}
+
 body[data-route="ia"] .nexo-quiz-shell,
 body[data-route="ia"] .nexo-result-shell {
   width: min(1120px, calc(100% - 32px));
