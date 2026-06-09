@@ -7140,6 +7140,8 @@ function renderRoute() {
   const route = currentRoute();
   const routeChanged = route !== lastRoute;
   lastRoute = route;
+  const institutionalFooter = document.querySelector(".footer");
+  if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
   const accountAccess = hasAccountAccess();
   const authRequiredForRoute = !accountAccess && protectedRoute(route);
   appView.classList.add("app-view");

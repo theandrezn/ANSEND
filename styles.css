@@ -17761,6 +17761,21 @@ body[data-route="cadastrar"] .custom-select-option svg {
   color: #ff6a00 !important;
 }
 
+/* Institutional footer belongs exclusively to the Home route. */
+.footer,
+body:not([data-route="feed"]) .footer {
+  display: none !important;
+}
+
+body[data-route="feed"] .footer:not([hidden]) {
+  display: grid !important;
+}
+
+body:not([data-route="feed"]) .page,
+body:not([data-route="feed"]) #appView.app-view {
+  min-height: 100vh;
+}
+
 /* Upload zone */
 body[data-route="cadastrar"] .release-upload-layout {
   display: grid !important;

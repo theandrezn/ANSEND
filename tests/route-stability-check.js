@@ -113,8 +113,10 @@ async function run() {
         })
         .catch(() => ({ className: "", height: 0, visibleElementCount: 0 }));
       const routeSelectorVisible = await page.locator(route.selector).first().isVisible().catch(() => false);
+      const footerVisible = await page.locator(".footer").isVisible().catch(() => false);
       await page.mouse.click(720, 360);
       await page.waitForTimeout(1800);
+      const footerVisibleAfterClick = await page.locator(".footer").isVisible().catch(() => false);
       const postClickMetrics = await page
         .locator("#appView")
         .evaluate((element) => {
@@ -140,6 +142,10 @@ async function run() {
       const missing = route.required.filter((text) => !bodyText.includes(text));
       const loginGate = bodyText.includes("ACESSO ANSEND") && !["compras", "perfil", "configuracoes", "vendedor"].includes(route.hash);
       const feedClassLeak = route.hash !== "feed" && appMetrics.className.split(/\s+/).includes("feed");
+      const footerVisibilityMismatch =
+        route.hash === "feed"
+          ? !footerVisible || !footerVisibleAfterClick
+          : footerVisible || footerVisibleAfterClick;
 
       if (
         errors.length ||
@@ -150,7 +156,8 @@ async function run() {
         postClickMetrics.height < 120 ||
         postClickMetrics.visibleElementCount < 4 ||
         !routeSelectorVisible ||
-        feedClassLeak
+        feedClassLeak ||
+        footerVisibilityMismatch
       ) {
         failures.push({
           route: route.hash,
@@ -158,6 +165,9 @@ async function run() {
           postClickMetrics,
           routeSelectorVisible,
           feedClassLeak,
+          footerVisible,
+          footerVisibleAfterClick,
+          footerVisibilityMismatch,
           missing,
           loginGate,
           errors,
@@ -165,6 +175,19 @@ async function run() {
         });
       }
 
+      await page.close();
+    }
+
+    for (const hash of ["beat-beat-1", "playlist-trap-na-area", "perfil-flackxbeats", "termos-de-uso"]) {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      await page.goto(`http://127.0.0.1:${port}/index.html#${hash}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
+      await page.waitForTimeout(1800);
+      const footerVisible = await page.locator(".footer").isVisible().catch(() => false);
+      const appHeight = await page.locator("#appView").evaluate((element) => Math.round(element.getBoundingClientRect().height)).catch(() => 0);
+      if (footerVisible || appHeight < 120) failures.push({ route: hash, footerVisible, appHeight });
       await page.close();
     }
   } finally {
