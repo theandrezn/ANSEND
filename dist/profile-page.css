@@ -12,7 +12,7 @@
   --profile-orange: #ff6a00;
   --profile-orange-glow: rgba(255, 106, 0, .14);
   width: 100%;
-  min-height: 100vh;
+  min-height: calc(100vh - 64px);
   margin: 0;
   padding: 0 0 128px;
   overflow-x: hidden;
@@ -34,14 +34,15 @@
 .spotify-profile .profile-hero {
   position: relative;
   display: flex;
-  min-height: clamp(430px, 58vh, 560px);
-  margin: clamp(18px, 2.4vw, 34px) clamp(18px, 2.7vw, 48px) 0;
+  min-height: clamp(520px, 62vh, 660px);
+  margin: 0;
   overflow: hidden;
   flex-direction: column;
   justify-content: flex-end;
   isolation: isolate;
-  border: 1px solid var(--profile-line);
-  border-radius: 28px;
+  border: 0;
+  border-bottom: 1px solid var(--profile-line);
+  border-radius: 0;
   background: #050505;
   box-shadow:
     0 28px 90px rgba(0, 0, 0, .52),
@@ -96,7 +97,7 @@
   align-items: end;
   gap: clamp(20px, 3vw, 42px);
   width: 100%;
-  padding: clamp(72px, 8vw, 112px) clamp(28px, 4vw, 64px) 34px;
+  padding: clamp(88px, 9vw, 124px) clamp(34px, 5vw, 86px) 38px;
 }
 
 .spotify-profile .profile-avatar,
@@ -268,9 +269,9 @@
   display: flex;
   gap: clamp(22px, 3.6vw, 44px);
   overflow-x: auto;
-  width: calc(100% - clamp(36px, 5.4vw, 96px));
-  margin: 0 clamp(18px, 2.7vw, 48px);
-  padding: 19px clamp(16px, 2vw, 28px) 22px;
+  width: 100%;
+  margin: 0;
+  padding: 19px clamp(34px, 5vw, 86px) 22px;
   border-bottom: 1px solid rgba(255, 255, 255, .055);
   scrollbar-width: none;
 }
@@ -314,7 +315,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: clamp(24px, 2.6vw, 36px);
   width: 100%;
-  padding: clamp(28px, 3vw, 40px) clamp(18px, 2.7vw, 48px) 0;
+  padding: clamp(30px, 3.2vw, 46px) clamp(34px, 5vw, 86px) 0;
 }
 
 .spotify-profile .profile-content.is-single-column {

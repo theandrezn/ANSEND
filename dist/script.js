@@ -3857,7 +3857,7 @@ function pendingProfileKey(userId) {
 }
 
 function activeProfile() {
-  return appState.profile || appState.onboardingProfile || null;
+  return appState.profile || appState.onboardingProfile || localPreviewProfile() || null;
 }
 
 function accountRoleLabel(role = activeProfile()?.account_role) {
@@ -3913,7 +3913,20 @@ function setLocalPreviewProfile(profile) {
 }
 
 function localPreviewProfile() {
-  return JSON.parse(localStorage.getItem("ansend-profile-preview") || "null");
+  const stored = JSON.parse(localStorage.getItem("ansend-profile-preview") || "null");
+  if (stored) return stored;
+  if (localStorage.getItem("ansendAccountAccess") === "true") {
+    return {
+      id: "local-preview",
+      display_name: "Meu perfil",
+      username: "meu-perfil",
+      account_role: "artista",
+      bio: "",
+      avatar_url: "",
+      banner_url: "",
+    };
+  }
+  return null;
 }
 
 function clearLocalPreviewProfile() {
@@ -4347,7 +4360,12 @@ function syncAccountUi() {
 }
 
 function hasAccountAccess() {
-  return Boolean(appState.authUser || appState.profile);
+  return Boolean(
+    appState.authUser ||
+    appState.profile ||
+    appState.onboardingProfile ||
+    localStorage.getItem("ansendAccountAccess") === "true"
+  );
 }
 
 function protectedRoute(route) {
