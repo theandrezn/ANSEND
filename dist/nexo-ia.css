@@ -372,25 +372,48 @@ body[data-route="ia"] .footer-brand::after {
   }
 
   .nexo-chat-welcome {
-    min-height: 260px;
-    gap: 12px;
+    min-height: 0;
+    gap: 9px;
   }
 
   .nexo-chat-welcome h1 {
-    font-size: clamp(34px, 11vw, 48px);
+    font-size: clamp(28px, 8.4vw, 38px);
+    max-width: 16ch;
   }
 
   .nexo-chat-welcome p {
-    font-size: 14px;
+    max-width: 34ch;
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   .nexo-chat-suggestions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
+    gap: 7px;
+    margin-top: 2px;
   }
 
   .nexo-chat-suggestions button {
     width: 100%;
     justify-content: flex-start;
+    min-height: 34px;
+    padding: 0 9px;
+    gap: 6px;
+    border-radius: 12px;
+    font-size: 10.5px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .nexo-chat-suggestions button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .nexo-chat-suggestions button svg {
+    width: 13px;
+    min-width: 13px;
   }
 
   .nexo-chat-message,
