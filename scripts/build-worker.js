@@ -3,7 +3,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
-const entries = ["index.html", "styles.css", "hero-collage.css", "script.js", "assets"];
+const entries = ["index.html", "styles.css", "hero-collage.css", "nexo-ia.css", "script.js", "assets"];
 
 function copyRecursive(source, target) {
   const stat = fs.statSync(source);
