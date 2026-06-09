@@ -4,7 +4,8 @@ main = "src/worker.mjs"
 
 [vars]
 OPENAI_MODEL = "gpt-5.4-mini"
-NEXO_MAX_OUTPUT_TOKENS = "900"
+NEXO_FALLBACK_MODELS = "gpt-5-mini,gpt-4.1-mini"
+NEXO_MAX_OUTPUT_TOKENS = "2200"
 NEXO_REASONING_EFFORT = "low"
 
 [assets]

@@ -1,0 +1,605 @@
+/* ANSEND profile page: full-screen musical profile, no fake dashboard cards. */
+.profile-page.spotify-profile {
+  --profile-bg: #050505;
+  --profile-line: rgba(255, 255, 255, .08);
+  --profile-muted: #a7a7a7;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 128px;
+  color: #f7f7f7;
+  background: #050505;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.profile-page.spotify-profile *,
+.profile-page.spotify-profile *::before,
+.profile-page.spotify-profile *::after {
+  box-sizing: border-box;
+}
+
+.spotify-profile .profile-hero {
+  position: relative;
+  display: flex;
+  min-height: clamp(520px, 64vh, 650px);
+  overflow: hidden;
+  flex-direction: column;
+  justify-content: flex-end;
+  isolation: isolate;
+  background: #050505;
+}
+
+.spotify-profile .profile-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 106, 0, .18), transparent 32%),
+    radial-gradient(circle at 18% 84%, rgba(255, 106, 0, .08), transparent 36%),
+    linear-gradient(135deg, #030303 0%, #080604 48%, #050505 100%);
+}
+
+.spotify-profile .profile-hero.has-banner .profile-hero-bg {
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, .96) 0%, rgba(0, 0, 0, .74) 42%, rgba(0, 0, 0, .2) 100%),
+    linear-gradient(180deg, transparent 42%, rgba(5, 5, 5, .94) 100%),
+    var(--profile-banner);
+  background-size: cover;
+  background-position: center;
+}
+
+.spotify-profile .profile-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, transparent 40%, #050505 100%),
+    radial-gradient(circle at 24% 74%, rgba(255, 106, 0, .16), transparent 32%);
+  pointer-events: none;
+}
+
+.spotify-profile .profile-hero-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(20px, 3.5vw, 52px);
+  width: 100%;
+  padding: clamp(86px, 10vw, 132px) clamp(22px, 7vw, 128px) 34px;
+}
+
+.spotify-profile .profile-avatar,
+.spotify-profile .profile-edit-avatar {
+  display: grid;
+  width: clamp(112px, 10vw, 156px);
+  height: clamp(112px, 10vw, 156px);
+  overflow: hidden;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(255, 106, 0, .52);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 138, 0, .28), transparent 30%),
+    #080604;
+  color: #ff6a00;
+  font-size: clamp(34px, 4vw, 58px);
+  font-weight: 1000;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .5), 0 0 42px rgba(255, 106, 0, .12);
+}
+
+.spotify-profile .profile-avatar img,
+.spotify-profile .profile-edit-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.spotify-profile .profile-identity {
+  min-width: 0;
+}
+
+.spotify-profile .profile-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff6a00;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.spotify-profile .profile-kicker svg {
+  width: 16px;
+  height: 16px;
+}
+
+.spotify-profile .profile-name {
+  max-width: 980px;
+  margin: 12px 0 0;
+  color: #fff;
+  font-family: "Schibsted Grotesk", "Poppins", sans-serif;
+  font-size: clamp(56px, 8.8vw, 138px);
+  font-weight: 1000;
+  line-height: .84;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.spotify-profile .profile-handle,
+.spotify-profile .profile-bio {
+  max-width: 760px;
+  margin: 14px 0 0;
+  color: rgba(245, 245, 245, .72);
+  font-size: clamp(14px, 1.12vw, 18px);
+  line-height: 1.55;
+}
+
+.spotify-profile .profile-handle {
+  color: #b8b8b8;
+  font-weight: 800;
+}
+
+.spotify-profile .profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.spotify-profile .profile-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  color: #f7f7f7;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.spotify-profile .profile-action svg {
+  width: 17px;
+  height: 17px;
+}
+
+.spotify-profile .profile-action.is-primary {
+  border-color: transparent;
+  background: #ff6a00;
+  color: #050505;
+}
+
+.spotify-profile .profile-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 106, 0, .52);
+}
+
+.spotify-profile .profile-action:focus-visible,
+.spotify-profile .profile-tab:focus-visible,
+.spotify-profile .profile-play-mini:focus-visible {
+  outline: 2px solid #ff8a00;
+  outline-offset: 3px;
+}
+
+.spotify-profile .profile-published-count {
+  align-self: center;
+  min-width: 118px;
+  color: #fff;
+  text-align: right;
+}
+
+.spotify-profile .profile-published-count span {
+  display: block;
+  color: #a9a9a9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.spotify-profile .profile-published-count strong {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(34px, 4vw, 62px);
+  line-height: 1;
+}
+
+.spotify-profile .profile-tabs {
+  display: flex;
+  gap: clamp(20px, 4vw, 44px);
+  overflow-x: auto;
+  width: 100%;
+  padding: 18px clamp(22px, 7vw, 128px) 22px;
+  scrollbar-width: none;
+}
+
+.spotify-profile .profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.spotify-profile .profile-tab {
+  position: relative;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #a9a9a9;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.spotify-profile .profile-tab.is-active,
+.spotify-profile .profile-tab:hover {
+  color: #fff;
+}
+
+.spotify-profile .profile-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ff6a00;
+}
+
+.spotify-profile .profile-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: clamp(34px, 5vw, 72px);
+  width: 100%;
+  padding: 34px clamp(22px, 7vw, 128px) 0;
+}
+
+.spotify-profile .profile-content.is-single-column {
+  grid-template-columns: 1fr;
+}
+
+.spotify-profile .profile-music-stack {
+  display: grid;
+  gap: 42px;
+}
+
+.spotify-profile .profile-music-section {
+  min-width: 0;
+}
+
+.spotify-profile .profile-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.spotify-profile .profile-section-head h2,
+.spotify-profile .profile-about-panel h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 2vw, 34px);
+  letter-spacing: 0;
+}
+
+.spotify-profile .profile-section-head p,
+.spotify-profile .profile-about-panel p {
+  margin: 7px 0 0;
+  color: var(--profile-muted);
+  line-height: 1.55;
+}
+
+.spotify-profile .profile-track-list {
+  display: grid;
+  gap: 2px;
+}
+
+.spotify-profile .profile-track-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(110px, 170px) 110px 42px;
+  align-items: center;
+  gap: 14px;
+  min-height: 70px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: #dcdcdc;
+  transition: background .18s ease;
+}
+
+.spotify-profile .profile-track-row:hover {
+  background: rgba(255, 255, 255, .055);
+}
+
+.spotify-profile .profile-track-index {
+  color: #8e8e8e;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.spotify-profile .profile-track-main {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.spotify-profile .profile-track-main > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.spotify-profile .profile-track-main img,
+.spotify-profile .profile-track-cover-fallback {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #111;
+  color: #ff6a00;
+}
+
+.spotify-profile .profile-track-main strong,
+.spotify-profile .profile-track-main small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spotify-profile .profile-track-main strong {
+  color: #fff;
+  line-height: 1.15;
+}
+
+.spotify-profile .profile-track-main small,
+.spotify-profile .profile-track-meta,
+.spotify-profile .profile-track-price {
+  color: #a8a8a8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.spotify-profile .profile-track-price {
+  color: #fff;
+}
+
+.spotify-profile .profile-play-mini {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #ff6a00;
+  color: #050505;
+  cursor: pointer;
+}
+
+.spotify-profile .profile-play-mini svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.spotify-profile .profile-empty-state {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  gap: 10px;
+  padding: 30px;
+  border: 1px dashed rgba(255, 106, 0, .24);
+  border-radius: 18px;
+  color: #f5f5f5;
+  text-align: center;
+}
+
+.spotify-profile .profile-empty-state svg {
+  width: 34px;
+  height: 34px;
+  color: #ff6a00;
+}
+
+.spotify-profile .profile-empty-state p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--profile-muted);
+}
+
+.spotify-profile .profile-about-panel {
+  display: grid;
+  align-self: start;
+  gap: 28px;
+  padding-top: 4px;
+}
+
+.spotify-profile .profile-links {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.spotify-profile .profile-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  color: #e8e8e8;
+  text-decoration: none;
+}
+
+.spotify-profile .profile-links svg {
+  width: 16px;
+  height: 16px;
+  color: #ff6a00;
+}
+
+.spotify-profile .profile-not-found {
+  display: grid;
+  min-height: calc(100vh - 90px);
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.spotify-profile .profile-not-found svg {
+  width: 42px;
+  height: 42px;
+  color: #ff6a00;
+}
+
+.spotify-profile .profile-not-found span {
+  color: #ff6a00;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.spotify-profile .profile-not-found h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(38px, 6vw, 74px);
+  letter-spacing: 0;
+}
+
+.profile-edit-form {
+  width: min(860px, calc(100vw - 28px));
+}
+
+.profile-edit-preview {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-edit-banner-preview {
+  min-height: 150px;
+  border: 1px dashed rgba(255, 106, 0, .32);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 78% 28%, rgba(255, 106, 0, .16), transparent 34%),
+    #080604;
+  background-size: cover;
+  background-position: center;
+}
+
+.profile-edit-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-edit-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 22px;
+}
+
+.spotify-profile-edit-upload {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.spotify-profile-edit-upload label {
+  min-height: 96px;
+  padding: 14px;
+  border: 1px dashed rgba(255, 106, 0, .38);
+  border-radius: 16px;
+  background: rgba(255, 106, 0, .05);
+  cursor: pointer;
+}
+
+.spotify-profile-edit-upload input[type="file"] {
+  width: 100%;
+  margin-top: 10px;
+  color: #aaa;
+}
+
+.profile-check {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  color: #ddd;
+}
+
+.profile-check input {
+  width: auto !important;
+  min-height: auto !important;
+}
+
+@media (max-width: 980px) {
+  .spotify-profile .profile-hero-content,
+  .spotify-profile .profile-content {
+    grid-template-columns: 1fr;
+  }
+
+  .spotify-profile .profile-published-count {
+    text-align: left;
+  }
+
+  .spotify-profile .profile-track-row {
+    grid-template-columns: 32px minmax(0, 1fr) 42px;
+  }
+
+  .spotify-profile .profile-track-meta,
+  .spotify-profile .profile-track-price {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .spotify-profile .profile-hero {
+    min-height: 560px;
+  }
+
+  .spotify-profile .profile-hero-content {
+    padding: 76px 18px 28px;
+  }
+
+  .spotify-profile .profile-actions,
+  .spotify-profile .profile-section-head {
+    display: grid;
+  }
+
+  .spotify-profile .profile-action {
+    width: 100%;
+  }
+
+  .spotify-profile .profile-content {
+    padding-inline: 18px;
+  }
+
+  .spotify-profile-edit-upload {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotify-profile *,
+  .spotify-profile *::before,
+  .spotify-profile *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

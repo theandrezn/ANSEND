@@ -1103,6 +1103,9 @@ const appState = {
   musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
   catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
+  nexoChatMessages: [],
+  nexoChatLoading: false,
+  nexoChatError: "",
   authUser: null,
   profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
   authReady: !supabaseClient,
@@ -1328,7 +1331,7 @@ function nexoDefaultQuiz(prompt = "") {
     nomeArtistico: activeProfile()?.artist_name || activeProfile()?.full_name || "",
     generoMusical: "Trap",
     subgenero: "Type Beat",
-    nivelCarreira: "iniciante",
+    nivelCarreira: "Iniciante",
     objetivoPrincipal: "encontrar beat/produtor",
     descricaoIdeiaMusical: prompt || "Tenho uma ideia musical e preciso transformar em lancamento profissional.",
     tipoProjeto: "single",
@@ -1387,9 +1390,9 @@ const nexoQuizSteps = [
     helper: "A NEXO usa seu contexto para adaptar beats, profissionais e proximos passos.",
     fields: [
       { name: "nomeArtistico", label: "Nome artistico ou marca", type: "text", placeholder: "Ex: Viana Beats" },
-      { name: "generoMusical", label: "Genero musical", type: "select", options: ["Trap", "Drill", "Funk", "R&B", "Rap", "Gospel Trap", "Boom Bap", "Afrobeat", "Pop"] },
+      { name: "generoMusical", label: "Genero musical", type: "select", options: ["Trap", "Rap", "Funk", "Pop", "Sertanejo", "R&B", "Gospel", "Rock", "Eletronico", "Pagode", "Samba", "Reggaeton", "Afrobeat", "Indie", "MPB", "Outro"] },
       { name: "subgenero", label: "Subgenero ou referencia", type: "text", placeholder: "Ex: Trap melodic, funk 150, plug..." },
-      { name: "nivelCarreira", label: "Nivel de carreira", type: "select", options: ["iniciante", "independente em crescimento", "ja lancei algumas musicas", "profissionalizando", "ja tenho publico"] },
+      { name: "nivelCarreira", label: "Nivel de carreira", type: "select", options: ["Iniciante", "Em desenvolvimento", "Intermediario", "Avancado", "Profissional", "Ja tenho publico consolidado"] },
     ],
   },
   {
@@ -1438,6 +1441,94 @@ const nexoQuizSteps = [
   },
 ];
 
+const nexoSubgenreSuggestions = {
+  Trap: ["Trap melodico", "Plug", "Rage", "Detroit", "Type Beat"],
+  Rap: ["Boom bap", "Rap consciente", "Drill", "Trap rap", "Freestyle"],
+  Funk: ["Funk RJ", "Funk 150", "Mandelao", "Funk melody", "Bruxaria"],
+  Pop: ["Pop urbano", "Dance pop", "Synth pop", "Pop alternativo", "Referencia internacional"],
+  Sertanejo: ["Sertanejo universitario", "Arrocha", "Modao", "Romantico", "Ao vivo"],
+  "R&B": ["R&B alternativo", "Neo soul", "Trap soul", "Slow jam", "Vocal suave"],
+  Gospel: ["Gospel trap", "Worship", "Pop gospel", "Louvor", "Inspiracional"],
+  Rock: ["Indie rock", "Alt rock", "Pop rock", "Hard rock", "Acustico"],
+  Eletronico: ["House", "Tech house", "Dance", "EDM", "Brazilian bass"],
+  Pagode: ["Pagode romantico", "Samba rock", "Ao vivo", "Pagode 90", "Roda de samba"],
+  Samba: ["Samba raiz", "Samba urbano", "Partido alto", "Samba rock", "MPB samba"],
+  Reggaeton: ["Dembow", "Urbano latino", "Perreo", "Pop latino", "Afro latino"],
+  Afrobeat: ["Afropop", "Amapiano", "Afro house", "Dancehall", "Afro urbano"],
+  Indie: ["Indie pop", "Bedroom pop", "Lo-fi", "Alternativo", "Dream pop"],
+  MPB: ["Nova MPB", "Acustico", "Tropicalia", "MPB pop", "Autoral"],
+  Outro: ["Referencia nacional", "Referencia internacional", "Experimental", "Autoral", "Hibrido"],
+};
+
+function nexoSelectField(field, quiz) {
+  const current = field.options.includes(quiz[field.name]) ? quiz[field.name] : field.options[0];
+  return `<div class="nexo-quiz-field nexo-custom-select-field" data-select-name="${field.name}">
+    <span>${htmlEscape(field.label)}</span>
+    <input type="hidden" name="${field.name}" id="nexo-${field.name}" value="${htmlEscape(current)}">
+    <button class="nexo-dark-select" type="button" data-action="nexo-select-toggle" data-select-name="${field.name}" aria-haspopup="listbox" aria-expanded="false">
+      <span>${htmlEscape(current)}</span>
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div class="nexo-dark-select-menu" role="listbox" aria-label="${htmlEscape(field.label)}">
+      ${field.options.map((option) => `<button type="button" role="option" data-action="nexo-select-option" data-select-name="${field.name}" data-value="${htmlEscape(option)}" aria-selected="${current === option ? "true" : "false"}">${htmlEscape(option)}</button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function nexoSubgenreField(field, quiz) {
+  const genre = quiz.generoMusical || "Trap";
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  return `<label class="nexo-quiz-field nexo-subgenre-field">
+    <span>${htmlEscape(field.label)}</span>
+    <input name="${field.name}" id="nexo-${field.name}" type="text" value="${htmlEscape(quiz[field.name] || "")}" placeholder="${htmlEscape(field.placeholder || "")}">
+    <div class="nexo-subgenre-chips" aria-label="Sugestoes de subgenero">
+      ${suggestions.map((item) => `<button type="button" data-action="nexo-subgenre-chip" data-value="${htmlEscape(item)}">${htmlEscape(item)}</button>`).join("")}
+    </div>
+  </label>`;
+}
+
+function closeNexoSelects(except = null) {
+  document.querySelectorAll(".nexo-custom-select-field.is-open").forEach((field) => {
+    if (field === except) return;
+    field.classList.remove("is-open");
+    field.classList.remove("is-up");
+    field.querySelector(".nexo-dark-select")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function updateNexoSelectDirection(field) {
+  const trigger = field?.querySelector(".nexo-dark-select");
+  const menu = field?.querySelector(".nexo-dark-select-menu");
+  if (!trigger || !menu) return;
+  const rect = trigger.getBoundingClientRect();
+  const desiredHeight = Math.min(300, Math.max(180, menu.scrollHeight || 260));
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  field.classList.toggle("is-up", spaceBelow < desiredHeight + 56 && spaceAbove > spaceBelow);
+}
+
+function updateNexoSubgenreChips(form) {
+  const genre = form?.elements?.generoMusical?.value || "Trap";
+  const chips = form?.querySelector(".nexo-subgenre-chips");
+  if (!chips) return;
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  chips.innerHTML = suggestions.map((item) => `<button type="button" data-action="nexo-subgenre-chip" data-value="${htmlEscape(item)}">${htmlEscape(item)}</button>`).join("");
+}
+
+function chooseNexoSelectOption(button) {
+  const field = button.closest(".nexo-custom-select-field");
+  const form = button.closest(".nexo-ia-quiz-form");
+  const input = field?.querySelector("input[type='hidden']");
+  const label = field?.querySelector(".nexo-dark-select span");
+  if (!field || !input || !label) return;
+  const value = button.dataset.value || "";
+  input.value = value;
+  label.textContent = value;
+  field.querySelectorAll("[role='option']").forEach((option) => option.setAttribute("aria-selected", option === button ? "true" : "false"));
+  closeNexoSelects();
+  if (input.name === "generoMusical") updateNexoSubgenreChips(form);
+}
+
 function nexoQuizField(field, quiz) {
   if (field.type === "summary") {
     const items = [
@@ -1459,9 +1550,10 @@ function nexoQuizField(field, quiz) {
   }
   const common = `name="${field.name}" id="nexo-${field.name}"`;
   if (field.type === "select") {
-    return `<label class="nexo-quiz-field"><span>${htmlEscape(field.label)}</span><select ${common}>${field.options.map((option) => `
-      <option value="${htmlEscape(option)}" ${quiz[field.name] === option ? "selected" : ""}>${htmlEscape(option)}</option>
-    `).join("")}</select></label>`;
+    return nexoSelectField(field, quiz);
+  }
+  if (field.name === "subgenero") {
+    return nexoSubgenreField(field, quiz);
   }
   if (field.type === "textarea") {
     return `<label class="nexo-quiz-field is-wide"><span>${htmlEscape(field.label)}</span><textarea ${common} placeholder="${htmlEscape(field.placeholder || "")}">${htmlEscape(quiz[field.name])}</textarea></label>`;
@@ -1490,25 +1582,27 @@ function renderNexoQuiz(quiz = readNexoQuiz()) {
   const step = nexoQuizSteps[stepIndex];
   const progress = `${Math.round(((stepIndex + 1) / nexoQuizSteps.length) * 100)}%`;
   return `<div class="nexo-minimal-container nexo-quiz-shell">
-    <header class="nexo-quiz-hero">
-      <span class="nexo-quiz-eyebrow">NEXO IA</span>
-      <h1><strong>O que podemos lancar hoje?</strong></h1>
-      <p>Preencha o diagnostico para a ANSEND mapear seu momento, orientar sua rota e conectar voce aos profissionais certos.</p>
-    </header>
-    <form class="nexo-ia-quiz-form nexo-quiz-card" data-step="${stepIndex}">
-      <div class="nexo-quiz-progress" style="--progress:${progress}"><span></span></div>
-      <div class="nexo-quiz-content">
-        <div class="nexo-quiz-step-meta"><span>Etapa ${stepIndex + 1} de ${nexoQuizSteps.length}</span><span>${progress}</span></div>
-        <h2>${htmlEscape(step.title)}</h2>
-        <p class="nexo-result-muted">${htmlEscape(step.helper)}</p>
-        <div class="nexo-quiz-grid">${step.fields.map((field) => nexoQuizField(field, quiz)).join("")}</div>
-        ${appState.nexoQuizError ? `<p class="nexo-quiz-error">${htmlEscape(appState.nexoQuizError)}</p>` : ""}
-      </div>
-      <div class="nexo-quiz-actions">
-        <button type="button" data-action="nexo-quiz-back" ${stepIndex === 0 ? "disabled" : ""}><i data-lucide="arrow-left"></i>Voltar</button>
-        <button class="is-primary" type="submit">${stepIndex === nexoQuizSteps.length - 1 ? "Gerar diagnostico com NEXO IA" : "Continuar"}<i data-lucide="arrow-right"></i></button>
-      </div>
-    </form>
+    <section class="nexo-ia-panel">
+      <header class="nexo-quiz-hero">
+        <span class="nexo-quiz-eyebrow">NEXO IA</span>
+        <h1><strong>O que podemos lancar hoje?</strong></h1>
+        <p>Preencha o diagnostico para a ANSEND mapear seu momento, orientar sua rota e conectar voce aos profissionais certos.</p>
+      </header>
+      <form class="nexo-ia-quiz-form nexo-quiz-card" data-step="${stepIndex}">
+        <div class="nexo-quiz-progress" style="--progress:${progress}"><span></span></div>
+        <div class="nexo-quiz-content">
+          <div class="nexo-quiz-step-meta"><span>Etapa ${stepIndex + 1} de ${nexoQuizSteps.length}</span><span>${progress}</span></div>
+          <h2>${htmlEscape(step.title)}</h2>
+          <p class="nexo-result-muted">${htmlEscape(step.helper)}</p>
+          <div class="nexo-quiz-grid">${step.fields.map((field) => nexoQuizField(field, quiz)).join("")}</div>
+          ${appState.nexoQuizError ? `<p class="nexo-quiz-error">${htmlEscape(appState.nexoQuizError)}</p>` : ""}
+        </div>
+        <div class="nexo-quiz-actions">
+          <button type="button" data-action="nexo-quiz-back" ${stepIndex === 0 ? "disabled" : ""}><i data-lucide="arrow-left"></i>Voltar</button>
+          <button class="is-primary" type="submit">${stepIndex === nexoQuizSteps.length - 1 ? "Gerar diagnostico com NEXO IA" : "Continuar"}<i data-lucide="arrow-right"></i></button>
+        </div>
+      </form>
+    </section>
   </div>`;
 }
 
@@ -1950,6 +2044,7 @@ const NEXO_FEED_HISTORY_KEY = "ansend_feed_history";
 const NEXO_FEED_NOT_INTERESTED_KEY = "ansend_not_interested";
 const NEXO_FEED_TASTE_KEY = "ansend_user_taste_profile";
 const NEXO_FEED_SESSION_KEY = "ansend_feed_session";
+const NEXO_FEED_ITEMS_KEY = "ansend-feed-items";
 let nexoFeedObserver = null;
 const nexoFeedTimers = new Map();
 
@@ -1977,6 +2072,154 @@ function readFeedObject(key) {
   } catch {
     return {};
   }
+}
+
+function writeFeedItems(items) {
+  localStorage.setItem(NEXO_FEED_ITEMS_KEY, JSON.stringify(asArray(items).slice(0, 260)));
+}
+
+function readStoredFeedItems() {
+  return readFeedList(NEXO_FEED_ITEMS_KEY).filter((item) => item && item.id && item.isPublished !== false);
+}
+
+function isRealFeedMedia(url) {
+  const value = String(url || "").trim();
+  if (!value) return false;
+  if (/ansend-logo|placeholder|unsplash|pexels/i.test(value)) return false;
+  return /^(https?:|blob:|data:image\/|\/|\.\/|\.\.\/|assets\/uploads\/|storage\/)/i.test(value);
+}
+
+function currentCreatorIdentity(source = {}) {
+  const profile = activeProfile() || {};
+  return {
+    creatorId: source.user_id || appState.authUser?.id || profile.id || "local-preview",
+    creatorName: source.producer_name || source.artist_name || profile.artistic_name || profile.full_name || "ANSEND",
+    creatorAvatar: profile.avatar_url || profile.avatar || "",
+    creatorRole: accountRoleLabel(profile.account_role) || "Criador",
+  };
+}
+
+function normalizeFeedItem(item) {
+  if (!item?.id) return null;
+  const sourceType = item.sourceType || item.type || "post";
+  const sourceId = item.sourceId || item.id;
+  return {
+    id: String(item.id),
+    creatorId: item.creatorId || "local-preview",
+    creatorName: item.creatorName || "ANSEND",
+    creatorAvatar: item.creatorAvatar || "",
+    creatorRole: item.creatorRole || "Criador",
+    type: item.type || "post",
+    title: item.title || "Publicacao ANSEND",
+    description: item.description || "",
+    mediaUrl: item.mediaUrl || item.coverUrl || "",
+    coverUrl: item.coverUrl || item.mediaUrl || "",
+    audioUrl: item.audioUrl || "",
+    price: item.price || item.priceLabel || "",
+    priceLabel: item.priceLabel || item.price || "",
+    tags: asArray(item.tags).filter(Boolean).slice(0, 6),
+    sourceId: String(sourceId),
+    sourceType,
+    createdAt: item.createdAt || item.published_at || item.created_at || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.updated_at || new Date().toISOString(),
+    likesCount: Number(item.likesCount || 0),
+    commentsCount: Number(item.commentsCount || 0),
+    savesCount: Number(item.savesCount || 0),
+    sharesCount: Number(item.sharesCount || 0),
+    isPublished: item.isPublished !== false,
+    metadata: item.metadata || {},
+  };
+}
+
+function createFeedItemFromMusic(source) {
+  const creator = currentCreatorIdentity(source);
+  const coverUrl = source.cover_url || source.coverUrl || "";
+  const audioUrl = source.audio_url || source.audioUrl || "";
+  if (!isRealFeedMedia(coverUrl) && !isRealFeedMedia(audioUrl)) return null;
+  const type = source.kind === "musica" ? "music" : "beat";
+  const tags = [
+    source.genre || (type === "music" ? "Musica" : "Beat"),
+    source.bpm ? `${source.bpm} BPM` : "",
+    source.musical_key || "",
+    ...asArray(source.tags),
+  ].filter(Boolean);
+  return normalizeFeedItem({
+    id: `feed-${source.source_table || "catalog"}-${source.id}`,
+    ...creator,
+    type,
+    title: source.title || "Sem titulo",
+    description: source.description || (type === "music" ? "Musica publicada na ANSEND." : "Beat publicado na ANSEND."),
+    mediaUrl: coverUrl,
+    coverUrl,
+    audioUrl,
+    price: source.price ? Number(source.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+      style: "currency",
+      currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+    }) : "",
+    tags,
+    sourceId: source.id,
+    sourceType: source.source_table || "catalog_items",
+    createdAt: source.published_at || source.created_at || new Date().toISOString(),
+    updatedAt: source.updated_at || new Date().toISOString(),
+    isPublished: source.status === "published",
+    metadata: { beatId: source.id, route: source.id ? `beat-${source.id}` : "explorar" },
+  });
+}
+
+function createFeedItemFromBeat(source) {
+  return createFeedItemFromMusic({ ...source, kind: source.kind || "beat" });
+}
+
+function createFeedItemFromService(source) {
+  const creator = currentCreatorIdentity(source);
+  const coverUrl = source.cover_url || source.image_url || "";
+  return normalizeFeedItem({
+    id: `feed-service-${source.id}`,
+    ...creator,
+    type: "service",
+    title: source.title || source.service || "Servico ANSEND",
+    description: source.description || source.briefing || "",
+    mediaUrl: isRealFeedMedia(coverUrl) ? coverUrl : "",
+    coverUrl: isRealFeedMedia(coverUrl) ? coverUrl : "",
+    price: source.price || source.priceLabel || "",
+    tags: asArray(source.tags || source.categories).filter(Boolean),
+    sourceId: source.id,
+    sourceType: "service",
+    createdAt: source.created_at || new Date().toISOString(),
+    updatedAt: source.updated_at || new Date().toISOString(),
+    isPublished: source.status !== "draft",
+  });
+}
+
+function upsertFeedItem(feedItem) {
+  const normalized = normalizeFeedItem(feedItem);
+  if (!normalized) return null;
+  const items = readFeedList(NEXO_FEED_ITEMS_KEY);
+  const sourceKey = `${normalized.sourceType}:${normalized.sourceId}`;
+  const next = items.filter((item) => item.id !== normalized.id && `${item.sourceType}:${item.sourceId}` !== sourceKey);
+  if (normalized.isPublished) next.unshift(normalized);
+  writeFeedItems(next);
+  return normalized;
+}
+
+function removeFeedItemForSource(sourceId, sourceType) {
+  const key = `${sourceType}:${sourceId}`;
+  writeFeedItems(readFeedList(NEXO_FEED_ITEMS_KEY).filter((item) => `${item.sourceType}:${item.sourceId}` !== key));
+}
+
+function syncFeedItemsFromCatalog() {
+  const generated = publishedCatalogItems()
+    .map((item) => createFeedItemFromBeat(item))
+    .filter(Boolean);
+  if (!generated.length) return readStoredFeedItems();
+  const existing = readFeedList(NEXO_FEED_ITEMS_KEY);
+  const generatedKeys = new Set(generated.map((item) => `${item.sourceType}:${item.sourceId}`));
+  const merged = [
+    ...generated,
+    ...existing.filter((item) => !generatedKeys.has(`${item.sourceType}:${item.sourceId}`)),
+  ];
+  writeFeedItems(merged);
+  return merged.filter((item) => item.isPublished !== false);
 }
 
 function feedItemForEvent(id) {
@@ -2043,187 +2286,36 @@ function preferredFeedEntries(collection, limit = 3) {
 
 function nexoFeedCta(item) {
   const map = {
-    beat: "Comprar licenca",
-    professional: "Ver perfil",
-    service: "Contratar servico",
-    combo: "Montar combo",
-    pack: "Abrir pack",
-    education: "Ver guia",
-    curation: "Abrir curadoria",
-    marketing: "Contratar marketing",
+    music: "Ouvir",
+    beat: "Ouvir",
+    service: "Contratar",
+    image: "Ver arte",
+    post: "Ver detalhes",
+    portfolio: "Ver detalhes",
   };
-  return map[item.type] || "Abrir";
+  return map[item.type] || "Ver detalhes";
 }
 
 function getNexoFeedItems() {
-  const profile = getMusicProfile() || createDefaultMusicProfile();
-  const recs = buildNexoRecommendations(profile, false);
-  const catalog = marketplaceBeats();
-  const beatItems = catalog.map((item, index) => ({
-    id: item.id,
-    type: "beat",
-    title: item.title,
-    subtitle: `${item.producer} - ${item.tags?.[0] || "Beat"}`,
-    description: `Beat ${item.tags?.[0] || "urbano"} com ${item.tags?.[1] || "BPM mapeado"} para gravar sua proxima faixa.`,
-    creatorName: item.producer,
-    category: item.tags?.[0] || "Beat",
-    genres: [item.tags?.[0] || "Trap"],
-    vibes: genreVibeMap[item.tags?.[0]] || ["Comercial"],
-    bpm: Number(String(item.tags?.[1] || "").match(/\d+/)?.[0]) || 120,
-    priceLabel: item.price || `$${(24.95 + (index % 5) * 5).toFixed(2)}`,
-    coverImage: item.cover,
-    audioUrl: item.audio,
-    durationSeconds: 165,
-    tags: [item.tags?.[0], item.tags?.[1], item.badge].filter(Boolean),
-    verified: true,
-    popularityScore: 76 + (index % 8) * 3,
-    createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-    metadata: { beatId: item.id },
-  }));
-
-  const professionalItems = recs.professionals.map((profile, index) => ({
-    id: `pro-${slugify(profile.name)}`,
-    type: "professional",
-    title: profile.name,
-    subtitle: `${profile.role} - ${profile.match?.score || 74}% match`,
-    description: profile.specialty,
-    creatorName: profile.name,
-    category: profile.category,
-    genres: profile.tags,
-    vibes: profile.tags,
-    priceLabel: `A partir de ${profile.price}`,
-    coverImage: professionalImage(profile),
-    durationSeconds: 42,
-    tags: [profile.role, profile.city, `${profile.jobs} jobs`],
-    rating: Number(profile.rating),
-    verified: true,
-    popularityScore: 82 + index * 4,
-    createdAt: new Date(Date.now() - index * 172800000).toISOString(),
-    metadata: { professionalName: profile.name },
-  }));
-
-  const serviceItems = recs.services.map((item, index) => ({
-    id: `service-${slugify(item.title)}`,
-    type: item.type === "Marketing musical" ? "marketing" : item.type === "Curador" ? "curation" : "service",
-    title: item.title,
-    subtitle: item.type,
-    description: item.reason,
-    creatorName: "NEXO IA",
-    category: item.type,
-    genres: item.genres || musicQuiz.genres,
-    vibes: item.stages || musicQuiz.vibes,
-    priceLabel: "Recomendado pela NEXO",
-    coverImage: ["assets/category-beatmakers.png", "assets/category-designers.png", "assets/category-producers.png", "assets/category-curators.png", "assets/category-marketing.png"][index % 5],
-    durationSeconds: 38,
-    tags: [item.type, item.match ? `${item.match.score}% match` : "IA", "Servico"],
-    verified: true,
-    popularityScore: 70 + index * 5,
-    createdAt: new Date(Date.now() - index * 93600000).toISOString(),
-    metadata: { route: item.route },
-  }));
-
-  const comboItems = recs.combos.map((item, index) => ({
-    id: `combo-${slugify(item.title)}`,
-    type: "combo",
-    title: item.title,
-    subtitle: item.services,
-    description: item.economy || "Sequencia inteligente para acelerar seu lancamento.",
-    creatorName: "NEXO IA",
-    category: "Combo",
-    genres: item.genres || musicQuiz.genres,
-    vibes: item.vibes || musicQuiz.vibes,
-    priceLabel: item.title.includes("Completo") ? "A partir de R$ 1.200" : item.title.includes("Beat") ? "A partir de R$ 490" : "A partir de R$ 350",
-    coverImage: ["assets/category-producers.png", "assets/category-marketing.png", "assets/category-designers.png"][index % 3],
-    durationSeconds: 35,
-    tags: ["Combo", item.match ? `${item.match.score}% match` : "Plano", "Entrega guiada"],
-    verified: true,
-    popularityScore: 84 + index * 6,
-    createdAt: new Date(Date.now() - index * 5400000).toISOString(),
-    metadata: { prompt: `Quero montar o ${item.title.toLowerCase()} para meu lancamento.` },
-  }));
-
-  const playlistItems = getRecommendedPlaylists(profile).slice(0, 4).map((item, index) => ({
-    id: `pack-${slugify(item.title)}`,
-    type: "pack",
-    title: item.title,
-    subtitle: item.subtitle,
-    description: `Pack curado para ${asArray(item.genres).slice(0, 2).join(" e ")} com vibe ${asArray(item.vibes)[0] || "urbana"}.`,
-    creatorName: "Curadoria ANSEND",
-    category: "Pack",
-    genres: item.genres,
-    vibes: item.vibes,
-    priceLabel: "Abrir pack",
-    coverImage: item.cover,
-    durationSeconds: 48,
-    tags: ["Pack", item.match ? `${item.match.score}% match` : "Curadoria", "Playlist"],
-    verified: true,
-    popularityScore: 74 + index * 4,
-    createdAt: new Date(Date.now() - index * 4600000).toISOString(),
-    metadata: { playlistId: slugify(item.title), title: item.title },
-  }));
-
-  const educationItems = [
-    {
-      id: "edu-release-map",
-      type: "education",
-      title: "Mapa do lancamento",
-      subtitle: "Guia NEXO",
-      description: "Entenda a ordem certa: producao, capa, distribuicao, curadoria e divulgacao.",
-      creatorName: "NEXO IA",
-      category: "Educativo",
-      genres: musicQuiz.genres,
-      vibes: ["Comercial", "Cinematografica"],
-      priceLabel: "Ver guia",
-      coverImage: "assets/category-marketing.png",
-      durationSeconds: 30,
-      tags: ["Guia", "Lancamento", "IA"],
-      verified: true,
-      popularityScore: 88,
-      createdAt: new Date().toISOString(),
-      metadata: { route: "ia" },
-    },
-  ];
-
-  return [...beatItems, ...professionalItems, ...serviceItems, ...comboItems, ...playlistItems, ...educationItems];
+  return syncFeedItemsFromCatalog()
+    .map(normalizeFeedItem)
+    .filter(Boolean)
+    .filter((item) => {
+      if (["music", "beat", "image", "portfolio"].includes(item.type)) {
+        return isRealFeedMedia(item.coverUrl) || isRealFeedMedia(item.mediaUrl) || isRealFeedMedia(item.audioUrl);
+      }
+      return item.isPublished !== false;
+    });
 }
 
 function calculateNexoFeedScore(item, profile = getMusicProfile()) {
-  const baseProfile = profile || createDefaultMusicProfile();
   const history = readFeedObject(NEXO_FEED_HISTORY_KEY)[item.id] || {};
-  const taste = readFeedObject(NEXO_FEED_TASTE_KEY);
-  const profileGenres = asArray(baseProfile.genres).map(normalizeToken);
-  const profileVibes = asArray(baseProfile.vibes).map(normalizeToken);
-  const objective = normalizeToken(baseProfile.objective);
-  let score = Number(item.popularityScore || 50);
-  const reasons = [];
-
-  if (asArray(item.genres).some((genre) => profileGenres.includes(normalizeToken(genre)))) {
-    score += 22;
-    reasons.push("combina com seu estilo musical");
-  }
-  if (asArray(item.vibes).some((vibe) => profileVibes.includes(normalizeToken(vibe)))) {
-    score += 14;
-    reasons.push("bate com a vibe do seu perfil");
-  }
-  const haystack = normalizeToken(`${item.title} ${item.subtitle} ${item.description} ${item.category} ${asArray(item.tags).join(" ")}`);
-  if (objective && haystack.includes(objective.split(" ")[0])) {
-    score += 10;
-    reasons.push("serve para seu objetivo atual");
-  }
-  preferredFeedEntries(taste.genres, 4).forEach((genre) => {
-    if (asArray(item.genres).includes(genre)) score += 7;
-  });
-  preferredFeedEntries(taste.categories, 4).forEach((category) => {
-    if (item.category === category || item.type === category) score += 6;
-  });
-  score += (history.likes || 0) * 6 + (history.saves || 0) * 8 + (history.ctas || 0) * 10;
-  score -= (history.skips || 0) * 18;
-  if (item.verified) {
-    score += 5;
-    reasons.push("perfil verificado na ANSEND");
-  }
-  if (!reasons.length) reasons.push("boa porta de entrada para sua jornada");
-  return { score: Math.max(1, Math.min(99, Math.round(score))), reasons: reasons.slice(0, 3) };
+  const createdAt = Date.parse(item.createdAt || "") || 0;
+  const ageHours = createdAt ? Math.max(0, (Date.now() - createdAt) / 3600000) : 999;
+  let score = 100 - Math.min(60, ageHours / 2);
+  score += (history.likes || item.likesCount || 0) * 3 + (history.saves || item.savesCount || 0) * 4 + (history.ctas || 0) * 2;
+  score -= (history.skips || 0) * 10;
+  return { score: Math.max(1, Math.min(100, Math.round(score))), reasons: ["publicacao real da plataforma"] };
 }
 
 function getRankedNexoFeed(limit = 14) {
@@ -2232,47 +2324,38 @@ function getRankedNexoFeed(limit = 14) {
   const pool = getNexoFeedItems()
     .filter((item) => !hidden.has(item.id))
     .map((item) => ({ ...item, feedMatch: calculateNexoFeedScore(item, profile) }))
-    .sort((a, b) => b.feedMatch.score - a.feedMatch.score || b.popularityScore - a.popularityScore);
-  const result = [];
-  const typeCount = {};
-  for (const item of pool) {
-    const count = typeCount[item.type] || 0;
-    if (count >= 3 && result.length < 8) continue;
-    result.push(item);
-    typeCount[item.type] = count + 1;
-    if (result.length >= limit) break;
-  }
-  return result.length ? result : pool.slice(0, limit);
+    .sort((a, b) => (Date.parse(b.createdAt || "") || 0) - (Date.parse(a.createdAt || "") || 0));
+  return pool.slice(0, limit);
 }
 
 function nexoFeedCard(item, index) {
-  const isBeat = item.type === "beat";
+  const isBeat = item.type === "beat" || item.type === "music";
   const beatId = item.metadata?.beatId || item.id;
   const isSavedBeat = isBeat && appState.favorites.has(beatId);
   const author = item.creatorName || "ANSEND";
-  const authorProfile = findProfessional(author);
-  const authorImage = author === "NEXO IA" || author === "Curadoria ANSEND"
-    ? "assets/ansend-logo-square.png"
-    : item.type === "professional"
-      ? item.coverImage
-      : professionalImage(authorProfile);
-  const meta = [item.category, item.bpm ? `${item.bpm} BPM` : item.priceLabel].filter(Boolean).slice(0, 2).join(" - ");
-  return `<article class="nexo-feed-card" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}" style="--feed-cover: url('${item.coverImage || item.cover || ""}')">
+  const authorImage = isRealFeedMedia(item.creatorAvatar) ? item.creatorAvatar : "";
+  const media = item.coverUrl || item.mediaUrl || "";
+  const hasVisualMedia = isRealFeedMedia(media);
+  const meta = [item.creatorRole, item.priceLabel || item.price].filter(Boolean).slice(0, 2).join(" - ");
+  const typeIcon = item.type === "service" ? "briefcase-business" : item.type === "image" ? "image" : item.type === "portfolio" ? "gallery-horizontal-end" : "sparkles";
+  return `<article class="nexo-feed-card ${hasVisualMedia ? "" : "has-system-fallback"}" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}">
     <div class="nexo-feed-media">
-      <img src="${item.coverImage || item.cover || ""}" alt="${item.title}">
-      ${!isBeat ? `<span class="nexo-feed-type-icon"><i data-lucide="${item.type === "professional" ? "user-round-check" : item.type === "combo" ? "boxes" : item.type === "marketing" ? "megaphone" : item.type === "education" ? "book-open" : "sparkles"}"></i></span>` : ""}
+      ${hasVisualMedia ? `<img src="${htmlEscape(media)}" alt="${htmlEscape(item.title)}">` : `<div class="nexo-feed-official-fallback"><i data-lucide="radio-tower"></i><span>ANSEND</span></div>`}
+      ${isBeat && item.audioUrl ? `<button type="button" class="nexo-feed-play" data-action="nexo-feed-play" data-feed-item-id="${item.id}" aria-label="Ouvir ${htmlEscape(item.title)}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
-        <img src="${authorImage}" alt="">
+        ${authorImage ? `<img src="${htmlEscape(authorImage)}" alt="">` : `<span class="nexo-feed-avatar-fallback">${htmlEscape(author.slice(0, 1).toUpperCase())}</span>`}
         <div>
-          <strong>${author}</strong>
-          <span>${meta || "Recomendado pela NEXO"}</span>
+          <strong>${htmlEscape(author)}</strong>
+          <span>${htmlEscape(meta || "Publicacao real")}</span>
         </div>
         <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}">Ver</button>
       </div>
-      <h2>${item.title}</h2>
-      <p>${item.description}</p>
+      <h2>${htmlEscape(item.title)}</h2>
+      <p>${htmlEscape(item.description || "Publicado na ANSEND.")}</p>
+      ${item.tags?.length ? `<div class="nexo-feed-tags">${item.tags.slice(0, 4).map((tag) => `<span>${htmlEscape(tag)}</span>`).join("")}</div>` : ""}
+      <button type="button" class="nexo-feed-main-cta" data-action="nexo-feed-open" data-feed-item-id="${item.id}">${nexoFeedCta(item)}</button>
     </div>
     <div class="nexo-feed-actions" aria-label="Acoes do feed">
       <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
@@ -2299,13 +2382,21 @@ function nexoFeedDetailPanel(item) {
 function renderNexoFeed() {
   const items = getRankedNexoFeed();
   appView.innerHTML = `<section class="nexo-feed-page" aria-label="NEXO Feed">
-    <main class="nexo-feed-stream" id="nexoFeedStream">
+    ${items.length ? `<main class="nexo-feed-stream" id="nexoFeedStream">
       ${items.map(nexoFeedCard).join("")}
-    </main>
-    <div class="nexo-feed-scroll-controls" aria-label="Navegar no feed">
+    </main>` : `<main class="nexo-feed-empty" id="nexoFeedStream">
+      <div class="nexo-feed-empty-mark"><i data-lucide="radio-tower"></i></div>
+      <h1>Nenhuma publicacao ainda.</h1>
+      <p>Quando artistas, produtores e profissionais publicarem musicas, beats, servicos ou artes, elas aparecerao aqui.</p>
+      <div>
+        <button type="button" data-route="cadastrar">Publicar agora</button>
+        <button type="button" data-route="marketplace">Explorar marketplace</button>
+      </div>
+    </main>`}
+    ${items.length > 1 ? `<div class="nexo-feed-scroll-controls" aria-label="Navegar no feed">
       <button type="button" data-action="nexo-feed-prev" aria-label="Subir no feed"><i data-lucide="chevron-up"></i></button>
       <button type="button" data-action="nexo-feed-next" aria-label="Descer no feed"><i data-lucide="chevron-down"></i></button>
-    </div>
+    </div>` : ""}
   </section>`;
 }
 
@@ -2650,6 +2741,7 @@ function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
+  if (route.startsWith("perfil-")) return "perfil-publico";
   const knownRoutes = new Set([
     "feed",
     "nexo-feed",
@@ -3830,27 +3922,291 @@ function clearLocalPreviewProfile() {
 
 function profileDisplayData(profile = activeProfile()) {
   const role = normalizeRole(profile?.account_role || "artista");
-  const styleList = asArray(profile?.music_styles || profile?.genres || preferredGenres()).slice(0, 5);
-  const avatarFromPreset = profile?.image !== undefined && avatarImages?.length
-    ? img(avatarImages[Number(profile.image) % avatarImages.length])
-    : img(avatarImages[0]);
+  const styleList = asArray(profile?.music_styles || profile?.genres || []).slice(0, 5);
+  const displayName = profile?.display_name || profile?.artistic_name || profile?.full_name || "Perfil ANSEND";
+  const username = sanitizeHandle(profile?.username || profile?.handle || "");
   return {
-    name: profile?.artistic_name || profile?.full_name || "Perfil ANSEND",
+    name: displayName,
     fullName: profile?.full_name || "",
+    username,
+    handle: username ? `@${username}` : "",
     role,
     roleLabel: accountRoleLabel(role),
-    avatar: profile?.avatar_url || profile?.photo_url || avatarFromPreset,
-    location: profile?.location || "Localizacao nao definida",
-    headline: profile?.headline || accountGreeting(),
-    bio: profile?.bio || "Edite seu perfil para adicionar uma bio, links e detalhes do seu trabalho.",
+    avatar: profile?.avatar_url || profile?.photo_url || "",
+    banner: profile?.banner_url || profile?.cover_url || "",
+    headline: profile?.headline || "",
+    bio: profile?.bio || "",
     styles: styleList,
     links: {
-      instagram: profile?.instagram || "",
-      youtube: profile?.youtube || "",
-      spotify: profile?.spotify || "",
-      website: profile?.website || "",
+      instagram: profile?.instagram_url || profile?.instagram || "",
+      youtube: profile?.youtube_url || profile?.youtube || "",
+      spotify: profile?.spotify_url || profile?.spotify || "",
+      soundcloud: profile?.soundcloud_url || profile?.soundcloud || "",
+      website: profile?.website_url || profile?.website || "",
     },
   };
+}
+
+function profileInitials(name = "ANSEND") {
+  return String(name)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase() || "A";
+}
+
+function sanitizeHandle(value = "") {
+  return String(value)
+    .trim()
+    .replace(/^@+/, "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+}
+
+function profileAvatarMarkup(display, className = "profile-avatar") {
+  const avatar = display?.avatar || "";
+  if (avatar && !avatar.includes("undefined")) {
+    return `<div class="${className}"><img src="${avatar}" alt="Avatar de ${htmlEscape(display.name)}"></div>`;
+  }
+  return `<div class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${profileInitials(display.name)}</div>`;
+}
+
+function profileSocialLinks(display) {
+  const links = [
+    ["instagram", "Instagram", display.links.instagram],
+    ["youtube", "YouTube", display.links.youtube],
+    ["music-4", "Spotify", display.links.spotify],
+    ["radio", "SoundCloud", display.links.soundcloud],
+    ["globe", "Site", display.links.website],
+  ].filter(([, , url]) => url);
+  return links.map(([icon, label, url]) => `<a href="${htmlEscape(url)}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i>${label}<i data-lucide="external-link"></i></a>`).join("");
+}
+
+function profileHeroBackgroundStyle(display) {
+  return display?.banner
+    ? `--profile-banner: url('${htmlEscape(display.banner)}')`
+    : "";
+}
+
+function profileTrackRows(items, display, isOwner) {
+  if (!items.length) {
+    return `<div class="profile-empty-state">
+      <i data-lucide="music-4"></i>
+      <strong>Nenhum beat publicado ainda</strong>
+      <p>${isOwner ? "Publique sua primeira faixa para ela aparecer no seu perfil." : "Este perfil ainda nao publicou faixas na ANSEND."}</p>
+      ${isOwner ? `<button type="button" class="profile-action is-primary" data-route="cadastrar"><i data-lucide="upload-cloud"></i>Lancar musica</button>` : ""}
+    </div>`;
+  }
+  return `<div class="profile-track-list">
+    ${items.slice(0, 12).map((item, index) => {
+      const beat = item.source ? item : catalogItemToBeat(item);
+      const raw = item.raw || item;
+      const price = beat.price || (raw.price ? Number(raw.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Sob consulta");
+      const meta = [raw.genre || beat.tags?.[0], raw.bpm ? `${raw.bpm} BPM` : beat.tags?.[1]].filter(Boolean).join(" / ");
+      const producer = raw.producer_name || raw.artist_name || display.name || beat.producer;
+      const cover = beat.cover || raw.cover_url || "";
+      return `<article class="profile-track-row">
+        <span class="profile-track-index">${index + 1}</span>
+        <div class="profile-track-main">
+          ${cover ? `<img src="${htmlEscape(cover)}" alt="Capa de ${htmlEscape(beat.title)}">` : `<span class="profile-track-cover-fallback"><i data-lucide="music-4"></i></span>`}
+          <div>
+            <strong>${htmlEscape(beat.title)}</strong>
+            <small>${htmlEscape(producer)}</small>
+          </div>
+        </div>
+        <span class="profile-track-meta">${htmlEscape(meta || display.roleLabel)}</span>
+        <span class="profile-track-price">${htmlEscape(price)}</span>
+        <button type="button" class="profile-play-mini" data-action="play" data-id="${htmlEscape(beat.id)}" aria-label="Tocar ${htmlEscape(beat.title)}"><i data-lucide="play"></i></button>
+      </article>`;
+    }).join("")}
+  </div>`;
+}
+
+function profileCatalogFor(profile, isOwner) {
+  if (isOwner) return visibleCatalogItems().filter((item) => item.status === "published" || item.status === "draft");
+  const id = profile?.id;
+  const username = sanitizeHandle(profile?.username || profile?.handle || "");
+  const name = String(profile?.display_name || profile?.artistic_name || profile?.full_name || "").toLowerCase();
+  return publishedCatalogItems().filter((item) => {
+    const itemUser = String(item.user_id || "");
+    const itemHandle = sanitizeHandle(item.profile_username || item.username || item.owner_username || "");
+    const itemNames = [item.artist_name, item.producer_name, item.owner_name].filter(Boolean).map((value) => String(value).toLowerCase());
+    return (id && itemUser === id) || (username && itemHandle === username) || (name && itemNames.includes(name));
+  });
+}
+
+function resolvePublicProfile(slug) {
+  const cleanSlug = sanitizeHandle(slug);
+  const current = activeProfile();
+  if (current) {
+    const currentDisplay = profileDisplayData(current);
+    if (cleanSlug && [currentDisplay.username, sanitizeHandle(currentDisplay.name), sanitizeHandle(current.full_name)].includes(cleanSlug)) {
+      return current;
+    }
+  }
+  const item = publishedCatalogItems().find((catalogItem) => {
+    const candidates = [
+      catalogItem.profile_username,
+      catalogItem.username,
+      catalogItem.owner_username,
+      catalogItem.artist_name,
+      catalogItem.producer_name,
+      catalogItem.owner_name,
+    ].filter(Boolean).map(sanitizeHandle);
+    return candidates.includes(cleanSlug);
+  });
+  if (!item) return null;
+  return {
+    id: item.user_id || "",
+    display_name: item.owner_name || item.artist_name || item.producer_name || "",
+    username: item.profile_username || item.username || item.owner_username || cleanSlug,
+    account_role: item.kind === "musica" ? "artista" : "beatmaker",
+    bio: "",
+    avatar_url: "",
+    banner_url: "",
+  };
+}
+
+function renderProfileNotFound(slug) {
+  appView.innerHTML = `<section class="profile-page spotify-profile">
+    <div class="profile-not-found">
+      <i data-lucide="user-x"></i>
+      <span>ANSEND</span>
+      <h1>Perfil nao encontrado</h1>
+      <p>Nenhum perfil real foi encontrado para ${htmlEscape(slug || "esta rota")}.</p>
+      <button type="button" class="profile-action is-primary" data-route="produtores">Ver profissionais</button>
+    </div>
+  </section>`;
+}
+
+function renderSpotifyProfile({ profile, isOwner = false, professional = null } = {}) {
+  const safeProfile = profile || activeProfile() || {};
+  const display = profileDisplayData(safeProfile);
+  const catalogItems = profileCatalogFor(safeProfile, isOwner);
+  const publishedCount = catalogItems.filter((item) => item.status === "published" || item.source !== "catalog").length;
+  const actionButtons = isOwner
+    ? `<button type="button" class="profile-action is-primary" data-action="toggle-edit-profile"><i data-lucide="edit-3"></i>Editar perfil</button>
+       <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>
+       <button type="button" class="profile-action" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>`
+    : `<button type="button" class="profile-action is-primary" data-action="follow-producer"><i data-lucide="user-plus"></i>Seguir</button>
+       <button type="button" class="profile-action" data-action="professional-contact" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
+       <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
+  const linksMarkup = profileSocialLinks(display);
+  const aboutMarkup = display.bio || linksMarkup;
+  const heroClass = display.banner ? "has-banner" : "has-fallback";
+  const tabs = [
+    ["profileRecent", "Mais recentes"],
+    ["profileCatalog", "Catalogo"],
+    ...(display.bio ? [["profileAbout", "Sobre"]] : []),
+    ...(linksMarkup ? [["profileLinks", "Links"]] : []),
+  ];
+
+  appView.innerHTML = `<section class="profile-page spotify-profile" aria-label="Perfil ANSEND">
+    <header class="profile-hero ${heroClass}" style="${profileHeroBackgroundStyle(display)}">
+      <div class="profile-hero-bg" aria-hidden="true"></div>
+      <div class="profile-hero-content">
+        ${profileAvatarMarkup(display)}
+        <div class="profile-identity">
+          <span class="profile-kicker"><i data-lucide="${isOwner ? "user-round" : "badge-check"}"></i>${htmlEscape(display.roleLabel)}</span>
+          <h1 class="profile-name">${htmlEscape(display.name)}</h1>
+          ${display.handle ? `<p class="profile-handle">${htmlEscape(display.handle)}</p>` : ""}
+          ${display.bio ? `<p class="profile-bio">${htmlEscape(display.bio)}</p>` : ""}
+          <div class="profile-actions">${actionButtons}</div>
+        </div>
+        <div class="profile-published-count" aria-label="Itens publicados">
+          <span>Publicados</span>
+          <strong>${publishedCount}</strong>
+        </div>
+      </div>
+      <nav class="profile-tabs" aria-label="Secoes do perfil">
+        ${tabs.map(([target, label], index) => `<button type="button" class="profile-tab ${index === 0 ? "is-active" : ""}" data-action="profile-scroll" data-target="${target}">${label}</button>`).join("")}
+      </nav>
+    </header>
+
+    <main class="profile-content ${aboutMarkup ? "" : "is-single-column"}">
+      <div class="profile-music-stack">
+        <section class="profile-music-section" id="profileRecent">
+          <div class="profile-section-head">
+            <div>
+              <h2>Mais recentes</h2>
+              <p>${isOwner ? "Ultimas faixas publicadas por voce." : "Ultimas publicacoes deste perfil."}</p>
+            </div>
+            ${isOwner ? `<button type="button" class="profile-action" data-route="cadastrar"><i data-lucide="upload"></i>Lancar musica</button>` : ""}
+          </div>
+          ${profileTrackRows(catalogItems.slice(0, 5), display, isOwner)}
+        </section>
+
+        <section class="profile-music-section" id="profileCatalog">
+          <div class="profile-section-head">
+            <div>
+              <h2>Catalogo</h2>
+              <p>Itens reais publicados neste perfil.</p>
+            </div>
+          </div>
+          ${profileTrackRows(catalogItems, display, isOwner)}
+        </section>
+      </div>
+
+      ${aboutMarkup ? `<aside class="profile-about-panel">
+        ${display.bio ? `<section id="profileAbout"><h2>Sobre</h2><p>${htmlEscape(display.bio)}</p></section>` : ""}
+        ${linksMarkup ? `<section id="profileLinks"><h2>Links</h2><div class="profile-links">${linksMarkup}</div></section>` : ""}
+      </aside>` : ""}
+    </main>
+  </section>`;
+}
+
+function renderProfile() {
+  renderSpotifyProfile({ profile: activeProfile(), isOwner: true });
+}
+
+function renderPublicProfile() {
+  const slug = location.hash.replace("#perfil-", "");
+  const profile = resolvePublicProfile(slug);
+  if (!profile) {
+    renderProfileNotFound(slug);
+    return;
+  }
+  renderSpotifyProfile({ profile, isOwner: false });
+}
+
+async function fileToDataUrl(file) {
+  if (!file) return "";
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileExtension(file) {
+  const name = file?.name || "";
+  const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+  return ext || "png";
+}
+
+async function uploadProfileAsset(file, type) {
+  if (!file) return { url: "", path: "" };
+  if (supabaseClient && appState.authUser) {
+    const bucket = type === "banner" ? "profile-banners" : "profile-avatars";
+    const path = `${appState.authUser.id}/${type}.${fileExtension(file)}`;
+    const { error } = await supabaseClient.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type || "image/png",
+      upsert: true,
+    });
+    if (!error) {
+      const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path);
+      return { url: data?.publicUrl || "", path };
+    }
+  }
+  return { url: await fileToDataUrl(file), path: "" };
 }
 
 function openProfileEditor() {
@@ -3859,23 +4215,34 @@ function openProfileEditor() {
   const roleOptions = accountRoles.map((role) => `<option value="${role.id}" ${display.role === role.id ? "selected" : ""}>${role.label}</option>`).join("");
   openModal(`<form class="profile-edit-form">
     <span><i data-lucide="user-pen"></i>Editar perfil</span>
-    <h2>Atualize sua identidade na ANSEND</h2>
+    <h2>Identidade do perfil</h2>
     <div class="profile-edit-preview">
-      <img src="${display.avatar}" alt="Avatar atual">
-      <div><strong>${display.name}</strong><small>${display.roleLabel}</small></div>
+      <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}"></div>
+      <div class="profile-edit-preview-row">
+        ${profileAvatarMarkup(display, "profile-edit-avatar")}
+        <div><strong>${htmlEscape(display.name)}</strong><small>${htmlEscape(display.roleLabel)}</small></div>
+      </div>
+    </div>
+    <div class="spotify-profile-edit-upload">
+      <label><strong>Foto do perfil</strong><small>PNG, JPG ou WebP</small><input class="profile-editor-file" data-preview="avatar" name="avatar_file" type="file" accept="image/*"></label>
+      <label><strong>Banner do perfil</strong><small>Imagem horizontal para o topo</small><input class="profile-editor-file" data-preview="banner" name="banner_file" type="file" accept="image/*"></label>
     </div>
     <div class="profile-form-grid">
-      <label>Nome completo<input name="full_name" value="${display.fullName}" placeholder="Seu nome"></label>
-      <label>Nome artistico ou marca<input name="artistic_name" value="${profile?.artistic_name || ""}" placeholder="Ex: Viana Beats"></label>
+      <label>Nome completo<input name="full_name" value="${htmlEscape(display.fullName)}" placeholder="Seu nome"></label>
+      <label>Nome publico<input name="display_name" value="${htmlEscape(display.name)}" placeholder="Ex: Viana Beats"></label>
+      <label>Username<input name="username" value="${htmlEscape(display.username)}" placeholder="viana-beats"></label>
       <label>Funcao<select name="account_role">${roleOptions}</select></label>
-      <label>Localizacao<input name="location" value="${profile?.location || ""}" placeholder="Cidade, pais"></label>
-      <label class="profile-wide">Foto do perfil<input name="avatar_url" value="${profile?.avatar_url || profile?.photo_url || ""}" placeholder="https://...jpg ou png"></label>
-      <label class="profile-wide">Headline<input name="headline" value="${profile?.headline || ""}" placeholder="Uma frase curta sobre seu trabalho"></label>
-      <label class="profile-wide">Bio<textarea name="bio" rows="4" placeholder="Conte o que voce faz e como pode ajudar artistas.">${profile?.bio || ""}</textarea></label>
-      <label>Instagram<input name="instagram" value="${profile?.instagram || ""}" placeholder="https://instagram.com/..."></label>
-      <label>YouTube<input name="youtube" value="${profile?.youtube || ""}" placeholder="https://youtube.com/@..."></label>
-      <label>Spotify<input name="spotify" value="${profile?.spotify || ""}" placeholder="https://open.spotify.com/..."></label>
-      <label>Site<input name="website" value="${profile?.website || ""}" placeholder="https://..."></label>
+      <label>Nome artistico ou marca<input name="artistic_name" value="${htmlEscape(profile?.artistic_name || "")}" placeholder="Ex: Viana Beats"></label>
+      <label class="profile-wide">URL da foto<input name="avatar_url" value="${htmlEscape(profile?.avatar_url || profile?.photo_url || "")}" placeholder="https://...jpg ou png"></label>
+      <label class="profile-wide">URL do banner<input name="banner_url" value="${htmlEscape(profile?.banner_url || profile?.cover_url || "")}" placeholder="https://...jpg ou png"></label>
+      <label class="profile-wide">Bio<textarea name="bio" rows="4" placeholder="Conte o que voce faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea></label>
+      <label>Instagram<input name="instagram_url" value="${htmlEscape(profile?.instagram_url || profile?.instagram || "")}" placeholder="https://instagram.com/..."></label>
+      <label>YouTube<input name="youtube_url" value="${htmlEscape(profile?.youtube_url || profile?.youtube || "")}" placeholder="https://youtube.com/@..."></label>
+      <label>Spotify<input name="spotify_url" value="${htmlEscape(profile?.spotify_url || profile?.spotify || "")}" placeholder="https://open.spotify.com/..."></label>
+      <label>SoundCloud<input name="soundcloud_url" value="${htmlEscape(profile?.soundcloud_url || profile?.soundcloud || "")}" placeholder="https://soundcloud.com/..."></label>
+      <label class="profile-wide">Site<input name="website_url" value="${htmlEscape(profile?.website_url || profile?.website || "")}" placeholder="https://..."></label>
+      <label class="profile-check"><input name="remove_avatar" type="checkbox">Remover foto</label>
+      <label class="profile-check"><input name="remove_banner" type="checkbox">Remover banner</label>
     </div>
     <button class="seller-submit" type="submit">Salvar perfil<i data-lucide="arrow-right"></i></button>
   </form>`);
@@ -3883,28 +4250,38 @@ function openProfileEditor() {
 
 async function saveProfileEdit(form) {
   const current = activeProfile() || {};
+  const avatarFile = form.elements.avatar_file?.files?.[0];
+  const bannerFile = form.elements.banner_file?.files?.[0];
+  const uploadedAvatar = await uploadProfileAsset(avatarFile, "avatar");
+  const uploadedBanner = await uploadProfileAsset(bannerFile, "banner");
+  const removeAvatar = Boolean(form.elements.remove_avatar?.checked);
+  const removeBanner = Boolean(form.elements.remove_banner?.checked);
   const profile = {
     ...current,
     id: current.id || appState.authUser?.id || `local-profile-${Date.now()}`,
     email: current.email || appState.authUser?.email || null,
     full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
+    display_name: form.elements.display_name?.value.trim() || form.elements.artistic_name?.value.trim() || current.display_name || null,
+    username: sanitizeHandle(form.elements.username?.value || current.username || current.handle || ""),
     artistic_name: form.elements.artistic_name?.value.trim() || null,
     account_role: form.elements.account_role?.value || current.account_role || "artista",
-    location: form.elements.location?.value.trim() || null,
-    avatar_url: form.elements.avatar_url?.value.trim() || null,
-    headline: form.elements.headline?.value.trim() || null,
+    avatar_url: removeAvatar ? null : (uploadedAvatar.url || form.elements.avatar_url?.value.trim() || current.avatar_url || current.photo_url || null),
+    avatar_path: removeAvatar ? null : (uploadedAvatar.path || current.avatar_path || null),
+    banner_url: removeBanner ? null : (uploadedBanner.url || form.elements.banner_url?.value.trim() || current.banner_url || current.cover_url || null),
+    banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
     bio: form.elements.bio?.value.trim() || null,
-    instagram: form.elements.instagram?.value.trim() || null,
-    youtube: form.elements.youtube?.value.trim() || null,
-    spotify: form.elements.spotify?.value.trim() || null,
-    website: form.elements.website?.value.trim() || null,
+    instagram_url: form.elements.instagram_url?.value.trim() || null,
+    youtube_url: form.elements.youtube_url?.value.trim() || null,
+    spotify_url: form.elements.spotify_url?.value.trim() || null,
+    soundcloud_url: form.elements.soundcloud_url?.value.trim() || null,
+    website_url: form.elements.website_url?.value.trim() || null,
     music_styles: current.music_styles || preferredGenres(),
     updated_at: new Date().toISOString(),
   };
   setLocalPreviewProfile(profile);
   if (supabaseClient && appState.authUser) {
-    const { data } = await upsertProfile(profile);
-    setLocalPreviewProfile({ ...profile, ...(data || {}) });
+    const result = await upsertProfile(profile);
+    if (!result.error) setLocalPreviewProfile({ ...profile, ...(result.data || {}) });
   }
   closeModal();
   renderRoute();
@@ -3916,10 +4293,22 @@ async function upsertProfile(profile) {
     id: appState.authUser.id,
     email: appState.authUser.email || profile.email,
     full_name: profile.full_name,
+    display_name: profile.display_name || null,
+    username: profile.username || null,
     account_role: profile.account_role,
     artistic_name: profile.artistic_name || null,
     music_styles: profile.music_styles || preferredGenres(),
     onboarding_goal: profile.onboarding_goal || appState.onboardingProfile?.goal || null,
+    bio: profile.bio || null,
+    avatar_url: profile.avatar_url || null,
+    avatar_path: profile.avatar_path || null,
+    banner_url: profile.banner_url || null,
+    banner_path: profile.banner_path || null,
+    website_url: profile.website_url || null,
+    instagram_url: profile.instagram_url || null,
+    youtube_url: profile.youtube_url || null,
+    spotify_url: profile.spotify_url || null,
+    soundcloud_url: profile.soundcloud_url || null,
   };
   const { data, error } = await supabaseClient.from("profiles").upsert(payload, { onConflict: "id" }).select().single();
   if (!error && data) appState.profile = data;
@@ -5128,25 +5517,144 @@ function renderAiWorkspace() {
 }
 
 function renderAiWorkspace() {
-  if (appState.nexoQuizGenerating) {
-    appView.innerHTML = `<div class="nexo-minimal-container nexo-quiz-shell">
-      <header class="nexo-quiz-hero">
-        <span class="nexo-quiz-eyebrow">NEXO IA</span>
-        <h1><strong>O que podemos lancar hoje?</strong></h1>
-        <p>A NEXO esta lendo seu contexto e montando uma rota musical objetiva.</p>
-      </header>
-      <div class="nexo-quiz-card nexo-result-loading"><i data-lucide="loader-2"></i>Gerando diagnostico musical...</div>
-    </div>`;
+  appView.innerHTML = renderNexoChat();
+  requestAnimationFrame(() => {
+    setupNexoChatInput();
+    scrollNexoChatToBottom();
+    lucide.createIcons();
+  });
+}
+
+const nexoChatSuggestions = [
+  "Quero lancar uma musica do zero",
+  "Me ajude a montar um plano de lancamento",
+  "Quero encontrar produtores, designers e curadores",
+  "Analise minha ideia musical",
+  "Monte um diagnostico para meu proximo single",
+];
+
+function nexoChatMessages() {
+  if (!Array.isArray(appState.nexoChatMessages)) appState.nexoChatMessages = [];
+  return appState.nexoChatMessages;
+}
+
+function nexoChatId(prefix = "msg") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function nexoFormatMessage(content = "") {
+  return htmlEscape(content)
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function renderNexoChatMessage(message) {
+  const isUser = message.role === "user";
+  return `<article class="nexo-chat-message ${isUser ? "is-user" : "is-assistant"}" data-message-id="${htmlEscape(message.id || "")}">
+    <div class="nexo-chat-avatar">${isUser ? `<i data-lucide="circle-user-round"></i>` : `<span>N</span>`}</div>
+    <div class="nexo-chat-bubble">
+      <p>${nexoFormatMessage(message.content || "")}</p>
+    </div>
+  </article>`;
+}
+
+function renderNexoChatWelcome() {
+  return `<section class="nexo-chat-welcome" aria-label="Introducao da NEXO IA">
+    <span>NEXO IA</span>
+    <h1>Converse com a inteligencia musical da ANSEND</h1>
+    <p>Transforme uma ideia em um plano real de lancamento, com orientacao sobre beat, capa, mix/master, marketing, curadoria e proximos passos.</p>
+    <div class="nexo-chat-suggestions">
+      ${nexoChatSuggestions.map((prompt) => `<button type="button" data-action="nexo-chat-suggestion" data-prompt="${htmlEscape(prompt)}"><i data-lucide="sparkles"></i>${htmlEscape(prompt)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderNexoChat() {
+  const messages = nexoChatMessages();
+  const isLoading = Boolean(appState.nexoChatLoading);
+  return `<section class="nexo-chat-page" aria-label="NEXO IA">
+    <main class="nexo-chat-shell">
+      <div class="nexo-chat-thread" id="nexoChatThread">
+        ${messages.length ? messages.map(renderNexoChatMessage).join("") : renderNexoChatWelcome()}
+        ${isLoading ? `<article class="nexo-chat-message is-assistant is-typing">
+          <div class="nexo-chat-avatar"><span>N</span></div>
+          <div class="nexo-chat-bubble"><p>NEXO IA esta pensando<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
+        </article>` : ""}
+      </div>
+      ${appState.nexoChatError ? `<p class="nexo-chat-error"><i data-lucide="circle-alert"></i>${htmlEscape(appState.nexoChatError)}</p>` : ""}
+      <form class="nexo-chat-form" autocomplete="off">
+        <div class="nexo-chat-input-wrap">
+          <textarea id="nexoChatInput" name="message" rows="1" ${isLoading ? "disabled" : ""} placeholder="Conte sua ideia, seu momento ou o que voce quer lancar..."></textarea>
+          <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar mensagem para NEXO IA"><i data-lucide="${isLoading ? "loader-2" : "send"}"></i></button>
+        </div>
+      </form>
+    </main>
+  </section>`;
+}
+
+function setupNexoChatInput() {
+  const input = document.querySelector("#nexoChatInput");
+  if (!input) return;
+  const resize = () => {
+    input.style.height = "48px";
+    input.style.height = `${Math.min(180, Math.max(48, input.scrollHeight))}px`;
+  };
+  resize();
+  input.addEventListener("input", resize);
+  input.focus({ preventScroll: true });
+}
+
+function scrollNexoChatToBottom() {
+  const thread = document.querySelector("#nexoChatThread");
+  if (!thread) return;
+  if (thread.querySelector(".nexo-chat-welcome")) {
+    thread.scrollTop = 0;
     return;
   }
+  thread.scrollTop = thread.scrollHeight;
+}
 
-  const savedResult = readNexoDiagnosis();
-  if (savedResult && !appState.nexoQuizEditing) {
-    appView.innerHTML = renderNexoDiagnosisResult(savedResult);
-    return;
+async function callNexoChatApi(messages) {
+  const response = await fetch("/api/nexo/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: messages.map(({ role, content }) => ({ role, content })),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.");
   }
+  return data.message;
+}
 
-  appView.innerHTML = renderNexoQuiz(appState.nexoQuiz || readNexoQuiz());
+async function sendNexoChatMessage(rawMessage) {
+  const content = String(rawMessage || "").trim();
+  if (!content || appState.nexoChatLoading) return;
+  const messages = nexoChatMessages();
+  messages.push({ id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() });
+  appState.nexoChatLoading = true;
+  appState.nexoChatError = "";
+  renderAiWorkspace();
+  hydrateView();
+
+  try {
+    const answer = await callNexoChatApi(messages);
+    messages.push({
+      id: nexoChatId("assistant"),
+      role: "assistant",
+      content: answer?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
+      createdAt: answer?.createdAt || new Date().toISOString(),
+    });
+  } catch (error) {
+    appState.nexoChatError = error?.message || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.";
+  } finally {
+    appState.nexoChatLoading = false;
+    renderAiWorkspace();
+    hydrateView();
+  }
 }
 
 function professionalCard(profile) {
@@ -6032,6 +6540,7 @@ async function saveBeatRelease(status = "published") {
   }
   
   const beatId = form.dataset.beatId;
+  let savedCatalogItem = null;
   
   if (supabaseClient && appState.authUser) {
     const dbPayload = {
@@ -6054,6 +6563,7 @@ async function saveBeatRelease(status = "published") {
     
     // Add source_table property
     data.source_table = "beats";
+    savedCatalogItem = data;
     
     // Update local state list
     appState.catalogItems = appState.catalogItems.filter(item => item.id !== beatId);
@@ -6069,12 +6579,21 @@ async function saveBeatRelease(status = "published") {
       created_at: new Date().toISOString(),
       source_table: "beats"
     };
+    savedCatalogItem = localBeat;
     
     appState.catalogItems = appState.catalogItems.filter(item => item.id !== localBeat.id && item.id !== beatId);
     appState.catalogItems.unshift(localBeat);
     persistCatalogItems();
     
     showToast(status === "published" ? "Beat publicado localmente!" : "Rascunho salvo localmente!", "hard-drive");
+  }
+
+  if (savedCatalogItem) {
+    if (status === "published") {
+      upsertFeedItem(createFeedItemFromBeat(savedCatalogItem));
+    } else {
+      removeFeedItemForSource(savedCatalogItem.id, savedCatalogItem.source_table || "beats");
+    }
   }
   
   await loadCatalogItems();
@@ -6215,7 +6734,7 @@ function renderMusicUploadFallback(error) {
 }
 
 
-function renderProfile() {
+function renderProfileLegacy() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const items = visibleCatalogItems();
@@ -6641,6 +7160,7 @@ function renderRoute() {
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
+  if (route === "perfil-publico") renderPublicProfile();
   if (route === "cadastrar") {
     try {
       renderMusicUpload();
@@ -7329,6 +7849,39 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.target?.matches?.("#nexoChatInput") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    const form = event.target.closest(".nexo-chat-form");
+    form?.requestSubmit();
+    return;
+  }
+  const customSelect = event.target.closest?.(".nexo-dark-select");
+  if (customSelect) {
+    const field = customSelect.closest(".nexo-custom-select-field");
+    const options = [...(field?.querySelectorAll("[role='option']") || [])];
+    const currentIndex = Math.max(0, options.findIndex((option) => option.getAttribute("aria-selected") === "true"));
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const isOpen = field.classList.toggle("is-open");
+      customSelect.setAttribute("aria-expanded", String(isOpen));
+      closeNexoSelects(field);
+      if (isOpen) updateNexoSelectDirection(field);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNexoSelects();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex = event.key === "ArrowDown"
+        ? Math.min(options.length - 1, currentIndex + 1)
+        : Math.max(0, currentIndex - 1);
+      if (options[nextIndex]) chooseNexoSelectOption(options[nextIndex]);
+      return;
+    }
+  }
   const waveform = event.target.closest(".mini-waveform");
   if (!waveform) return;
   const audio = topBeatAudio();
@@ -7348,6 +7901,42 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const chatSuggestion = event.target.closest("[data-action='nexo-chat-suggestion']");
+  if (chatSuggestion) {
+    event.preventDefault();
+    sendNexoChatMessage(chatSuggestion.dataset.prompt || chatSuggestion.textContent);
+    return;
+  }
+
+  const selectToggle = event.target.closest("[data-action='nexo-select-toggle']");
+  if (selectToggle) {
+    event.preventDefault();
+    const field = selectToggle.closest(".nexo-custom-select-field");
+    const isOpen = !field.classList.contains("is-open");
+    closeNexoSelects(field);
+    field.classList.toggle("is-open", isOpen);
+    selectToggle.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) updateNexoSelectDirection(field);
+    return;
+  }
+  const selectOption = event.target.closest("[data-action='nexo-select-option']");
+  if (selectOption) {
+    event.preventDefault();
+    chooseNexoSelectOption(selectOption);
+    return;
+  }
+  const subgenreChip = event.target.closest("[data-action='nexo-subgenre-chip']");
+  if (subgenreChip) {
+    event.preventDefault();
+    const input = subgenreChip.closest(".nexo-subgenre-field")?.querySelector("input");
+    if (input) {
+      input.value = subgenreChip.dataset.value || subgenreChip.textContent.trim();
+      input.focus();
+    }
+    return;
+  }
+  if (!event.target.closest(".nexo-custom-select-field")) closeNexoSelects();
+
   const routeLink = event.target.closest("a[data-route], button[data-route]");
   if (routeLink) {
     const targetRoute = routeLink.dataset.route;
@@ -7619,12 +8208,14 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "nexo-feed-play") {
-    const item = findBeat(target.dataset.id);
+    const feedItem = feedItemForEvent(target.dataset.feedItemId);
+    const item = findBeat(feedItem?.metadata?.beatId || feedItem?.sourceId || target.dataset.id);
+    if (!item) return;
     pauseTopBeat({ quiet: true });
     appState.playing = item.id;
     updateMiniPlayer(item);
     document.querySelector(".mini-player")?.classList.add("is-playing");
-    writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
+    writeNexoFeedEvent(feedItem?.id || item.id, "click_cta", { item: feedItem || item, watchTimeMs: 0 });
     return;
   }
   if (action === "nexo-feed-prev" || action === "nexo-feed-next") {
@@ -7641,6 +8232,7 @@ document.addEventListener("click", (event) => {
       "nexo-feed-share": "share",
       "nexo-feed-comments": "click_cta",
       "nexo-feed-profile": "open_profile",
+      "nexo-feed-open": "click_cta",
       "nexo-feed-plan": "add_to_plan",
       "nexo-feed-hide": "not_interested",
       "nexo-feed-similar": "view_similar",
@@ -7656,10 +8248,12 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "nexo-feed-comments") {
-      if (item.type === "beat") {
+      if (item.type === "beat" || item.type === "music") {
         const beat = findBeat(item.metadata?.beatId || item.id);
-        appState.playing = beat.id;
-        updateMiniPlayer(beat);
+        if (beat) {
+          appState.playing = beat.id;
+          updateMiniPlayer(beat);
+        }
         openCommentsPanel();
       } else {
         openModal(`<section class="player-tool-modal comments-tool-modal">
@@ -7677,15 +8271,25 @@ document.addEventListener("click", (event) => {
       }
       return;
     }
+    if (action === "nexo-feed-open") {
+      if (item.type === "beat" || item.type === "music") {
+        const beatId = item.metadata?.beatId || item.sourceId || item.id;
+        location.hash = `beat-${beatId}`;
+      } else if (item.type === "service") {
+        location.hash = "produtores";
+      } else {
+        showToast("Detalhes preparados para esta publicacao.", "external-link");
+      }
+      return;
+    }
     if (action === "nexo-feed-share") {
       navigator.clipboard?.writeText(`${location.origin}${location.pathname}#nexo-feed`);
       target.classList.add("is-active");
       return;
     }
     if (action === "nexo-feed-profile") {
-      if (item.type === "professional") openProfessionalProfile(item.metadata?.professionalName || item.title);
-      else if (item.creatorName && item.creatorName !== "NEXO IA" && item.creatorName !== "Curadoria ANSEND") openProfessionalProfile(item.creatorName);
-      else location.hash = "produtores";
+      if (item.creatorName && item.creatorName !== "ANSEND") openProfessionalProfile(item.creatorName);
+      else location.hash = "perfil";
       return;
     }
     if (action === "nexo-feed-hide") {
@@ -7895,7 +8499,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "producer") {
-    openProfessionalProfile(target.dataset.title);
+    location.hash = `perfil-${slugify(target.dataset.title || "profissional")}`;
     return;
   }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
@@ -7936,6 +8540,13 @@ document.addEventListener("click", (event) => {
     target.classList.add("is-active");
     return;
   }
+  if (action === "profile-scroll") {
+    document.querySelector(`#${target.dataset.target}`)?.scrollIntoView({
+      behavior: prefersReducedMotion.matches ? "auto" : "smooth",
+      block: "start",
+    });
+    return;
+  }
   if (action === "filter") {
     appState.genre = target.dataset.genre;
     if (currentRoute() !== "explorar") location.hash = "explorar";
@@ -7949,6 +8560,28 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const profileFileInput = event.target.closest(".profile-editor-file");
+  if (profileFileInput) {
+    const file = profileFileInput.files?.[0];
+    if (!file) return;
+    fileToDataUrl(file).then((src) => {
+      if (profileFileInput.dataset.preview === "avatar") {
+        const avatar = document.querySelector(".profile-edit-avatar");
+        if (avatar) {
+          avatar.classList.remove("is-initials");
+          avatar.innerHTML = `<img src="${src}" alt="Preview da foto do perfil">`;
+        }
+      }
+      if (profileFileInput.dataset.preview === "banner") {
+        const banner = document.querySelector(".profile-edit-banner-preview");
+        if (banner) {
+          banner.classList.add("has-image");
+          banner.style.backgroundImage = `url("${src}")`;
+        }
+      }
+    });
+    return;
+  }
   const releaseFileInput = event.target.closest(".release-file-input");
   if (releaseFileInput) {
     handleReleaseFileInput(releaseFileInput);
@@ -8029,6 +8662,16 @@ document.addEventListener("submit", async (event) => {
       input.value = "";
       showToast("Comentario publicado no preview", "message-circle");
     }
+    return;
+  }
+  const nexoChatForm = event.target.closest(".nexo-chat-form");
+  if (nexoChatForm) {
+    event.preventDefault();
+    const input = nexoChatForm.elements.message;
+    const message = input?.value || "";
+    if (!message.trim()) return;
+    input.value = "";
+    await sendNexoChatMessage(message);
     return;
   }
   const nexoMatchForm = event.target.closest(".nexo-match-form");
