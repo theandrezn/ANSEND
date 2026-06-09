@@ -6,9 +6,20 @@ create table if not exists public.profiles (
   full_name text not null default '',
   account_role text not null default 'artista',
   artistic_name text,
+  display_name text,
+  username text,
+  bio text,
   music_styles text[] not null default '{}',
   onboarding_goal text,
   avatar_url text,
+  avatar_path text,
+  banner_url text,
+  banner_path text,
+  website_url text,
+  instagram_url text,
+  youtube_url text,
+  spotify_url text,
+  soundcloud_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -16,6 +27,21 @@ create table if not exists public.profiles (
 alter table public.profiles alter column full_name set default '';
 alter table public.profiles alter column account_role set default 'artista';
 alter table public.profiles drop constraint if exists profiles_account_role_check;
+alter table public.profiles add column if not exists display_name text;
+alter table public.profiles add column if not exists username text;
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles add column if not exists avatar_path text;
+alter table public.profiles add column if not exists banner_url text;
+alter table public.profiles add column if not exists banner_path text;
+alter table public.profiles add column if not exists website_url text;
+alter table public.profiles add column if not exists instagram_url text;
+alter table public.profiles add column if not exists youtube_url text;
+alter table public.profiles add column if not exists spotify_url text;
+alter table public.profiles add column if not exists soundcloud_url text;
+
+create unique index if not exists profiles_username_unique_idx
+on public.profiles (lower(username))
+where username is not null and username <> '';
 
 alter table public.profiles enable row level security;
 
@@ -72,6 +98,8 @@ begin
     full_name,
     account_role,
     artistic_name,
+    display_name,
+    username,
     music_styles
   )
   values (
@@ -80,6 +108,8 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', ''),
     coalesce(new.raw_user_meta_data->>'account_role', 'artista'),
     nullif(new.raw_user_meta_data->>'artistic_name', ''),
+    nullif(new.raw_user_meta_data->>'display_name', ''),
+    nullif(new.raw_user_meta_data->>'username', ''),
     case
       when jsonb_typeof(new.raw_user_meta_data->'music_styles') = 'array'
         then array(select jsonb_array_elements_text(new.raw_user_meta_data->'music_styles'))
@@ -92,6 +122,8 @@ begin
     full_name = coalesce(nullif(excluded.full_name, ''), public.profiles.full_name),
     account_role = coalesce(nullif(excluded.account_role, ''), public.profiles.account_role),
     artistic_name = coalesce(excluded.artistic_name, public.profiles.artistic_name),
+    display_name = coalesce(excluded.display_name, public.profiles.display_name),
+    username = coalesce(excluded.username, public.profiles.username),
     music_styles = case
       when array_length(excluded.music_styles, 1) is null then public.profiles.music_styles
       else excluded.music_styles
@@ -280,8 +312,23 @@ insert into storage.buckets (id, name, public)
 values 
   ('beat-covers', 'beat-covers', true),
   ('beat-audio', 'beat-audio', true),
-  ('beat-stems', 'beat-stems', false)
-on conflict (id) do nothing;
+  ('beat-stems', 'beat-stems', false),
+  ('profile-avatars', 'profile-avatars', true),
+  ('profile-banners', 'profile-banners', true)
+on conflict (id) do update set public = excluded.public;
+
+-- Policies for profile media
+drop policy if exists "Profile avatars are public" on storage.objects;
+create policy "Profile avatars are public" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-avatars');
+
+drop policy if exists "Profile banners are public" on storage.objects;
+create policy "Profile banners are public" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-banners');
+
+drop policy if exists "Users can manage own profile avatars" on storage.objects;
+create policy "Users can manage own profile avatars" on storage.objects for all to authenticated using (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text) with check (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can manage own profile banners" on storage.objects;
+create policy "Users can manage own profile banners" on storage.objects for all to authenticated using (bucket_id = 'profile-banners' and (storage.foldername(name))[1] = auth.uid()::text) with check (bucket_id = 'profile-banners' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policies for beat-covers
 drop policy if exists "Public Access Covers" on storage.objects;
