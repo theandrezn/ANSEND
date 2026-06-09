@@ -23,6 +23,21 @@ function extractOutputText(data) {
   return chunks.join("\n").trim();
 }
 
+function safeOpenAiError(data) {
+  const message = data?.error?.message || data?.message;
+  if (!message || typeof message !== "string") return "Erro desconhecido da OpenAI.";
+  return message.replace(/sk-[A-Za-z0-9_-]+/g, "[redacted]");
+}
+
+function nexoModelCandidates(env) {
+  const primary = env.OPENAI_MODEL || "gpt-5.4-mini";
+  const fallback = String(env.NEXO_FALLBACK_MODELS || "gpt-5-mini,gpt-4.1-mini")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return [...new Set([primary, ...fallback])];
+}
+
 async function handleNexoAnalysis(request, env) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
   if (request.method !== "POST") {
@@ -53,14 +68,12 @@ async function handleNexoAnalysis(request, env) {
     }, { status: 500 });
   }
 
-  const model = env.OPENAI_MODEL || "gpt-5.4-mini";
-  const maxOutputTokens = Number(env.NEXO_MAX_OUTPUT_TOKENS || 900);
+  const maxOutputTokens = Number(env.NEXO_MAX_OUTPUT_TOKENS || 2200);
   const reasoningEffort = env.NEXO_REASONING_EFFORT || "low";
 
-  const openAiPayload = {
-    model,
+  const baseOpenAiPayload = {
     reasoning: { effort: reasoningEffort },
-    max_output_tokens: Math.min(Math.max(maxOutputTokens, 300), 1400),
+    max_output_tokens: Math.min(Math.max(maxOutputTokens, 800), 3200),
     input: [
       { role: "developer", content: buildNexoDeveloperPrompt() },
       {
@@ -82,35 +95,52 @@ async function handleNexoAnalysis(request, env) {
   };
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(openAiPayload),
-    });
+    const failures = [];
+    for (const model of nexoModelCandidates(env)) {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...baseOpenAiPayload, model }),
+      });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      console.error("NEXO OpenAI error", response.status, data?.error?.message || data);
-      return jsonResponse({
-        success: false,
-        error: "A NEXO IA nao conseguiu gerar o diagnostico agora. Tente novamente em instantes.",
-      }, { status: 502 });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = safeOpenAiError(data);
+        failures.push(`${model}: ${message}`);
+        console.error("NEXO OpenAI error", response.status, model, message);
+        continue;
+      }
+
+      const outputText = extractOutputText(data);
+      if (!outputText) {
+        failures.push(`${model}: resposta vazia.`);
+        continue;
+      }
+
+      try {
+        const diagnostico = JSON.parse(outputText);
+        return jsonResponse({
+          success: true,
+          diagnostico,
+          meta: {
+            model,
+            savedAt: new Date().toISOString(),
+            usage: data?.usage || null,
+          },
+        });
+      } catch (_parseError) {
+        failures.push(`${model}: resposta fora do formato JSON esperado.`);
+      }
     }
 
-    const outputText = extractOutputText(data);
-    const diagnostico = JSON.parse(outputText);
     return jsonResponse({
-      success: true,
-      diagnostico,
-      meta: {
-        model,
-        savedAt: new Date().toISOString(),
-        usage: data?.usage || null,
-      },
-    });
+      success: false,
+      error: "A NEXO IA nao conseguiu gerar o diagnostico agora.",
+      details: failures.slice(0, 3).join(" | "),
+    }, { status: 502 });
   } catch (error) {
     console.error("NEXO analysis failed", error?.message || error);
     return jsonResponse({
