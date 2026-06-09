@@ -2650,6 +2650,7 @@ function currentRouteFromHash() {
   const route = location.hash.replace("#", "") || "feed";
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
+  if (route.startsWith("perfil-")) return "perfil-publico";
   const knownRoutes = new Set([
     "feed",
     "nexo-feed",
@@ -3905,6 +3906,279 @@ async function saveProfileEdit(form) {
   if (supabaseClient && appState.authUser) {
     const { data } = await upsertProfile(profile);
     setLocalPreviewProfile({ ...profile, ...(data || {}) });
+  }
+  closeModal();
+  renderRoute();
+}
+
+function profileInitials(name = "ANSEND") {
+  return String(name)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase() || "A";
+}
+
+function profileCoverImage(profile = activeProfile()) {
+  if (profile?.banner_url) return profile.banner_url;
+  if (profile?.cover_url) return profile.cover_url;
+  const role = normalizeRole(profile?.account_role || "artista");
+  const map = {
+    beatmaker: img("photo-1493225457124-a3eb161ffa5f"),
+    produtor: img("photo-1598488035139-bdbb2231ce04"),
+    designer: img("photo-1518005020951-eccb494ad742"),
+    curador: img("photo-1501386761578-eac5c94b800a"),
+    marketing: img("photo-1551288049-bebda4e38f71"),
+    artista: img("photo-1500530855697-b586d89ba3ee"),
+  };
+  return map[role] || map.artista;
+}
+
+function profileAvatarElement(display, className = "artist-avatar") {
+  const avatar = display?.avatar || "";
+  if (avatar && !avatar.includes("undefined")) {
+    return `<div class="${className}"><img src="${avatar}" alt="Avatar de ${htmlEscape(display.name)}"></div>`;
+  }
+  return `<div class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${profileInitials(display.name)}</div>`;
+}
+
+function profileSocialLinks(display) {
+  const links = [
+    ["instagram", "Instagram", display.links.instagram],
+    ["youtube", "YouTube", display.links.youtube],
+    ["music-4", "Spotify", display.links.spotify],
+    ["globe", "Site", display.links.website],
+  ].filter(([, , url]) => url);
+  if (!links.length) return `<span><i data-lucide="link"></i>Nenhum link cadastrado</span>`;
+  return links.map(([icon, label, url]) => `<a href="${htmlEscape(url)}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i>${label}<i data-lucide="external-link"></i></a>`).join("");
+}
+
+function profileCatalogRows(items, display, isOwner) {
+  if (!items.length) {
+    return `<div class="artist-empty">
+      <i data-lucide="music-4"></i>
+      <strong>${isOwner ? "Nenhuma faixa cadastrada ainda" : "Catalogo ainda vazio"}</strong>
+      <p>${isOwner ? "Publique sua primeira musica para ela aparecer no seu perfil." : "Este perfil ainda nao publicou faixas na ANSEND."}</p>
+      ${isOwner ? `<button type="button" class="profile-action is-primary" data-route="cadastrar"><i data-lucide="upload-cloud"></i>Lancar musica</button>` : ""}
+    </div>`;
+  }
+  return `<div class="artist-track-list">
+    ${items.slice(0, 12).map((item, index) => {
+      const beat = item.source ? item : catalogItemToBeat(item);
+      const raw = item.raw || item;
+      const price = beat.price || (raw.price ? Number(raw.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Sob consulta");
+      const meta = [raw.genre || beat.tags?.[0], raw.bpm ? `${raw.bpm} BPM` : beat.tags?.[1]].filter(Boolean).join(" / ");
+      const producer = raw.producer_name || raw.artist_name || display.name || beat.producer;
+      return `<article class="artist-track-row">
+        <span class="artist-track-index">${index + 1}</span>
+        <div class="artist-track-main">
+          <img src="${htmlEscape(beat.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${htmlEscape(beat.title)}">
+          <div>
+            <strong>${htmlEscape(beat.title)}</strong>
+            <small>${htmlEscape(producer)}</small>
+          </div>
+        </div>
+        <span class="artist-track-meta">${htmlEscape(meta || display.roleLabel)}</span>
+        <span class="artist-track-price">${htmlEscape(price)}</span>
+        <button type="button" class="artist-play-mini" data-action="play" data-id="${htmlEscape(beat.id)}" aria-label="Tocar ${htmlEscape(beat.title)}"><i data-lucide="play"></i></button>
+      </article>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderSpotifyProfile({ profile, isOwner = false, professional = null } = {}) {
+  const safeProfile = profile || activeProfile() || {};
+  const display = professional
+    ? {
+        name: professional.name,
+        fullName: professional.name,
+        role: professional.category,
+        roleLabel: professional.role || "Profissional",
+        avatar: professionalImage(professional),
+        location: professional.city || "Online",
+        headline: professional.specialty || "Profissional verificado na ANSEND.",
+        bio: professional.specialty || "Perfil profissional cadastrado na ANSEND.",
+        styles: professional.tags || [],
+        links: {},
+      }
+    : profileDisplayData(safeProfile);
+  const role = normalizeRole(safeProfile.account_role || display.role || "artista");
+  const catalogItems = isOwner
+    ? visibleCatalogItems()
+    : professional
+      ? beatMatchesForNeed(`${professional.role} ${professional.specialty} ${professional.tags?.join(" ")}`, 6).map((item) => findBeat(item.id))
+      : publishedCatalogItems().filter((item) => item.user_id === safeProfile.id);
+  const publishedCount = catalogItems.filter((item) => item.status === "published" || item.source !== "catalog").length;
+  const listenerBase = isOwner ? appState.favorites.size + appState.purchases.length : (professional?.jobs || 0);
+  const listeners = Math.max(listenerBase * 137, publishedCount * 920, isOwner ? 0 : 1240).toLocaleString("pt-BR");
+  const cover = profileCoverImage(safeProfile);
+  const styles = display.styles?.length ? display.styles : ["ANSEND"];
+  const actionButtons = isOwner
+    ? `<button type="button" class="profile-action is-primary" data-action="toggle-edit-profile"><i data-lucide="edit-3"></i>Editar perfil</button>
+       <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>
+       <button type="button" class="profile-action" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>`
+    : `<button type="button" class="profile-action is-primary" data-action="follow-producer"><i data-lucide="user-plus"></i>Seguir</button>
+       <button type="button" class="profile-action" data-action="professional-contact" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
+       <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
+
+  appView.innerHTML = `<section class="profile-page spotify-profile" aria-label="Perfil ANSEND">
+    <div class="artist-hero" style="--artist-cover: url('${htmlEscape(cover)}')">
+      <div class="artist-hero-content">
+        <div class="artist-copy">
+          <span class="artist-kicker"><i data-lucide="${isOwner ? "user-round" : "badge-check"}"></i>${isOwner ? "Meu perfil ANSEND" : "Profissional verificado"}</span>
+          <h1 class="artist-title">${htmlEscape(display.name)}</h1>
+          <p class="artist-subtitle">${htmlEscape(display.headline || display.bio)}</p>
+          <div class="artist-meta">
+            <span>${htmlEscape(display.roleLabel)}</span>
+            <span>${htmlEscape(display.location)}</span>
+            <span>${listeners} ouvintes mensais</span>
+          </div>
+          <div class="artist-actions">${actionButtons}</div>
+        </div>
+        <aside class="artist-side-card">
+          ${profileAvatarElement(display)}
+          <div class="artist-side-stats">
+            <span><strong>${publishedCount}</strong> faixas publicadas</span>
+            <span><strong>${styles.slice(0, 2).join(" + ")}</strong> foco sonoro</span>
+            <span><strong>${isOwner ? "Editavel" : "Publico"}</strong> perfil</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <nav class="profile-tabs" aria-label="Secoes do perfil">
+      <button type="button" class="profile-tab is-active">Visao geral</button>
+      <button type="button" class="profile-tab" data-action="profile-scroll" data-target="profileCatalog">Catalogo</button>
+      <button type="button" class="profile-tab" data-action="profile-scroll" data-target="profileAbout">Sobre</button>
+    </nav>
+
+    <div class="profile-main-grid">
+      <main>
+        <section class="profile-section" id="profileCatalog">
+          <div class="profile-section-head">
+            <div>
+              <h2>${isOwner ? "Meu catalogo" : "Populares"}</h2>
+              <p>${isOwner ? "Faixas reais cadastradas na sua conta." : "Faixas e referencias associadas a este profissional."}</p>
+            </div>
+            ${isOwner ? `<button type="button" class="profile-action" data-route="cadastrar"><i data-lucide="upload"></i>Lancar musica</button>` : ""}
+          </div>
+          ${profileCatalogRows(catalogItems, display, isOwner)}
+        </section>
+
+        <section class="profile-section">
+          <div class="profile-section-head">
+            <div>
+              <h2>Projetos e servicos</h2>
+              <p>O que este perfil pode entregar dentro da ANSEND.</p>
+            </div>
+          </div>
+          <div class="profile-card-grid">
+            <article class="profile-mini-card"><i data-lucide="music-4"></i><strong>Catalogo</strong><small>${publishedCount ? `${publishedCount} itens publicados` : "Aguardando primeira publicacao"}</small></article>
+            <article class="profile-mini-card"><i data-lucide="badge-check"></i><strong>Licencas</strong><small>Contratos e usos organizados pela plataforma</small></article>
+            <article class="profile-mini-card"><i data-lucide="sparkles"></i><strong>NEXO IA</strong><small>Perfil usado para match com artistas e demandas</small></article>
+          </div>
+        </section>
+      </main>
+
+      <aside>
+        <section class="profile-section" id="profileAbout">
+          <h2>Sobre</h2>
+          <p>${htmlEscape(display.bio)}</p>
+          <div class="artist-meta">${styles.map((style) => `<span>${htmlEscape(style)}</span>`).join("")}</div>
+        </section>
+        <section class="profile-section">
+          <h2>Links</h2>
+          <div class="profile-links">${profileSocialLinks(display)}</div>
+        </section>
+      </aside>
+    </div>
+  </section>`;
+}
+
+function renderProfile() {
+  renderSpotifyProfile({ profile: activeProfile(), isOwner: true });
+}
+
+function renderPublicProfile() {
+  const slug = location.hash.replace("#perfil-", "");
+  const professional = activeProfessionalProfiles().find((item) => slugify(item.name) === slug) || findProfessional(slug.replace(/-/g, " "));
+  renderSpotifyProfile({ profile: null, isOwner: false, professional });
+}
+
+async function fileToDataUrl(file) {
+  if (!file) return "";
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function openProfileEditor() {
+  const profile = activeProfile() || {};
+  const display = profileDisplayData(profile);
+  const roleOptions = accountRoles.map((role) => `<option value="${role.id}" ${display.role === role.id ? "selected" : ""}>${role.label}</option>`).join("");
+  openModal(`<form class="profile-edit-form">
+    <span><i data-lucide="user-pen"></i>Editar perfil</span>
+    <h2>Identidade do perfil</h2>
+    <div class="profile-edit-preview">
+      <img src="${htmlEscape(display.avatar)}" alt="Avatar atual">
+      <div><strong>${htmlEscape(display.name)}</strong><small>${htmlEscape(display.roleLabel)}</small></div>
+    </div>
+    <div class="spotify-profile-edit-upload">
+      <label><strong>Foto do perfil</strong><small>PNG, JPG ou WebP</small><input name="avatar_file" type="file" accept="image/*"></label>
+      <label><strong>Banner do perfil</strong><small>Imagem horizontal para o topo</small><input name="banner_file" type="file" accept="image/*"></label>
+    </div>
+    <div class="profile-form-grid">
+      <label>Nome completo<input name="full_name" value="${htmlEscape(display.fullName)}" placeholder="Seu nome"></label>
+      <label>Nome artistico ou marca<input name="artistic_name" value="${htmlEscape(profile?.artistic_name || "")}" placeholder="Ex: Viana Beats"></label>
+      <label>Funcao<select name="account_role">${roleOptions}</select></label>
+      <label>Localizacao<input name="location" value="${htmlEscape(profile?.location || "")}" placeholder="Cidade, pais"></label>
+      <label class="profile-wide">URL da foto<input name="avatar_url" value="${htmlEscape(profile?.avatar_url || profile?.photo_url || "")}" placeholder="https://...jpg ou png"></label>
+      <label class="profile-wide">URL do banner<input name="banner_url" value="${htmlEscape(profile?.banner_url || profile?.cover_url || "")}" placeholder="https://...jpg ou png"></label>
+      <label class="profile-wide">Headline<input name="headline" value="${htmlEscape(profile?.headline || "")}" placeholder="Uma frase curta sobre seu trabalho"></label>
+      <label class="profile-wide">Bio<textarea name="bio" rows="4" placeholder="Conte o que voce faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea></label>
+      <label>Instagram<input name="instagram" value="${htmlEscape(profile?.instagram || "")}" placeholder="https://instagram.com/..."></label>
+      <label>YouTube<input name="youtube" value="${htmlEscape(profile?.youtube || "")}" placeholder="https://youtube.com/@..."></label>
+      <label>Spotify<input name="spotify" value="${htmlEscape(profile?.spotify || "")}" placeholder="https://open.spotify.com/..."></label>
+      <label>Site<input name="website" value="${htmlEscape(profile?.website || "")}" placeholder="https://..."></label>
+    </div>
+    <button class="seller-submit" type="submit">Salvar perfil<i data-lucide="arrow-right"></i></button>
+  </form>`);
+}
+
+async function saveProfileEdit(form) {
+  const current = activeProfile() || {};
+  const avatarFile = form.elements.avatar_file?.files?.[0];
+  const bannerFile = form.elements.banner_file?.files?.[0];
+  const uploadedAvatar = await fileToDataUrl(avatarFile);
+  const uploadedBanner = await fileToDataUrl(bannerFile);
+  const profile = {
+    ...current,
+    id: current.id || appState.authUser?.id || `local-profile-${Date.now()}`,
+    email: current.email || appState.authUser?.email || null,
+    full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
+    artistic_name: form.elements.artistic_name?.value.trim() || null,
+    account_role: form.elements.account_role?.value || current.account_role || "artista",
+    location: form.elements.location?.value.trim() || null,
+    avatar_url: uploadedAvatar || form.elements.avatar_url?.value.trim() || current.avatar_url || current.photo_url || null,
+    banner_url: uploadedBanner || form.elements.banner_url?.value.trim() || current.banner_url || current.cover_url || null,
+    headline: form.elements.headline?.value.trim() || null,
+    bio: form.elements.bio?.value.trim() || null,
+    instagram: form.elements.instagram?.value.trim() || null,
+    youtube: form.elements.youtube?.value.trim() || null,
+    spotify: form.elements.spotify?.value.trim() || null,
+    website: form.elements.website?.value.trim() || null,
+    music_styles: current.music_styles || preferredGenres(),
+    updated_at: new Date().toISOString(),
+  };
+  setLocalPreviewProfile(profile);
+  if (supabaseClient && appState.authUser) {
+    const result = await upsertProfile(profile);
+    if (!result.error) setLocalPreviewProfile({ ...profile, ...(result.data || {}) });
   }
   closeModal();
   renderRoute();
@@ -6454,7 +6728,7 @@ function renderMusicUploadFallback(error) {
 }
 
 
-function renderProfile() {
+function renderProfileLegacy() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const items = visibleCatalogItems();
@@ -6880,6 +7154,7 @@ function renderRoute() {
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === "perfil") renderProfile();
+  if (route === "perfil-publico") renderPublicProfile();
   if (route === "cadastrar") {
     try {
       renderMusicUpload();
@@ -8134,7 +8409,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "producer") {
-    openProfessionalProfile(target.dataset.title);
+    location.hash = `perfil-${slugify(target.dataset.title || "profissional")}`;
     return;
   }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
@@ -8173,6 +8448,13 @@ document.addEventListener("click", (event) => {
     const shareUrl = window.location.href;
     navigator.clipboard?.writeText(shareUrl);
     target.classList.add("is-active");
+    return;
+  }
+  if (action === "profile-scroll") {
+    document.querySelector(`#${target.dataset.target}`)?.scrollIntoView({
+      behavior: prefersReducedMotion.matches ? "auto" : "smooth",
+      block: "start",
+    });
     return;
   }
   if (action === "filter") {
