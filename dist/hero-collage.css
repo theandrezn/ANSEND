@@ -1,0 +1,92 @@
+/* Isolated Home Hero override.
+   The main stylesheet is large and has legacy open CSS scopes, so this file is
+   loaded after it to keep the Hero artwork background stable and auditable. */
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero.is-beatmaker-hero,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero:not(.is-beatmaker-hero) {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  background-color: #000 !important;
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, .88) 0%, rgba(0, 0, 0, .76) 34%, rgba(0, 0, 0, .62) 62%, rgba(0, 0, 0, .82) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, .70) 0%, rgba(0, 0, 0, .35) 46%, rgba(0, 0, 0, .78) 100%),
+    url("/assets/hero-ansend-bg.png") !important;
+  background-size: cover, cover, cover !important;
+  background-position: center, center, center !important;
+  background-repeat: no-repeat, no-repeat, no-repeat !important;
+  border-color: rgba(255, 106, 0, .18) !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .04), 0 36px 100px rgba(0, 0, 0, .58) !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  background:
+    radial-gradient(circle at 73% 34%, rgba(255, 106, 0, .16), transparent 31%),
+    radial-gradient(circle at 28% 55%, rgba(0, 0, 0, .36), transparent 38%),
+    rgba(0, 0, 0, .14) !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: auto 0 0 !important;
+  height: 34% !important;
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .82)) !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-particles,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-eq,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-wave-scene {
+  display: none !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .ai-hero-layout,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .an-hero-copy,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .an-hero-art,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-playlist-card {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .an-hero-copy > p,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .ai-input-shell textarea {
+  color: rgba(245, 245, 245, .86) !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-brand {
+  color: #ff6a00 !important;
+  -webkit-text-fill-color: #ff6a00 !important;
+  text-shadow: 0 0 30px rgba(255, 106, 0, .38), 0 10px 38px rgba(0, 0, 0, .82) !important;
+}
+
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-main,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-text {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: 0 12px 40px rgba(0, 0, 0, .9) !important;
+}
+
+@media (max-width: 900px) {
+  body[data-route="feed"] .feed .ai-hero.an-theater-hero,
+  body[data-route="feed"] .feed .ai-hero.an-theater-hero.is-beatmaker-hero,
+  body[data-route="feed"] .feed .ai-hero.an-theater-hero:not(.is-beatmaker-hero) {
+    background-image:
+      linear-gradient(180deg, rgba(0, 0, 0, .90) 0%, rgba(0, 0, 0, .68) 48%, rgba(0, 0, 0, .90) 100%),
+      url("/assets/hero-ansend-bg.png") !important;
+    background-size: cover, cover !important;
+    background-position: center, center !important;
+    background-repeat: no-repeat, no-repeat !important;
+  }
+}
