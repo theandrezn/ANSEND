@@ -1328,7 +1328,7 @@ function nexoDefaultQuiz(prompt = "") {
     nomeArtistico: activeProfile()?.artist_name || activeProfile()?.full_name || "",
     generoMusical: "Trap",
     subgenero: "Type Beat",
-    nivelCarreira: "iniciante",
+    nivelCarreira: "Iniciante",
     objetivoPrincipal: "encontrar beat/produtor",
     descricaoIdeiaMusical: prompt || "Tenho uma ideia musical e preciso transformar em lancamento profissional.",
     tipoProjeto: "single",
@@ -1387,9 +1387,9 @@ const nexoQuizSteps = [
     helper: "A NEXO usa seu contexto para adaptar beats, profissionais e proximos passos.",
     fields: [
       { name: "nomeArtistico", label: "Nome artistico ou marca", type: "text", placeholder: "Ex: Viana Beats" },
-      { name: "generoMusical", label: "Genero musical", type: "select", options: ["Trap", "Drill", "Funk", "R&B", "Rap", "Gospel Trap", "Boom Bap", "Afrobeat", "Pop"] },
+      { name: "generoMusical", label: "Genero musical", type: "select", options: ["Trap", "Rap", "Funk", "Pop", "Sertanejo", "R&B", "Gospel", "Rock", "Eletronico", "Pagode", "Samba", "Reggaeton", "Afrobeat", "Indie", "MPB", "Outro"] },
       { name: "subgenero", label: "Subgenero ou referencia", type: "text", placeholder: "Ex: Trap melodic, funk 150, plug..." },
-      { name: "nivelCarreira", label: "Nivel de carreira", type: "select", options: ["iniciante", "independente em crescimento", "ja lancei algumas musicas", "profissionalizando", "ja tenho publico"] },
+      { name: "nivelCarreira", label: "Nivel de carreira", type: "select", options: ["Iniciante", "Em desenvolvimento", "Intermediario", "Avancado", "Profissional", "Ja tenho publico consolidado"] },
     ],
   },
   {
@@ -1438,6 +1438,82 @@ const nexoQuizSteps = [
   },
 ];
 
+const nexoSubgenreSuggestions = {
+  Trap: ["Trap melodico", "Plug", "Rage", "Detroit", "Type Beat"],
+  Rap: ["Boom bap", "Rap consciente", "Drill", "Trap rap", "Freestyle"],
+  Funk: ["Funk RJ", "Funk 150", "Mandelao", "Funk melody", "Bruxaria"],
+  Pop: ["Pop urbano", "Dance pop", "Synth pop", "Pop alternativo", "Referencia internacional"],
+  Sertanejo: ["Sertanejo universitario", "Arrocha", "Modao", "Romantico", "Ao vivo"],
+  "R&B": ["R&B alternativo", "Neo soul", "Trap soul", "Slow jam", "Vocal suave"],
+  Gospel: ["Gospel trap", "Worship", "Pop gospel", "Louvor", "Inspiracional"],
+  Rock: ["Indie rock", "Alt rock", "Pop rock", "Hard rock", "Acustico"],
+  Eletronico: ["House", "Tech house", "Dance", "EDM", "Brazilian bass"],
+  Pagode: ["Pagode romantico", "Samba rock", "Ao vivo", "Pagode 90", "Roda de samba"],
+  Samba: ["Samba raiz", "Samba urbano", "Partido alto", "Samba rock", "MPB samba"],
+  Reggaeton: ["Dembow", "Urbano latino", "Perreo", "Pop latino", "Afro latino"],
+  Afrobeat: ["Afropop", "Amapiano", "Afro house", "Dancehall", "Afro urbano"],
+  Indie: ["Indie pop", "Bedroom pop", "Lo-fi", "Alternativo", "Dream pop"],
+  MPB: ["Nova MPB", "Acustico", "Tropicalia", "MPB pop", "Autoral"],
+  Outro: ["Referencia nacional", "Referencia internacional", "Experimental", "Autoral", "Hibrido"],
+};
+
+function nexoSelectField(field, quiz) {
+  const current = field.options.includes(quiz[field.name]) ? quiz[field.name] : field.options[0];
+  return `<div class="nexo-quiz-field nexo-custom-select-field" data-select-name="${field.name}">
+    <span>${htmlEscape(field.label)}</span>
+    <input type="hidden" name="${field.name}" id="nexo-${field.name}" value="${htmlEscape(current)}">
+    <button class="nexo-dark-select" type="button" data-action="nexo-select-toggle" data-select-name="${field.name}" aria-haspopup="listbox" aria-expanded="false">
+      <span>${htmlEscape(current)}</span>
+      <i data-lucide="chevron-down"></i>
+    </button>
+    <div class="nexo-dark-select-menu" role="listbox" aria-label="${htmlEscape(field.label)}">
+      ${field.options.map((option) => `<button type="button" role="option" data-action="nexo-select-option" data-select-name="${field.name}" data-value="${htmlEscape(option)}" aria-selected="${current === option ? "true" : "false"}">${htmlEscape(option)}</button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function nexoSubgenreField(field, quiz) {
+  const genre = quiz.generoMusical || "Trap";
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  return `<label class="nexo-quiz-field nexo-subgenre-field">
+    <span>${htmlEscape(field.label)}</span>
+    <input name="${field.name}" id="nexo-${field.name}" type="text" value="${htmlEscape(quiz[field.name] || "")}" placeholder="${htmlEscape(field.placeholder || "")}">
+    <div class="nexo-subgenre-chips" aria-label="Sugestoes de subgenero">
+      ${suggestions.map((item) => `<button type="button" data-action="nexo-subgenre-chip" data-value="${htmlEscape(item)}">${htmlEscape(item)}</button>`).join("")}
+    </div>
+  </label>`;
+}
+
+function closeNexoSelects(except = null) {
+  document.querySelectorAll(".nexo-custom-select-field.is-open").forEach((field) => {
+    if (field === except) return;
+    field.classList.remove("is-open");
+    field.querySelector(".nexo-dark-select")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function updateNexoSubgenreChips(form) {
+  const genre = form?.elements?.generoMusical?.value || "Trap";
+  const chips = form?.querySelector(".nexo-subgenre-chips");
+  if (!chips) return;
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  chips.innerHTML = suggestions.map((item) => `<button type="button" data-action="nexo-subgenre-chip" data-value="${htmlEscape(item)}">${htmlEscape(item)}</button>`).join("");
+}
+
+function chooseNexoSelectOption(button) {
+  const field = button.closest(".nexo-custom-select-field");
+  const form = button.closest(".nexo-ia-quiz-form");
+  const input = field?.querySelector("input[type='hidden']");
+  const label = field?.querySelector(".nexo-dark-select span");
+  if (!field || !input || !label) return;
+  const value = button.dataset.value || "";
+  input.value = value;
+  label.textContent = value;
+  field.querySelectorAll("[role='option']").forEach((option) => option.setAttribute("aria-selected", option === button ? "true" : "false"));
+  closeNexoSelects();
+  if (input.name === "generoMusical") updateNexoSubgenreChips(form);
+}
+
 function nexoQuizField(field, quiz) {
   if (field.type === "summary") {
     const items = [
@@ -1459,9 +1535,10 @@ function nexoQuizField(field, quiz) {
   }
   const common = `name="${field.name}" id="nexo-${field.name}"`;
   if (field.type === "select") {
-    return `<label class="nexo-quiz-field"><span>${htmlEscape(field.label)}</span><select ${common}>${field.options.map((option) => `
-      <option value="${htmlEscape(option)}" ${quiz[field.name] === option ? "selected" : ""}>${htmlEscape(option)}</option>
-    `).join("")}</select></label>`;
+    return nexoSelectField(field, quiz);
+  }
+  if (field.name === "subgenero") {
+    return nexoSubgenreField(field, quiz);
   }
   if (field.type === "textarea") {
     return `<label class="nexo-quiz-field is-wide"><span>${htmlEscape(field.label)}</span><textarea ${common} placeholder="${htmlEscape(field.placeholder || "")}">${htmlEscape(quiz[field.name])}</textarea></label>`;
@@ -7875,6 +7952,32 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  const customSelect = event.target.closest?.(".nexo-dark-select");
+  if (customSelect) {
+    const field = customSelect.closest(".nexo-custom-select-field");
+    const options = [...(field?.querySelectorAll("[role='option']") || [])];
+    const currentIndex = Math.max(0, options.findIndex((option) => option.getAttribute("aria-selected") === "true"));
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const isOpen = field.classList.toggle("is-open");
+      customSelect.setAttribute("aria-expanded", String(isOpen));
+      closeNexoSelects(field);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNexoSelects();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex = event.key === "ArrowDown"
+        ? Math.min(options.length - 1, currentIndex + 1)
+        : Math.max(0, currentIndex - 1);
+      if (options[nextIndex]) chooseNexoSelectOption(options[nextIndex]);
+      return;
+    }
+  }
   const waveform = event.target.closest(".mini-waveform");
   if (!waveform) return;
   const audio = topBeatAudio();
@@ -7894,6 +7997,34 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const selectToggle = event.target.closest("[data-action='nexo-select-toggle']");
+  if (selectToggle) {
+    event.preventDefault();
+    const field = selectToggle.closest(".nexo-custom-select-field");
+    const isOpen = !field.classList.contains("is-open");
+    closeNexoSelects(field);
+    field.classList.toggle("is-open", isOpen);
+    selectToggle.setAttribute("aria-expanded", String(isOpen));
+    return;
+  }
+  const selectOption = event.target.closest("[data-action='nexo-select-option']");
+  if (selectOption) {
+    event.preventDefault();
+    chooseNexoSelectOption(selectOption);
+    return;
+  }
+  const subgenreChip = event.target.closest("[data-action='nexo-subgenre-chip']");
+  if (subgenreChip) {
+    event.preventDefault();
+    const input = subgenreChip.closest(".nexo-subgenre-field")?.querySelector("input");
+    if (input) {
+      input.value = subgenreChip.dataset.value || subgenreChip.textContent.trim();
+      input.focus();
+    }
+    return;
+  }
+  if (!event.target.closest(".nexo-custom-select-field")) closeNexoSelects();
+
   const routeLink = event.target.closest("a[data-route], button[data-route]");
   if (routeLink) {
     const targetRoute = routeLink.dataset.route;
