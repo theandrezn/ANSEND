@@ -291,94 +291,328 @@ body.requires-auth .seller-auth-panel {
   }
 }
 
-/* Deployment proof and permanent Home reset: white surface, ANSEND stays orange. */
+/* Permanent Dark Premium theme overrides for the feed route and global components */
 body[data-route="feed"] {
-  background: #fff !important;
-  color: #101010 !important;
+  background: #050505 !important;
+  color: var(--text) !important;
 }
 
 body[data-route="feed"] .main,
 body[data-route="feed"] main,
 body[data-route="feed"] #appView,
 body[data-route="feed"] .feed {
-  background: #fff !important;
-  color: #101010 !important;
+  background: #050505 !important;
+  color: var(--text) !important;
 }
 
-body[data-route="feed"] .topbar,
-body[data-route="feed"] .search,
+/* 9. Header / Topbar Refinements */
+body[data-route="feed"] .topbar {
+  background: rgba(5, 5, 5, 0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .search {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .search input {
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .search input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+body[data-route="feed"] .search svg {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
 body[data-route="feed"] .icon-btn,
+body[data-route="feed"] .avatar-btn,
 body[data-route="feed"] .locale-switch {
-  background: rgba(255, 255, 255, .96) !important;
-  border-color: rgba(0, 0, 0, .12) !important;
-  color: #101010 !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, .08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
 }
 
-body[data-route="feed"] .ai-hero,
-body[data-route="feed"] .home-section,
-body[data-route="feed"] .catalog-section,
-body[data-route="feed"] .scroll-kinetic-section {
-  background: #fff !important;
-  color: #101010 !important;
-  border-color: rgba(0, 0, 0, .12) !important;
+body[data-route="feed"] .icon-btn:hover,
+body[data-route="feed"] .locale-switch:hover {
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  color: var(--orange) !important;
+}
+
+/* Keep Topbar counter badge orange and styled */
+body[data-route="feed"] .icon-btn .badge,
+body[data-route="feed"] .icon-btn span.count {
+  background: var(--orange) !important;
+  color: #ffffff !important;
+}
+
+/* 3. NEXO Blocks Container */
+body[data-route="feed"] .nexo-blocks-container {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 106, 0, 0.03) 0%, #050505 100%) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45) !important;
+}
+
+body[data-route="feed"] .nexo-blocks-container .home-section {
+  background: transparent !important;
+  border: none !important;
   box-shadow: none !important;
 }
 
-body[data-route="feed"] .nexo-blocks-container,
-body[data-route="feed"] .nexo-blocks-container .home-section {
-  background: #fff !important;
-  background-image: none !important;
+/* Section Head Titles */
+body[data-route="feed"] .home-section h2,
+body[data-route="feed"] .home-section h2 i {
+  color: #ffffff !important;
 }
 
-body[data-route="feed"] .ai-hero::before,
-body[data-route="feed"] .ai-hero::after,
-body[data-route="feed"] .scroll-kinetic-section::before,
-body[data-route="feed"] .scroll-kinetic-section::after,
-body[data-route="feed"] .nexo-blocks-container::before,
-body[data-route="feed"] .an-hero-bg,
-body[data-route="feed"] .hero-shader,
-body[data-route="feed"] [data-hero-shader] {
-  display: none !important;
+body[data-route="feed"] .home-section p {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
-body[data-route="feed"] .ai-hero *,
-body[data-route="feed"] .home-section *,
-body[data-route="feed"] .catalog-section *,
-body[data-route="feed"] .scroll-kinetic-section * {
-  color: #101010 !important;
-  text-shadow: none !important;
-}
-
-body[data-route="feed"] .hero-morph-brand,
-body[data-route="feed"] .headline-reveal-brand,
-body[data-route="feed"] .view-eyebrow,
-body[data-route="feed"] .section-eyebrow,
-body[data-route="feed"] .scroll-kinetic-hint,
-body[data-route="feed"] .ai-hero [data-lucide],
-body[data-route="feed"] .home-section [data-lucide] {
-  color: #ff6a00 !important;
-  stroke: #ff6a00 !important;
-}
-
-body[data-route="feed"] .hero-morph-title .hero-morph-text,
-body[data-route="feed"] .hero-morph-title .hero-morph-main,
-body[data-route="feed"] .headline-reveal-line:not(.headline-reveal-brand) {
-  color: #101010 !important;
-}
-
-body[data-route="feed"] .ai-diagnostic-form,
-body[data-route="feed"] .top-beat-showcase,
-body[data-route="feed"] .beat-card,
-body[data-route="feed"] .playlist-card,
-body[data-route="feed"] .category-card,
+/* Card components styling (forces glassmorphism across dashboard sections) */
+body[data-route="feed"] .quick-action-card,
 body[data-route="feed"] .nexo-recommendation-card,
+body[data-route="feed"] .category-card,
+body[data-route="feed"] .smart-combo-card,
 body[data-route="feed"] .professional-card,
-body[data-route="feed"] .quick-action-card {
-  background: #fff !important;
-  border-color: rgba(0, 0, 0, .14) !important;
-  color: #101010 !important;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, .08) !important;
+body[data-route="feed"] .featured-professional-card,
+body[data-route="feed"] .empty-state,
+body[data-route="feed"] .beat-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Hover glow for glassmorphism cards */
+body[data-route="feed"] .quick-action-card:hover,
+body[data-route="feed"] .nexo-recommendation-card:hover,
+body[data-route="feed"] .category-card:hover,
+body[data-route="feed"] .smart-combo-card:hover,
+body[data-route="feed"] .professional-card:hover,
+body[data-route="feed"] .featured-professional-card:hover,
+body[data-route="feed"] .beat-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(255, 106, 0, 0.4) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 15px rgba(255, 106, 0, 0.1) !important;
+}
+
+/* Ensure texts in cards are white / light grey */
+body[data-route="feed"] .quick-action-card strong,
+body[data-route="feed"] .category-card strong,
+body[data-route="feed"] .nexo-recommendation-card strong,
+body[data-route="feed"] .smart-combo-card strong,
+body[data-route="feed"] .professional-card strong,
+body[data-route="feed"] .featured-professional-card strong,
+body[data-route="feed"] .beat-card strong,
+body[data-route="feed"] .empty-state h2 {
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .quick-action-card span,
+body[data-route="feed"] .category-card p,
+body[data-route="feed"] .nexo-recommendation-card p,
+body[data-route="feed"] .smart-combo-card p,
+body[data-route="feed"] .professional-card p,
+body[data-route="feed"] .featured-professional-card p,
+body[data-route="feed"] .beat-card p,
+body[data-route="feed"] .empty-state p {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Category explore links */
+body[data-route="feed"] .category-card a {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  transition: all 0.2s ease !important;
+}
+
+body[data-route="feed"] .category-card a:hover {
+  background: rgba(255, 106, 0, 0.1) !important;
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 106, 0, 0.15) !important;
+}
+
+/* Nexo recommendation links */
+body[data-route="feed"] .nexo-recommendation-card a {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  transition: all 0.2s ease !important;
+}
+
+body[data-route="feed"] .nexo-recommendation-card a:hover {
+  background: rgba(255, 106, 0, 0.1) !important;
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 106, 0, 0.15) !important;
+}
+
+/* Professional card alignment and containers */
+body[data-route="feed"] .match-professional-card,
+body[data-route="feed"] .top-producer-card {
+  background: rgba(14, 12, 10, 0.45) !important;
+  border: 1px solid rgba(255, 106, 0, 0.15) !important;
+  border-radius: 20px !important;
+  padding: 20px 15px !important;
+  min-height: 260px !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  justify-content: space-between !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+body[data-route="feed"] .match-professional-card:hover,
+body[data-route="feed"] .top-producer-card:hover {
+  background: rgba(255, 106, 0, 0.05) !important;
+  border-color: rgba(255, 106, 0, 0.35) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 15px rgba(255, 106, 0, 0.1) !important;
+}
+
+body[data-route="feed"] .match-professional-card img,
+body[data-route="feed"] .top-producer-card img {
+  width: 90px !important;
+  height: 90px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid var(--orange) !important;
+  box-shadow: 0 0 15px rgba(255, 106, 0, 0.2) !important;
+  margin-bottom: 12px !important;
+}
+
+/* Buttons and Links */
+body[data-route="feed"] .home-section .section-link {
+  border: 1px solid rgba(255, 106, 0, 0.26) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .home-section .section-link:hover {
+  border-color: rgba(255, 106, 0, 0.58) !important;
+  background: rgba(255, 106, 0, 0.1) !important;
+}
+
+/* Icons & details in orange */
+body[data-route="feed"] .home-section [data-lucide],
+body[data-route="feed"] .quick-action-card svg,
+body[data-route="feed"] .category-card svg,
+body[data-route="feed"] .recommendation-icon svg,
+body[data-route="feed"] .empty-state svg {
+  color: var(--orange) !important;
+  stroke: var(--orange) !important;
+}
+
+/* Badges of match in orange */
+body[data-route="feed"] .match-score,
+body[data-route="feed"] .match-pill,
+body[data-route="feed"] .beat-match-pill {
+  background: rgba(255, 106, 0, 0.15) !important;
+  color: var(--orange) !important;
+  border: 1px solid rgba(255, 106, 0, 0.3) !important;
+}
+
+/* Empty State custom elements */
+body[data-route="feed"] .empty-state a {
+  background: linear-gradient(135deg, var(--orange), var(--orange-shadow)) !important;
+  color: #ffffff !important;
+}
+
+/* Carousel controls / arrows */
+body[data-route="feed"] .arrow-pair button {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .arrow-pair button:hover {
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  color: var(--orange) !important;
+}
+
+/* Track List elements */
+body[data-route="feed"] .airbit-track-row {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body[data-route="feed"] .airbit-track-title {
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .airbit-producer,
+body[data-route="feed"] .airbit-details,
+body[data-route="feed"] .airbit-divider {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body[data-route="feed"] .airbit-tag-chip {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+body[data-route="feed"] .airbit-buy-btn {
+  background: linear-gradient(135deg, var(--orange), var(--orange-shadow)) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+body[data-route="feed"] .airbit-favorite-btn,
+body[data-route="feed"] .airbit-more-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .airbit-favorite-btn:hover,
+body[data-route="feed"] .airbit-more-btn:hover {
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  color: var(--orange) !important;
+}
+
+body[data-route="feed"] .beat-card-buy-btn {
+  background: linear-gradient(135deg, var(--orange), var(--orange-shadow)) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* Footer and dividers */
+body[data-route="feed"] .footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: #020202 !important;
+}
+
+body[data-route="feed"] .footer nav strong {
+  color: #ffffff !important;
+}
+
+body[data-route="feed"] .footer nav a {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body[data-route="feed"] .footer nav a:hover {
+  color: var(--orange) !important;
 }
 
 @media (max-width: 720px) {
