@@ -1488,8 +1488,20 @@ function closeNexoSelects(except = null) {
   document.querySelectorAll(".nexo-custom-select-field.is-open").forEach((field) => {
     if (field === except) return;
     field.classList.remove("is-open");
+    field.classList.remove("is-up");
     field.querySelector(".nexo-dark-select")?.setAttribute("aria-expanded", "false");
   });
+}
+
+function updateNexoSelectDirection(field) {
+  const trigger = field?.querySelector(".nexo-dark-select");
+  const menu = field?.querySelector(".nexo-dark-select-menu");
+  if (!trigger || !menu) return;
+  const rect = trigger.getBoundingClientRect();
+  const desiredHeight = Math.min(300, Math.max(180, menu.scrollHeight || 260));
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  field.classList.toggle("is-up", spaceBelow < desiredHeight + 56 && spaceAbove > spaceBelow);
 }
 
 function updateNexoSubgenreChips(form) {
@@ -1567,25 +1579,27 @@ function renderNexoQuiz(quiz = readNexoQuiz()) {
   const step = nexoQuizSteps[stepIndex];
   const progress = `${Math.round(((stepIndex + 1) / nexoQuizSteps.length) * 100)}%`;
   return `<div class="nexo-minimal-container nexo-quiz-shell">
-    <header class="nexo-quiz-hero">
-      <span class="nexo-quiz-eyebrow">NEXO IA</span>
-      <h1><strong>O que podemos lancar hoje?</strong></h1>
-      <p>Preencha o diagnostico para a ANSEND mapear seu momento, orientar sua rota e conectar voce aos profissionais certos.</p>
-    </header>
-    <form class="nexo-ia-quiz-form nexo-quiz-card" data-step="${stepIndex}">
-      <div class="nexo-quiz-progress" style="--progress:${progress}"><span></span></div>
-      <div class="nexo-quiz-content">
-        <div class="nexo-quiz-step-meta"><span>Etapa ${stepIndex + 1} de ${nexoQuizSteps.length}</span><span>${progress}</span></div>
-        <h2>${htmlEscape(step.title)}</h2>
-        <p class="nexo-result-muted">${htmlEscape(step.helper)}</p>
-        <div class="nexo-quiz-grid">${step.fields.map((field) => nexoQuizField(field, quiz)).join("")}</div>
-        ${appState.nexoQuizError ? `<p class="nexo-quiz-error">${htmlEscape(appState.nexoQuizError)}</p>` : ""}
-      </div>
-      <div class="nexo-quiz-actions">
-        <button type="button" data-action="nexo-quiz-back" ${stepIndex === 0 ? "disabled" : ""}><i data-lucide="arrow-left"></i>Voltar</button>
-        <button class="is-primary" type="submit">${stepIndex === nexoQuizSteps.length - 1 ? "Gerar diagnostico com NEXO IA" : "Continuar"}<i data-lucide="arrow-right"></i></button>
-      </div>
-    </form>
+    <section class="nexo-ia-panel">
+      <header class="nexo-quiz-hero">
+        <span class="nexo-quiz-eyebrow">NEXO IA</span>
+        <h1><strong>O que podemos lancar hoje?</strong></h1>
+        <p>Preencha o diagnostico para a ANSEND mapear seu momento, orientar sua rota e conectar voce aos profissionais certos.</p>
+      </header>
+      <form class="nexo-ia-quiz-form nexo-quiz-card" data-step="${stepIndex}">
+        <div class="nexo-quiz-progress" style="--progress:${progress}"><span></span></div>
+        <div class="nexo-quiz-content">
+          <div class="nexo-quiz-step-meta"><span>Etapa ${stepIndex + 1} de ${nexoQuizSteps.length}</span><span>${progress}</span></div>
+          <h2>${htmlEscape(step.title)}</h2>
+          <p class="nexo-result-muted">${htmlEscape(step.helper)}</p>
+          <div class="nexo-quiz-grid">${step.fields.map((field) => nexoQuizField(field, quiz)).join("")}</div>
+          ${appState.nexoQuizError ? `<p class="nexo-quiz-error">${htmlEscape(appState.nexoQuizError)}</p>` : ""}
+        </div>
+        <div class="nexo-quiz-actions">
+          <button type="button" data-action="nexo-quiz-back" ${stepIndex === 0 ? "disabled" : ""}><i data-lucide="arrow-left"></i>Voltar</button>
+          <button class="is-primary" type="submit">${stepIndex === nexoQuizSteps.length - 1 ? "Gerar diagnostico com NEXO IA" : "Continuar"}<i data-lucide="arrow-right"></i></button>
+        </div>
+      </form>
+    </section>
   </div>`;
 }
 
@@ -7962,6 +7976,7 @@ document.addEventListener("keydown", (event) => {
       const isOpen = field.classList.toggle("is-open");
       customSelect.setAttribute("aria-expanded", String(isOpen));
       closeNexoSelects(field);
+      if (isOpen) updateNexoSelectDirection(field);
       return;
     }
     if (event.key === "Escape") {
@@ -8005,6 +8020,7 @@ document.addEventListener("click", (event) => {
     closeNexoSelects(field);
     field.classList.toggle("is-open", isOpen);
     selectToggle.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) updateNexoSelectDirection(field);
     return;
   }
   const selectOption = event.target.closest("[data-action='nexo-select-option']");
