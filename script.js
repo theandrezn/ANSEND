@@ -5505,19 +5505,17 @@ function syncReleaseForm(form = releaseFormElement()) {
   const reviewCover = form.querySelector(".review-cover-img");
   if (reviewCover) reviewCover.src = coverUrl;
   
-  // Review audio preview player
-  const reviewPlayer = form.querySelector(".review-audio-section audio");
-  if (reviewPlayer && reviewPlayer.src !== audioUrl) {
-    reviewPlayer.src = audioUrl;
-  }
+  // Review audio player
+  const reviewPlayer = form.querySelector(".review-audio-player");
+  if (reviewPlayer && audioUrl) reviewPlayer.src = audioUrl;
   
-  // Calculate files included
-  const filesList = [];
-  if (form.elements.delivery_mp3?.checked) filesList.push("MP3");
-  if (form.elements.delivery_wav?.checked) filesList.push("WAV");
-  if (form.elements.delivery_stems?.checked) filesList.push("Stems");
-  if (form.elements.delivery_contract?.checked) filesList.push("Contrato");
-  form.querySelectorAll("[data-review-files]").forEach(el => el.textContent = filesList.join(", ") || "Nenhum selecionado");
+  // Delivery files summary
+  const files = [];
+  if (form.elements.delivery_mp3?.checked) files.push("MP3");
+  if (form.elements.delivery_wav?.checked) files.push("WAV");
+  if (form.elements.delivery_stems?.checked) files.push("Stems");
+  if (form.elements.delivery_contract?.checked) files.push("Contrato");
+  form.querySelectorAll("[data-review-files]").forEach(el => el.textContent = files.join(", ") || "-");
 }
 
 function setReleaseStep(step, form = releaseFormElement()) {
@@ -5530,24 +5528,45 @@ function setReleaseStep(step, form = releaseFormElement()) {
     panel.classList.toggle("is-active", Number(panel.dataset.panel) === nextStep);
   });
   
-  // Update stepper UI
+  // Update stepper UI with dynamic checkmarks
   document.querySelectorAll(".release-step").forEach((button) => {
     const btnStep = Number(button.dataset.step);
-    button.classList.toggle("is-active", btnStep === nextStep);
-    button.classList.toggle("is-complete", btnStep < nextStep);
+    const stepSpan = button.querySelector("span");
+    const isActive = btnStep === nextStep;
+    const isComplete = btnStep < nextStep;
+    
+    button.classList.toggle("is-active", isActive);
+    button.classList.toggle("is-complete", isComplete);
+    
+    if (stepSpan) {
+      if (isComplete) {
+        stepSpan.innerHTML = '<i data-lucide="check" style="width:14px; height:14px;"></i>';
+      } else {
+        stepSpan.textContent = String(btnStep + 1);
+      }
+    }
   });
+  lucide.createIcons();
   
-  // Configure action buttons in footer
-  const back = form.querySelector('button[data-action="release-back"]');
-  const next = form.querySelector('button[data-action="release-next"]');
-  const submit = form.querySelector('button[data-action="publish-catalog"]');
+  // Configure action buttons in footer (footer is outside the form, inside .release-page)
+  const releasePage = form.closest(".release-page") || document;
+  const back = releasePage.querySelector('button[data-action="release-back"]');
+  const next = releasePage.querySelector('button[data-action="release-next"]');
+  const submit = releasePage.querySelector('button[data-action="publish-catalog"]');
   
   if (back) back.disabled = nextStep === 0;
-  if (next) next.style.display = nextStep === 5 ? "none" : "block";
-  if (submit) submit.style.display = nextStep === 5 ? "block" : "none";
+  if (next) next.style.display = nextStep === 5 ? "none" : "flex";
+  if (submit) submit.style.display = nextStep === 5 ? "flex" : "none";
+  
+  // Scroll to top of form area
+  const releaseEl = form.closest(".release-page");
+  if (releaseEl) {
+    releaseEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
   
   syncReleaseForm(form);
-  lucide.createIcons();
 }
 
 async function handleReleaseUpload(file, type, progressCallback) {
@@ -5706,9 +5725,11 @@ function setupMusicUploadEventListeners() {
   const form = releaseFormElement();
   if (!form) return;
   
-  // Navigation: Back & Next
-  const backBtn = form.querySelector(".release-back-btn");
-  const nextBtn = form.querySelector(".release-next-btn");
+  // Navigation: Back & Next using data-action attributes
+  // (buttons are inside the footer which is outside the form, inside .release-page)
+  const releasePage = form.closest(".release-page") || document;
+  const backBtn = releasePage.querySelector('[data-action="release-back"]');
+  const nextBtn = releasePage.querySelector('[data-action="release-next"]');
   
   if (backBtn) {
     backBtn.addEventListener("click", () => {
@@ -5726,9 +5747,9 @@ function setupMusicUploadEventListeners() {
     });
   }
   
-  // Save Draft & Publish
-  const draftBtn = form.querySelector(".release-draft-btn");
-  const publishBtn = form.querySelector(".release-submit-btn");
+  // Save Draft & Publish using data-action attributes
+  const draftBtn = releasePage.querySelector('[data-action="save-draft"]');
+  const publishBtn = releasePage.querySelector('[data-action="publish-catalog"]');
   
   if (draftBtn) {
     draftBtn.addEventListener("click", () => {
@@ -5765,6 +5786,85 @@ function setupMusicUploadEventListeners() {
         if (canGo) setReleaseStep(targetStep);
       }
     });
+  });
+  
+  // Initialize Custom Select Component Logic
+  const customSelects = form.querySelectorAll(".custom-select");
+  customSelects.forEach((selectContainer) => {
+    const trigger = selectContainer.querySelector(".custom-select-trigger");
+    const triggerText = trigger.querySelector("span");
+    const options = selectContainer.querySelectorAll(".custom-select-option");
+    const hiddenInput = selectContainer.querySelector("input[type='hidden']");
+    
+    // Set active option on init if hidden input has value
+    const initialVal = hiddenInput.value;
+    if (initialVal) {
+      options.forEach(opt => {
+        if (opt.dataset.value === initialVal) {
+          opt.classList.add("is-selected");
+          triggerText.textContent = opt.textContent.trim();
+          if (!opt.querySelector("svg")) {
+            opt.insertAdjacentHTML("beforeend", '<i data-lucide="check" style="width:16px; height:16px; color:#ff6a00;"></i>');
+          }
+        } else {
+          opt.classList.remove("is-selected");
+          const existingSvg = opt.querySelector("svg");
+          if (existingSvg) existingSvg.remove();
+        }
+      });
+      lucide.createIcons();
+    }
+    
+    // Toggle dropdown on trigger click
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      
+      // Close all other selects inside the form
+      form.querySelectorAll(".custom-select").forEach(other => {
+        if (other !== selectContainer) {
+          other.classList.remove("is-open");
+        }
+      });
+      
+      selectContainer.classList.toggle("is-open");
+    });
+    
+    // Select option click
+    options.forEach((opt) => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        const text = opt.textContent.trim();
+        
+        hiddenInput.value = val;
+        triggerText.textContent = text;
+        
+        options.forEach(o => {
+          o.classList.remove("is-selected");
+          const existingSvg = o.querySelector("svg");
+          if (existingSvg) existingSvg.remove();
+        });
+        
+        opt.classList.add("is-selected");
+        if (!opt.querySelector("svg")) {
+          opt.insertAdjacentHTML("beforeend", '<i data-lucide="check" style="width:16px; height:16px; color:#ff6a00;"></i>');
+        }
+        lucide.createIcons();
+        
+        selectContainer.classList.remove("is-open");
+        
+        // Dispatch events so form sync and validation are aware
+        hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+        hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
+        
+        syncReleaseForm(form);
+      });
+    });
+  });
+  
+  // Close any open dropdowns when clicking outside
+  document.addEventListener("click", () => {
+    form.querySelectorAll(".custom-select").forEach(s => s.classList.remove("is-open"));
   });
   
   // License Card selection
@@ -5992,449 +6092,110 @@ function renderMusicUpload() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const beatId = generateUUID();
-  
-  const steps = [
-    { label: "Detalhes", desc: "Informações principais" },
-    { label: "Capa", desc: "Imagem do release" },
-    { label: "Faixa", desc: "Arquivo de áudio" },
-    { label: "Preço", desc: "Licença e valores" },
-    { label: "Entrega", desc: "Arquivos adicionais" },
-    { label: "Revisão", desc: "Resumo final" }
-  ];
-  
-  appView.innerHTML = `
-    <section class="release-page amuse-release-shell" aria-label="Cadastrar música na ANSEND">
-      <div class="release-app">
-        <header class="release-top-stepper-container">
-          <div class="release-stepper" aria-label="Etapas do cadastro">
-            ${steps.map((step, index) => `
-              <button type="button" class="release-step ${index === 0 ? "is-active" : ""}" data-action="release-step" data-step="${index}" aria-label="Ir para ${step.label}">
-                <span>${index + 1}</span>
-                <strong>${step.label}</strong>
-              </button>
-            `).join("")}
-          </div>
-        </header>
-        
-        <div class="release-page-container">
-          <form class="release-upload-form" data-release-step="0" data-beat-id="${beatId}" onsubmit="event.preventDefault();">
-            <input type="hidden" name="kind" value="beat">
-            <input type="hidden" name="status" value="draft">
-            <input type="hidden" name="cover_url">
-            <input type="hidden" name="cover_path">
-            <input type="hidden" name="audio_url">
-            <input type="hidden" name="audio_path">
-            <input type="hidden" name="stems_url">
-            <input type="hidden" name="stems_path">
-            <input type="hidden" name="duration_seconds">
-            <input type="hidden" name="file_size">
-            <input type="hidden" name="tags">
-            
-            <!-- STEP 0: Release Details -->
-            <section class="release-panel is-active" data-panel="0">
-              <div class="release-panel-header">
-                <h2>Release Details / Informações do Beat</h2>
-                <p>Adicione as informações principais para organizar seu beat no catálogo.</p>
-              </div>
-              
-              <div class="release-form-grid">
-                <label class="release-field release-wide">
-                  Título do release / beat *
-                  <input name="title" type="text" placeholder="Ex: Chill Vibing Trap Beat" required>
-                </label>
-                
-                <label class="release-field">
-                  Artista / Produtor *
-                  <input name="producer_name" type="text" value="${display.name || ""}" placeholder="Nome artístico" required>
-                </label>
-                
-                <label class="release-field">
-                  Gênero *
-                  <select name="genre" required>
-                    <option value="">Selecione o gênero</option>
-                    <option value="Trap">Trap</option>
-                    <option value="Funk">Funk</option>
-                    <option value="Drill">Drill</option>
-                    <option value="R&B">R&B</option>
-                    <option value="Boom Bap">Boom Bap</option>
-                    <option value="Afrobeat">Afrobeat</option>
-                    <option value="Gospel Trap">Gospel Trap</option>
-                    <option value="Pop">Pop</option>
-                  </select>
-                </label>
-                
-                <label class="release-field">
-                  Subgênero
-                  <input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap">
-                </label>
-                
-                <label class="release-field">
-                  BPM *
-                  <input name="bpm" type="number" min="40" max="240" placeholder="Ex: 140" required>
-                </label>
-                
-                <label class="release-field">
-                  Tom musical / Key *
-                  <input name="musical_key" type="text" placeholder="Ex: Fm, Am, C#" required>
-                </label>
-                
-                <label class="release-field">
-                  Mood / vibe
-                  <input name="mood" type="text" placeholder="Ex: Enérgico, Melancólico">
-                </label>
-                
-                <label class="release-field release-wide">
-                  Tags (Separadas por vírgula)
-                  <input name="release_tags" type="text" placeholder="Ex: trap, melódico, piano, sombrio">
-                </label>
-                
-                <label class="release-field release-wide">
-                  Descrição curta
-                  <textarea name="description" rows="3" placeholder="Escreva uma breve descrição para o catálogo."></textarea>
-                </label>
-                
-                <fieldset class="release-radio-group release-wide">
-                  <legend>Essa faixa já foi lançada antes?</legend>
-                  <div class="release-radio-options">
-                    <label><input type="radio" name="already_released" value="true"> Sim</label>
-                    <label><input type="radio" name="already_released" value="false" checked> Não</label>
-                  </div>
-                </fieldset>
-              </div>
-            </section>
-            
-            <!-- STEP 1: Cover Art -->
-            <section class="release-panel" data-panel="1">
-              <div class="release-panel-header">
-                <h2>Cover Art / Capa do Beat</h2>
-                <p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000x3000px.</p>
-              </div>
-              
-              <div class="release-upload-layout">
-                <div class="release-dropzone release-cover-drop" data-upload-drop="cover">
-                  <input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover">
-                  <div class="release-upload-icon"><i data-lucide="image"></i></div>
-                  <strong>Arraste ou selecione a capa</strong>
-                  <small>JPG, PNG ou WEBP. Imagem quadrada de no mínimo 1400x1400px.</small>
-                  
-                  <img class="release-cover-preview" alt="Preview da capa">
-                  
-                  <!-- Progress bar -->
-                  <div class="upload-progress-container" style="display: none;">
-                    <div class="upload-progress-header">
-                      <span>Enviando capa...</span>
-                      <span class="upload-progress-percent">0%</span>
-                    </div>
-                    <div class="upload-progress-track">
-                      <div class="upload-progress-bar"></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="release-requirements">
-                  <strong>Recomendações</strong>
-                  <ul>
-                    <li>Use uma imagem quadrada perfeita (1:1).</li>
-                    <li>Mínimo de 1400x1400 pixels (ideal 3000x3000px).</li>
-                    <li>Evite textos pequenos, logos adicionais ou imagens borradas.</li>
-                    <li>Sua arte deve refletir a vibe da música.</li>
-                  </ul>
-                  
-                  <div class="cover-actions-container" style="display: none; margin-top: 16px;">
-                    <button type="button" class="release-back-btn" data-action="remove-cover" style="color: #ff4d4d; border-color: rgba(255, 77, 77, 0.4);">Remover / Trocar capa</button>
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            <!-- STEP 2: Track List -->
-            <section class="release-panel" data-panel="2">
-              <div class="release-panel-header">
-                <h2>Track List / Arquivo de Áudio</h2>
-                <p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p>
-              </div>
-              
-              <div class="release-upload-layout">
-                <div class="release-dropzone release-audio-drop" data-upload-drop="audio">
-                  <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio">
-                  <div class="release-upload-icon"><i data-lucide="music"></i></div>
-                  <strong>Arraste ou selecione o áudio</strong>
-                  <small>Aceitamos arquivos MP3, WAV ou FLAC de alta qualidade.</small>
-                  
-                  <!-- Progress bar -->
-                  <div class="upload-progress-container" style="display: none;">
-                    <div class="upload-progress-header">
-                      <span>Enviando áudio...</span>
-                      <span class="upload-progress-percent">0%</span>
-                    </div>
-                    <div class="upload-progress-track">
-                      <div class="upload-progress-bar"></div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="release-requirements">
-                  <strong>Áudio Preview</strong>
-                  <div class="release-audio-preview" style="display: none;">
-                    <div class="release-audio-preview-header">
-                      <span>Preview Pronto</span>
-                      <button type="button" class="release-audio-remove-btn" data-action="remove-audio">Remover</button>
-                    </div>
-                    <div class="release-audio-info">
-                      <i data-lucide="file-audio" style="width: 24px; height: 24px;"></i>
-                      <div class="release-audio-meta">
-                        <strong data-audio-name>Nome do arquivo.wav</strong>
-                        <small data-audio-size>0 MB · 0:00</small>
-                      </div>
-                    </div>
-                    <audio class="release-audio-player" controls preload="metadata"></audio>
-                  </div>
-                  
-                  <div class="add-track-btn-container">
-                    <button type="button" class="add-track-btn" onclick="showToast('Modo Beat Tape / Pacote disponível em breve!', 'info')">
-                      <i data-lucide="plus"></i> Adicionar outra faixa
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            <!-- STEP 3: License & Pricing -->
-            <section class="release-panel" data-panel="3">
-              <div class="release-panel-header">
-                <h2>License & Pricing / Licenças e Preço</h2>
-                <p>Defina o tipo de licença principal para este beat e seu preço.</p>
-              </div>
-              
-              <input type="hidden" name="license_type" value="premium">
-              
-              <div class="license-cards-grid">
-                <div class="license-info-card" data-license="basic">
-                  <strong>Básica</strong>
-                  <span class="license-price">R$ 49,90</span>
-                  <ul>
-                    <li>Arquivo MP3 enviado</li>
-                    <li>Até 2.000 streams</li>
-                    <li>Uso não-comercial</li>
-                  </ul>
-                </div>
-                <div class="license-info-card is-selected" data-license="premium">
-                  <strong>Premium</strong>
-                  <span class="license-price">R$ 99,90</span>
-                  <ul>
-                    <li>MP3 e WAV inclusos</li>
-                    <li>Até 10.000 streams</li>
-                    <li>Uso comercial limitado</li>
-                  </ul>
-                </div>
-                <div class="license-info-card" data-license="exclusive">
-                  <strong>Exclusiva</strong>
-                  <span class="license-price">R$ 499,90</span>
-                  <ul>
-                    <li>WAV + Stems (Tracks)</li>
-                    <li>Streams ilimitados</li>
-                    <li>Posse de direitos total</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div class="release-form-grid">
-                <label class="release-field">
-                  Preço do Beat (R$) *
-                  <input name="price" type="number" min="0" step="0.01" value="99.90" required>
-                </label>
-                
-                <label class="release-field">
-                  Vendas Máximas (Se não for exclusiva)
-                  <input name="max_sales" type="number" min="1" value="50" placeholder="Ex: 50">
-                </label>
-                
-                <fieldset class="release-radio-group release-wide">
-                  <legend>O comprador pode fazer download com tag de voz (Tagged)?</legend>
-                  <div class="release-radio-options">
-                    <label><input type="radio" name="allow_tagged_download" value="true" checked> Sim</label>
-                    <label><input type="radio" name="allow_tagged_download" value="false"> Não</label>
-                  </div>
-                </fieldset>
-                
-                <fieldset class="release-radio-group release-wide">
-                  <legend>Permitir uso comercial básico nesta licença?</legend>
-                  <div class="release-radio-options">
-                    <label><input type="radio" name="allow_commercial_use" value="true" checked> Sim</label>
-                    <label><input type="radio" name="allow_commercial_use" value="false"> Não</label>
-                  </div>
-                </fieldset>
-                
-                <label class="release-field release-wide">
-                  Termos da Licença / Contrato (Opcional)
-                  <textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados para esta licença..."></textarea>
-                </label>
-              </div>
-            </section>
-            
-            <!-- STEP 4: Delivery Options -->
-            <section class="release-panel" data-panel="4">
-              <div class="release-panel-header">
-                <h2>Delivery Options / Entrega do Beat</h2>
-                <p>Especifique os arquivos que o comprador receberá e suba os stems/ZIP se necessário.</p>
-              </div>
-              
-              <div class="delivery-options-grid">
-                <div>
-                  <fieldset class="release-radio-group release-wide">
-                    <legend>O comprador recebe os seguintes arquivos *</legend>
-                    <div class="delivery-checklist">
-                      <label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label>
-                      <label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label>
-                      <label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label>
-                      <label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label>
-                    </div>
-                  </fieldset>
-                  
-                  <div class="release-form-grid" style="margin-top: 20px;">
-                    <label class="release-field release-wide">
-                      Prazo de liberação automática (horas)
-                      <select name="release_deadline">
-                        <option value="0">Imediato (Download automático)</option>
-                        <option value="12">12 horas após a compra</option>
-                        <option value="24">24 horas após a compra</option>
-                        <option value="48">48 horas após a compra</option>
-                      </select>
-                    </label>
-                    
-                    <label class="release-field release-wide">
-                      Observações adicionais para o comprador
-                      <textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! O contrato assinado será gerado automaticamente. Qualquer dúvida, entre em contato."></textarea>
-                    </label>
-                  </div>
-                </div>
-                
-                <div>
-                  <div class="release-field">
-                    <span>Upload opcional de Stems ou arquivo ZIP</span>
-                    <div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height: 190px;">
-                      <input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems">
-                      <div class="release-upload-icon"><i data-lucide="archive"></i></div>
-                      <strong>Selecione o arquivo ZIP de Stems</strong>
-                      <small>ZIP contendo as pistas individuais do beat.</small>
-                      
-                      <!-- Progress bar -->
-                      <div class="upload-progress-container" style="display: none;">
-                        <div class="upload-progress-header">
-                          <span>Enviando Stems...</span>
-                          <span class="upload-progress-percent">0%</span>
-                        </div>
-                        <div class="upload-progress-track">
-                          <div class="upload-progress-bar"></div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="stems-preview" style="display: none; margin-top: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,106,0,0.1);">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:#fff;" data-stems-name>stems.zip</span>
-                        <button type="button" class="release-audio-remove-btn" data-action="remove-stems">Remover</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            <!-- STEP 5: Review -->
-            <section class="release-panel" data-panel="5">
-              <div class="release-panel-header">
-                <h2>Review / Revisão final</h2>
-                <p>Confira todas as informações do beat antes de publicar no catálogo.</p>
-              </div>
-              
-              <div class="review-grid">
-                <div>
-                  <div class="review-cover-wrapper">
-                    <img class="review-cover-img" src="assets/ansend-logo-square.png" alt="Capa do beat">
-                  </div>
-                  
-                  <div class="review-audio-section">
-                    <audio class="review-audio-player" controls preload="metadata"></audio>
-                  </div>
-                </div>
-                
-                <div class="review-details">
-                  <div class="review-header-info">
-                    <h3 data-review-title>Chill Vibing Trap Beat</h3>
-                    <p data-review-producer>por Produtor ANSEND</p>
-                  </div>
-                  
-                  <dl class="review-meta-grid">
-                    <div class="review-meta-item">
-                      <dt>Gênero</dt>
-                      <dd data-review-genre>Trap</dd>
-                    </div>
-                    <div class="review-meta-item">
-                      <dt>BPM</dt>
-                      <dd data-review-bpm>140 BPM</dd>
-                    </div>
-                    <div class="review-meta-item">
-                      <dt>Tom / Key</dt>
-                      <dd data-review-key>Fm</dd>
-                    </div>
-                    <div class="review-meta-item">
-                      <dt>Preço</dt>
-                      <dd data-review-price>R$ 99,90</dd>
-                    </div>
-                    <div class="review-meta-item">
-                      <dt>Licença</dt>
-                      <dd data-review-license>Premium</dd>
-                    </div>
-                    <div class="review-meta-item">
-                      <dt>Arquivos</dt>
-                      <dd data-review-files>MP3, WAV, Contrato</dd>
-                    </div>
-                  </dl>
-                  
-                  <div class="review-description">
-                    <h4>Descrição</h4>
-                    <p data-review-desc>Sem descrição fornecida.</p>
-                  </div>
-                  
-                  <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
-                    <h4 style="font-size:11px; font-weight:900; color:#666; text-transform:uppercase; margin-bottom:8px;">Status do Lançamento</h4>
-                    <div style="display:flex; gap:16px;">
-                      <span style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#22c55e;"><i data-lucide="check-circle" style="width:16px; height:16px;"></i> Capa carregada</span>
-                      <span style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#22c55e;"><i data-lucide="check-circle" style="width:16px; height:16px;"></i> Áudio carregado</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            <!-- Footer Action Bar -->
-            <footer class="release-footer-bar">
-              <div class="release-footer-track">
-                <img class="release-footer-cover" src="assets/ansend-logo-square.png" alt="Capa">
-                <div>
-                  <strong data-footer-title>Chill Vibing Beat</strong>
-                  <small data-footer-artist>Produtor ANSEND</small>
-                </div>
-              </div>
-              
-              <div class="release-footer-actions">
-                <button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button>
-                <button type="button" class="release-draft-btn" data-action="save-draft">Salvar Rascunho</button>
-                <button type="button" class="release-next-btn" data-action="release-next">Próximo</button>
-                <button type="button" class="release-submit-btn" data-action="publish-catalog" style="display: none;">Publicar no catálogo</button>
-              </div>
-            </footer>
-          </form>
-        </div>
-      </div>
-    </section>
-  `;
-  
+  const stepLabels = ["Detalhes","Capa","Faixa","Preço","Entrega","Revisão"];
+  const genreList = ["Trap","Funk","Drill","R&B","Boom Bap","Afrobeat","Gospel Trap","Pop","Lo-Fi","Piseiro","Sertanejo","Reggaeton"];
+  const noteList = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const keyOptions = noteList.flatMap(n => [
+    '<div class="custom-select-option" data-value="' + n + ' Major">' + n + ' Major</div>',
+    '<div class="custom-select-option" data-value="' + n + ' Minor">' + n + ' Minor</div>'
+  ]).join("");
+  const genreOptions = genreList.map(g => '<div class="custom-select-option" data-value="' + g + '">' + g + '</div>').join("");
+  const stepperHTML = stepLabels.map(function(label, i) {
+    return '<button type="button" class="release-step ' + (i === 0 ? "is-active" : "") + '" data-action="release-step" data-step="' + i + '" aria-label="Ir para ' + label + '"><span>' + (i+1) + '</span><strong>' + label + '</strong></button>';
+  }).join("");
+
+  appView.innerHTML = '<section class="release-page" aria-label="Cadastrar música na ANSEND">'
+    + '<div class="release-container">'
+    + '<nav class="release-stepper" aria-label="Etapas do cadastro">' + stepperHTML + '</nav>'
+    + '<form class="release-upload-form" data-release-step="0" data-beat-id="' + beatId + '" onsubmit="event.preventDefault();">'
+    + '<input type="hidden" name="kind" value="beat"><input type="hidden" name="status" value="draft">'
+    + '<input type="hidden" name="cover_url"><input type="hidden" name="cover_path">'
+    + '<input type="hidden" name="audio_url"><input type="hidden" name="audio_path">'
+    + '<input type="hidden" name="stems_url"><input type="hidden" name="stems_path">'
+    + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
+    + '<input type="hidden" name="tags">'
+
+    // STEP 0 — Detalhes
+    + '<section class="release-panel is-active" data-panel="0">'
+    + '<div class="release-panel-header"><h2>Informações do Beat</h2><p>Adicione as informações principais para organizar seu beat no catálogo.</p></div>'
+    + '<div class="release-form-grid">'
+    + '<label class="release-field release-wide"><span class="release-label">Título do release / beat *</span><input name="title" type="text" placeholder="Ex: Chill Vibing Trap Beat" required></label>'
+    + '<label class="release-field"><span class="release-label">Artista / Produtor *</span><input name="producer_name" type="text" value="' + (display.name || "") + '" placeholder="Nome artístico" required></label>'
+    + '<div class="release-field"><span class="release-label">Gênero *</span><div class="custom-select" data-select-id="genre"><input type="hidden" name="genre" required><button type="button" class="custom-select-trigger"><span>Selecione o gênero</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + genreOptions + '</div></div></div>'
+    + '<label class="release-field"><span class="release-label">Subgênero</span><input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap"></label>'
+    + '<label class="release-field"><span class="release-label">BPM *</span><input name="bpm" type="number" min="40" max="240" placeholder="Ex: 140" required></label>'
+    + '<div class="release-field"><span class="release-label">Tom musical / Key *</span><div class="custom-select" data-select-id="musical_key"><input type="hidden" name="musical_key" required><button type="button" class="custom-select-trigger"><span>Selecione o tom</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + keyOptions + '</div></div></div>'
+    + '<label class="release-field"><span class="release-label">Mood / vibe</span><input name="mood" type="text" placeholder="Ex: Enérgico, Melancólico"></label>'
+    + '<label class="release-field release-wide"><span class="release-label">Tags (separadas por vírgula)</span><input name="release_tags" type="text" placeholder="Ex: trap, melódico, piano, sombrio"></label>'
+    + '<label class="release-field release-wide"><span class="release-label">Descrição curta</span><textarea name="description" rows="3" placeholder="Escreva uma breve descrição para o catálogo."></textarea></label>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Essa faixa já foi lançada antes?</legend><div class="release-radio-options"><label><input type="radio" name="already_released" value="true"> Sim</label><label><input type="radio" name="already_released" value="false" checked> Não</label></div></fieldset>'
+    + '</div></section>'
+
+    // STEP 1 — Capa
+    + '<section class="release-panel" data-panel="1">'
+    + '<div class="release-panel-header"><h2>Capa do Beat</h2><p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000×3000px.</p></div>'
+    + '<div class="release-upload-layout">'
+    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400×1400px</small><img class="release-cover-preview" alt="Preview da capa"><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-requirements"><strong>Recomendações</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>Mínimo 1400×1400px (ideal 3000×3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
+    + '</div></section>'
+
+    // STEP 2 — Faixa
+    + '<section class="release-panel" data-panel="2">'
+    + '<div class="release-panel-header"><h2>Arquivo de Áudio</h2><p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p></div>'
+    + '<div class="release-upload-layout">'
+    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-requirements"><strong>Áudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB · 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
+    + '</div></section>'
+
+    // STEP 3 — Preço
+    + '<section class="release-panel" data-panel="3">'
+    + '<div class="release-panel-header"><h2>Licença e Preço</h2><p>Defina o tipo de licença e o valor do beat.</p></div>'
+    + '<input type="hidden" name="license_type" value="premium">'
+    + '<div class="license-cards-grid">'
+    + '<div class="license-info-card" data-license="free"><strong>Free</strong><span class="license-price">Grátis</span><ul><li>MP3 com tag</li><li>Até 500 streams</li><li>Uso não-comercial</li></ul></div>'
+    + '<div class="license-info-card" data-license="basic"><strong>Básica</strong><span class="license-price">R$ 49,90</span><ul><li>MP3 enviado</li><li>Até 2.000 streams</li><li>Uso não-comercial</li></ul></div>'
+    + '<div class="license-info-card is-selected" data-license="premium"><strong>Premium</strong><span class="license-price">R$ 99,90</span><ul><li>MP3 + WAV</li><li>Até 10.000 streams</li><li>Uso comercial limitado</li></ul></div>'
+    + '<div class="license-info-card" data-license="exclusive"><strong>Exclusiva</strong><span class="license-price">R$ 499,90</span><ul><li>WAV + Stems</li><li>Streams ilimitados</li><li>Posse total de direitos</li></ul></div>'
+    + '</div>'
+    + '<div class="release-form-grid" style="margin-top:32px;">'
+    + '<label class="release-field"><span class="release-label">Preço do Beat (R$) *</span><input name="price" type="number" min="0" step="0.01" value="99.90" required></label>'
+    + '<label class="release-field"><span class="release-label">Vendas máximas</span><input name="max_sales" type="number" min="1" value="50" placeholder="Ex: 50"></label>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Download com tag de voz (Tagged)?</legend><div class="release-radio-options"><label><input type="radio" name="allow_tagged_download" value="true" checked> Sim</label><label><input type="radio" name="allow_tagged_download" value="false"> Não</label></div></fieldset>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Permitir uso comercial básico?</legend><div class="release-radio-options"><label><input type="radio" name="allow_commercial_use" value="true" checked> Sim</label><label><input type="radio" name="allow_commercial_use" value="false"> Não</label></div></fieldset>'
+    + '<label class="release-field release-wide"><span class="release-label">Termos da licença (opcional)</span><textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados..."></textarea></label>'
+    + '</div></section>'
+
+    // STEP 4 — Entrega
+    + '<section class="release-panel" data-panel="4">'
+    + '<div class="release-panel-header"><h2>Entrega do Beat</h2><p>Especifique os arquivos que o comprador receberá.</p></div>'
+    + '<div class="delivery-options-grid"><div>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluídos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
+    + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">Observações para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dúvida, entre em contato."></textarea></label></div>'
+    + '</div><div>'
+    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
+    + '</div></div></section>'
+
+    // STEP 5 — Revisão
+    + '<section class="release-panel" data-panel="5">'
+    + '<div class="release-panel-header"><h2>Revisão Final</h2><p>Confira todas as informações antes de publicar.</p></div>'
+    + '<div class="review-grid"><div class="review-left"><div class="review-cover-wrapper"><img class="review-cover-img" src="assets/ansend-logo-square.png" alt="Capa do beat"></div><div class="review-audio-section"><audio class="review-audio-player" controls preload="metadata"></audio></div></div>'
+    + '<div class="review-details"><div class="review-header-info"><h3 data-review-title>Sem título</h3><p data-review-producer>por Produtor ANSEND</p></div>'
+    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>—</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>—</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>—</dd></div><div class="review-meta-item"><dt>Preço</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>Licença</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
+    + '<div class="review-description"><h4>Descrição</h4><p data-review-desc>Sem descrição fornecida.</p></div></div></div></section>'
+
+    + '</form></div>'
+
+    // Bottom Bar
+    + '<footer class="release-bottom-bar"><div class="release-bottom-inner">'
+    + '<div class="release-footer-track"><img class="release-footer-cover" src="assets/ansend-logo-square.png" alt="Capa"><div><strong data-footer-title>Sem título</strong><small data-footer-artist>' + (display.name || "Produtor ANSEND") + '</small></div></div>'
+    + '<div class="release-footer-actions"><button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button><button type="button" class="release-draft-btn" data-action="save-draft">Salvar Rascunho</button><button type="button" class="release-next-btn" data-action="release-next">Próximo</button><button type="button" class="release-submit-btn" data-action="publish-catalog" style="display:none;">Publicar</button></div>'
+    + '</div></footer></section>';
+
   setupMusicUploadEventListeners();
   syncReleaseForm();
   lucide.createIcons();
 }
+
 
 function renderMusicUploadFallback(error) {
   const display = profileDisplayData(activeProfile());
@@ -6897,7 +6658,7 @@ function renderRoute() {
   hydrateView();
 }
 
-const TOASTS_ENABLED = false;
+const TOASTS_ENABLED = true;
 
 function showToast(message, icon = "check-circle-2") {
   if (!TOASTS_ENABLED) {
@@ -8250,11 +8011,6 @@ document.addEventListener("submit", async (event) => {
   if (releaseUploadForm) {
     event.preventDefault();
     syncReleaseForm(releaseUploadForm);
-    if (!releaseUploadForm.elements.cover_url.value || !releaseUploadForm.elements.audio_url.value) {
-      showToast("Envie a capa e o arquivo de audio antes de publicar.", "upload-cloud");
-      return;
-    }
-    await saveCatalogItem(releaseUploadForm);
     return;
   }
   const profileEditForm = event.target.closest(".profile-edit-form");
