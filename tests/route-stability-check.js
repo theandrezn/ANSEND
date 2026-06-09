@@ -25,7 +25,7 @@ const routes = [
   { hash: "explorar", required: ["Explorar"], selector: ".view-header" },
   { hash: "favoritos", required: ["Favoritos"], selector: ".view-header-favoritos" },
   { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
-  { hash: "ia", required: ["O que podemos"], selector: ".nexo-minimal-container" },
+  { hash: "ia", required: ["Converse com a inteligencia musical"], selector: ".nexo-chat-page" },
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
   { hash: "cadastrar", required: ["Lan", "Música"], selector: ".release-page" },
   { hash: "carrinho", required: ["Carrinho"], selector: ".view-header-carrinho" },
