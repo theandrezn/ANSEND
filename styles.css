@@ -18745,23 +18745,19 @@ body[data-route="cadastrar"] #appView.app-view {
    CINEMATIC FOOTER & REVEAL EFFECT
    ========================================================================== */
 
-/* Curtain Reveal Spacer - Creates the space at the bottom of scroll */
+/* Curtain Reveal Spacer - Hide to prevent empty scrolling space */
 .footer-reveal-spacer {
-  height: 400px !important;
-  width: 100% !important;
-  background: transparent !important;
-  pointer-events: none !important;
-  position: relative !important;
-  z-index: 2 !important;
+  display: none !important;
 }
 
-/* Cinematic Footer Fixed Container - Sits behind bottom of .page flow */
+/* Cinematic Footer - Normal flow at the bottom of the page */
 .cinematic-footer {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: var(--sidebar-width) !important;
-  width: calc(100% - var(--sidebar-width)) !important;
-  height: 400px !important;
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 400px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
@@ -18769,8 +18765,8 @@ body[data-route="cadastrar"] #appView.app-view {
   background: #000000 !important;
   color: #ffffff !important;
   font-family: 'Plus Jakarta Sans', "Poppins", system-ui, sans-serif;
-  z-index: 1 !important;
-  padding: 40px 40px 24px 40px !important;
+  z-index: 10 !important;
+  padding: 80px 40px 24px 40px !important;
   box-sizing: border-box !important;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
