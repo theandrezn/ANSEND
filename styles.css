@@ -18745,21 +18745,22 @@ body[data-route="cadastrar"] #appView.app-view {
    CINEMATIC FOOTER & REVEAL EFFECT
    ========================================================================== */
 
-/* Curtain Reveal Spacer */
+/* Curtain Reveal Spacer - Creates the space at the bottom of scroll */
 .footer-reveal-spacer {
-  height: 100vh;
-  width: 100%;
+  height: 480px !important;
+  width: 100% !important;
   background: transparent !important;
-  pointer-events: none;
+  pointer-events: none !important;
+  position: relative !important;
+  z-index: 2 !important;
 }
 
-/* Cinematic Footer Fixed Container */
+/* Cinematic Footer Sticky Container - Sits at bottom of .page flow */
 .cinematic-footer {
-  position: fixed !important;
+  position: sticky !important;
   bottom: 0 !important;
-  left: var(--sidebar-width, 260px) !important;
-  right: 0 !important;
-  height: 100vh !important;
+  width: 100% !important;
+  height: 480px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
@@ -18768,20 +18769,25 @@ body[data-route="cadastrar"] #appView.app-view {
   color: #ffffff !important;
   font-family: 'Plus Jakarta Sans', "Poppins", system-ui, sans-serif;
   z-index: 1 !important;
-  padding: 80px 60px 40px 60px !important;
+  padding: 50px 40px 30px 40px !important;
   box-sizing: border-box !important;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 @media (max-width: 720px) {
+  .footer-reveal-spacer {
+    height: auto !important;
+    min-height: 520px !important;
+  }
   .cinematic-footer {
-    left: 0 !important;
-    padding: 60px 20px 30px 20px !important;
+    height: auto !important;
+    min-height: 520px !important;
+    padding: 40px 20px 20px 20px !important;
   }
 }
 
 /* Aurora Ambient Glow */
-.footer-aurora {
+.cinematic-footer .footer-aurora {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -18802,7 +18808,7 @@ body[data-route="cadastrar"] #appView.app-view {
 }
 
 /* Grid Overlay */
-.footer-bg-grid {
+.cinematic-footer .footer-bg-grid {
   position: absolute;
   inset: 0;
   background-size: 60px 60px;
@@ -18816,7 +18822,7 @@ body[data-route="cadastrar"] #appView.app-view {
 }
 
 /* Giant background stroke text */
-.footer-giant-bg-text {
+.cinematic-footer .footer-giant-bg-text {
   position: absolute;
   bottom: -2vh;
   left: 50%;
@@ -18837,9 +18843,9 @@ body[data-route="cadastrar"] #appView.app-view {
 }
 
 /* Diagonal Sleek Marquee */
-.footer-marquee-wrap {
+.cinematic-footer .footer-marquee-wrap {
   position: absolute;
-  top: 48px;
+  top: 36px;
   left: 0;
   width: 100%;
   overflow: hidden;
@@ -18848,36 +18854,36 @@ body[data-route="cadastrar"] #appView.app-view {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  padding: 16px 0;
+  padding: 12px 0;
   z-index: 10;
   transform: rotate(-2deg) scale(1.05);
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
 }
 
-.footer-marquee-content {
+.cinematic-footer .footer-marquee-content {
   display: flex;
   width: max-content;
   animation: footer-scroll-marquee 45s linear infinite;
 }
 
-.footer-marquee-item {
+.cinematic-footer .footer-marquee-item {
   display: flex;
   align-items: center;
   gap: 48px;
   padding: 0 24px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.3em;
   color: rgba(255, 255, 255, 0.4);
 }
 
-.footer-marquee-item span.text-primary-color {
+.cinematic-footer .footer-marquee-item span.text-primary-color {
   color: #ff6a00;
 }
 
 /* Center Content Area */
-.footer-center-content {
+.cinematic-footer .footer-center-content {
   position: relative;
   z-index: 10;
   display: flex;
@@ -18887,14 +18893,14 @@ body[data-route="cadastrar"] #appView.app-view {
   flex: 1;
   width: 100%;
   max-width: 1024px;
-  margin: 120px auto 0 auto;
+  margin: 80px auto 0 auto;
 }
 
-.footer-heading {
-  font-size: clamp(36px, 7vw, 80px) !important;
+.cinematic-footer .footer-heading {
+  font-size: clamp(32px, 6vw, 72px) !important;
   font-weight: 900 !important;
   letter-spacing: -0.03em !important;
-  margin-bottom: 40px !important;
+  margin-bottom: 30px !important;
   text-align: center !important;
   background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.4) 100%);
   -webkit-background-clip: text !important;
@@ -18903,24 +18909,25 @@ body[data-route="cadastrar"] #appView.app-view {
   filter: drop-shadow(0px 0px 20px rgba(255, 255, 255, 0.15));
 }
 
-.footer-links-container {
+.cinematic-footer .footer-links-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   width: 100%;
 }
 
-.footer-primary-pills, .footer-secondary-pills {
+.cinematic-footer .footer-primary-pills, 
+.cinematic-footer .footer-secondary-pills {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
 }
 
 /* Glass Pills Link Components */
-.footer-glass-pill {
+.cinematic-footer .footer-glass-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -18938,21 +18945,21 @@ body[data-route="cadastrar"] #appView.app-view {
     inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
 }
 
-.footer-glass-pill.primary-pill {
-  padding: 16px 32px !important;
-  font-size: 14px !important;
+.cinematic-footer .footer-glass-pill.primary-pill {
+  padding: 14px 28px !important;
+  font-size: 13px !important;
   color: #ffffff !important;
-  gap: 10px !important;
+  gap: 8px !important;
 }
 
-.footer-glass-pill.text-link {
-  padding: 10px 22px !important;
-  font-size: 12px !important;
+.cinematic-footer .footer-glass-pill.text-link {
+  padding: 8px 18px !important;
+  font-size: 11px !important;
   font-weight: 500 !important;
   color: rgba(255, 255, 255, 0.5) !important;
 }
 
-.footer-glass-pill:hover {
+.cinematic-footer .footer-glass-pill:hover {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
   border-color: rgba(255, 255, 255, 0.25) !important;
   box-shadow: 
@@ -18962,36 +18969,36 @@ body[data-route="cadastrar"] #appView.app-view {
 }
 
 /* Bottom Bar */
-.footer-bottom-bar {
+.cinematic-footer .footer-bottom-bar {
   position: relative;
   z-index: 20;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-  padding-top: 24px !important;
+  padding-top: 20px !important;
 }
 
 @media (max-width: 720px) {
-  .footer-bottom-bar {
+  .cinematic-footer .footer-bottom-bar {
     flex-direction: column;
     text-align: center;
   }
 }
 
-.footer-copyright {
+.cinematic-footer .footer-copyright {
   color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
-.footer-crafted-badge {
-  padding: 8px 18px !important;
-  font-size: 11px;
+.cinematic-footer .footer-crafted-badge {
+  padding: 6px 14px !important;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -19000,12 +19007,12 @@ body[data-route="cadastrar"] #appView.app-view {
   align-items: center;
 }
 
-.footer-heart {
+.cinematic-footer .footer-heart {
   animation: footer-heartbeat 2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
   display: inline-block;
 }
 
-.footer-top-btn {
+.cinematic-footer .footer-top-btn {
   background: none !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   color: rgba(255, 255, 255, 0.5) !important;
@@ -19013,7 +19020,7 @@ body[data-route="cadastrar"] #appView.app-view {
   transition: all 0.3s !important;
 }
 
-.footer-top-btn:hover {
+.cinematic-footer .footer-top-btn:hover {
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
@@ -19035,25 +19042,42 @@ body[data-route="cadastrar"] #appView.app-view {
   30% { transform: scale(1); }
 }
 
-/* Force Page Elements to stay stacked above the fixed reveal footer */
-body[data-route="feed"] .sidebar,
-body[data-route="feed"] .topbar,
-body[data-route="feed"] .mini-player,
-body[data-route="feed"] .page,
-body[data-route="feed"] #appView.app-view,
+/* Layout Protection & Layering */
+.sidebar {
+  z-index: 100 !important;
+}
+
+.topbar {
+  z-index: 90 !important;
+}
+
+.mini-player {
+  z-index: 95 !important;
+}
+
+/* Stack feed main content above the footer so reveal works correctly */
+body[data-route="feed"] #appView.app-view {
+  position: relative !important;
+  z-index: 10 !important;
+  background-color: #000000 !important;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Clean background for sections in feed */
 body[data-route="feed"] .feed,
 body[data-route="feed"] .nexo-blocks-container,
 body[data-route="feed"] .home-section {
-  position: relative !important;
-  z-index: 10 !important;
   background-color: #000000 !important;
   background-image: none !important;
   box-shadow: none !important;
   border: none !important;
 }
 
-body[data-route="feed"] .nexo-blocks-container {
-  padding-bottom: 40px !important;
+/* Preserve hero features */
+body[data-route="feed"] .playlist-hero {
+  position: relative !important;
+  z-index: 12 !important;
 }
+
 
 
