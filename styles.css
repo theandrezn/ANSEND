@@ -2,6 +2,7 @@
   --bg: #000000;
   --bg-2: #080604;
   --sidebar: #000000;
+  --sidebar-width: 260px;
   --card: #080604;
   --card-hover: #110904;
   --border: #3d1b08;
@@ -17772,6 +17773,21 @@ body[data-route="cadastrar"] .custom-select-option svg {
   color: #ff6a00 !important;
 }
 
+/* Institutional footer belongs exclusively to the Home route. */
+.footer,
+body:not([data-route="feed"]) .footer {
+  display: none !important;
+}
+
+body[data-route="feed"] .footer:not([hidden]) {
+  display: grid !important;
+}
+
+body:not([data-route="feed"]) .page,
+body:not([data-route="feed"]) #appView.app-view {
+  min-height: 100vh;
+}
+
 /* Upload zone */
 body[data-route="cadastrar"] .release-upload-layout {
   display: grid !important;
@@ -18428,5 +18444,303 @@ body[data-route="cadastrar"] .release-bottom-inner .release-draft-btn:hover {
     justify-content: center !important;
     flex-wrap: wrap !important;
   }
+}
+
+/* Full-screen application shell
+   The sidebar, topbar and route surface form one continuous app canvas.
+   Route content may constrain its own inner reading width, but never the shell. */
+html,
+body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  background: #050505;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.sidebar {
+  inset: 0 auto 0 0 !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.page {
+  width: calc(100% - var(--sidebar-width)) !important;
+  min-height: 100dvh !important;
+  margin: 0 0 0 var(--sidebar-width) !important;
+  padding: 0 !important;
+  background: #050505 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow-x: clip !important;
+}
+
+.topbar {
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+#appView.app-view {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 64px) !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #050505 !important;
+}
+
+/* Home is intentionally full bleed. Its own sections provide their spacing. */
+body[data-route="feed"] #appView.app-view,
+body[data-route="feed"] #appView.app-view.feed {
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+body[data-route="feed"] #appView.app-view > section,
+body[data-route="feed"] #appView.app-view > div {
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+body[data-route="feed"] .ai-hero,
+body[data-route="feed"] .nexo-blocks-container {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Release flow uses the whole route surface; only the form content is bounded. */
+body[data-route="cadastrar"] #appView.app-view,
+body[data-route="cadastrar"] #appView.app-view.feed {
+  min-height: calc(100dvh - 64px) !important;
+  padding: 0 0 88px !important;
+  gap: 0 !important;
+  background: #050505 !important;
+}
+
+body[data-route="cadastrar"] .release-page,
+body[data-route="cadastrar"] .release-page.amuse-release-shell {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 64px) !important;
+  margin: 0 !important;
+  padding: 0 0 120px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #050505 !important;
+}
+
+body[data-route="cadastrar"] .release-container {
+  width: 100% !important;
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  padding: clamp(34px, 4vw, 64px) clamp(24px, 5vw, 80px) 0 !important;
+}
+
+body[data-route="cadastrar"] .release-upload-form,
+body[data-route="cadastrar"] .release-stepper {
+  width: 100% !important;
+  max-width: 1280px !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-bar {
+  left: var(--sidebar-width) !important;
+  right: 0 !important;
+  width: auto !important;
+  border-radius: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner {
+  width: 100% !important;
+  max-width: 1440px !important;
+  padding: 0 clamp(24px, 5vw, 80px) !important;
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  body[data-route="cadastrar"] .release-container {
+    padding: 24px 16px 0 !important;
+  }
+
+  body[data-route="cadastrar"] .release-bottom-bar {
+    left: 0 !important;
+  }
+}
+
+/* Global layout contract
+   Keeps every ANSEND route attached to the viewport instead of inheriting
+   old centered/card sizing rules from individual experiments. */
+html,
+body {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  background: #000;
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.sidebar {
+  width: var(--sidebar-width) !important;
+}
+
+.page {
+  width: calc(100% - var(--sidebar-width)) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  margin-left: var(--sidebar-width) !important;
+  overflow-x: clip !important;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 42% 38%, rgba(255, 106, 0, .09), transparent 34%),
+    radial-gradient(circle at 78% 78%, rgba(80, 36, 120, .08), transparent 30%),
+    #000 !important;
+}
+
+.topbar {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+#appView.app-view {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: calc(100vh - 64px) !important;
+  margin: 0 !important;
+  padding: clamp(22px, 2.6vw, 42px) clamp(22px, 3vw, 54px) 128px !important;
+  display: block !important;
+  place-items: initial !important;
+  align-items: initial !important;
+  justify-items: initial !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none;
+}
+
+#appView.app-view > section,
+#appView.app-view > div {
+  width: 100%;
+  max-width: none;
+}
+
+#appView.app-view > .page-intro,
+#appView.app-view > .empty-state,
+#appView.app-view > .catalog-section,
+#appView.app-view > .view-grid,
+#appView.app-view > .purchase-list,
+#appView.app-view > .settings-panel {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+body[data-route="perfil"] #appView.app-view,
+body[data-route="perfil-publico"] #appView.app-view,
+body[data-route="ia"] #appView.app-view,
+body[data-route="nexo-feed"] #appView.app-view {
+  padding: 0 !important;
+}
+
+body[data-route="cadastrar"] #appView.app-view {
+  padding-top: clamp(22px, 2.6vw, 42px) !important;
+}
+
+body[data-route="cadastrar"] .release-page,
+body[data-route="cadastrar"] .release-page.amuse-release-shell,
+body[data-route="favoritos"] .favorites-grid,
+body[data-route="carrinho"] .cart-layout,
+body[data-route="compras"] .purchase-list,
+body[data-route="biblioteca"] .catalog-section,
+body[data-route="produtores"] .producer-grid,
+body[data-route="profissionais"] .producer-grid,
+body[data-route="explorar"] .view-grid {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+body[data-route="cadastrar"] .release-app {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.reveal-section,
+.route-slide-in,
+.route-slide-left.route-slide-in {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+body.requires-auth .page {
+  width: 100vw !important;
+  margin-left: 0 !important;
+}
+
+body.requires-auth #appView.app-view {
+  min-height: 100vh !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+
+  .page {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  #appView.app-view {
+    padding: 16px 14px 112px !important;
+  }
+
+  body[data-route="perfil"] #appView.app-view,
+  body[data-route="perfil-publico"] #appView.app-view,
+  body[data-route="ia"] #appView.app-view,
+  body[data-route="nexo-feed"] #appView.app-view {
+    padding: 0 !important;
+  }
+}
+
+/* Final shell surface contract.
+   Keep the application canvas continuous after all legacy route overrides. */
+.page,
+#appView.app-view {
+  background: #050505 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+body[data-route="feed"] #appView.app-view,
+body[data-route="cadastrar"] #appView.app-view {
+  padding: 0 !important;
+}
+
+body[data-route="cadastrar"] #appView.app-view {
+  padding-bottom: 88px !important;
 }
 
