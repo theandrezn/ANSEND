@@ -15,5 +15,8 @@
   "devDependencies": {
     "playwright": "^1.60.0",
     "wrangler": "^4.98.0"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0"
   }
 }
