@@ -490,16 +490,28 @@ body[data-route="feed"] .top-producer-card:hover {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 15px rgba(255, 106, 0, 0.1) !important;
 }
 
-body[data-route="feed"] .match-professional-card img,
-body[data-route="feed"] .top-producer-card img {
+body[data-route="feed"] .match-professional-card .top-producer-avatar,
+body[data-route="feed"] .top-producer-card .top-producer-avatar {
   width: 90px !important;
   height: 90px !important;
+  min-width: 90px !important;
+  min-height: 90px !important;
+  margin-bottom: 12px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body[data-route="feed"] .match-professional-card img,
+body[data-route="feed"] .top-producer-card img {
+  width: 100% !important;
+  height: 100% !important;
   border-radius: 50% !important;
   object-fit: cover !important;
   border: 2px solid var(--orange) !important;
   box-shadow: 0 0 15px rgba(255, 106, 0, 0.2) !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 0 !important;
 }
+
 
 /* Buttons and Links */
 body[data-route="feed"] .home-section .section-link {
@@ -11538,7 +11550,7 @@ body.onboarding-open {
 }
 
 .feed .home-section .featured-professional-grid {
-  grid-auto-columns: clamp(136px, 8.8vw, 164px) !important;
+  grid-auto-columns: clamp(180px, 12vw, 220px) !important;
   gap: clamp(20px, 2vw, 34px) !important;
   padding: 4px 2px 10px !important;
 }

@@ -2543,7 +2543,7 @@ function professionalMatchCard(profile) {
     </button>
     <strong>${profile.name}<i data-lucide="badge-check"></i></strong>
     <span>${profile.match.score}% match</span>
-    <button class="top-producer-follow" type="button" data-action="producer" data-title="${profile.name}"><i data-lucide="user-plus"></i>Follow</button>
+    <button class="top-producer-follow" type="button" data-action="producer" data-title="${profile.name}"><i data-lucide="user-plus"></i>${t("Seguir", "Follow")}</button>
   </article>`;
 }
 
@@ -2593,7 +2593,7 @@ function topProducerNameCard(name, index) {
     </button>
     <strong>${name}<i data-lucide="badge-check"></i></strong>
     <span>${followerCounts[index % followerCounts.length]} Followers</span>
-    <button class="top-producer-follow" type="button" data-action="producer" data-title="${name}"><i data-lucide="user-plus"></i>Follow</button>
+    <button class="top-producer-follow" type="button" data-action="producer" data-title="${name}"><i data-lucide="user-plus"></i>${t("Seguir", "Follow")}</button>
   </article>`;
 }
 
@@ -5516,14 +5516,6 @@ function renderAiWorkspace() {
   }
 }
 
-function renderAiWorkspace() {
-  appView.innerHTML = renderNexoChat();
-  requestAnimationFrame(() => {
-    setupNexoChatInput();
-    scrollNexoChatToBottom();
-    lucide.createIcons();
-  });
-}
 
 const nexoChatSuggestions = [
   "Quero lancar uma musica do zero",
