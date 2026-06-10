@@ -18747,7 +18747,7 @@ body[data-route="cadastrar"] #appView.app-view {
 
 /* Curtain Reveal Spacer - Creates the space at the bottom of scroll */
 .footer-reveal-spacer {
-  height: 480px !important;
+  height: 340px !important;
   width: 100% !important;
   background: transparent !important;
   pointer-events: none !important;
@@ -18760,7 +18760,7 @@ body[data-route="cadastrar"] #appView.app-view {
   position: sticky !important;
   bottom: 0 !important;
   width: 100% !important;
-  height: 480px !important;
+  height: 340px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
@@ -18769,7 +18769,7 @@ body[data-route="cadastrar"] #appView.app-view {
   color: #ffffff !important;
   font-family: 'Plus Jakarta Sans', "Poppins", system-ui, sans-serif;
   z-index: 1 !important;
-  padding: 50px 40px 30px 40px !important;
+  padding: 30px 40px 20px 40px !important;
   box-sizing: border-box !important;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
@@ -18777,12 +18777,12 @@ body[data-route="cadastrar"] #appView.app-view {
 @media (max-width: 720px) {
   .footer-reveal-spacer {
     height: auto !important;
-    min-height: 520px !important;
+    min-height: 420px !important;
   }
   .cinematic-footer {
     height: auto !important;
-    min-height: 520px !important;
-    padding: 40px 20px 20px 20px !important;
+    min-height: 420px !important;
+    padding: 30px 20px 15px 20px !important;
   }
 }
 
@@ -18845,7 +18845,7 @@ body[data-route="cadastrar"] #appView.app-view {
 /* Diagonal Sleek Marquee */
 .cinematic-footer .footer-marquee-wrap {
   position: absolute;
-  top: 36px;
+  top: 20px;
   left: 0;
   width: 100%;
   overflow: hidden;
@@ -18854,7 +18854,7 @@ body[data-route="cadastrar"] #appView.app-view {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  padding: 12px 0;
+  padding: 10px 0;
   z-index: 10;
   transform: rotate(-2deg) scale(1.05);
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
@@ -18871,7 +18871,7 @@ body[data-route="cadastrar"] #appView.app-view {
   align-items: center;
   gap: 48px;
   padding: 0 24px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.3em;
@@ -18893,14 +18893,14 @@ body[data-route="cadastrar"] #appView.app-view {
   flex: 1;
   width: 100%;
   max-width: 1024px;
-  margin: 80px auto 0 auto;
+  margin: 50px auto 0 auto;
 }
 
 .cinematic-footer .footer-heading {
-  font-size: clamp(32px, 6vw, 72px) !important;
+  font-size: clamp(28px, 5vw, 56px) !important;
   font-weight: 900 !important;
   letter-spacing: -0.03em !important;
-  margin-bottom: 30px !important;
+  margin-bottom: 20px !important;
   text-align: center !important;
   background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.4) 100%);
   -webkit-background-clip: text !important;
@@ -18913,7 +18913,7 @@ body[data-route="cadastrar"] #appView.app-view {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
   width: 100%;
 }
 
@@ -18922,7 +18922,7 @@ body[data-route="cadastrar"] #appView.app-view {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
 }
 
