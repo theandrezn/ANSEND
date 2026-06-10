@@ -45,8 +45,8 @@ async function inspectEditor(page, viewport) {
       username: "perfil-real",
       account_role: "artista",
       bio: "Bio real do perfil.",
-      avatar_url: "",
-      banner_url: "",
+      avatar_url: "/assets/ansend-main-banner.png",
+      banner_url: "/assets/ansend-main-banner.png",
     }));
     location.reload();
   });
@@ -58,6 +58,14 @@ async function inspectEditor(page, viewport) {
     const modal = document.querySelector(".profile-editor-shell");
     const panel = document.querySelector(".app-modal-panel");
     const rect = modal.getBoundingClientRect();
+    const avatar = modal.querySelector(".profile-edit-avatar");
+    const avatarImage = avatar?.querySelector("img");
+    const previewAvatar = modal.querySelector(".profile-preview-avatar");
+    const previewAvatarImage = previewAvatar?.querySelector("img");
+    const avatarRect = avatar?.getBoundingClientRect();
+    const avatarImageRect = avatarImage?.getBoundingClientRect();
+    const previewAvatarRect = previewAvatar?.getBoundingClientRect();
+    const previewAvatarImageRect = previewAvatarImage?.getBoundingClientRect();
     return {
       width: Math.round(rect.width),
       viewportWidth: innerWidth,
@@ -68,6 +76,12 @@ async function inspectEditor(page, viewport) {
       visibleBase64: modal.innerText.includes("data:image"),
       tabs: [...modal.querySelectorAll(".profile-editor-tab")].map((tab) => tab.textContent.trim()),
       previewVisible: Boolean(modal.querySelector(".profile-editor-preview")?.offsetParent),
+      avatarContained: Boolean(avatarRect && avatarImageRect
+        && avatarImageRect.width <= avatarRect.width
+        && avatarImageRect.height <= avatarRect.height),
+      previewAvatarContained: Boolean(previewAvatarRect && previewAvatarImageRect
+        && previewAvatarImageRect.width <= previewAvatarRect.width
+        && previewAvatarImageRect.height <= previewAvatarRect.height),
     };
   });
 
@@ -79,6 +93,9 @@ async function inspectEditor(page, viewport) {
   if (metrics.nativeFileVisible) throw new Error("Native file input is visible");
   if (metrics.visibleBase64) throw new Error("Base64 data is visible");
   if (!metrics.previewVisible) throw new Error("Live profile preview is missing");
+  if (!metrics.avatarContained || !metrics.previewAvatarContained) {
+    throw new Error(`Profile image escaped avatar container: ${JSON.stringify(metrics)}`);
+  }
   for (const label of ["Perfil principal", "Aparência", "Links"]) {
     if (!metrics.tabs.includes(label)) throw new Error(`Missing tab: ${label}`);
   }
