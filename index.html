@@ -274,73 +274,83 @@
                 <ul>
                   <li>Beatmaker recomendado</li>
                   <li>Designer recomendado</li>
-                  <li>Produtor musical</li>
-                  <li>Curador</li>
-                  <li>Marketing musical</li>
-                </ul>
-              </div>
             </aside>
           </div>
         </section>
 
-        <div class="nexo-blocks-container">
-          <section class="home-section featured-preview-section trending-catalogs-section" aria-labelledby="featuredPreviewTitle">
-            <div class="section-head clean-head">
-              <div><h2 id="featuredPreviewTitle"><i data-lucide="flame"></i>Catálogos em alta</h2><p>Beats, packs e referências subindo agora na ANSEND.</p></div>
-              <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
-            </div>
-            <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
-          </section>
+        <div class="home-parallax">
+          <!-- Background layers for ambient parallax glow -->
+          <div class="home-parallax__layer home-parallax__layer--deep" aria-hidden="true">
+            <div class="home-parallax-glow home-parallax-glow--1"></div>
+            <div class="home-parallax-glow home-parallax-glow--2"></div>
+          </div>
+          <div class="home-parallax__layer home-parallax__layer--back" aria-hidden="true">
+            <div class="home-parallax-glow home-parallax-glow--3"></div>
+            <div class="home-parallax-glow home-parallax-glow--4"></div>
+          </div>
 
-          <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
-            <div class="section-head clean-head">
-              <div><h2 id="quickActionsTitle"><i data-lucide="zap"></i>Qual seu próximo passo?</h2><p>Escolha uma ação e a ANSEND guia o caminho certo.</p></div>
-            </div>
-            <div class="quick-action-grid" id="quickActionGrid"></div>
-          </section>
+          <!-- Base layer containing all actual sections -->
+          <div class="home-parallax__layer home-parallax__layer--base">
+            <div class="nexo-blocks-container">
+              <section class="home-section featured-preview-section trending-catalogs-section" aria-labelledby="featuredPreviewTitle">
+                <div class="section-head clean-head">
+                  <div><h2 id="featuredPreviewTitle"><i data-lucide="flame"></i>Catálogos em alta</h2><p>Beats, packs e referências subindo agora na ANSEND.</p></div>
+                  <a class="section-link" href="#explorar" data-route="explorar">Ver catálogo completo</a>
+                </div>
+                <div class="featured-catalog-row" id="featuredCatalogPreview"></div>
+              </section>
 
-          <section class="home-section nexo-recommendations-section" aria-labelledby="nexoRecommendationsTitle">
-            <div class="section-head clean-head">
-              <div><h2 id="nexoRecommendationsTitle"><i data-lucide="sparkles"></i>Recomendado pela NEXO</h2><p>Seis sugestões principais para resolver seu lançamento agora.</p></div>
-              <a class="section-link" href="#explorar" data-route="explorar">Ver mais</a>
-            </div>
-            <div class="nexo-recommendation-grid" id="nexoRecommendationGrid"></div>
-          </section>
+              <section class="home-section quick-actions-section" aria-labelledby="quickActionsTitle">
+                <div class="section-head clean-head">
+                  <div><h2 id="quickActionsTitle"><i data-lucide="zap"></i>Qual seu próximo passo?</h2><p>Escolha uma ação e a ANSEND guia o caminho certo.</p></div>
+                </div>
+                <div class="quick-action-grid" id="quickActionGrid"></div>
+              </section>
 
-          <section class="home-section category-section" aria-labelledby="categoryTitle">
-            <div class="section-head clean-head">
-              <div><h2 id="categoryTitle"><i data-lucide="layout-grid"></i>Explore por categoria</h2><p>Os cinco pilares do marketplace musical da ANSEND.</p></div>
+              <section class="home-section nexo-recommendations-section" aria-labelledby="nexoRecommendationsTitle">
+                <div class="section-head clean-head">
+                  <div><h2 id="nexoRecommendationsTitle"><i data-lucide="sparkles"></i>Recomendado pela NEXO</h2><p>Seis sugestões principais para resolver seu lançamento agora.</p></div>
+                  <a class="section-link" href="#explorar" data-route="explorar">Ver mais</a>
+                </div>
+                <div class="nexo-recommendation-grid" id="nexoRecommendationGrid"></div>
+              </section>
+
+              <section class="home-section category-section" aria-labelledby="categoryTitle">
+                <div class="section-head clean-head">
+                  <div><h2 id="categoryTitle"><i data-lucide="layout-grid"></i>Explore por categoria</h2><p>Os cinco pilares do marketplace musical da ANSEND.</p></div>
+                </div>
+                <div class="category-grid" id="categoryGrid"></div>
+              </section>
             </div>
-            <div class="category-grid" id="categoryGrid"></div>
-          </section>
+
+            <section class="home-section smart-combos-section" aria-labelledby="smartCombosTitle">
+              <div class="section-head clean-head">
+                <div><h2 id="smartCombosTitle"><i data-lucide="boxes"></i>Combos para acelerar seu lançamento</h2><p>Pacotes inteligentes para sair da ideia até a divulgação.</p></div>
+              </div>
+              <div class="smart-combo-grid" id="smartComboGrid"></div>
+            </section>
+
+            <section class="home-section featured-professionals-section" aria-labelledby="featuredProfessionalsTitle">
+              <div class="section-head clean-head">
+                <div><h2 id="featuredProfessionalsTitle"><i data-lucide="badge-check"></i>Produtores em destaque</h2><p>Perfis verificados para seguir</p></div>
+                <div class="arrow-pair">
+                  <button type="button" data-action="scroll-prev" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
+                  <button type="button" data-action="scroll-next" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
+                </div>
+                <a class="section-link" href="#produtores" data-route="produtores">Ver profissionais</a>
+              </div>
+              <div class="featured-professional-grid" id="featuredProfessionals"></div>
+            </section>
+
+            <section class="home-section recent-activity-section" aria-labelledby="recentActivityTitle">
+              <div class="section-head clean-head">
+                <div><h2 id="recentActivityTitle"><i data-lucide="clock-3"></i>Lista recente</h2><p>Ranking de faixas adicionadas agora</p></div>
+                <a class="section-link airbit-view-all" href="#explorar" data-route="explorar">Ver tudo <i data-lucide="arrow-right"></i></a>
+              </div>
+              <div class="track-list home-track-list" id="recentActivity"></div>
+            </section>
+          </div>
         </div>
-
-        <section class="home-section smart-combos-section" aria-labelledby="smartCombosTitle">
-          <div class="section-head clean-head">
-            <div><h2 id="smartCombosTitle"><i data-lucide="boxes"></i>Combos para acelerar seu lançamento</h2><p>Pacotes inteligentes para sair da ideia até a divulgação.</p></div>
-          </div>
-          <div class="smart-combo-grid" id="smartComboGrid"></div>
-        </section>
-
-        <section class="home-section featured-professionals-section" aria-labelledby="featuredProfessionalsTitle">
-          <div class="section-head clean-head">
-            <div><h2 id="featuredProfessionalsTitle"><i data-lucide="badge-check"></i>Produtores em destaque</h2><p>Perfis verificados para seguir</p></div>
-            <div class="arrow-pair">
-              <button type="button" data-action="scroll-prev" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
-              <button type="button" data-action="scroll-next" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
-            </div>
-            <a class="section-link" href="#produtores" data-route="produtores">Ver profissionais</a>
-          </div>
-          <div class="featured-professional-grid" id="featuredProfessionals"></div>
-        </section>
-
-        <section class="home-section recent-activity-section" aria-labelledby="recentActivityTitle">
-          <div class="section-head clean-head">
-            <div><h2 id="recentActivityTitle"><i data-lucide="clock-3"></i>Lista recente</h2><p>Ranking de faixas adicionadas agora</p></div>
-            <a class="section-link airbit-view-all" href="#explorar" data-route="explorar">Ver tudo <i data-lucide="arrow-right"></i></a>
-          </div>
-          <div class="track-list home-track-list" id="recentActivity"></div>
-        </section>
       </main>
 
       <!-- Spacer for curtain reveal scroll -->

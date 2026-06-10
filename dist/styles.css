@@ -19079,5 +19079,130 @@ body[data-route="feed"] .playlist-hero {
   z-index: 12 !important;
 }
 
+/* ==========================================================================
+   PURE CSS PARALLAX SCROLL FOR HOME
+   ========================================================================== */
+
+/* Propagate 3D perspective scroll context to the scroll container */
+.page {
+  perspective: 1px !important;
+  perspective-origin: 50% 50% !important;
+  transform-style: preserve-3d !important;
+}
+
+body[data-route="feed"] #appView.app-view {
+  transform-style: preserve-3d !important;
+}
+
+/* Parallax parent wrapper - serves as a solid black canvas for background layers */
+.home-parallax {
+  position: relative !important;
+  width: 100% !important;
+  background-color: #000000 !important;
+  transform-style: preserve-3d !important;
+  overflow: visible !important;
+}
+
+/* Base layer containing the real content - scrolls 1:1 and stretches the wrapper */
+.home-parallax__layer--base {
+  position: relative !important;
+  z-index: 10 !important;
+  transform: translateZ(0) !important;
+  width: 100% !important;
+  background: transparent !important; /* Allow back glows to show in gaps */
+}
+
+/* Background layers - scroll slower than base */
+.home-parallax__layer--back,
+.home-parallax__layer--deep {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  transform-style: preserve-3d !important;
+}
+
+/* Slower scrolling speed */
+.home-parallax__layer--back {
+  transform: translateZ(-0.5px) scale(1.5) !important;
+  z-index: 2 !important;
+}
+
+/* Even slower scrolling speed */
+.home-parallax__layer--deep {
+  transform: translateZ(-1px) scale(2) !important;
+  z-index: 1 !important;
+}
+
+/* Parallax Ambient Glows */
+.home-parallax-glow {
+  position: absolute !important;
+  border-radius: 50% !important;
+  filter: blur(120px) !important;
+  opacity: 0.08 !important; /* Ultra-discreet premium ambient glow */
+  pointer-events: none !important;
+}
+
+/* Amber/Orange and purple glows */
+.home-parallax-glow--1 {
+  top: 15% !important;
+  left: -10% !important;
+  width: 600px !important;
+  height: 600px !important;
+  background: radial-gradient(circle, #ff6a00 0%, transparent 70%) !important;
+}
+
+.home-parallax-glow--2 {
+  top: 45% !important;
+  right: -10% !important;
+  width: 700px !important;
+  height: 700px !important;
+  background: radial-gradient(circle, #502478 0%, transparent 70%) !important;
+}
+
+.home-parallax-glow--3 {
+  top: 65% !important;
+  left: -5% !important;
+  width: 500px !important;
+  height: 500px !important;
+  background: radial-gradient(circle, #ff6a00 0%, transparent 70%) !important;
+}
+
+.home-parallax-glow--4 {
+  bottom: 10% !important;
+  right: 5% !important;
+  width: 650px !important;
+  height: 650px !important;
+  background: radial-gradient(circle, #502478 0%, transparent 70%) !important;
+}
+
+/* Reduced motion preference support */
+@media (prefers-reduced-motion: reduce) {
+  .home-parallax__layer--back,
+  .home-parallax__layer--deep {
+    transform: none !important;
+    position: relative !important;
+    display: none !important;
+  }
+  .page {
+    perspective: none !important;
+    transform-style: flat !important;
+  }
+  body[data-route="feed"] #appView.app-view {
+    transform-style: flat !important;
+  }
+  .home-parallax {
+    transform-style: flat !important;
+  }
+  .home-parallax__layer--base {
+    transform: none !important;
+  }
+}
+
+
 
 
