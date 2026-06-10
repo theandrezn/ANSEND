@@ -4226,39 +4226,235 @@ function openProfileEditor() {
   const profile = activeProfile() || {};
   const display = profileDisplayData(profile);
   const roleOptions = accountRoles.map((role) => `<option value="${role.id}" ${display.role === role.id ? "selected" : ""}>${role.label}</option>`).join("");
-  openModal(`<form class="profile-edit-form">
-    <span><i data-lucide="user-pen"></i>Editar perfil</span>
-    <h2>Identidade do perfil</h2>
-    <div class="profile-edit-preview">
-      <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}"></div>
-      <div class="profile-edit-preview-row">
-        ${profileAvatarMarkup(display, "profile-edit-avatar")}
-        <div><strong>${htmlEscape(display.name)}</strong><small>${htmlEscape(display.roleLabel)}</small></div>
+  openModal(`<form class="profile-edit-form profile-editor-shell" autocomplete="off">
+    <header class="profile-editor-header">
+      <div>
+        <span>ANSEND</span>
+        <h2>Perfis</h2>
       </div>
+      <nav aria-label="Seções do editor">
+        <button type="button" class="profile-editor-tab is-active" data-action="profile-editor-tab" data-tab="main">Perfil principal</button>
+        <button type="button" class="profile-editor-tab" data-action="profile-editor-tab" data-tab="appearance">Aparência</button>
+        <button type="button" class="profile-editor-tab" data-action="profile-editor-tab" data-tab="links">Links</button>
+      </nav>
+    </header>
+
+    <div class="profile-editor-scroll">
+      <section class="profile-editor-panel is-active" data-profile-panel="main">
+        <div class="profile-editor-columns">
+          <div class="profile-editor-fields">
+            <div class="profile-editor-media">
+              <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}">
+                <button type="button" data-action="profile-image-picker-open" data-image-type="banner"><i data-lucide="image-plus"></i>Alterar banner</button>
+              </div>
+              <div class="profile-editor-avatar-row">
+                ${profileAvatarMarkup(display, "profile-edit-avatar")}
+                <div>
+                  <strong>Imagem do perfil</strong>
+                  <small>PNG, JPG ou WebP. Use uma imagem quadrada.</small>
+                  <div class="profile-editor-inline-actions">
+                    <button type="button" data-action="profile-image-picker-open" data-image-type="avatar">Alterar avatar</button>
+                    <button type="button" class="is-danger" data-action="profile-image-remove" data-image-type="avatar">Remover</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-editor-field-grid">
+              <label>Nome exibido<input name="display_name" value="${htmlEscape(display.name)}" placeholder="Seu nome público"></label>
+              <label>Username<input name="username" value="${htmlEscape(display.username)}" placeholder="seu-username"></label>
+              <label>Função<select name="account_role">${roleOptions}</select></label>
+              <label>Nome completo<input name="full_name" value="${htmlEscape(display.fullName)}" placeholder="Seu nome"></label>
+              <label class="is-wide">Bio<textarea name="bio" rows="5" maxlength="300" placeholder="Conte o que você faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea><small><span data-bio-count>${String(profile?.bio || "").length}</span>/300</small></label>
+            </div>
+          </div>
+
+          <aside class="profile-editor-preview" aria-label="Prévia do perfil">
+            <span>Prévia</span>
+            <article>
+              <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}"></div>
+              ${profileAvatarMarkup(display, "profile-preview-avatar")}
+              <div class="profile-preview-copy">
+                <strong data-profile-preview-name>${htmlEscape(display.name)}</strong>
+                <small data-profile-preview-handle>${htmlEscape(display.handle || "@username")}</small>
+                <em data-profile-preview-role>${htmlEscape(display.roleLabel)}</em>
+                <p data-profile-preview-bio>${htmlEscape(display.bio || "Sua bio aparecerá aqui.")}</p>
+                <button type="button">Ver perfil musical</button>
+              </div>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section class="profile-editor-panel" data-profile-panel="appearance">
+        <div class="profile-editor-appearance">
+          <div>
+            <span>Identidade visual</span>
+            <h3>Avatar e banner</h3>
+            <p>Use imagens reais do seu perfil para criar uma presença musical reconhecível.</p>
+          </div>
+          <div class="profile-editor-appearance-actions">
+            <button type="button" data-action="profile-image-picker-open" data-image-type="avatar"><i data-lucide="user-round"></i><span><strong>Alterar avatar</strong><small>Imagem quadrada</small></span></button>
+            <button type="button" data-action="profile-image-picker-open" data-image-type="banner"><i data-lucide="image"></i><span><strong>Alterar banner</strong><small>Imagem horizontal</small></span></button>
+            <button type="button" class="is-danger" data-action="profile-image-remove" data-image-type="banner"><i data-lucide="trash-2"></i><span><strong>Remover banner</strong><small>Usar fundo minimalista</small></span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-editor-panel" data-profile-panel="links">
+        <div class="profile-editor-links">
+          <div><span>Presença digital</span><h3>Links sociais</h3><p>Adicione apenas canais reais que deseja mostrar no perfil.</p></div>
+          <div class="profile-editor-field-grid">
+            <label>Instagram<input name="instagram_url" value="${htmlEscape(profile?.instagram_url || profile?.instagram || "")}" placeholder="https://instagram.com/..."></label>
+            <label>YouTube<input name="youtube_url" value="${htmlEscape(profile?.youtube_url || profile?.youtube || "")}" placeholder="https://youtube.com/@..."></label>
+            <label>Spotify<input name="spotify_url" value="${htmlEscape(profile?.spotify_url || profile?.spotify || "")}" placeholder="https://open.spotify.com/..."></label>
+            <label>SoundCloud<input name="soundcloud_url" value="${htmlEscape(profile?.soundcloud_url || profile?.soundcloud || "")}" placeholder="https://soundcloud.com/..."></label>
+            <label class="is-wide">Site<input name="website_url" value="${htmlEscape(profile?.website_url || profile?.website || "")}" placeholder="https://..."></label>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="spotify-profile-edit-upload">
-      <label><strong>Foto do perfil</strong><small>PNG, JPG ou WebP</small><input class="profile-editor-file" data-preview="avatar" name="avatar_file" type="file" accept="image/*"></label>
-      <label><strong>Banner do perfil</strong><small>Imagem horizontal para o topo</small><input class="profile-editor-file" data-preview="banner" name="banner_file" type="file" accept="image/*"></label>
-    </div>
-    <div class="profile-form-grid">
-      <label>Nome completo<input name="full_name" value="${htmlEscape(display.fullName)}" placeholder="Seu nome"></label>
-      <label>Nome publico<input name="display_name" value="${htmlEscape(display.name)}" placeholder="Ex: Viana Beats"></label>
-      <label>Username<input name="username" value="${htmlEscape(display.username)}" placeholder="viana-beats"></label>
-      <label>Funcao<select name="account_role">${roleOptions}</select></label>
-      <label>Nome artistico ou marca<input name="artistic_name" value="${htmlEscape(profile?.artistic_name || "")}" placeholder="Ex: Viana Beats"></label>
-      <label class="profile-wide">URL da foto<input name="avatar_url" value="${htmlEscape(profile?.avatar_url || profile?.photo_url || "")}" placeholder="https://...jpg ou png"></label>
-      <label class="profile-wide">URL do banner<input name="banner_url" value="${htmlEscape(profile?.banner_url || profile?.cover_url || "")}" placeholder="https://...jpg ou png"></label>
-      <label class="profile-wide">Bio<textarea name="bio" rows="4" placeholder="Conte o que voce faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea></label>
-      <label>Instagram<input name="instagram_url" value="${htmlEscape(profile?.instagram_url || profile?.instagram || "")}" placeholder="https://instagram.com/..."></label>
-      <label>YouTube<input name="youtube_url" value="${htmlEscape(profile?.youtube_url || profile?.youtube || "")}" placeholder="https://youtube.com/@..."></label>
-      <label>Spotify<input name="spotify_url" value="${htmlEscape(profile?.spotify_url || profile?.spotify || "")}" placeholder="https://open.spotify.com/..."></label>
-      <label>SoundCloud<input name="soundcloud_url" value="${htmlEscape(profile?.soundcloud_url || profile?.soundcloud || "")}" placeholder="https://soundcloud.com/..."></label>
-      <label class="profile-wide">Site<input name="website_url" value="${htmlEscape(profile?.website_url || profile?.website || "")}" placeholder="https://..."></label>
-      <label class="profile-check"><input name="remove_avatar" type="checkbox">Remover foto</label>
-      <label class="profile-check"><input name="remove_banner" type="checkbox">Remover banner</label>
-    </div>
-    <button class="seller-submit" type="submit">Salvar perfil<i data-lucide="arrow-right"></i></button>
+
+    <input class="profile-editor-file" data-preview="avatar" name="avatar_file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+    <input class="profile-editor-file" data-preview="banner" name="banner_file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+    <input name="remove_avatar" type="hidden" value="false">
+    <input name="remove_banner" type="hidden" value="false">
+
+    <footer class="profile-editor-footer">
+      <span>Revise a prévia antes de salvar.</span>
+      <div>
+        <button type="button" data-action="close-modal">Cancelar</button>
+        <button type="submit" class="is-primary">Salvar alterações</button>
+      </div>
+    </footer>
+
+    <section class="profile-image-picker" data-image-picker aria-hidden="true">
+      <div class="profile-image-picker-backdrop" data-action="profile-image-picker-close"></div>
+      <div class="profile-image-picker-dialog" role="dialog" aria-modal="true" aria-label="Selecionar imagem">
+        <header><div><span>ANSEND</span><h3>Selecionar imagem</h3></div><button type="button" data-action="profile-image-picker-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+        <button type="button" class="profile-image-dropzone" data-action="profile-image-picker-browse">
+          <i data-lucide="image-up"></i>
+          <strong>Arraste uma imagem ou clique para enviar</strong>
+          <small>PNG, JPG ou WebP</small>
+        </button>
+        <div class="profile-image-picker-preview" data-image-picker-preview><i data-lucide="image"></i><span>Nenhuma imagem selecionada</span></div>
+        <footer>
+          <button type="button" class="is-danger" data-action="profile-image-remove">Remover imagem</button>
+          <button type="button" class="is-primary" data-action="profile-image-picker-browse">Enviar imagem</button>
+        </footer>
+      </div>
+    </section>
   </form>`);
+  document.querySelector(".app-modal")?.classList.add("is-profile-editor");
+  document.querySelector(".app-modal-panel")?.classList.add("is-profile-editor-panel");
+}
+
+function profileEditorForm() {
+  return document.querySelector(".profile-editor-shell");
+}
+
+function syncProfileEditorPreview(form = profileEditorForm()) {
+  if (!form) return;
+  const name = form.elements.display_name?.value.trim() || "Seu nome";
+  const username = sanitizeHandle(form.elements.username?.value || "");
+  const role = accountRoleLabel(form.elements.account_role?.value || "artista");
+  const bio = form.elements.bio?.value.trim() || "Sua bio aparecerá aqui.";
+  const count = form.querySelector("[data-bio-count]");
+  if (count) count.textContent = String(form.elements.bio?.value.length || 0);
+  const namePreview = form.querySelector("[data-profile-preview-name]");
+  const handlePreview = form.querySelector("[data-profile-preview-handle]");
+  const rolePreview = form.querySelector("[data-profile-preview-role]");
+  const bioPreview = form.querySelector("[data-profile-preview-bio]");
+  if (namePreview) namePreview.textContent = name;
+  if (handlePreview) handlePreview.textContent = username ? `@${username}` : "@username";
+  if (rolePreview) rolePreview.textContent = role;
+  if (bioPreview) bioPreview.textContent = bio;
+}
+
+function openProfileImagePicker(type = "avatar") {
+  const picker = document.querySelector("[data-image-picker]");
+  if (!picker) return;
+  picker.dataset.imageType = type;
+  picker.classList.add("is-open");
+  picker.setAttribute("aria-hidden", "false");
+  const preview = picker.querySelector("[data-image-picker-preview]");
+  const source = type === "banner"
+    ? document.querySelector(".profile-edit-banner-preview")
+    : document.querySelector(".profile-edit-avatar img");
+  const background = type === "banner" ? source?.style.backgroundImage : "";
+  const src = type === "avatar" ? source?.getAttribute("src") : String(background || "").replace(/^url\(["']?|["']?\)$/g, "");
+  if (preview) {
+    preview.innerHTML = src
+      ? `<img src="${src}" alt="Prévia da imagem selecionada">`
+      : `<i data-lucide="image"></i><span>Nenhuma imagem selecionada</span>`;
+  }
+  lucide.createIcons();
+}
+
+function closeProfileImagePicker() {
+  const picker = document.querySelector("[data-image-picker]");
+  if (!picker) return;
+  picker.classList.remove("is-open", "is-dragging");
+  picker.setAttribute("aria-hidden", "true");
+}
+
+function browseProfileImage() {
+  const picker = document.querySelector("[data-image-picker]");
+  const type = picker?.dataset.imageType || "avatar";
+  profileEditorForm()?.querySelector(`.profile-editor-file[data-preview="${type}"]`)?.click();
+}
+
+function removeProfileImage(type = "") {
+  const form = profileEditorForm();
+  const picker = document.querySelector("[data-image-picker]");
+  const resolvedType = type || picker?.dataset.imageType || "avatar";
+  if (!form) return;
+  const fileInput = form.querySelector(`.profile-editor-file[data-preview="${resolvedType}"]`);
+  if (fileInput) fileInput.value = "";
+  const removeInput = form.elements[resolvedType === "banner" ? "remove_banner" : "remove_avatar"];
+  if (removeInput) removeInput.value = "true";
+  if (resolvedType === "banner") {
+    form.querySelectorAll(".profile-edit-banner-preview, .profile-preview-banner").forEach((banner) => {
+      banner.classList.remove("has-image");
+      banner.style.backgroundImage = "";
+    });
+  } else {
+    const displayName = form.elements.display_name?.value || "ANSEND";
+    form.querySelectorAll(".profile-edit-avatar, .profile-preview-avatar").forEach((avatar) => {
+      avatar.classList.add("is-initials");
+      avatar.innerHTML = profileInitials(displayName);
+    });
+  }
+  closeProfileImagePicker();
+}
+
+async function applyProfileImageFile(file, type) {
+  if (!file || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) return;
+  const form = profileEditorForm();
+  if (!form) return;
+  const input = form.querySelector(`.profile-editor-file[data-preview="${type}"]`);
+  if (input && typeof DataTransfer !== "undefined") {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+  }
+  const removeInput = form.elements[type === "banner" ? "remove_banner" : "remove_avatar"];
+  if (removeInput) removeInput.value = "false";
+  const src = await fileToDataUrl(file);
+  if (type === "banner") {
+    form.querySelectorAll(".profile-edit-banner-preview, .profile-preview-banner").forEach((banner) => {
+      banner.classList.add("has-image");
+      banner.style.backgroundImage = `url("${src}")`;
+    });
+  } else {
+    form.querySelectorAll(".profile-edit-avatar, .profile-preview-avatar").forEach((avatar) => {
+      avatar.classList.remove("is-initials");
+      avatar.innerHTML = `<img src="${src}" alt="Prévia da foto do perfil">`;
+    });
+  }
+  const pickerPreview = form.querySelector("[data-image-picker-preview]");
+  if (pickerPreview) pickerPreview.innerHTML = `<img src="${src}" alt="Prévia da imagem selecionada">`;
+  closeProfileImagePicker();
 }
 
 async function saveProfileEdit(form) {
@@ -4267,20 +4463,20 @@ async function saveProfileEdit(form) {
   const bannerFile = form.elements.banner_file?.files?.[0];
   const uploadedAvatar = await uploadProfileAsset(avatarFile, "avatar");
   const uploadedBanner = await uploadProfileAsset(bannerFile, "banner");
-  const removeAvatar = Boolean(form.elements.remove_avatar?.checked);
-  const removeBanner = Boolean(form.elements.remove_banner?.checked);
+  const removeAvatar = form.elements.remove_avatar?.value === "true";
+  const removeBanner = form.elements.remove_banner?.value === "true";
   const profile = {
     ...current,
     id: current.id || appState.authUser?.id || `local-profile-${Date.now()}`,
     email: current.email || appState.authUser?.email || null,
     full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
-    display_name: form.elements.display_name?.value.trim() || form.elements.artistic_name?.value.trim() || current.display_name || null,
+    display_name: form.elements.display_name?.value.trim() || current.display_name || null,
     username: sanitizeHandle(form.elements.username?.value || current.username || current.handle || ""),
-    artistic_name: form.elements.artistic_name?.value.trim() || null,
+    artistic_name: current.artistic_name || null,
     account_role: form.elements.account_role?.value || current.account_role || "artista",
-    avatar_url: removeAvatar ? null : (uploadedAvatar.url || form.elements.avatar_url?.value.trim() || current.avatar_url || current.photo_url || null),
+    avatar_url: removeAvatar ? null : (uploadedAvatar.url || current.avatar_url || current.photo_url || null),
     avatar_path: removeAvatar ? null : (uploadedAvatar.path || current.avatar_path || null),
-    banner_url: removeBanner ? null : (uploadedBanner.url || form.elements.banner_url?.value.trim() || current.banner_url || current.cover_url || null),
+    banner_url: removeBanner ? null : (uploadedBanner.url || current.banner_url || current.cover_url || null),
     banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
     bio: form.elements.bio?.value.trim() || null,
     instagram_url: form.elements.instagram_url?.value.trim() || null,
@@ -8059,6 +8255,28 @@ document.addEventListener("click", (event) => {
     closeMusicPreferenceQuiz();
     return;
   }
+  if (action === "profile-editor-tab") {
+    const form = target.closest(".profile-editor-shell");
+    form?.querySelectorAll(".profile-editor-tab").forEach((tab) => tab.classList.toggle("is-active", tab === target));
+    form?.querySelectorAll(".profile-editor-panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.profilePanel === target.dataset.tab));
+    return;
+  }
+  if (action === "profile-image-picker-open") {
+    openProfileImagePicker(target.dataset.imageType || "avatar");
+    return;
+  }
+  if (action === "profile-image-picker-close") {
+    closeProfileImagePicker();
+    return;
+  }
+  if (action === "profile-image-picker-browse") {
+    browseProfileImage();
+    return;
+  }
+  if (action === "profile-image-remove") {
+    removeProfileImage(target.dataset.imageType || "");
+    return;
+  }
   if (action === "set-locale") {
     setLocale(target.dataset.localeOption, { manual: true });
     renderRoutePreservingAuthFocus();
@@ -8584,22 +8802,7 @@ document.addEventListener("change", (event) => {
   if (profileFileInput) {
     const file = profileFileInput.files?.[0];
     if (!file) return;
-    fileToDataUrl(file).then((src) => {
-      if (profileFileInput.dataset.preview === "avatar") {
-        const avatar = document.querySelector(".profile-edit-avatar");
-        if (avatar) {
-          avatar.classList.remove("is-initials");
-          avatar.innerHTML = `<img src="${src}" alt="Preview da foto do perfil">`;
-        }
-      }
-      if (profileFileInput.dataset.preview === "banner") {
-        const banner = document.querySelector(".profile-edit-banner-preview");
-        if (banner) {
-          banner.classList.add("has-image");
-          banner.style.backgroundImage = `url("${src}")`;
-        }
-      }
-    });
+    applyProfileImageFile(file, profileFileInput.dataset.preview || "avatar");
     return;
   }
   const releaseFileInput = event.target.closest(".release-file-input");
@@ -8618,6 +8821,12 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("dragover", (event) => {
+  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  if (profileDropzone) {
+    event.preventDefault();
+    document.querySelector("[data-image-picker]")?.classList.add("is-dragging");
+    return;
+  }
   const dropzone = event.target.closest(".release-dropzone");
   if (!dropzone) return;
   event.preventDefault();
@@ -8625,12 +8834,25 @@ document.addEventListener("dragover", (event) => {
 });
 
 document.addEventListener("dragleave", (event) => {
+  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  if (profileDropzone && !profileDropzone.contains(event.relatedTarget)) {
+    document.querySelector("[data-image-picker]")?.classList.remove("is-dragging");
+    return;
+  }
   const dropzone = event.target.closest(".release-dropzone");
   if (!dropzone || dropzone.contains(event.relatedTarget)) return;
   dropzone.classList.remove("is-dragging");
 });
 
 document.addEventListener("drop", (event) => {
+  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  if (profileDropzone) {
+    event.preventDefault();
+    const picker = document.querySelector("[data-image-picker]");
+    picker?.classList.remove("is-dragging");
+    applyProfileImageFile(event.dataTransfer?.files?.[0], picker?.dataset.imageType || "avatar");
+    return;
+  }
   const dropzone = event.target.closest(".release-dropzone");
   if (!dropzone) return;
   event.preventDefault();
@@ -8641,6 +8863,9 @@ document.addEventListener("drop", (event) => {
 
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.closest(".profile-editor-shell")) {
+    syncProfileEditorPreview(input.closest(".profile-editor-shell"));
+  }
   if (input.closest(".release-upload-form")) {
     syncReleaseForm(input.closest(".release-upload-form"));
   }
