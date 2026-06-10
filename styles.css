@@ -13107,25 +13107,33 @@ body.onboarding-open {
   border-radius: 0 !important;
 }
 
-.favorites-section .view-grid {
+.favorites-section .view-grid,
+body[data-route="biblioteca"] .view-grid,
+body[data-route="musicas"] .view-grid {
   grid-template-columns: repeat(auto-fill, minmax(210px, 236px)) !important;
   justify-content: start !important;
   align-items: start !important;
   gap: 24px !important;
 }
 
-.favorites-section .minimal-beat-card {
+.favorites-section .minimal-beat-card,
+body[data-route="biblioteca"] .minimal-beat-card,
+body[data-route="musicas"] .minimal-beat-card {
   width: min(236px, 100%) !important;
   justify-self: start !important;
 }
 
-.favorites-section .minimal-beat-card .card-cover-wrapper {
+.favorites-section .minimal-beat-card .card-cover-wrapper,
+body[data-route="biblioteca"] .minimal-beat-card .card-cover-wrapper,
+body[data-route="musicas"] .minimal-beat-card .card-cover-wrapper {
   width: 100% !important;
   max-width: 236px !important;
   aspect-ratio: 1 / 1 !important;
 }
 
-.favorites-section .minimal-beat-card .card-info {
+.favorites-section .minimal-beat-card .card-info,
+body[data-route="biblioteca"] .minimal-beat-card .card-info,
+body[data-route="musicas"] .minimal-beat-card .card-info {
   max-width: 236px !important;
 }
 
