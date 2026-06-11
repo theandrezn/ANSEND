@@ -1,4 +1,4 @@
-﻿const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
+const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
 const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
 const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
 const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
@@ -29,50 +29,50 @@ const localeConfig = {
 
 const i18n = {
   "pt-BR": {
-    "nav.home": "InÃ­cio",
+    "nav.home": "Início",
     "nav.feed": "Feed",
     "nav.ia": "NEXO IA",
     "nav.explore": "Explorar",
     "nav.favorites": "Favoritos",
     "nav.orders": "Pedidos",
     "nav.library": "Biblioteca",
-    "nav.upload": "LanÃ§ar mÃºsica",
+    "nav.upload": "Lançar música",
     "nav.professionals": "Profissionais",
     "nav.profile": "Meu perfil",
-    "nav.settings": "ConfiguraÃ§Ãµes",
-    "sellerMini.title": "Venda seus serviÃ§os",
+    "nav.settings": "Configurações",
+    "sellerMini.title": "Venda seus serviços",
     "sellerMini.subtitle": "Abra sua loja",
-    "sellerMini.cta": "ComeÃ§ar",
-    "search.placeholder": "Buscar serviÃ§os, artistas ou profissionais",
+    "sellerMini.cta": "Começar",
+    "search.placeholder": "Buscar serviços, artistas ou profissionais",
     "hero.kicker": "NEXO IA",
     "hero.titleLine1": "ANSEND",
-    "hero.titleLine2": "O marketplace inteligente da mÃºsica",
-    "hero.subtitle": "Descreva sua mÃºsica, letra, demo ou objetivo. A NEXO IA conecta vocÃª aos profissionais certos.",
-    "hero.prompt": "Ex: Tenho uma mÃºsica de trap pronta e preciso lanÃ§ar profissionalmente...",
-    "hero.primaryCta": "ComeÃ§ar com IA",
+    "hero.titleLine2": "O marketplace inteligente da música",
+    "hero.subtitle": "Descreva sua música, letra, demo ou objetivo. A NEXO IA conecta você aos profissionais certos.",
+    "hero.prompt": "Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente...",
+    "hero.primaryCta": "Começar com IA",
     "hero.secondaryCta": "Explorar profissionais",
     "hero.benefitPayment": "Pagamento protegido",
     "hero.benefitVerified": "Profissionais verificados",
     "hero.benefitDelivery": "Entrega acompanhada",
-    "hero.mapEyebrow": "MAPA DO LANÃ‡AMENTO",
-    "hero.mapTitle": "DiagnÃ³stico Musical IA",
-    "hero.mapSubtitle": "Conte sua ideia e receba uma ordem clara de execuÃ§Ã£o.",
-    "hero.stepProduction": "ProduÃ§Ã£o",
+    "hero.mapEyebrow": "MAPA DO LANÇAMENTO",
+    "hero.mapTitle": "Diagnóstico Musical IA",
+    "hero.mapSubtitle": "Conte sua ideia e receba uma ordem clara de execução.",
+    "hero.stepProduction": "Produção",
     "hero.stepCover": "Capa",
-    "hero.stepDistribution": "DistribuiÃ§Ã£o",
+    "hero.stepDistribution": "Distribuição",
     "hero.stepCuration": "Curadoria",
-    "hero.stepMarketing": "DivulgaÃ§Ã£o",
-    "section.catalogs": "CatÃ¡logos em alta",
-    "section.catalogsSubtitle": "Beats, packs e referÃªncias subindo agora na ANSEND.",
+    "hero.stepMarketing": "Divulgação",
+    "section.catalogs": "Catálogos em alta",
+    "section.catalogsSubtitle": "Beats, packs e referências subindo agora na ANSEND.",
     "section.playlistsStyle": "Playlists para seu estilo",
-    "section.nextStep": "Qual seu prÃ³ximo passo?",
-    "section.nextStepShort": "Seu prÃ³ximo passo",
+    "section.nextStep": "Qual seu próximo passo?",
+    "section.nextStepShort": "Seu próximo passo",
     "section.recommended": "Recomendado pela NEXO",
-    "section.categories": "Explore por categoria",
-    "section.combos": "Combos para acelerar seu lanÃ§amento",
+    "section.categories": "Explore por gênero",
+    "section.combos": "Combos para acelerar seu lançamento",
     "section.professionals": "Profissionais recomendados",
     "section.recent": "Lista recente",
-    "section.moreCatalog": "Ver catÃ¡logo completo",
+    "section.moreCatalog": "Ver catálogo completo",
     "section.more": "Ver mais",
     "category.beatmakers": "Beatmakers",
     "category.designers": "Designers",
@@ -81,20 +81,20 @@ const i18n = {
     "category.marketing": "Marketing Musical",
     "common.open": "Abrir",
     "common.explore": "Explorar",
-    "common.findSolution": "Encontrar soluÃ§Ã£o",
+    "common.findSolution": "Encontrar solução",
     "common.exploreCategories": "Explorar categorias",
-    "common.startQuiz": "ComeÃ§ar quiz",
+    "common.startQuiz": "Começar quiz",
     "common.refazerQuiz": "Refazer quiz",
     "common.save": "Salvar",
-    "cart.billing": "InformaÃ§Ãµes de cobranÃ§a e licenciamento",
+    "cart.billing": "Informações de cobrança e licenciamento",
     "cart.addInfo": "Adicionar dados",
-    "cart.trackLicense": "Faixa Â· LicenÃ§a MP3 Â· Revisar licenÃ§a",
+    "cart.trackLicense": "Faixa Â· Licença MP3 Â· Revisar licença",
     "cart.byProducer": "por",
-    "cart.discount": "Adicione mais 1 faixa para ativar a promoÃ§Ã£o Compre 1 e Leve 2!",
+    "cart.discount": "Adicione mais 1 faixa para ativar a promoção Compre 1 e Leve 2!",
     "cart.summary": "Resumo do carrinho",
     "cart.share": "Compartilhar carrinho",
     "cart.itemsTotal": "Total dos itens",
-    "cart.serviceFee": "Taxa de serviÃ§o",
+    "cart.serviceFee": "Taxa de serviço",
     "cart.subtotal": "Subtotal",
     "cart.itemSingular": "item",
     "cart.itemPlural": "itens",
@@ -103,31 +103,31 @@ const i18n = {
     "cart.or": "ou",
     "cart.signUp": "criar conta",
     "cart.checkout": "Finalizar compra",
-    "cart.terms": "Ao clicar em \"Finalizar compra\", vocÃª concorda com nossa PolÃ­tica de Reembolso, Termos de ServiÃ§o da ANSEND e PolÃ­tica de Privacidade da ANSEND. Impostos podem ser aplicados.",
+    "cart.terms": "Ao clicar em \"Finalizar compra\", você concorda com nossa Política de Reembolso, Termos de Serviço da ANSEND e Política de Privacidade da ANSEND. Impostos podem ser aplicados.",
     "cart.promoted": "Promovidos",
-    "trust.aiRecommendations": "RecomendaÃ§Ãµes com IA",
+    "trust.aiRecommendations": "Recomendações com IA",
     "trust.artistSupport": "Suporte ao artista",
-    "route.feed.subtitle": "Dashboard resumido com IA, recomendaÃ§Ãµes e prÃ³ximos passos.",
+    "route.feed.subtitle": "Dashboard resumido com IA, recomendações e próximos passos.",
     "route.explorar.title": "Explorar",
-    "route.explorar.subtitle": "Encontre novos sons por gÃªnero, BPM ou produtor.",
+    "route.explorar.subtitle": "Encontre novos sons por gênero, BPM ou produtor.",
     "route.favoritos.title": "Favoritos",
-    "route.favoritos.subtitle": "Tudo que vocÃª marcou para ouvir depois.",
+    "route.favoritos.subtitle": "Tudo que você marcou para ouvir depois.",
     "route.compras.title": "Pedidos",
-    "route.compras.subtitle": "HistÃ³rico de pedidos, licenÃ§as e serviÃ§os contratados.",
+    "route.compras.subtitle": "Histórico de pedidos, licenças e serviços contratados.",
     "route.carrinho.title": "Carrinho",
     "route.carrinho.subtitle": "Revise seus beats e finalize seu pedido.",
     "route.biblioteca.title": "Biblioteca",
-    "route.biblioteca.subtitle": "Playlists, histÃ³ricos e itens salvos em um sÃ³ lugar.",
-    "route.cadastrar.title": "LanÃ§ar mÃºsica",
-    "route.cadastrar.subtitle": "Cadastre releases, capa, Ã¡udio e licenÃ§as para publicar no catÃ¡logo.",
+    "route.biblioteca.subtitle": "Playlists, históricos e itens salvos em um só lugar.",
+    "route.cadastrar.title": "Lançar música",
+    "route.cadastrar.subtitle": "Cadastre releases, capa, áudio e licenças para publicar no catálogo.",
     "route.produtores.title": "Profissionais",
     "route.produtores.subtitle": "Beatmakers, designers, produtores, curadores e marketing musical.",
-    "route.configuracoes.title": "ConfiguraÃ§Ãµes",
-    "route.configuracoes.subtitle": "Personalize sua experiÃªncia na plataforma.",
+    "route.configuracoes.title": "Configurações",
+    "route.configuracoes.subtitle": "Personalize sua experiência na plataforma.",
     "route.vendedor.title": "Conta ANSEND",
-    "route.vendedor.subtitle": "Cadastre, entre e escolha a funÃ§Ã£o da sua conta na plataforma.",
+    "route.vendedor.subtitle": "Cadastre, entre e escolha a função da sua conta na plataforma.",
     "route.perfil.title": "Meu perfil",
-    "route.perfil.subtitle": "Sua conta, catÃ¡logo e publicaÃ§Ãµes na ANSEND.",
+    "route.perfil.subtitle": "Sua conta, catálogo e publicações na ANSEND.",
   },
   en: {
     "nav.home": "Home",
@@ -169,7 +169,7 @@ const i18n = {
     "section.nextStep": "What is your next step?",
     "section.nextStepShort": "Your next step",
     "section.recommended": "Recommended by NEXO",
-    "section.categories": "Explore categories",
+    "section.categories": "Explore by genre",
     "section.combos": "Smart release combos",
     "section.professionals": "Recommended professionals",
     "section.recent": "Recent list",
@@ -344,7 +344,7 @@ window.ANSEND_I18N = {
 function applyTranslations(root = document) {
   ensureLanguageSwitcher();
   document.title = appLocale.current === "pt-BR"
-    ? "ANSEND - O Marketplace Inteligente da mÃºsica"
+    ? "ANSEND - O Marketplace Inteligente da música"
     : "ANSEND - The Intelligent Music Marketplace";
   document.querySelector('meta[name="description"]')?.setAttribute(
     "content",
@@ -490,11 +490,11 @@ function languageSwitcherMarkup() {
 }
 
 const englishTextPairs = [
-  ["Minhas MÃºsicas", "My Music"],
+  ["Minhas Músicas", "My Music"],
   ["Marketplace", "Marketplace"],
   ["Ferramentas", "Tools"],
   ["Ofertas para membros", "Member Offers"],
-  ["LanÃ§ar MÃºsica", "Release Music"],
+  ["Lançar Música", "Release Music"],
   ["In\u00edcio", "Home"],
   ["Feed", "Home"],
   ["NEXO IA", "NEXO AI"],
@@ -896,13 +896,13 @@ function applyLocaleTextOverrides(root = document) {
 }
 
 const accountRoles = [
-  { id: "produtor", label: "Produtor", icon: "sliders-horizontal", desc: "Publica beats, gerencia licenÃ§as e acompanha vendas." },
-  { id: "curador", label: "Curador", icon: "list-music", desc: "Monta playlists, salva catÃ¡logos e encontra novos sons." },
-  { id: "artista", label: "Artista", icon: "mic-2", desc: "Busca beats para gravar, licenciar e lanÃ§ar mÃºsicas." },
-  { id: "designer", label: "Designer", icon: "palette", desc: "Organiza capas, identidade visual e assets de lanÃ§amento." },
-  { id: "beatmaker", label: "BeatMaker", icon: "audio-lines", desc: "Cria beats, colabora com produtores e sobe catÃ¡logos." },
-  { id: "manager", label: "Manager", icon: "briefcase-business", desc: "Gerencia artistas, compras, contratos e lanÃ§amentos." },
-  { id: "selo", label: "Selo", icon: "badge-check", desc: "Opera catÃ¡logo, talentos e licenÃ§as em escala." },
+  { id: "produtor", label: "Produtor", icon: "sliders-horizontal", desc: "Publica beats, gerencia licenças e acompanha vendas." },
+  { id: "curador", label: "Curador", icon: "list-music", desc: "Monta playlists, salva catálogos e encontra novos sons." },
+  { id: "artista", label: "Artista", icon: "mic-2", desc: "Busca beats para gravar, licenciar e lançar músicas." },
+  { id: "designer", label: "Designer", icon: "palette", desc: "Organiza capas, identidade visual e assets de lançamento." },
+  { id: "beatmaker", label: "BeatMaker", icon: "audio-lines", desc: "Cria beats, colabora com produtores e sobe catálogos." },
+  { id: "manager", label: "Manager", icon: "briefcase-business", desc: "Gerencia artistas, compras, contratos e lançamentos." },
+  { id: "selo", label: "Selo", icon: "badge-check", desc: "Opera catálogo, talentos e licenças em escala." },
 ];
 
 const roleLabels = Object.fromEntries(accountRoles.map((role) => [role.id, role.label]));
@@ -922,9 +922,9 @@ const roleChoices = [
 
 const roleDashboards = {
   artista: {
-    headline: ["Seu primeiro hit", "comeÃ§a aqui."],
-    subheadline: "Busque um som, descreva sua ideia ou peÃ§a para a NEXO montar o plano certo.",
-    placeholder: "Explore novos sons ou diga para a NEXO o que vocÃª quer lanÃ§ar...",
+    headline: ["Seu primeiro hit", "começa aqui."],
+    subheadline: "Busque um som, descreva sua ideia ou peça para a NEXO montar o plano certo.",
+    placeholder: "Explore novos sons ou diga para a NEXO o que você quer lançar...",
     primaryCta: "Gerar meu plano",
     secondaryCta: "Explorar servicos",
     chips: [
@@ -1040,13 +1040,13 @@ const roleDashboards = {
   },
 };
 
-const heroHeadline = ["ANSEND", "O marketplace inteligente da mÃºsica"];
+const heroHeadline = ["ANSEND", "O marketplace inteligente da música"];
 
 const playlists = [
-  ["Trap na Ãrea", "52 beats", "assets/catalog-cover-01.webp"],
+  ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],
   ["Mainstreet Hits", "38 faixas", "assets/catalog-cover-02.webp"],
   ["Drill Brutal", "44 beats", "assets/catalog-cover-03.webp"],
-  ["MatuÃª Type", "29 beats", "assets/catalog-cover-04.webp"],
+  ["Matuê Type", "29 beats", "assets/catalog-cover-04.webp"],
   ["Yunk Vino Vibes", "31 beats", "assets/catalog-cover-05.webp"],
   ["Noite 808", "67 beats", "assets/catalog-cover-06.webp"],
 ];
@@ -1129,17 +1129,17 @@ const appState = {
 };
 
 const onboardingStyles = [
-  { id: "trap", label: "Trap", desc: "808 forte, melodia escura e espaÃ§o para voz.", icon: "flame", genres: ["Trap", "Type Beat"] },
+  { id: "trap", label: "Trap", desc: "808 forte, melodia escura e espaço para voz.", icon: "flame", genres: ["Trap", "Type Beat"] },
   { id: "drill", label: "Drill", desc: "Bateria seca, grave pesado e clima agressivo.", icon: "target", genres: ["Drill", "Trap"] },
   { id: "funk", label: "Funk", desc: "Ritmo direto, bounce e energia de pista.", icon: "radio", genres: ["Funk", "Type Beat"] },
-  { id: "rnb", label: "R&B", desc: "Textura suave, acordes e refrÃµes melÃ³dicos.", icon: "moon", genres: ["R&B", "Boom Bap"] },
-  { id: "boombap", label: "Boom Bap", desc: "Bateria clÃ¡ssica, sample e presenÃ§a urbana.", icon: "disc-3", genres: ["Boom Bap", "R&B"] },
-  { id: "type", label: "Type Beat", desc: "ReferÃªncias atuais para criar rÃ¡pido.", icon: "sparkles", genres: ["Type Beat", "Trap"] },
+  { id: "rnb", label: "R&B", desc: "Textura suave, acordes e refrões melódicos.", icon: "moon", genres: ["R&B", "Boom Bap"] },
+  { id: "boombap", label: "Boom Bap", desc: "Bateria clássica, sample e presença urbana.", icon: "disc-3", genres: ["Boom Bap", "R&B"] },
+  { id: "type", label: "Type Beat", desc: "Referências atuais para criar rápido.", icon: "sparkles", genres: ["Type Beat", "Trap"] },
 ];
 
 const onboardingGoals = [
-  ["gravar", "Gravar uma mÃºsica"],
-  ["comprar", "Comprar licenÃ§a"],
+  ["gravar", "Gravar uma música"],
+  ["comprar", "Comprar licença"],
   ["descobrir", "Descobrir produtores"],
 ];
 
@@ -1166,22 +1166,22 @@ const professionalProfiles = [];
 
 const licensePlans = {
   basic: {
-    label: "LicenÃ§a BÃ¡sica",
+    label: "Licença Básica",
     price: "R$ 79",
-    summary: "MP3 sem tag para validar a ideia e lanÃ§ar com seguranÃ§a.",
+    summary: "MP3 sem tag para validar a ideia e lançar com segurança.",
     rights: ["Arquivo MP3", "5.000 streams", "Uso comercial", "Contrato digital"],
   },
   premium: {
-    label: "LicenÃ§a Premium",
+    label: "Licença Premium",
     price: "R$ 179",
-    summary: "WAV + MP3 para lanÃ§amento profissional em plataformas digitais.",
-    rights: ["WAV e MP3", "100.000 streams", "MonetizaÃ§Ã£o liberada", "Contrato prioritÃ¡rio"],
+    summary: "WAV + MP3 para lançamento profissional em plataformas digitais.",
+    rights: ["WAV e MP3", "100.000 streams", "Monetização liberada", "Contrato prioritário"],
   },
   exclusive: {
-    label: "LicenÃ§a Exclusiva",
+    label: "Licença Exclusiva",
     price: "R$ 799",
-    summary: "O beat sai do catÃ¡logo apÃ³s a compra e vocÃª recebe todos os arquivos.",
-    rights: ["Stems completos", "Streams ilimitados", "Direitos exclusivos", "Suporte de lanÃ§amento"],
+    summary: "O beat sai do catálogo após a compra e você recebe todos os arquivos.",
+    rights: ["Stems completos", "Streams ilimitados", "Direitos exclusivos", "Suporte de lançamento"],
   },
 };
 
@@ -1236,12 +1236,12 @@ function nexoKnowledgeBase() {
   return {
     platform: "ANSEND e NEXO IA conectam artistas, beatmakers, produtores, designers, curadores e marketing musical.",
     routes: {
-      feed: "Home com NEXO IA, beat top 1 e catÃ¡logos em alta.",
-      explorar: "CatÃ¡logo de beats com filtros, favoritos, play e compra de licenÃ§a.",
-      produtores: "DiretÃ³rio de profissionais por categoria com perfil e contrataÃ§Ã£o.",
-      perfil: "Conta do usuÃ¡rio, cadastro de beats/mÃºsicas e loja do vendedor.",
-      compras: "Pedidos, licenÃ§as adquiridas, contratos e serviÃ§os contratados.",
-      biblioteca: "Playlists salvas e histÃ³rico.",
+      feed: "Home com NEXO IA, beat top 1 e catálogos em alta.",
+      explorar: "Catálogo de beats com filtros, favoritos, play e compra de licença.",
+      produtores: "Diretório de profissionais por categoria com perfil e contratação.",
+      perfil: "Conta do usuário, cadastro de beats/músicas e loja do vendedor.",
+      compras: "Pedidos, licenças adquiridas, contratos e serviços contratados.",
+      biblioteca: "Playlists salvas e histórico.",
     },
     licenses: licensePlans,
     professionals: activeProfessionalProfiles().map(({ name, role, category, specialty, price, rating, jobs }) => ({ name, role, category, specialty, price, rating, jobs })),
@@ -1271,9 +1271,9 @@ function fallbackNexoIntelligence(prompt) {
       producer: item.producer,
       reason: `${item.tags[0]} / ${item.tags[1]}`,
     })),
-    recommendedLicense: /exclusiv|direito|selo/.test(prompt.toLowerCase()) ? "exclusive" : /wav|profissional|spotify|lancar|lanÃ§ar/.test(prompt.toLowerCase()) ? "premium" : "basic",
+    recommendedLicense: /exclusiv|direito|selo/.test(prompt.toLowerCase()) ? "exclusive" : /wav|profissional|spotify|lancar|lançar/.test(prompt.toLowerCase()) ? "premium" : "basic",
     nextAction: {
-      label: nextRoute === "explorar" ? "Abrir catÃ¡logo recomendado" : "Abrir profissionais recomendados",
+      label: nextRoute === "explorar" ? "Abrir catálogo recomendado" : "Abrir profissionais recomendados",
       route: nextRoute,
     },
   };
@@ -1686,18 +1686,22 @@ function renderExploreGenreBanners() {
       <span class="genre-banner-fallback">${banner.label}</span>
     </button>`;
   }).join("");
-  return `<section class="genre-banner-section" aria-label="Generos em destaque">
+  return `<section class="genre-banner-section" aria-label="Gêneros em destaque">
     <div class="section-head clean-head genre-banner-head">
       <div>
-        <h2><i data-lucide="sparkles"></i>Explore por genero</h2>
+        <h2><i data-lucide="sparkles"></i>Explore por gênero</h2>
         <p>Escolha um banner para filtrar o marketplace.</p>
       </div>
-      <div class="section-actions">
-        <button type="button" data-action="genre-banner-scroll" data-direction="prev" aria-label="Banner anterior"><i data-lucide="chevron-left"></i></button>
-        <button type="button" data-action="genre-banner-scroll" data-direction="next" aria-label="Proximo banner"><i data-lucide="chevron-right"></i></button>
-      </div>
     </div>
-    <div class="genre-banner-track" id="genreBannerTrack">${cards}</div>
+    <div class="genre-carousel-wrapper">
+      <button type="button" class="carousel-arrow prev" data-action="genre-banner-scroll" data-direction="prev" aria-label="Banner anterior">
+        <i data-lucide="chevron-left"></i>
+      </button>
+      <div class="genre-banner-track" id="genreBannerTrack">${cards}</div>
+      <button type="button" class="carousel-arrow next" data-action="genre-banner-scroll" data-direction="next" aria-label="Próximo banner">
+        <i data-lucide="chevron-right"></i>
+      </button>
+    </div>
   </section>`;
 }
 
@@ -1740,7 +1744,7 @@ function beatCard(item) {
       </div>
       ${item.match ? `<span class="match-pill beat-match-pill">${item.match.score}% match - ${item.match.reasons[0]}</span>` : ""}
       <div class="card-actions-row">
-        <button class="beat-card-buy-btn" type="button" data-action="buy" data-id="${item.id}" aria-label="Comprar licenÃ§a">
+        <button class="beat-card-buy-btn" type="button" data-action="buy" data-id="${item.id}" aria-label="Comprar licença">
           <i data-lucide="shopping-bag"></i>
           <span>${price}</span>
         </button>
@@ -1757,11 +1761,11 @@ function avatarCard(name, i) {
 }
 
 const quickActions = [
-  ["brain-circuit", "Criar plano com IA", "Receba a ordem certa para lanÃ§ar.", "ia"],
+  ["brain-circuit", "Criar plano com IA", "Receba a ordem certa para lançar.", "ia"],
   ["audio-lines", "Encontrar beatmaker", "Ache beats e produtores com match.", "produtores"],
   ["image", "Criar capa", "Encontre designers para single e EP.", "produtores"],
-  ["sliders-horizontal", "Finalizar mÃºsica", "Mix, master e produÃ§Ã£o vocal.", "produtores"],
-  ["megaphone", "Divulgar lanÃ§amento", "Curadoria, conteÃºdo e marketing.", "produtores"],
+  ["sliders-horizontal", "Finalizar música", "Mix, master e produção vocal.", "produtores"],
+  ["megaphone", "Divulgar lançamento", "Curadoria, conteúdo e marketing.", "produtores"],
 ];
 
 const beatmakerQuickActions = [
@@ -1772,20 +1776,20 @@ const beatmakerQuickActions = [
 ];
 
 const nexoRecommendations = [
-  { icon: "audio-lines", title: "Black Coupe", type: "Beat", reason: "Bom para trap melÃ³dico", route: "beat-5" },
+  { icon: "audio-lines", title: "Black Coupe", type: "Beat", reason: "Bom para trap melódico", route: "beat-5" },
   { icon: "palette", title: "Maya Keys", type: "Designer", reason: "Ideal para capa dark premium", route: "produtores" },
-  { icon: "boxes", title: "Combo Completo", type: "Pacote", reason: "ProduÃ§Ã£o + capa + divulgaÃ§Ã£o", route: "explorar" },
+  { icon: "boxes", title: "Combo Completo", type: "Pacote", reason: "Produção + capa + divulgação", route: "explorar" },
   { icon: "sliders-horizontal", title: "Ghost Lab", type: "Produtor", reason: "Mix e master para voz urbana", route: "produtores" },
-  { icon: "list-music", title: "Curadoria Trap", type: "ServiÃ§o", reason: "Playlists com fit para lanÃ§amento", route: "playlist" },
-  { icon: "megaphone", title: "ADS Inicial", type: "Marketing", reason: "Teste de pÃºblico antes do drop", route: "produtores" },
+  { icon: "list-music", title: "Curadoria Trap", type: "Serviço", reason: "Playlists com fit para lançamento", route: "playlist" },
+  { icon: "megaphone", title: "ADS Inicial", type: "Marketing", reason: "Teste de público antes do drop", route: "produtores" },
 ];
 
 const mainCategories = [
-  ["audio-lines", "Beatmakers", "Beats, packs e licenÃ§as para gravar.", "produtores"],
-  ["palette", "Designers", "Capas, identidade e peÃ§as para redes.", "produtores"],
-  ["sliders-horizontal", "Produtores Musicais", "ProduÃ§Ã£o, mixagem e masterizaÃ§Ã£o.", "produtores"],
-  ["list-music", "Curadores", "Playlists, seleÃ§Ã£o e posicionamento.", "produtores"],
-  ["megaphone", "Marketing Musical", "Campanhas, conteÃºdo e trÃ¡fego.", "produtores"],
+  ["audio-lines", "Beatmakers", "Beats, packs e licenças para gravar.", "produtores"],
+  ["palette", "Designers", "Capas, identidade e peças para redes.", "produtores"],
+  ["sliders-horizontal", "Produtores Musicais", "Produção, mixagem e masterização.", "produtores"],
+  ["list-music", "Curadores", "Playlists, seleção e posicionamento.", "produtores"],
+  ["megaphone", "Marketing Musical", "Campanhas, conteúdo e tráfego.", "produtores"],
 ];
 
 const categoryBackgrounds = {
@@ -1797,9 +1801,9 @@ const categoryBackgrounds = {
 };
 
 const smartCombos = [
-  ["Combo ProduÃ§Ã£o", "Beat + Mixagem + MasterizaÃ§Ã£o", "Economia sugerida: 15%"],
-  ["Combo LanÃ§amento", "Capa + Curadoria", "Economia sugerida: 12%"],
-  ["Combo Completo", "ProduÃ§Ã£o + Capa + DivulgaÃ§Ã£o", "Economia sugerida: 20%"],
+  ["Combo Produção", "Beat + Mixagem + Masterização", "Economia sugerida: 15%"],
+  ["Combo Lançamento", "Capa + Curadoria", "Economia sugerida: 12%"],
+  ["Combo Completo", "Produção + Capa + Divulgação", "Economia sugerida: 20%"],
 ];
 
 const MUSIC_PROFILE_KEY = "ansend_user_music_profile";
@@ -2542,19 +2546,17 @@ function categoryCard([icon, title, desc, route]) {
     Curadores: "category.curators",
     "Marketing Musical": "category.marketing",
   };
-  const description = appLocale.current === "pt-BR" ? desc : {
-    Beatmakers: "Beats, packs, and licenses to record.",
-    Designers: "Covers, identity, and assets for releases.",
-    "Produtores Musicais": "Production, mixing, and mastering.",
-    Curadores: "Playlists, selection, and positioning.",
-    "Marketing Musical": "Campaigns, content, and traffic.",
-  }[title] || desc;
-  return `<article class="category-card" style="--category-bg: url('${background}')">
-    <i data-lucide="${icon}"></i>
+  const categoryIds = {
+    Beatmakers: "beatmakers",
+    Designers: "designers",
+    "Produtores Musicais": "produtores",
+    Curadores: "curadores",
+    "Marketing Musical": "marketing",
+  };
+  const catId = categoryIds[title] || "todos";
+  return `<a href="#${route}" data-route="${route}" data-action="category-click" data-category="${catId}" class="category-card" style="--category-bg: url('${background}')">
     <strong>${t(categoryKeys[title], title)}</strong>
-    <p>${description}</p>
-    <a href="#${route}" data-route="${route}">${t("common.explore")}</a>
-  </article>`;
+  </a>`;
 }
 
 function smartComboCard([title, services, economy], index) {
@@ -2563,7 +2565,7 @@ function smartComboCard([title, services, economy], index) {
     <strong>${title}</strong>
     <p>${services}</p>
     <small>${economy}</small>
-    <button type="button" data-action="ai-chip" data-prompt="Quero montar o ${title.toLowerCase()} para meu lanÃ§amento.">Montar combo</button>
+    <button type="button" data-action="ai-chip" data-prompt="Quero montar o ${title.toLowerCase()} para meu lançamento.">Montar combo</button>
   </article>`;
 }
 
@@ -2643,7 +2645,7 @@ function topProducerNameCard(name, index) {
 }
 
 function recentActivityRow(item, index) {
-  const labels = ["Plano gerado", "Beat favoritado", "ServiÃ§o contratado", "Combo montado", "Perfil seguido"];
+  const labels = ["Plano gerado", "Beat favoritado", "Serviço contratado", "Combo montado", "Perfil seguido"];
   return `<article>
     <i data-lucide="${["sparkles", "heart", "shopping-bag", "boxes", "user-plus"][index] || "activity"}"></i>
     <div><strong>${labels[index]}</strong><span>${item.title} Â· ${item.producer}</span></div>
@@ -2681,7 +2683,7 @@ function renderHomeDashboard() {
     setText("featuredPreviewTitle", `<i data-lucide="flame"></i>${t("section.catalogs")}`, t("section.catalogsSubtitle"));
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStep")}`, appLocale.current === "pt-BR" ? "Responda o quiz e desbloqueie recomendacoes reais" : "Answer the quiz and unlock real recommendations");
     setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Seis sugestoes principais para resolver seu lancamento agora" : "Six top suggestions to move your release forward");
-    setText("categoryTitle", `<i data-lucide="layout-grid"></i>${t("section.categories")}`, appLocale.current === "pt-BR" ? "Os cinco pilares do marketplace musical da ANSEND." : "The five pillars of ANSEND's music marketplace.");
+    setText("categoryTitle", `<i data-lucide="layout-grid"></i>${t("section.categories")}`, appLocale.current === "pt-BR" ? "Os gêneros musicais em destaque na ANSEND." : "Featured music genres on ANSEND.");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes inteligentes para sair da ideia ate a divulgacao." : "Smart packages from idea to promotion.");
     setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
     setText("recentActivityTitle", `<i data-lucide="clock-3"></i>${t("section.recent")}`, appLocale.current === "pt-BR" ? "Ranking de faixas adicionadas agora" : "Recently added track ranking");
@@ -2695,13 +2697,13 @@ function renderHomeDashboard() {
     const items = hasProfile ? recs.beats.slice(0, 6) : catalogBeats.slice(0, 6);
     featured.innerHTML = items.length
       ? items.map((item, index) => beatCard({ ...item, badge: index === 0 && hasProfile ? "Match IA" : item.badge })).join("")
-      : emptyState("upload-cloud", "Nenhum catÃ¡logo publicado", "Cadastre beats ou mÃºsicas para alimentar esta vitrine.", "perfil");
+      : emptyState("upload-cloud", "Nenhum catálogo publicado", "Cadastre beats ou músicas para alimentar esta vitrine.", "perfil");
   }
   if (professionals) {
     const items = hasProfile ? recs.professionals : realProfessionals;
     professionals.innerHTML = items.length
       ? items.map((item) => professionalMatchCard(item.match ? item : { ...item, match: { score: 100, reasons: ["Perfil cadastrado"] } })).join("")
-      : emptyState("users-round", "Nenhum profissional cadastrado", "Crie sua conta profissional para aparecer nesta Ã¡rea.", "vendedor");
+      : emptyState("users-round", "Nenhum profissional cadastrado", "Crie sua conta profissional para aparecer nesta área.", "vendedor");
   }
   if (professionals?.querySelector(".empty-state")) {
     professionals.innerHTML = `<section class="recommended-professionals-empty">Nenhum profissional recomendado ainda.</section>`;
@@ -2709,7 +2711,7 @@ function renderHomeDashboard() {
   if (activity) {
     activity.innerHTML = catalogBeats.length
       ? catalogBeats.slice(0, 8).map(trackRow).join("")
-      : emptyState("clock-3", "Lista recente vazia", "Os novos cadastros publicados vÃ£o aparecer aqui.", "perfil");
+      : emptyState("clock-3", "Lista recente vazia", "Os novos cadastros publicados vão aparecer aqui.", "perfil");
   }
 }
 
@@ -2722,7 +2724,7 @@ function sectionTemplate([title, subtitle, icon, content]) {
       <div><h2><i data-lucide="${icon}"></i>${title}</h2><p>${subtitle}</p></div>
       <div class="arrow-pair">
         <button type="button" data-action="scroll-prev" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
-        <button type="button" data-action="scroll-next" aria-label="PrÃ³ximo"><i data-lucide="chevron-right"></i></button>
+        <button type="button" data-action="scroll-next" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
       </div>
     </div>
     ${body}
@@ -2770,7 +2772,7 @@ function trackRow(item, i) {
         <i data-lucide="shopping-cart"></i>
         <span>${price}</span>
       </button>
-      <button class="airbit-more-btn" type="button" aria-label="Mais opÃ§Ãµes" data-action="favorite" data-id="${item.id}">
+      <button class="airbit-more-btn" type="button" aria-label="Mais opções" data-action="favorite" data-id="${item.id}">
         <i data-lucide="more-vertical"></i>
       </button>
     </div>
@@ -3221,14 +3223,14 @@ const appView = document.querySelector("#appView");
 const feedTemplate = appView.innerHTML;
 let sellerAuthInteractionAt = 0;
 const routeTitles = {
-  feed: ["Feed", "Sua seleÃ§Ã£o diÃ¡ria de playlists, beats e produtores."],
-  explorar: ["Explorar", "Encontre novos sons por gÃªnero, BPM ou produtor."],
-  favoritos: ["Favoritos", "Tudo que vocÃª marcou para ouvir depois."],
-  compras: ["Minhas compras", "LicenÃ§as e beats adquiridos na sua conta."],
-  biblioteca: ["Biblioteca", "Playlists, histÃ³ricos e itens salvos em um sÃ³ lugar."],
-  produtores: ["Produtores", "ConheÃ§a produtores verificados da comunidade ANSEND."],
-  configuracoes: ["ConfiguraÃ§Ãµes", "Personalize sua experiÃªncia na plataforma."],
-  detalhe: ["Detalhe do beat", "InformaÃ§Ãµes, licenÃ§a e perfil do produtor."],
+  feed: ["Feed", "Sua seleção diária de playlists, beats e produtores."],
+  explorar: ["Explorar", "Encontre novos sons por gênero, BPM ou produtor."],
+  favoritos: ["Favoritos", "Tudo que você marcou para ouvir depois."],
+  compras: ["Minhas compras", "Licenças e beats adquiridos na sua conta."],
+  biblioteca: ["Biblioteca", "Playlists, históricos e itens salvos em um só lugar."],
+  produtores: ["Produtores", "Conheça produtores verificados da comunidade ANSEND."],
+  configuracoes: ["Configurações", "Personalize sua experiência na plataforma."],
+  detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
   carrinho: ["Carrinho", "Revise seus beats e finalize seu pedido."],
 };
 routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendacoes e proximos passos."];
@@ -3236,25 +3238,25 @@ routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais
 routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos contratados."];
 routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
-routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a funÃ§Ã£o da sua conta na plataforma."];
-routeTitles.cadastrar = ["LanÃ§ar mÃºsica", "Cadastre releases, capa, Ã¡udio e licenÃ§as para publicar no catÃ¡logo."];
+routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
+routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
-routeTitles["central-ansend"] = ["Central ANSEND", "ServiÃ§os, seguranÃ§a, pagamentos, licenÃ§as, privacidade e uso da plataforma."];
-routeTitles.servicos = ["ServiÃ§os", "Beatmakers, designers, produtores, curadores e marketing musical."];
-routeTitles["como-funciona"] = ["Como funciona", "Da ideia ao lanÃ§amento com diagnÃ³stico da NEXO IA e profissionais recomendados."];
-routeTitles["central-legal"] = ["Central Legal", "Termos, polÃ­ticas, licenÃ§as, pagamentos, direitos autorais e diretrizes."];
-routeTitles["termos-de-uso"] = ["Termos de Uso", "Regras gerais para uso seguro e responsÃ¡vel da ANSEND."];
-routeTitles["politica-de-privacidade"] = ["PolÃ­tica de Privacidade", "Como dados pessoais, navegaÃ§Ã£o e dados enviados para a NEXO IA sÃ£o tratados."];
-routeTitles["politica-de-cookies"] = ["PolÃ­tica de Cookies", "Uso de cookies essenciais, preferÃªncias, analytics e marketing."];
-routeTitles["termos-de-licenca-musical"] = ["Termos de LicenÃ§a Musical", "Regras para beats, instrumentais, capas, artes e serviÃ§os contratados."];
-routeTitles["pagamentos-reembolsos"] = ["Pagamentos e Reembolsos", "Pagamento protegido, cancelamentos, disputas e liberaÃ§Ã£o de valores."];
-routeTitles["direitos-autorais"] = ["Direitos Autorais", "ProteÃ§Ã£o de beats, samples, letras, capas, portfÃ³lios e materiais enviados."];
-routeTitles.seguranca = ["SeguranÃ§a na ANSEND", "Pagamento protegido, histÃ³rico, avaliaÃ§Ãµes, suporte e mediaÃ§Ã£o."];
-routeTitles["diretrizes-profissionais"] = ["Diretrizes para Profissionais", "Boas prÃ¡ticas e regras para vender serviÃ§os dentro da ANSEND."];
-routeTitles["diretrizes-artistas"] = ["Diretrizes para Artistas", "Boas prÃ¡ticas para contratar serviÃ§os e usar a NEXO IA com clareza."];
-routeTitles.suporte = ["Suporte", "Ajuda para conta, pedidos, entregas, pagamentos, licenÃ§as e denÃºncias."];
+routeTitles["central-ansend"] = ["Central ANSEND", "Serviços, segurança, pagamentos, licenças, privacidade e uso da plataforma."];
+routeTitles.servicos = ["Serviços", "Beatmakers, designers, produtores, curadores e marketing musical."];
+routeTitles["como-funciona"] = ["Como funciona", "Da ideia ao lançamento com diagnóstico da NEXO IA e profissionais recomendados."];
+routeTitles["central-legal"] = ["Central Legal", "Termos, políticas, licenças, pagamentos, direitos autorais e diretrizes."];
+routeTitles["termos-de-uso"] = ["Termos de Uso", "Regras gerais para uso seguro e responsável da ANSEND."];
+routeTitles["politica-de-privacidade"] = ["Política de Privacidade", "Como dados pessoais, navegação e dados enviados para a NEXO IA são tratados."];
+routeTitles["politica-de-cookies"] = ["Política de Cookies", "Uso de cookies essenciais, preferências, analytics e marketing."];
+routeTitles["termos-de-licenca-musical"] = ["Termos de Licença Musical", "Regras para beats, instrumentais, capas, artes e serviços contratados."];
+routeTitles["pagamentos-reembolsos"] = ["Pagamentos e Reembolsos", "Pagamento protegido, cancelamentos, disputas e liberação de valores."];
+routeTitles["direitos-autorais"] = ["Direitos Autorais", "Proteção de beats, samples, letras, capas, portfólios e materiais enviados."];
+routeTitles.seguranca = ["Segurança na ANSEND", "Pagamento protegido, histórico, avaliações, suporte e mediação."];
+routeTitles["diretrizes-profissionais"] = ["Diretrizes para Profissionais", "Boas práticas e regras para vender serviços dentro da ANSEND."];
+routeTitles["diretrizes-artistas"] = ["Diretrizes para Artistas", "Boas práticas para contratar serviços e usar a NEXO IA com clareza."];
+routeTitles.suporte = ["Suporte", "Ajuda para conta, pedidos, entregas, pagamentos, licenças e denúncias."];
 
 const institutionalRoutes = new Set([
   "central-ansend",
@@ -3277,146 +3279,146 @@ const legalPages = {
   "central-ansend": {
     eyebrow: "Central ANSEND",
     title: "Central ANSEND",
-    intro: "Encontre informaÃ§Ãµes sobre serviÃ§os, seguranÃ§a, pagamentos, licenÃ§as, privacidade e uso da plataforma.",
+    intro: "Encontre informações sobre serviços, segurança, pagamentos, licenças, privacidade e uso da plataforma.",
     cards: [
-      ["Como funciona a ANSEND", "Ideia, diagnÃ³stico da NEXO IA, recomendaÃ§Ã£o de profissionais, contrataÃ§Ã£o, entrega e avaliaÃ§Ã£o."],
-      ["ServiÃ§os disponÃ­veis", "Categorias principais da plataforma: beatmakers, designers, produtores musicais, curadores e marketing musical."],
-      ["Termos e polÃ­ticas", "Documentos legais e regras de uso centralizados em uma Ã¡rea clara."],
-      ["SeguranÃ§a e confianÃ§a", "Pagamento protegido, avaliaÃ§Ãµes, suporte, mediaÃ§Ã£o e histÃ³rico de pedidos."],
-      ["Suporte", "Ajuda para problemas com conta, pedido, entrega, pagamento ou licenÃ§a."],
+      ["Como funciona a ANSEND", "Ideia, diagnóstico da NEXO IA, recomendação de profissionais, contratação, entrega e avaliação."],
+      ["Serviços disponíveis", "Categorias principais da plataforma: beatmakers, designers, produtores musicais, curadores e marketing musical."],
+      ["Termos e políticas", "Documentos legais e regras de uso centralizados em uma área clara."],
+      ["Segurança e confiança", "Pagamento protegido, avaliações, suporte, mediação e histórico de pedidos."],
+      ["Suporte", "Ajuda para problemas com conta, pedido, entrega, pagamento ou licença."],
     ],
   },
   servicos: {
-    eyebrow: "ServiÃ§os",
+    eyebrow: "Serviços",
     title: "O que pode ser contratado na ANSEND",
-    intro: "A plataforma organiza serviÃ§os musicais por categoria para conectar artistas aos profissionais certos.",
+    intro: "A plataforma organiza serviços musicais por categoria para conectar artistas aos profissionais certos.",
     sections: [
-      ["Beatmakers", "Vendam beats, instrumentais, licenÃ§as musicais, produÃ§Ãµes personalizadas, beat lease, beat exclusivo, type beat, instrumental sob encomenda e pacotes de beats."],
-      ["Designers", "Criam capas de single, capas de Ã¡lbum, identidade visual de lanÃ§amento, artes para redes sociais, banners e materiais promocionais."],
-      ["Produtores Musicais", "Atuam com produÃ§Ã£o, direÃ§Ã£o musical, mixagem, masterizaÃ§Ã£o, gravaÃ§Ã£o guiada, direÃ§Ã£o vocal e finalizaÃ§Ã£o de faixa."],
-      ["Curadores", "Ajudam no posicionamento em playlists, canais, blogs, pÃ¡ginas, comunidades musicais, feedback profissional e anÃ¡lise de lanÃ§amento."],
-      ["Marketing Musical", "Planejam lanÃ§amento, trÃ¡fego, divulgaÃ§Ã£o em redes sociais, estratÃ©gia de conteÃºdo, posicionamento artÃ­stico e anÃ¡lise de pÃºblico."],
+      ["Beatmakers", "Vendam beats, instrumentais, licenças musicais, produções personalizadas, beat lease, beat exclusivo, type beat, instrumental sob encomenda e pacotes de beats."],
+      ["Designers", "Criam capas de single, capas de álbum, identidade visual de lançamento, artes para redes sociais, banners e materiais promocionais."],
+      ["Produtores Musicais", "Atuam com produção, direção musical, mixagem, masterização, gravação guiada, direção vocal e finalização de faixa."],
+      ["Curadores", "Ajudam no posicionamento em playlists, canais, blogs, páginas, comunidades musicais, feedback profissional e análise de lançamento."],
+      ["Marketing Musical", "Planejam lançamento, tráfego, divulgação em redes sociais, estratégia de conteúdo, posicionamento artístico e análise de público."],
     ],
   },
   "como-funciona": {
     eyebrow: "Fluxo",
     title: "Como funciona a ANSEND",
-    intro: "O usuÃ¡rio entra com uma ideia, letra, demo, mÃºsica pronta, imagem, objetivo ou necessidade. A NEXO IA transforma isso em um caminho de execuÃ§Ã£o.",
+    intro: "O usuário entra com uma ideia, letra, demo, música pronta, imagem, objetivo ou necessidade. A NEXO IA transforma isso em um caminho de execução.",
     steps: [
-      ["1", "O artista entra com uma ideia", "Exemplos: mÃºsica pronta para lanÃ§ar, letra precisando de beat, single para divulgar, capa profissional ou lanÃ§amento completo."],
-      ["2", "A NEXO IA analisa o objetivo", "A IA identifica etapas como produÃ§Ã£o, beat, mixagem, masterizaÃ§Ã£o, capa, curadoria, marketing, divulgaÃ§Ã£o e combo ideal."],
-      ["3", "A plataforma recomenda profissionais", "A ANSEND recomenda profissionais compatÃ­veis com estilo musical, orÃ§amento, objetivo e tipo de serviÃ§o."],
-      ["4", "O usuÃ¡rio contrata com seguranÃ§a", "A contrataÃ§Ã£o fica registrada na plataforma, com pagamento protegido, histÃ³rico de pedido e suporte."],
-      ["5", "O profissional entrega o serviÃ§o", "A entrega acontece com prazo, descriÃ§Ã£o, arquivos e revisÃµes combinadas."],
-      ["6", "O usuÃ¡rio avalia", "ApÃ³s a entrega, o artista avalia o profissional e fortalece a reputaÃ§Ã£o dentro da ANSEND."],
+      ["1", "O artista entra com uma ideia", "Exemplos: música pronta para lançar, letra precisando de beat, single para divulgar, capa profissional ou lançamento completo."],
+      ["2", "A NEXO IA analisa o objetivo", "A IA identifica etapas como produção, beat, mixagem, masterização, capa, curadoria, marketing, divulgação e combo ideal."],
+      ["3", "A plataforma recomenda profissionais", "A ANSEND recomenda profissionais compatíveis com estilo musical, orçamento, objetivo e tipo de serviço."],
+      ["4", "O usuário contrata com segurança", "A contratação fica registrada na plataforma, com pagamento protegido, histórico de pedido e suporte."],
+      ["5", "O profissional entrega o serviço", "A entrega acontece com prazo, descrição, arquivos e revisões combinadas."],
+      ["6", "O usuário avalia", "Após a entrega, o artista avalia o profissional e fortalece a reputação dentro da ANSEND."],
     ],
   },
   "central-legal": {
     eyebrow: "Legal",
     title: "Central Legal",
-    intro: "Documentos jurÃ­dicos e regulatÃ³rios reunidos de forma clara, sem parecer burocrÃ¡tico.",
+    intro: "Documentos jurídicos e regulatórios reunidos de forma clara, sem parecer burocrático.",
     cards: [
-      ["Termos de Uso", "Regras gerais para utilizaÃ§Ã£o da ANSEND."],
-      ["PolÃ­tica de Privacidade", "Tratamento de dados pessoais, conta, navegaÃ§Ã£o e NEXO IA."],
-      ["PolÃ­tica de Cookies", "Cookies essenciais, preferÃªncias, analytics e tecnologias semelhantes."],
-      ["Termos de LicenÃ§a Musical", "Beats, licenÃ§as, serviÃ§os personalizados, exclusividade e direitos de uso."],
+      ["Termos de Uso", "Regras gerais para utilização da ANSEND."],
+      ["Política de Privacidade", "Tratamento de dados pessoais, conta, navegação e NEXO IA."],
+      ["Política de Cookies", "Cookies essenciais, preferências, analytics e tecnologias semelhantes."],
+      ["Termos de Licença Musical", "Beats, licenças, serviços personalizados, exclusividade e direitos de uso."],
       ["Pagamentos e Reembolsos", "Pagamento protegido, taxas, cancelamentos, disputas e reembolsos."],
-      ["Direitos Autorais", "Responsabilidade sobre beats, samples, capas, letras, demos, imagens e portfÃ³lios."],
-      ["Diretrizes para Profissionais", "Regras para quem vende serviÃ§os dentro da ANSEND."],
-      ["Diretrizes para Artistas", "OrientaÃ§Ãµes para quem contrata serviÃ§os dentro da ANSEND."],
+      ["Direitos Autorais", "Responsabilidade sobre beats, samples, capas, letras, demos, imagens e portfólios."],
+      ["Diretrizes para Profissionais", "Regras para quem vende serviços dentro da ANSEND."],
+      ["Diretrizes para Artistas", "Orientações para quem contrata serviços dentro da ANSEND."],
     ],
   },
   "termos-de-uso": {
     eyebrow: "Termos",
     title: "Termos de Uso",
-    intro: "A ANSEND Ã© uma plataforma digital que conecta artistas, criadores e profissionais da mÃºsica, facilitando contrataÃ§Ã£o de serviÃ§os musicais, recomendaÃ§Ãµes por inteligÃªncia artificial, organizaÃ§Ã£o de projetos e intermediaÃ§Ã£o de pagamentos.",
-    bullets: ["O que Ã© a ANSEND", "Quem pode usar", "Cadastro de conta", "Conta de artista", "Conta de profissional", "Uso da NEXO IA", "ContrataÃ§Ã£o de serviÃ§os", "Pagamentos", "Entregas", "AvaliaÃ§Ãµes", "ComunicaÃ§Ã£o entre usuÃ¡rios", "Condutas proibidas", "SuspensÃ£o ou remoÃ§Ã£o de conta", "LimitaÃ§Ã£o de responsabilidade", "AtualizaÃ§Ãµes dos termos", "Canal de suporte"],
-    note: "Ao utilizar a ANSEND, o usuÃ¡rio concorda em usar a plataforma de forma Ã©tica, segura e responsÃ¡vel, respeitando direitos de usuÃ¡rios, profissionais, artistas e terceiros.",
+    intro: "A ANSEND é uma plataforma digital que conecta artistas, criadores e profissionais da música, facilitando contratação de serviços musicais, recomendações por inteligência artificial, organização de projetos e intermediação de pagamentos.",
+    bullets: ["O que é a ANSEND", "Quem pode usar", "Cadastro de conta", "Conta de artista", "Conta de profissional", "Uso da NEXO IA", "Contratação de serviços", "Pagamentos", "Entregas", "Avaliações", "Comunicação entre usuários", "Condutas proibidas", "Suspensão ou remoção de conta", "Limitação de responsabilidade", "Atualizações dos termos", "Canal de suporte"],
+    note: "Ao utilizar a ANSEND, o usuário concorda em usar a plataforma de forma ética, segura e responsável, respeitando direitos de usuários, profissionais, artistas e terceiros.",
   },
   "politica-de-privacidade": {
     eyebrow: "Privacidade",
-    title: "PolÃ­tica de Privacidade",
-    intro: "A ANSEND coleta, utiliza, armazena e protege dados para operar a plataforma, melhorar recomendaÃ§Ãµes e apoiar contrataÃ§Ãµes seguras.",
+    title: "Política de Privacidade",
+    intro: "A ANSEND coleta, utiliza, armazena e protege dados para operar a plataforma, melhorar recomendações e apoiar contratações seguras.",
     sections: [
-      ["Dados coletados", "Nome, e-mail, telefone, foto de perfil, tipo de conta, informaÃ§Ãµes de cadastro, pagamento, histÃ³rico de pedidos, mensagens, briefings, avaliaÃ§Ãµes, preferÃªncias, dados tÃ©cnicos e dados enviados para a NEXO IA."],
-      ["Dados enviados para a NEXO IA", "Ideias musicais, letras, demos, mÃºsicas prontas, objetivos de lanÃ§amento, referÃªncias visuais, briefings e preferÃªncias musicais."],
-      ["Direitos do usuÃ¡rio", "Solicitar acesso, corrigir dados, excluir conta, remover informaÃ§Ãµes, alterar preferÃªncias e entrar em contato com suporte."],
+      ["Dados coletados", "Nome, e-mail, telefone, foto de perfil, tipo de conta, informações de cadastro, pagamento, histórico de pedidos, mensagens, briefings, avaliações, preferências, dados técnicos e dados enviados para a NEXO IA."],
+      ["Dados enviados para a NEXO IA", "Ideias musicais, letras, demos, músicas prontas, objetivos de lançamento, referências visuais, briefings e preferências musicais."],
+      ["Direitos do usuário", "Solicitar acesso, corrigir dados, excluir conta, remover informações, alterar preferências e entrar em contato com suporte."],
     ],
   },
   "politica-de-cookies": {
     eyebrow: "Cookies",
-    title: "PolÃ­tica de Cookies",
-    intro: "A ANSEND utiliza cookies e tecnologias semelhantes para manter a plataforma funcionando, lembrar preferÃªncias e analisar desempenho.",
+    title: "Política de Cookies",
+    intro: "A ANSEND utiliza cookies e tecnologias semelhantes para manter a plataforma funcionando, lembrar preferências e analisar desempenho.",
     sections: [
-      ["Cookies essenciais", "Login, seguranÃ§a, sessÃ£o e funcionamento bÃ¡sico."],
-      ["Cookies de preferÃªncia", "Idioma, tema, regiÃ£o e preferÃªncias da conta."],
-      ["Cookies de analytics", "Uso da plataforma, pÃ¡ginas acessadas e melhorias de experiÃªncia."],
-      ["Cookies de marketing", "Campanhas, anÃºncios, remarketing e mensuraÃ§Ã£o de trÃ¡fego quando ferramentas como Meta Pixel, Google Analytics ou TikTok Pixel forem utilizadas."],
+      ["Cookies essenciais", "Login, segurança, sessão e funcionamento básico."],
+      ["Cookies de preferência", "Idioma, tema, região e preferências da conta."],
+      ["Cookies de analytics", "Uso da plataforma, páginas acessadas e melhorias de experiência."],
+      ["Cookies de marketing", "Campanhas, anúncios, remarketing e mensuração de tráfego quando ferramentas como Meta Pixel, Google Analytics ou TikTok Pixel forem utilizadas."],
     ],
   },
   "termos-de-licenca-musical": {
-    eyebrow: "LicenÃ§as",
-    title: "Termos de LicenÃ§a Musical",
-    intro: "Define regras para uso de beats, instrumentais, produÃ§Ãµes, capas, artes e serviÃ§os musicais contratados.",
+    eyebrow: "Licenças",
+    title: "Termos de Licença Musical",
+    intro: "Define regras para uso de beats, instrumentais, produções, capas, artes e serviços musicais contratados.",
     sections: [
-      ["LicenÃ§a bÃ¡sica", "Uso limitado do beat ou material contratado, com limites de distribuiÃ§Ã£o, monetizaÃ§Ã£o, visualizaÃ§Ãµes, streams ou plataformas definidos pelo profissional."],
-      ["LicenÃ§a premium", "Uso mais amplo, podendo incluir monetizaÃ§Ã£o, distribuiÃ§Ã£o em plataformas digitais e maior volume de uso."],
-      ["LicenÃ§a exclusiva", "Direitos mais amplos quando disponÃ­vel. ApÃ³s venda exclusiva, o profissional nÃ£o deve vender o mesmo beat como exclusivo para outros usuÃ¡rios."],
-      ["ServiÃ§o personalizado", "Beat sob encomenda, capa, identidade visual, mixagem, masterizaÃ§Ã£o ou campanha com prazo, entregÃ¡veis, revisÃµes e direitos definidos no pedido."],
-      ["Responsabilidades", "O profissional garante que possui direitos sobre o conteÃºdo. O artista respeita os limites da licenÃ§a adquirida."],
+      ["Licença básica", "Uso limitado do beat ou material contratado, com limites de distribuição, monetização, visualizações, streams ou plataformas definidos pelo profissional."],
+      ["Licença premium", "Uso mais amplo, podendo incluir monetização, distribuição em plataformas digitais e maior volume de uso."],
+      ["Licença exclusiva", "Direitos mais amplos quando disponível. Após venda exclusiva, o profissional não deve vender o mesmo beat como exclusivo para outros usuários."],
+      ["Serviço personalizado", "Beat sob encomenda, capa, identidade visual, mixagem, masterização ou campanha com prazo, entregáveis, revisões e direitos definidos no pedido."],
+      ["Responsabilidades", "O profissional garante que possui direitos sobre o conteúdo. O artista respeita os limites da licença adquirida."],
     ],
   },
   "pagamentos-reembolsos": {
     eyebrow: "Pagamentos",
     title: "Pagamentos, Reembolsos e Cancelamentos",
-    intro: "A ANSEND pode atuar como intermediadora, mantendo registro da contrataÃ§Ã£o e oferecendo mais seguranÃ§a para artista e profissional.",
+    intro: "A ANSEND pode atuar como intermediadora, mantendo registro da contratação e oferecendo mais segurança para artista e profissional.",
     sections: [
-      ["LiberaÃ§Ã£o do pagamento", "Pode ocorrer apÃ³s entrega do serviÃ§o, aprovaÃ§Ã£o do artista, fim do prazo de revisÃ£o ou encerramento do pedido."],
-      ["Reembolso", "Pode ser analisado em serviÃ§o nÃ£o entregue, entrega fora do combinado, problema comprovado ou cancelamento antes do inÃ­cio."],
-      ["Casos sem reembolso", "ServiÃ§o aprovado, arquivo digital entregue e usado, mudanÃ§a de ideia apÃ³s inÃ­cio, pedido fora do escopo ou falta de briefing."],
-      ["Disputas", "A ANSEND pode analisar histÃ³rico do pedido, mensagens, briefing, prazo, arquivos entregues e demais informaÃ§Ãµes disponÃ­veis."],
+      ["Liberação do pagamento", "Pode ocorrer após entrega do serviço, aprovação do artista, fim do prazo de revisão ou encerramento do pedido."],
+      ["Reembolso", "Pode ser analisado em serviço não entregue, entrega fora do combinado, problema comprovado ou cancelamento antes do início."],
+      ["Casos sem reembolso", "Serviço aprovado, arquivo digital entregue e usado, mudança de ideia após início, pedido fora do escopo ou falta de briefing."],
+      ["Disputas", "A ANSEND pode analisar histórico do pedido, mensagens, briefing, prazo, arquivos entregues e demais informações disponíveis."],
     ],
   },
   "direitos-autorais": {
     eyebrow: "Direitos",
     title: "Direitos Autorais e Propriedade Intelectual",
-    intro: "O usuÃ¡rio Ã© responsÃ¡vel por garantir que possui os direitos necessÃ¡rios sobre qualquer conteÃºdo enviado, anunciado, vendido, licenciado ou entregue.",
-    bullets: ["Beats", "Samples", "Loops", "Letras", "Demos", "Capas", "Logos", "Artes", "Imagens", "PortfÃ³lios", "Campanhas", "Materiais promocionais"],
-    note: "Ã‰ proibido vender conteÃºdo plagiado, usar samples nÃ£o autorizados, copiar artes, publicar conteÃºdo sem permissÃ£o, fingir autoria ou usar imagem de terceiros sem autorizaÃ§Ã£o. A ANSEND deve possuir canal para denÃºncias.",
+    intro: "O usuário é responsável por garantir que possui os direitos necessários sobre qualquer conteúdo enviado, anunciado, vendido, licenciado ou entregue.",
+    bullets: ["Beats", "Samples", "Loops", "Letras", "Demos", "Capas", "Logos", "Artes", "Imagens", "Portfólios", "Campanhas", "Materiais promocionais"],
+    note: "É proibido vender conteúdo plagiado, usar samples não autorizados, copiar artes, publicar conteúdo sem permissão, fingir autoria ou usar imagem de terceiros sem autorização. A ANSEND deve possuir canal para denúncias.",
   },
   seguranca: {
-    eyebrow: "ConfianÃ§a",
-    title: "SeguranÃ§a na ANSEND",
-    intro: "Comprar e vender dentro da ANSEND ajuda a proteger artistas e profissionais com histÃ³rico, reputaÃ§Ã£o, avaliaÃ§Ãµes e mais seguranÃ§a em cada contrataÃ§Ã£o.",
-    bullets: ["Pagamento protegido", "HistÃ³rico de pedidos", "AvaliaÃ§Ãµes reais", "Profissionais verificados", "Suporte", "MediaÃ§Ã£o", "Registro de entrega", "ReputaÃ§Ã£o dentro da plataforma"],
+    eyebrow: "Confiança",
+    title: "Segurança na ANSEND",
+    intro: "Comprar e vender dentro da ANSEND ajuda a proteger artistas e profissionais com histórico, reputação, avaliações e mais segurança em cada contratação.",
+    bullets: ["Pagamento protegido", "Histórico de pedidos", "Avaliações reais", "Profissionais verificados", "Suporte", "Mediação", "Registro de entrega", "Reputação dentro da plataforma"],
   },
   "diretrizes-profissionais": {
     eyebrow: "Profissionais",
     title: "Diretrizes para Profissionais",
-    intro: "Regras para quem vende serviÃ§os dentro da ANSEND.",
-    bullets: ["Cadastrar informaÃ§Ãµes verdadeiras", "Publicar portfÃ³lio prÃ³prio", "Definir preÃ§os com clareza", "Informar prazos reais", "Entregar conforme combinado", "Responder clientes com profissionalismo", "Respeitar direitos autorais", "NÃ£o vender conteÃºdo sem autorizaÃ§Ã£o", "NÃ£o tentar aplicar golpes", "NÃ£o manipular avaliaÃ§Ãµes"],
-    note: "Profissionais ganham reputaÃ§Ã£o, avaliaÃ§Ãµes, histÃ³rico, visibilidade, melhor posicionamento nas recomendaÃ§Ãµes da NEXO IA e mais seguranÃ§a no recebimento.",
+    intro: "Regras para quem vende serviços dentro da ANSEND.",
+    bullets: ["Cadastrar informações verdadeiras", "Publicar portfólio próprio", "Definir preços com clareza", "Informar prazos reais", "Entregar conforme combinado", "Responder clientes com profissionalismo", "Respeitar direitos autorais", "Não vender conteúdo sem autorização", "Não tentar aplicar golpes", "Não manipular avaliações"],
+    note: "Profissionais ganham reputação, avaliações, histórico, visibilidade, melhor posicionamento nas recomendações da NEXO IA e mais segurança no recebimento.",
   },
   "diretrizes-artistas": {
     eyebrow: "Artistas",
     title: "Diretrizes para Artistas",
-    intro: "OrientaÃ§Ãµes para contratar serviÃ§os dentro da ANSEND com clareza.",
-    bullets: ["Criar briefings claros", "Informar referÃªncias", "Respeitar o prazo do profissional", "Solicitar revisÃµes dentro do escopo", "Aprovar entregas corretamente", "Avaliar com honestidade", "Evitar negociaÃ§Ãµes inseguras fora da plataforma"],
-    note: "A NEXO IA ajuda a entender o prÃ³ximo passo da mÃºsica, criar plano de lanÃ§amento, encontrar profissionais, montar combos, estimar orÃ§amento e organizar prioridades.",
+    intro: "Orientações para contratar serviços dentro da ANSEND com clareza.",
+    bullets: ["Criar briefings claros", "Informar referências", "Respeitar o prazo do profissional", "Solicitar revisões dentro do escopo", "Aprovar entregas corretamente", "Avaliar com honestidade", "Evitar negociações inseguras fora da plataforma"],
+    note: "A NEXO IA ajuda a entender o próximo passo da música, criar plano de lançamento, encontrar profissionais, montar combos, estimar orçamento e organizar prioridades.",
   },
   suporte: {
     eyebrow: "Suporte",
     title: "Suporte ANSEND",
-    intro: "Ãrea para resolver dÃºvidas e problemas com conta, pedido, entrega, pagamento, licenÃ§a, NEXO IA ou denÃºncias.",
+    intro: "Área para resolver dúvidas e problemas com conta, pedido, entrega, pagamento, licença, NEXO IA ou denúncias.",
     cards: [
       ["Pagamento", "Problemas com pagamento, reembolso, taxa ou checkout."],
-      ["Entrega", "Problemas com prazo, arquivos, revisÃµes ou aprovaÃ§Ã£o."],
-      ["Profissional ou artista", "Conflitos, comunicaÃ§Ã£o, avaliaÃ§Ãµes e mediaÃ§Ã£o."],
-      ["LicenÃ§as", "DÃºvidas sobre uso, limites, exclusividade e arquivos."],
-      ["NEXO IA", "DÃºvidas sobre diagnÃ³stico, recomendaÃ§Ãµes e mapa de lanÃ§amento."],
-      ["DenÃºncias", "ConteÃºdo irregular, plÃ¡gio, direitos autorais ou uso indevido de imagem."],
+      ["Entrega", "Problemas com prazo, arquivos, revisões ou aprovação."],
+      ["Profissional ou artista", "Conflitos, comunicação, avaliações e mediação."],
+      ["Licenças", "Dúvidas sobre uso, limites, exclusividade e arquivos."],
+      ["NEXO IA", "Dúvidas sobre diagnóstico, recomendações e mapa de lançamento."],
+      ["Denúncias", "Conteúdo irregular, plágio, direitos autorais ou uso indevido de imagem."],
     ],
-    note: "A Central de Suporte deve conter busca, cards de categorias, perguntas rÃ¡pidas, formulÃ¡rio de contato, status do atendimento e link para abrir chamado.",
+    note: "A Central de Suporte deve conter busca, cards de categorias, perguntas rápidas, formulário de contato, status do atendimento e link para abrir chamado.",
   },
 };
 
@@ -3490,12 +3492,12 @@ function inferLaunchPlan(prompt) {
   const hasDemo = /demo|gravada|voz|previa/.test(text);
   const wantsMarketing = /divulg|marketing|ads|trafego|playlist|curadoria/.test(text);
   const genre = /drill/.test(text) ? "Drill" : /funk/.test(text) ? "Funk" : /r&b|rnb/.test(text) ? "R&B" : /boom bap/.test(text) ? "Boom Bap" : "Trap";
-  const budget = wantsMarketing ? "R$ 800 + campanha" : wantsRelease ? "R$ 1.200 lanÃ§amento" : "R$ 500 inicial";
+  const budget = wantsMarketing ? "R$ 800 + campanha" : wantsRelease ? "R$ 1.200 lançamento" : "R$ 500 inicial";
   const combo = [
     hasLyrics && !hasDemo ? "Beatmaker + produtor vocal" : "Produtor musical",
     "Designer de capa",
-    wantsRelease ? "DistribuiÃ§Ã£o + curadoria" : "Curadoria ANSEND",
-    wantsMarketing ? "Marketing musical + ADS" : "Plano de divulgaÃ§Ã£o orgÃ¢nica",
+    wantsRelease ? "Distribuição + curadoria" : "Curadoria ANSEND",
+    wantsMarketing ? "Marketing musical + ADS" : "Plano de divulgação orgânica",
   ];
   return {
     prompt,
@@ -3504,17 +3506,17 @@ function inferLaunchPlan(prompt) {
     budget,
     combo: combo.join(" / "),
     match: [
-      `Beatmaker ideal: ${genre} com estÃ©tica premium`,
-      "Designer para capa: visual dark/laranja de lanÃ§amento",
-      hasDemo ? "Produtor/mixagem: finalizar demo e master" : "Produtor/mixagem: guia de gravaÃ§Ã£o e mix",
-      wantsMarketing ? "Curador + marketing: playlists, criativos e trÃ¡fego" : "Curador: encaixe em playlists e referÃªncias",
+      `Beatmaker ideal: ${genre} com estética premium`,
+      "Designer para capa: visual dark/laranja de lançamento",
+      hasDemo ? "Produtor/mixagem: finalizar demo e master" : "Produtor/mixagem: guia de gravação e mix",
+      wantsMarketing ? "Curador + marketing: playlists, criativos e tráfego" : "Curador: encaixe em playlists e referências",
     ],
     steps: [
-      { title: "ProduÃ§Ã£o", detail: hasLyrics ? "Escolher beatmaker e fechar estrutura da letra" : "Definir direÃ§Ã£o sonora e referÃªncia" },
-      { title: "Identidade", detail: "Criar capa e peÃ§as para redes" },
-      { title: "LanÃ§amento", detail: wantsRelease ? "Preparar distribuiÃ§Ã£o e licenÃ§as" : "Organizar arquivos e cronograma" },
-      { title: "DivulgaÃ§Ã£o", detail: wantsMarketing ? "Ativar curadoria, marketing musical e ADS" : "Montar curadoria e calendÃ¡rio de posts" },
-      { title: "Crescimento", detail: "Analisar resultado e prÃ³ximos passos" },
+      { title: "Produção", detail: hasLyrics ? "Escolher beatmaker e fechar estrutura da letra" : "Definir direção sonora e referência" },
+      { title: "Identidade", detail: "Criar capa e peças para redes" },
+      { title: "Lançamento", detail: wantsRelease ? "Preparar distribuição e licenças" : "Organizar arquivos e cronograma" },
+      { title: "Divulgação", detail: wantsMarketing ? "Ativar curadoria, marketing musical e ADS" : "Montar curadoria e calendário de posts" },
+      { title: "Crescimento", detail: "Analisar resultado e próximos passos" },
     ],
   };
 }
@@ -3707,7 +3709,15 @@ function applyRoleDashboard() {
 }
 
 function persistCatalogItems() {
-  // Catalog/community records are persisted in Supabase, never in localStorage.
+  // Save locally-created items to localStorage for persistence across reloads
+  const localItems = appState.ownedCatalogItems.filter(item => String(item.id).startsWith("local-") || !appState.authUser);
+  if (localItems.length > 0) {
+    try {
+      localStorage.setItem("ansend-local-catalog", JSON.stringify(localItems));
+    } catch (e) {
+      console.warn("Could not persist local catalog items", e);
+    }
+  }
 }
 
 function catalogOwnerId() {
@@ -3837,8 +3847,16 @@ async function loadPublicPlatformData() {
 }
 
 async function loadOwnedCatalogItems() {
+  // Always load local items from localStorage first
+  let localItems = [];
+  try {
+    const stored = localStorage.getItem("ansend-local-catalog");
+    if (stored) localItems = JSON.parse(stored) || [];
+  } catch (e) { /* ignore */ }
+
   if (!supabaseClient || !appState.authUser) {
-    appState.ownedCatalogItems = [];
+    // No Supabase auth: use only local items
+    appState.ownedCatalogItems = dedupeById(localItems);
     syncCatalogCompatibilityState();
     return;
   }
@@ -3848,15 +3866,24 @@ async function loadOwnedCatalogItems() {
   ]);
   if (catalogResult.error) console.error("Error loading owned catalog", catalogResult.error);
   if (beatsResult.error) console.error("Error loading owned beats", beatsResult.error);
-  appState.ownedCatalogItems = [
+  const supabaseItems = [
     ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
     ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
-  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  ];
+  // Merge Supabase items with local items (Supabase takes priority for duplicates)
+  appState.ownedCatalogItems = dedupeById([...supabaseItems, ...localItems])
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
 }
 
 async function loadCatalogItems() {
   await Promise.all([loadPublicPlatformData(), loadOwnedCatalogItems()]);
+  // Merge any locally published items into the public catalog list
+  const localPublished = appState.ownedCatalogItems.filter(item => item.status === "published");
+  if (localPublished.length > 0) {
+    appState.publicCatalogItems = dedupeById([...appState.publicCatalogItems, ...localPublished])
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }
 }
 
 function catalogPayloadFromForm(form) {
@@ -3999,18 +4026,18 @@ function accountRoleLabel(role = activeProfile()?.account_role) {
 
 function accountGreeting() {
   const profile = activeProfile();
-  if (!profile?.account_role) return "Sua seleÃ§Ã£o diÃ¡ria de playlists, beats e produtores.";
+  if (!profile?.account_role) return "Sua seleção diária de playlists, beats e produtores.";
   const label = accountRoleLabel(profile.account_role);
   const map = {
-    produtor: "Painel adaptado para publicar beats, vender licenÃ§as e acompanhar catÃ¡logo.",
+    produtor: "Painel adaptado para publicar beats, vender licenças e acompanhar catálogo.",
     curador: "Playlists e descobertas organizadas para sua curadoria.",
-    artista: "Beats, licenÃ§as e produtores priorizados para seu prÃ³ximo lanÃ§amento.",
-    designer: "ReferÃªncias, capas e catÃ¡logos para apoiar lanÃ§amentos musicais.",
-    beatmaker: "CatÃ¡logos e referÃªncias para criar, colaborar e vender beats.",
-    manager: "Compras, artistas e licenÃ§as reunidas para gerenciar lanÃ§amentos.",
-    selo: "CatÃ¡logos, produtores e licenÃ§as prontos para operaÃ§Ã£o de selo.",
+    artista: "Beats, licenças e produtores priorizados para seu próximo lançamento.",
+    designer: "Referências, capas e catálogos para apoiar lançamentos musicais.",
+    beatmaker: "Catálogos e referências para criar, colaborar e vender beats.",
+    manager: "Compras, artistas e licenças reunidas para gerenciar lançamentos.",
+    selo: "Catálogos, produtores e licenças prontos para operação de selo.",
   };
-  return map[profile.account_role] || `ExperiÃªncia adaptada para ${label}.`;
+  return map[profile.account_role] || `Experiência adaptada para ${label}.`;
 }
 
 function accountRoleLabel(role = activeProfile()?.account_role) {
@@ -4354,9 +4381,9 @@ function openProfileEditor() {
         <span>ANSEND</span>
         <h2>Perfis</h2>
       </div>
-      <nav aria-label="SeÃ§Ãµes do editor">
+      <nav aria-label="Seções do editor">
         <button type="button" class="profile-editor-tab is-active" data-action="profile-editor-tab" data-tab="main">Perfil principal</button>
-        <button type="button" class="profile-editor-tab" data-action="profile-editor-tab" data-tab="appearance">AparÃªncia</button>
+        <button type="button" class="profile-editor-tab" data-action="profile-editor-tab" data-tab="appearance">Aparência</button>
         <button type="button" class="profile-editor-tab" data-action="profile-editor-tab" data-tab="links">Links</button>
       </nav>
     </header>
@@ -4383,16 +4410,16 @@ function openProfileEditor() {
             </div>
 
             <div class="profile-editor-field-grid">
-              <label>Nome exibido<input name="display_name" value="${htmlEscape(display.name)}" placeholder="Seu nome pÃºblico"></label>
+              <label>Nome exibido<input name="display_name" value="${htmlEscape(display.name)}" placeholder="Seu nome público"></label>
               <label>Username<input name="username" value="${htmlEscape(display.username)}" placeholder="seu-username"></label>
-              <label>FunÃ§Ã£o<select name="account_role">${roleOptions}</select></label>
+              <label>Função<select name="account_role">${roleOptions}</select></label>
               <label>Nome completo<input name="full_name" value="${htmlEscape(display.fullName)}" placeholder="Seu nome"></label>
-              <label class="is-wide">Bio<textarea name="bio" rows="5" maxlength="300" placeholder="Conte o que vocÃª faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea><small><span data-bio-count>${String(profile?.bio || "").length}</span>/300</small></label>
+              <label class="is-wide">Bio<textarea name="bio" rows="5" maxlength="300" placeholder="Conte o que você faz e como pode ajudar artistas.">${htmlEscape(profile?.bio || "")}</textarea><small><span data-bio-count>${String(profile?.bio || "").length}</span>/300</small></label>
             </div>
           </div>
 
-          <aside class="profile-editor-preview" aria-label="PrÃ©via do perfil">
-            <span>PrÃ©via</span>
+          <aside class="profile-editor-preview" aria-label="Prévia do perfil">
+            <span>Prévia</span>
             <article>
               <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}"></div>
               ${profileAvatarMarkup(display, "profile-preview-avatar")}
@@ -4400,7 +4427,7 @@ function openProfileEditor() {
                 <strong data-profile-preview-name>${htmlEscape(display.name)}</strong>
                 <small data-profile-preview-handle>${htmlEscape(display.handle || "@username")}</small>
                 <em data-profile-preview-role>${htmlEscape(display.roleLabel)}</em>
-                <p data-profile-preview-bio>${htmlEscape(display.bio || "Sua bio aparecerÃ¡ aqui.")}</p>
+                <p data-profile-preview-bio>${htmlEscape(display.bio || "Sua bio aparecerá aqui.")}</p>
                 <button type="button">Ver perfil musical</button>
               </div>
             </article>
@@ -4413,7 +4440,7 @@ function openProfileEditor() {
           <div>
             <span>Identidade visual</span>
             <h3>Avatar e banner</h3>
-            <p>Use imagens reais do seu perfil para criar uma presenÃ§a musical reconhecÃ­vel.</p>
+            <p>Use imagens reais do seu perfil para criar uma presença musical reconhecível.</p>
           </div>
           <div class="profile-editor-appearance-actions">
             <button type="button" data-action="profile-image-picker-open" data-image-type="avatar"><i data-lucide="user-round"></i><span><strong>Alterar avatar</strong><small>Imagem quadrada</small></span></button>
@@ -4425,7 +4452,7 @@ function openProfileEditor() {
 
       <section class="profile-editor-panel" data-profile-panel="links">
         <div class="profile-editor-links">
-          <div><span>PresenÃ§a digital</span><h3>Links sociais</h3><p>Adicione apenas canais reais que deseja mostrar no perfil.</p></div>
+          <div><span>Presença digital</span><h3>Links sociais</h3><p>Adicione apenas canais reais que deseja mostrar no perfil.</p></div>
           <div class="profile-editor-field-grid">
             <label>Instagram<input name="instagram_url" value="${htmlEscape(profile?.instagram_url || profile?.instagram || "")}" placeholder="https://instagram.com/..."></label>
             <label>YouTube<input name="youtube_url" value="${htmlEscape(profile?.youtube_url || profile?.youtube || "")}" placeholder="https://youtube.com/@..."></label>
@@ -4443,10 +4470,10 @@ function openProfileEditor() {
     <input name="remove_banner" type="hidden" value="false">
 
     <footer class="profile-editor-footer">
-      <span>Revise a prÃ©via antes de salvar.</span>
+      <span>Revise a prévia antes de salvar.</span>
       <div>
         <button type="button" data-action="close-modal">Cancelar</button>
-        <button type="submit" class="is-primary">Salvar alteraÃ§Ãµes</button>
+        <button type="submit" class="is-primary">Salvar alterações</button>
       </div>
     </footer>
 
@@ -4480,7 +4507,7 @@ function syncProfileEditorPreview(form = profileEditorForm()) {
   const name = form.elements.display_name?.value.trim() || "Seu nome";
   const username = sanitizeHandle(form.elements.username?.value || "");
   const role = accountRoleLabel(form.elements.account_role?.value || "artista");
-  const bio = form.elements.bio?.value.trim() || "Sua bio aparecerÃ¡ aqui.";
+  const bio = form.elements.bio?.value.trim() || "Sua bio aparecerá aqui.";
   const count = form.querySelector("[data-bio-count]");
   if (count) count.textContent = String(form.elements.bio?.value.length || 0);
   const namePreview = form.querySelector("[data-profile-preview-name]");
@@ -4507,7 +4534,7 @@ function openProfileImagePicker(type = "avatar") {
   const src = type === "avatar" ? source?.getAttribute("src") : String(background || "").replace(/^url\(["']?|["']?\)$/g, "");
   if (preview) {
     preview.innerHTML = src
-      ? `<img src="${src}" alt="PrÃ©via da imagem selecionada">`
+      ? `<img src="${src}" alt="Prévia da imagem selecionada">`
       : `<i data-lucide="image"></i><span>Nenhuma imagem selecionada</span>`;
   }
   lucide.createIcons();
@@ -4571,11 +4598,11 @@ async function applyProfileImageFile(file, type) {
   } else {
     form.querySelectorAll(".profile-edit-avatar, .profile-preview-avatar").forEach((avatar) => {
       avatar.classList.remove("is-initials");
-      avatar.innerHTML = `<img src="${src}" alt="PrÃ©via da foto do perfil">`;
+      avatar.innerHTML = `<img src="${src}" alt="Prévia da foto do perfil">`;
     });
   }
   const pickerPreview = form.querySelector("[data-image-picker-preview]");
-  if (pickerPreview) pickerPreview.innerHTML = `<img src="${src}" alt="PrÃ©via da imagem selecionada">`;
+  if (pickerPreview) pickerPreview.innerHTML = `<img src="${src}" alt="Prévia da imagem selecionada">`;
   closeProfileImagePicker();
 }
 
@@ -4619,7 +4646,7 @@ async function saveProfileEdit(form) {
 }
 
 async function upsertProfile(profile) {
-  if (!supabaseClient || !appState.authUser) return { error: new Error("Supabase nÃ£o configurado") };
+  if (!supabaseClient || !appState.authUser) return { error: new Error("Supabase não configurado") };
   const payload = {
     id: appState.authUser.id,
     email: appState.authUser.email || profile.email,
@@ -4650,7 +4677,7 @@ async function loadProfile(user) {
   if (!supabaseClient || !user) return;
   const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (error) {
-    showToast("NÃ£o consegui carregar seu perfil do Supabase", "triangle-alert");
+    showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
     return;
   }
   const pending = JSON.parse(localStorage.getItem(pendingProfileKey(user.id)) || "null");
@@ -4786,12 +4813,12 @@ function preferredBeats(limit = 8) {
 function personalizedPlaylists() {
   const selected = preferredGenres();
   const names = {
-    Trap: ["Trap na Ãrea", "808 para verso", "Noite de Trap"],
+    Trap: ["Trap na Área", "808 para verso", "Noite de Trap"],
     Drill: ["Drill Brutal", "Rua & Hi-hat", "Drill de Luxo"],
-    Funk: ["Funk de EstÃºdio", "Baile Premium", "Funk Type"],
+    Funk: ["Funk de Estúdio", "Baile Premium", "Funk Type"],
     "R&B": ["R&B Noturno", "Voz & Melodia", "Slow Sessions"],
-    "Boom Bap": ["Boom Bap Sujo", "Sample Room", "ClÃ¡ssicos de Rua"],
-    "Type Beat": ["Type Beats em Alta", "ReferÃªncias do Momento", "Flow Pronto"],
+    "Boom Bap": ["Boom Bap Sujo", "Sample Room", "Clássicos de Rua"],
+    "Type Beat": ["Type Beats em Alta", "Referências do Momento", "Flow Pronto"],
   };
   const result = selected.flatMap((genre, index) => {
     const pack = names[genre] || [`${genre} em alta`, `${genre} selecionado`];
@@ -4882,7 +4909,7 @@ function applyFeedPersonalization() {
 
   if (firstTitle) firstTitle.innerHTML = `<i data-lucide="list-music"></i>Playlists para seu estilo`;
   if (firstSubtitle) firstSubtitle.textContent = `Curadoria baseada em ${selected.join(", ")}`;
-  if (exploreTitle) exploreTitle.innerHTML = `<i data-lucide="sparkles"></i>Beats escolhidos pra vocÃª`;
+  if (exploreTitle) exploreTitle.innerHTML = `<i data-lucide="sparkles"></i>Beats escolhidos pra você`;
   if (exploreSubtitle) exploreSubtitle.textContent = profile.account_role ? `Adaptado para ${accountRoleLabel(profile.account_role).toLowerCase()}` : profile.goalLabel ? `Foco: ${profile.goalLabel.toLowerCase()}` : "Descoberta guiada pelo seu gosto";
 
   const playlistRow = document.querySelector("#playlistRow");
@@ -4983,7 +5010,7 @@ class SpotifyQuizEngine {
           <div class="spotify-progress-bar" style="width: ${progress}%"></div>
         </div>
         <button class="spotify-quiz-skip" type="button">
-          ${this.config.isOnboarding ? "Pular" : "Usar padrÃ£o"}
+          ${this.config.isOnboarding ? "Pular" : "Usar padrão"}
         </button>
       </div>
       <div class="spotify-quiz-body">
@@ -5439,7 +5466,7 @@ function emptyState(icon, title, text, route = "explorar") {
     ? "Cadastrar agora"
     : route === "vendedor"
       ? "Criar conta profissional"
-      : "Explorar catÃ¡logo";
+      : "Explorar catálogo";
   return `<section class="empty-state"><i data-lucide="${icon}"></i><h2>${title}</h2><p>${text}</p><a href="#${route}" data-route="${route}">${label}</a></section>`;
 }
 
@@ -5473,7 +5500,7 @@ function renderExplore() {
 function renderFavorites() {
   const items = searchableBeatPool().filter((item) => appState.favorites.has(item.id));
   const favoritesGrid = `<section class="catalog-section favorites-section">${gridView(items)}</section>`;
-  appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista estÃ¡ vazia", "Favorite beats no feed para encontrÃ¡-los aqui.")}`;
+  appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
 }
 
 function renderPurchases() {
@@ -5525,7 +5552,7 @@ function renderCart() {
   const hasItems = appState.cart.length > 0;
   
   if (!hasItems) {
-    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho estÃ¡ vazio", "Adicione beats ou serviÃ§os ao carrinho para finalizar seu pedido.")}`;
+    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho está vazio", "Adicione beats ou serviços ao carrinho para finalizar seu pedido.")}`;
     return;
   }
 
@@ -5693,7 +5720,7 @@ function renderInstitutionalPage(route) {
       ${renderLegalSections(page.sections)}
       ${renderLegalBullets(page.bullets)}
       ${page.note ? `<aside class="legal-note"><i data-lucide="info"></i><p>${page.note}</p></aside>` : ""}
-      <aside class="legal-note legal-warning"><i data-lucide="scale"></i><p>Os textos servem como base estratÃ©gica, estrutural e de produto. Antes da publicaÃ§Ã£o oficial, documentos legais devem ser revisados por um profissional jurÃ­dico.</p></aside>
+      <aside class="legal-note legal-warning"><i data-lucide="scale"></i><p>Os textos servem como base estratégica, estrutural e de produto. Antes da publicação oficial, documentos legais devem ser revisados por um profissional jurídico.</p></aside>
     </section>
   `;
   lucide.createIcons();
@@ -5884,7 +5911,7 @@ function renderProducers() {
       <div class="professional-tabs" aria-label="Categorias de profissionais">
         ${professionalCategories.map(professionalCategorySummary).join("")}
       </div>
-      ${emptyState("users-round", "Nenhum profissional cadastrado", "Crie uma conta profissional para aparecer no diretÃ³rio real da ANSEND.", "vendedor")}
+      ${emptyState("users-round", "Nenhum profissional cadastrado", "Crie uma conta profissional para aparecer no diretório real da ANSEND.", "vendedor")}
     </section>`;
     return;
   }
@@ -6043,13 +6070,13 @@ function renderSettings() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const profileName = profile?.full_name || "Visitante ANSEND";
-  const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta nÃ£o criada";
+  const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
     <div class="settings-profile">${profileAvatarMarkup(display, "settings-avatar")}<div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
-    <label><span><strong>ReproduÃ§Ã£o automÃ¡tica</strong><small>Tocar a prÃ³xima faixa automaticamente.</small></span><input type="checkbox" checked></label>
-    <label><span><strong>NotificaÃ§Ãµes de lanÃ§amentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
-    <label><span><strong>Qualidade de Ã¡udio</strong><small>Defina a qualidade padrÃ£o das prÃ©vias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
-    <label><span><strong>PreferÃªncias musicais</strong><small>RefaÃ§a o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
+    <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
+    <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
+    <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
+    <label><span><strong>Preferências musicais</strong><small>Refaça o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
   </section>`;
 }
 
@@ -6084,15 +6111,15 @@ function validateReleaseStep(step) {
     const musicalKey = form.elements.musical_key?.value?.trim();
     
     if (!title) {
-      showToast("TÃ­tulo Ã© obrigatÃ³rio", "alert-triangle");
+      showToast("Título é obrigatório", "alert-triangle");
       return false;
     }
     if (!producer) {
-      showToast("Produtor Ã© obrigatÃ³rio", "alert-triangle");
+      showToast("Produtor é obrigatório", "alert-triangle");
       return false;
     }
     if (!genre) {
-      showToast("Selecione um gÃªnero", "alert-triangle");
+      showToast("Selecione um gênero", "alert-triangle");
       return false;
     }
     if (!bpm || Number(bpm) < 40 || Number(bpm) > 240) {
@@ -6100,7 +6127,7 @@ function validateReleaseStep(step) {
       return false;
     }
     if (!musicalKey) {
-      showToast("Tom musical / Key Ã© obrigatÃ³rio", "alert-triangle");
+      showToast("Tom musical / Key é obrigatório", "alert-triangle");
       return false;
     }
   }
@@ -6116,7 +6143,7 @@ function validateReleaseStep(step) {
   if (step === 2) {
     const audioUrl = form.elements.audio_url?.value;
     if (!audioUrl) {
-      showToast("Por favor, envie o arquivo de Ã¡udio principal", "alert-triangle");
+      showToast("Por favor, envie o arquivo de áudio principal", "alert-triangle");
       return false;
     }
   }
@@ -6125,11 +6152,11 @@ function validateReleaseStep(step) {
     const price = form.elements.price?.value;
     const licenseType = form.elements.license_type?.value;
     if (!licenseType) {
-      showToast("Selecione um tipo de licenÃ§a", "alert-triangle");
+      showToast("Selecione um tipo de licença", "alert-triangle");
       return false;
     }
     if (licenseType !== "free" && (!price || Number(price) <= 0)) {
-      showToast("PreÃ§o Ã© obrigatÃ³rio", "alert-triangle");
+      showToast("Preço é obrigatório", "alert-triangle");
       return false;
     }
   }
@@ -6140,7 +6167,7 @@ function validateReleaseStep(step) {
 function syncReleaseForm(form = releaseFormElement()) {
   if (!form) return;
   
-  const title = form.elements.title?.value?.trim() || "Sem tÃ­tulo";
+  const title = form.elements.title?.value?.trim() || "Sem título";
   const artist = form.elements.producer_name?.value?.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || "ANSEND";
   const genre = form.elements.genre?.value || "ANSEND";
   const bpm = form.elements.bpm?.value ? `${form.elements.bpm.value} BPM` : "";
@@ -6149,7 +6176,7 @@ function syncReleaseForm(form = releaseFormElement()) {
   const licenseType = form.elements.license_type?.value || "premium";
   const coverUrl = form.elements.cover_url?.value || "assets/ansend-logo-square.png";
   const audioUrl = form.elements.audio_url?.value || "";
-  const desc = form.elements.description?.value?.trim() || "Sem descriÃ§Ã£o fornecida.";
+  const desc = form.elements.description?.value?.trim() || "Sem descrição fornecida.";
   
   const tagsStr = form.elements.release_tags?.value || "";
   const tags = [
@@ -6373,7 +6400,7 @@ async function handleReleaseFile(file, type) {
       if (audioPreview) audioPreview.style.display = "flex";
       dropzone.classList.add("has-file");
       
-      showToast("Ãudio enviado com sucesso!", "music");
+      showToast("Áudio enviado com sucesso!", "music");
     } else if (type === "stems") {
       form.elements.stems_url.value = result.url;
       form.elements.stems_path.value = result.path;
@@ -6662,7 +6689,7 @@ async function saveBeatRelease(status = "published") {
   } else {
     const title = form.elements.title?.value?.trim();
     if (!title) {
-      showToast("Digite pelo menos o tÃ­tulo para salvar o rascunho.", "alert-triangle");
+      showToast("Digite pelo menos o título para salvar o rascunho.", "alert-triangle");
       return;
     }
   }
@@ -6671,7 +6698,7 @@ async function saveBeatRelease(status = "published") {
   const tags = tagsStr.split(",").map(t => t.trim()).filter(Boolean);
   
   const payload = {
-    title: form.elements.title?.value?.trim() || "Sem tÃ­tulo",
+    title: form.elements.title?.value?.trim() || "Sem título",
     producer_name: form.elements.producer_name?.value?.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || "ANSEND",
     genre: form.elements.genre?.value || "",
     subgenre: form.elements.subgenre?.value?.trim() || null,
@@ -6762,6 +6789,8 @@ async function saveBeatRelease(status = "published") {
     syncCatalogCompatibilityState();
 
     showToast(status === "published" ? "Beat publicado!" : "Rascunho salvo!", "check-circle");
+    // Persist locally-saved items to localStorage
+    persistCatalogItems();
   } else {
     showToast("Entre na sua conta para publicar uma musica.", "log-in");
     return;
@@ -6775,7 +6804,10 @@ async function saveBeatRelease(status = "published") {
     }
   }
   
-  await loadCatalogItems();
+  // Only reload from Supabase if we have an auth session; otherwise local items are already in state
+  if (supabaseClient && appState.authUser) {
+    await loadCatalogItems();
+  }
   
   appState.genre = "Todos";
   if (location.hash !== "#explorar") {
@@ -6790,7 +6822,7 @@ function renderMusicUpload() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const beatId = generateUUID();
-  const stepLabels = ["Detalhes","Capa","Faixa","PreÃ§o","Entrega","RevisÃ£o"];
+  const stepLabels = ["Detalhes","Capa","Faixa","Preço","Entrega","Revisão"];
   const genreList = ["Trap","Funk","Drill","R&B","Boom Bap","Afrobeat","Gospel Trap","Pop","Lo-Fi","Piseiro","Sertanejo","Reggaeton"];
   const noteList = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
   const keyOptions = noteList.flatMap(n => [
@@ -6802,7 +6834,7 @@ function renderMusicUpload() {
     return '<button type="button" class="release-step ' + (i === 0 ? "is-active" : "") + '" data-action="release-step" data-step="' + i + '" aria-label="Ir para ' + label + '"><span>' + (i+1) + '</span><strong>' + label + '</strong></button>';
   }).join("");
 
-  appView.innerHTML = '<section class="release-page" aria-label="Cadastrar mÃºsica na ANSEND">'
+  appView.innerHTML = '<section class="release-page" aria-label="Cadastrar música na ANSEND">'
     + '<div class="release-container">'
     + '<nav class="release-stepper" aria-label="Etapas do cadastro">' + stepperHTML + '</nav>'
     + '<form class="release-upload-form" data-release-step="0" data-beat-id="' + beatId + '" onsubmit="event.preventDefault();">'
@@ -6815,78 +6847,78 @@ function renderMusicUpload() {
 
     // STEP 0 â€” Detalhes
     + '<section class="release-panel is-active" data-panel="0">'
-    + '<div class="release-panel-header"><h2>InformaÃ§Ãµes do Beat</h2><p>Adicione as informaÃ§Ãµes principais para organizar seu beat no catÃ¡logo.</p></div>'
+    + '<div class="release-panel-header"><h2>Informações do Beat</h2><p>Adicione as informações principais para organizar seu beat no catálogo.</p></div>'
     + '<div class="release-form-grid">'
-    + '<label class="release-field release-wide"><span class="release-label">TÃ­tulo do release / beat *</span><input name="title" type="text" placeholder="Ex: Chill Vibing Trap Beat" required></label>'
-    + '<label class="release-field"><span class="release-label">Artista / Produtor *</span><input name="producer_name" type="text" value="' + (display.name || "") + '" placeholder="Nome artÃ­stico" required></label>'
-    + '<div class="release-field"><span class="release-label">GÃªnero *</span><div class="custom-select" data-select-id="genre"><input type="hidden" name="genre" required><button type="button" class="custom-select-trigger"><span>Selecione o gÃªnero</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + genreOptions + '</div></div></div>'
-    + '<label class="release-field"><span class="release-label">SubgÃªnero</span><input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap"></label>'
+    + '<label class="release-field release-wide"><span class="release-label">Título do release / beat *</span><input name="title" type="text" placeholder="Ex: Chill Vibing Trap Beat" required></label>'
+    + '<label class="release-field"><span class="release-label">Artista / Produtor *</span><input name="producer_name" type="text" value="' + (display.name || "") + '" placeholder="Nome artístico" required></label>'
+    + '<div class="release-field"><span class="release-label">Gênero *</span><div class="custom-select" data-select-id="genre"><input type="hidden" name="genre" required><button type="button" class="custom-select-trigger"><span>Selecione o gênero</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + genreOptions + '</div></div></div>'
+    + '<label class="release-field"><span class="release-label">Subgênero</span><input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap"></label>'
     + '<label class="release-field"><span class="release-label">BPM *</span><input name="bpm" type="number" min="40" max="240" placeholder="Ex: 140" required></label>'
     + '<div class="release-field"><span class="release-label">Tom musical / Key *</span><div class="custom-select" data-select-id="musical_key"><input type="hidden" name="musical_key" required><button type="button" class="custom-select-trigger"><span>Selecione o tom</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + keyOptions + '</div></div></div>'
-    + '<label class="release-field"><span class="release-label">Mood / vibe</span><input name="mood" type="text" placeholder="Ex: EnÃ©rgico, MelancÃ³lico"></label>'
-    + '<label class="release-field release-wide"><span class="release-label">Tags (separadas por vÃ­rgula)</span><input name="release_tags" type="text" placeholder="Ex: trap, melÃ³dico, piano, sombrio"></label>'
-    + '<label class="release-field release-wide"><span class="release-label">DescriÃ§Ã£o curta</span><textarea name="description" rows="3" placeholder="Escreva uma breve descriÃ§Ã£o para o catÃ¡logo."></textarea></label>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Essa faixa jÃ¡ foi lanÃ§ada antes?</legend><div class="release-radio-options"><label><input type="radio" name="already_released" value="true"> Sim</label><label><input type="radio" name="already_released" value="false" checked> NÃ£o</label></div></fieldset>'
+    + '<label class="release-field"><span class="release-label">Mood / vibe</span><input name="mood" type="text" placeholder="Ex: Enérgico, Melancólico"></label>'
+    + '<label class="release-field release-wide"><span class="release-label">Tags (separadas por vírgula)</span><input name="release_tags" type="text" placeholder="Ex: trap, melódico, piano, sombrio"></label>'
+    + '<label class="release-field release-wide"><span class="release-label">Descrição curta</span><textarea name="description" rows="3" placeholder="Escreva uma breve descrição para o catálogo."></textarea></label>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Essa faixa já foi lançada antes?</legend><div class="release-radio-options"><label><input type="radio" name="already_released" value="true"> Sim</label><label><input type="radio" name="already_released" value="false" checked> Não</label></div></fieldset>'
     + '</div></section>'
 
-    // STEP 1 â€” Capa
+    // STEP 1 — Capa
     + '<section class="release-panel" data-panel="1">'
-    + '<div class="release-panel-header"><h2>Capa do Beat</h2><p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000Ã—3000px.</p></div>'
+    + '<div class="release-panel-header"><h2>Capa do Beat</h2><p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000x3000px.</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP Â· mÃ­nimo 1400Ã—1400px</small><img class="release-cover-preview" alt="Preview da capa"><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
-    + '<div class="release-requirements"><strong>RecomendaÃ§Ãµes</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>MÃ­nimo 1400Ã—1400px (ideal 3000Ã—3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
+    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400x1400px</small><img class="release-cover-preview" alt="Preview da capa"><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-requirements"><strong>Recomendações</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>Mínimo 1400x1400px (ideal 3000x3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
     + '</div></section>'
 
-    // STEP 2 â€” Faixa
+    // STEP 2 — Faixa
     + '<section class="release-panel" data-panel="2">'
-    + '<div class="release-panel-header"><h2>Arquivo de Ãudio</h2><p>Suba o arquivo de Ã¡udio do beat (MP3, WAV ou FLAC).</p></div>'
+    + '<div class="release-panel-header"><h2>Arquivo de Áudio</h2><p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o Ã¡udio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Ã¡udio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
-    + '<div class="release-requirements"><strong>Ãudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB Â· 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
+    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-requirements"><strong>Áudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB · 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
     + '</div></section>'
 
-    // STEP 3 â€” PreÃ§o
+    // STEP 3 — Preço
     + '<section class="release-panel" data-panel="3">'
-    + '<div class="release-panel-header"><h2>LicenÃ§a e PreÃ§o</h2><p>Defina o tipo de licenÃ§a e o valor do beat.</p></div>'
+    + '<div class="release-panel-header"><h2>Licença e Preço</h2><p>Defina o tipo de licença e o valor do beat.</p></div>'
     + '<input type="hidden" name="license_type" value="premium">'
     + '<div class="license-cards-grid">'
-    + '<div class="license-info-card" data-license="free"><strong>Free</strong><span class="license-price">GrÃ¡tis</span><ul><li>MP3 com tag</li><li>AtÃ© 500 streams</li><li>Uso nÃ£o-comercial</li></ul></div>'
-    + '<div class="license-info-card" data-license="basic"><strong>BÃ¡sica</strong><span class="license-price">R$ 49,90</span><ul><li>MP3 enviado</li><li>AtÃ© 2.000 streams</li><li>Uso nÃ£o-comercial</li></ul></div>'
-    + '<div class="license-info-card is-selected" data-license="premium"><strong>Premium</strong><span class="license-price">R$ 99,90</span><ul><li>MP3 + WAV</li><li>AtÃ© 10.000 streams</li><li>Uso comercial limitado</li></ul></div>'
+    + '<div class="license-info-card" data-license="free"><strong>Free</strong><span class="license-price">Grátis</span><ul><li>MP3 com tag</li><li>Até 500 streams</li><li>Uso não-comercial</li></ul></div>'
+    + '<div class="license-info-card" data-license="basic"><strong>Básica</strong><span class="license-price">R$ 49,90</span><ul><li>MP3 enviado</li><li>Até 2.000 streams</li><li>Uso não-comercial</li></ul></div>'
+    + '<div class="license-info-card is-selected" data-license="premium"><strong>Premium</strong><span class="license-price">R$ 99,90</span><ul><li>MP3 + WAV</li><li>Até 10.000 streams</li><li>Uso comercial limitado</li></ul></div>'
     + '<div class="license-info-card" data-license="exclusive"><strong>Exclusiva</strong><span class="license-price">R$ 499,90</span><ul><li>WAV + Stems</li><li>Streams ilimitados</li><li>Posse total de direitos</li></ul></div>'
     + '</div>'
     + '<div class="release-form-grid" style="margin-top:32px;">'
-    + '<label class="release-field"><span class="release-label">PreÃ§o do Beat (R$) *</span><input name="price" type="number" min="0" step="0.01" value="99.90" required></label>'
-    + '<label class="release-field"><span class="release-label">Vendas mÃ¡ximas</span><input name="max_sales" type="number" min="1" value="50" placeholder="Ex: 50"></label>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Download com tag de voz (Tagged)?</legend><div class="release-radio-options"><label><input type="radio" name="allow_tagged_download" value="true" checked> Sim</label><label><input type="radio" name="allow_tagged_download" value="false"> NÃ£o</label></div></fieldset>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Permitir uso comercial bÃ¡sico?</legend><div class="release-radio-options"><label><input type="radio" name="allow_commercial_use" value="true" checked> Sim</label><label><input type="radio" name="allow_commercial_use" value="false"> NÃ£o</label></div></fieldset>'
-    + '<label class="release-field release-wide"><span class="release-label">Termos da licenÃ§a (opcional)</span><textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados..."></textarea></label>'
+    + '<label class="release-field"><span class="release-label">Preço do Beat (R$) *</span><input name="price" type="number" min="0" step="0.01" value="99.90" required></label>'
+    + '<label class="release-field"><span class="release-label">Vendas máximas</span><input name="max_sales" type="number" min="1" value="50" placeholder="Ex: 50"></label>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Download com tag de voz (Tagged)?</legend><div class="release-radio-options"><label><input type="radio" name="allow_tagged_download" value="true" checked> Sim</label><label><input type="radio" name="allow_tagged_download" value="false"> Não</label></div></fieldset>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Permitir uso comercial básico?</legend><div class="release-radio-options"><label><input type="radio" name="allow_commercial_use" value="true" checked> Sim</label><label><input type="radio" name="allow_commercial_use" value="false"> Não</label></div></fieldset>'
+    + '<label class="release-field release-wide"><span class="release-label">Termos da licença (opcional)</span><textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados..."></textarea></label>'
     + '</div></section>'
 
     // STEP 4 â€” Entrega
     + '<section class="release-panel" data-panel="4">'
-    + '<div class="release-panel-header"><h2>Entrega do Beat</h2><p>Especifique os arquivos que o comprador receberÃ¡.</p></div>'
+    + '<div class="release-panel-header"><h2>Entrega do Beat</h2><p>Especifique os arquivos que o comprador receberá.</p></div>'
     + '<div class="delivery-options-grid"><div>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluÃ­dos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
-    + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">ObservaÃ§Ãµes para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dÃºvida, entre em contato."></textarea></label></div>'
+    + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluídos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
+    + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">Observações para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dúvida, entre em contato."></textarea></label></div>'
     + '</div><div>'
     + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
     + '</div></div></section>'
 
-    // STEP 5 â€” RevisÃ£o
+    // STEP 5 â€” Revisão
     + '<section class="release-panel" data-panel="5">'
-    + '<div class="release-panel-header"><h2>RevisÃ£o Final</h2><p>Confira todas as informaÃ§Ãµes antes de publicar.</p></div>'
+    + '<div class="release-panel-header"><h2>Revisão Final</h2><p>Confira todas as informações antes de publicar.</p></div>'
     + '<div class="review-grid"><div class="review-left"><div class="review-cover-wrapper"><img class="review-cover-img" src="assets/ansend-logo-square.png" alt="Capa do beat"></div><div class="review-audio-section"><audio class="review-audio-player" controls preload="metadata"></audio></div></div>'
-    + '<div class="review-details"><div class="review-header-info"><h3 data-review-title>Sem tÃ­tulo</h3><p data-review-producer>por Produtor ANSEND</p></div>'
-    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>GÃªnero</dt><dd data-review-genre>â€”</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>â€”</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>â€”</dd></div><div class="review-meta-item"><dt>PreÃ§o</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>LicenÃ§a</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
-    + '<div class="review-description"><h4>DescriÃ§Ã£o</h4><p data-review-desc>Sem descriÃ§Ã£o fornecida.</p></div></div></div></section>'
+    + '<div class="review-details"><div class="review-header-info"><h3 data-review-title>Sem título</h3><p data-review-producer>por Produtor ANSEND</p></div>'
+    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>â€”</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>â€”</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>â€”</dd></div><div class="review-meta-item"><dt>Preço</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>Licença</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
+    + '<div class="review-description"><h4>Descrição</h4><p data-review-desc>Sem descrição fornecida.</p></div></div></div></section>'
 
     + '</form></div>'
 
     // Bottom Bar
     + '<footer class="release-bottom-bar"><div class="release-bottom-inner">'
-    + '<div class="release-footer-track"><img class="release-footer-cover" src="assets/ansend-logo-square.png" alt="Capa"><div><strong data-footer-title>Sem tÃ­tulo</strong><small data-footer-artist>' + (display.name || "Produtor ANSEND") + '</small></div></div>'
-    + '<div class="release-footer-actions"><button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button><button type="button" class="release-draft-btn" data-action="save-draft">Salvar Rascunho</button><button type="button" class="release-next-btn" data-action="release-next">PrÃ³ximo</button><button type="button" class="release-submit-btn" data-action="publish-catalog" style="display:none;">Publicar</button></div>'
+    + '<div class="release-footer-track"><img class="release-footer-cover" src="assets/ansend-logo-square.png" alt="Capa"><div><strong data-footer-title>Sem título</strong><small data-footer-artist>' + (display.name || "Produtor ANSEND") + '</small></div></div>'
+    + '<div class="release-footer-actions"><button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button><button type="button" class="release-draft-btn" data-action="save-draft">Salvar Rascunho</button><button type="button" class="release-next-btn" data-action="release-next">Próximo</button><button type="button" class="release-submit-btn" data-action="publish-catalog" style="display:none;">Publicar</button></div>'
     + '</div></footer></section>';
 
   setupMusicUploadEventListeners();
@@ -6901,11 +6933,11 @@ function renderMusicUploadFallback(error) {
     ? `<small class="release-fallback-error" style="color:#ef4444; margin-top:8px; display:block;">Render seguro ativado: ${error.message}</small>`
     : "";
   appView.innerHTML = `
-  <section class="release-fallback-page" aria-label="Cadastrar mÃºsica" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
+  <section class="release-fallback-page" aria-label="Cadastrar música" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
     <div class="release-fallback-head" style="margin-bottom:24px;">
       <span style="color:#ff6a00; font-size:12px; font-weight:900; text-transform:uppercase;">ANSEND release</span>
-      <h2 style="font-size:28px; color:#fff; margin-top:8px;">LanÃ§ar mÃºsica</h2>
-      <p style="color:#888; font-size:14px;">Cadastre capa, Ã¡udio, licenÃ§a e preÃ§o para publicar no seu catÃ¡logo.</p>
+      <h2 style="font-size:28px; color:#fff; margin-top:8px;">Lançar música</h2>
+      <p style="color:#888; font-size:14px;">Cadastre capa, áudio, licença e preço para publicar no seu catálogo.</p>
       ${errorNote}
     </div>
     <button type="button" onclick="renderMusicUpload();" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer;">Tentar recarregar fluxo completo</button>
@@ -6937,30 +6969,30 @@ function renderProfileLegacy() {
 
   const role = profile?.account_role || "produtor";
   let subtitleRole = "Produtor â€¢ Beatmaker â€¢ Sound Designer";
-  let bioText = "Produtor musical especializado em Trap, R&B e sons melÃ³dicos. Criando identidades sonoras, arranjos dinÃ¢micos e mixagens profissionais de alta fidelidade para lanÃ§amentos urbanos.";
-  let specialties = ["ProduÃ§Ã£o Musical", "Mixagem", "MasterizaÃ§Ã£o", "Sound Design"];
-  let location = "SÃ£o Paulo, Brasil";
+  let bioText = "Produtor musical especializado em Trap, R&B e sons melódicos. Criando identidades sonoras, arranjos dinâmicos e mixagens profissionais de alta fidelidade para lançamentos urbanos.";
+  let specialties = ["Produção Musical", "Mixagem", "Masterização", "Sound Design"];
+  let location = "São Paulo, Brasil";
   
   if (role === "artista") {
-    subtitleRole = "Artista â€¢ Compositor â€¢ IntÃ©rprete";
-    bioText = "Compositor e vocalista independente focado em novos fluxos do Rap, Trap e R&B. Colaborando com produtores para desenvolver hooks marcantes e identidades autÃªnticas.";
-    specialties = ["ComposiÃ§Ã£o", "Performance Vocal", "Toplining", "DireÃ§Ã£o de Voz"];
+    subtitleRole = "Artista â€¢ Compositor â€¢ Intérprete";
+    bioText = "Compositor e vocalista independente focado em novos fluxos do Rap, Trap e R&B. Colaborando com produtores para desenvolver hooks marcantes e identidades autênticas.";
+    specialties = ["Composição", "Performance Vocal", "Toplining", "Direção de Voz"];
     location = "Salvador, Brasil";
   } else if (role === "curador") {
     subtitleRole = "Curador â€¢ Playlist Manager â€¢ Editorial";
-    bioText = "Curador musical e criador de tendÃªncias. Gerenciando playlists influentes de Trap, Drill e R&B, conectando artistas independentes com novos ouvintes diariamente.";
+    bioText = "Curador musical e criador de tendências. Gerenciando playlists influentes de Trap, Drill e R&B, conectando artistas independentes com novos ouvintes diariamente.";
     specialties = ["Curadoria Editorial", "Playlist Placement", "Posicionamento", "Marketing"];
     location = "Rio de Janeiro, Brasil";
   } else if (role === "designer") {
     subtitleRole = "Designer Visual â€¢ Diretor de Arte";
-    bioText = "Desenvolvedor de universos visuais para lanÃ§amentos musicais. Especializado em capas digitais 3D, canvas do Spotify, animaÃ§Ãµes e branding completo para EPs e singles.";
+    bioText = "Desenvolvedor de universos visuais para lançamentos musicais. Especializado em capas digitais 3D, canvas do Spotify, animações e branding completo para EPs e singles.";
     specialties = ["Capa de Single/EP", "Modelagem 3D", "Canvas", "Motion Graphics"];
     location = "Belo Horizonte, Brasil";
   } else if (role === "marketing") {
-    subtitleRole = "Estrategista de Marketing â€¢ Gestor de TrÃ¡fego";
-    bioText = "Estrategista focado em impulsionar lanÃ§amentos musicais nas plataformas de streaming. Campanhas de trÃ¡fego pago, crescimento de audiÃªncia e anÃ¡lise de dados de funil.";
-    specialties = ["TrÃ¡fego Pago (ADS)", "EstratÃ©gia de LanÃ§amento", "Growth", "AnÃ¡lise de Dados"];
-    location = "SÃ£o Paulo, Brasil";
+    subtitleRole = "Estrategista de Marketing â€¢ Gestor de Tráfego";
+    bioText = "Estrategista focado em impulsionar lançamentos musicais nas plataformas de streaming. Campanhas de tráfego pago, crescimento de audiência e análise de dados de funil.";
+    specialties = ["Tráfego Pago (ADS)", "Estratégia de Lançamento", "Growth", "Análise de Dados"];
+    location = "São Paulo, Brasil";
   }
 
   userName = display.name;
@@ -7032,8 +7064,8 @@ function renderProfileLegacy() {
   }).join("") : `<tr><td colspan="6" class="profile-empty-cell">
     <div class="profile-empty">
       <i data-lucide="upload-cloud"></i>
-      <strong>Nenhum beat ou mÃºsica cadastrado ainda</strong>
-      <p>Use o formulÃ¡rio na barra lateral para cadastrar sua primeira faixa.</p>
+      <strong>Nenhum beat ou música cadastrado ainda</strong>
+      <p>Use o formulário na barra lateral para cadastrar sua primeira faixa.</p>
     </div>
   </td></tr>`;
 
@@ -7109,17 +7141,17 @@ function renderProfileLegacy() {
         </section>
 
         <section class="profile-sidebar-card profile-release-shortcut">
-          <div class="section-title"><i data-lucide="upload-cloud"></i>LanÃ§amento</div>
-          <p class="profile-sidebar-bio">Cadastre mÃºsicas, beats, capas, Ã¡udio e licenÃ§as em uma Ã¡rea prÃ³pria.</p>
+          <div class="section-title"><i data-lucide="upload-cloud"></i>Lançamento</div>
+          <p class="profile-sidebar-bio">Cadastre músicas, beats, capas, áudio e licenças em uma área própria.</p>
           <a class="profile-form-toggle-btn" href="#cadastrar" data-route="cadastrar">
             <i data-lucide="plus"></i>
-            <span>LanÃ§ar mÃºsica</span>
+            <span>Lançar música</span>
           </a>
         </section>
 
-        <!-- LINKS E PRESENÃ‡A -->
+        <!-- LINKS E PRESENÇA -->
         <section class="profile-sidebar-card">
-          <div class="section-title"><i data-lucide="share-2"></i>Links e presenÃ§a</div>
+          <div class="section-title"><i data-lucide="share-2"></i>Links e presença</div>
           <ul class="profile-links-list">
             ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${url}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i><span>${label}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
           </ul>
@@ -7130,12 +7162,12 @@ function renderProfileLegacy() {
         <!-- PREFERENCIAS MUSICAIS -->
         ${musicProfilePanel()}
 
-        <!-- MEU CATÃLOGO (SPOTIFY-STYLE TRACKLIST) -->
+        <!-- MEU CATÁLOGO (SPOTIFY-STYLE TRACKLIST) -->
         <section class="profile-catalog-list-card">
           <div class="section-head">
             <div>
-              <h2><i data-lucide="library-big"></i>Meu catÃ¡logo</h2>
-              <p>Itens cadastrados para venda, curadoria e perfil pÃºblico</p>
+              <h2><i data-lucide="library-big"></i>Meu catálogo</h2>
+              <p>Itens cadastrados para venda, curadoria e perfil público</p>
             </div>
           </div>
           
@@ -7144,11 +7176,11 @@ function renderProfileLegacy() {
               <thead>
                 <tr>
                   <th class="col-play"></th>
-                  <th class="col-title">TÃ­tulo</th>
-                  <th class="col-genre">GÃªnero / BPM</th>
-                  <th class="col-price">PreÃ§o / LicenÃ§a</th>
+                  <th class="col-title">Título</th>
+                  <th class="col-genre">Gênero / BPM</th>
+                  <th class="col-price">Preço / Licença</th>
                   <th class="col-status">Status</th>
-                  <th class="col-actions">AÃ§Ãµes</th>
+                  <th class="col-actions">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -7184,7 +7216,7 @@ function renderSellerAuth() {
           <p>${accountGreeting()}</p>
           <div class="account-badges">
             <b><i data-lucide="badge-check"></i>${roleLabel}</b>
-            <b><i data-lucide="${isSupabaseConfigured ? "cloud-check" : "hard-drive"}"></i>${isSupabaseConfigured ? "SincronizaÃ§Ã£o ativa" : "Modo local"}</b>
+            <b><i data-lucide="${isSupabaseConfigured ? "cloud-check" : "hard-drive"}"></i>${isSupabaseConfigured ? "Sincronização ativa" : "Modo local"}</b>
             <b><i data-lucide="sparkles"></i>${(profile?.music_styles || preferredGenres()).slice(0, 2).join(" + ")}</b>
           </div>
         </div>
@@ -7193,7 +7225,7 @@ function renderSellerAuth() {
       <div class="account-grid">
         <article>
           <i data-lucide="user-round"></i>
-          <span>FunÃ§Ã£o principal</span>
+          <span>Função principal</span>
           <strong>${roleLabel}</strong>
           <p>${roleChoice(role).desc || "Perfil adaptado para a plataforma."}</p>
         </article>
@@ -7207,7 +7239,7 @@ function renderSellerAuth() {
           <i data-lucide="mail"></i>
           <span>E-mail</span>
           <strong>${profile?.email || appState.authUser?.email || "Preview local"}</strong>
-          <p>${isSupabaseConfigured ? "SessÃ£o protegida e sincronizada." : "Perfil salvo neste navegador."}</p>
+          <p>${isSupabaseConfigured ? "Sessão protegida e sincronizada." : "Perfil salvo neste navegador."}</p>
         </article>
       </div>
       <section class="catalog-section account-recs">
@@ -7236,12 +7268,12 @@ function renderSellerAuth() {
       <div class="seller-auth-copy">
         <span>${isLogin ? "ACESSO ANSEND" : "CONTA INTELIGENTE ANSEND"}</span>
         <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
-        <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendaÃ§Ãµes adaptadas Ã  sua funÃ§Ã£o." : "Escolha se vocÃª Ã© produtor, curador, artista, designer, beatmaker ou selo para montar uma experiÃªncia personalizada."}</p>
+        <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
       </div>
       <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}">
         ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name"></label>
-        <label for="seller-store">Nome artÃ­stico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
-        <div class="account-role-picker" aria-label="Escolha a funÃ§Ã£o da conta">${roleOptions}</div>
+        <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
+        <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
         <div class="account-style-picker" aria-label="Escolha estilos musicais">${styleOptions}</div>`}
         <label for="seller-email">E-mail<input id="seller-email" name="email" type="email" placeholder="voce@email.com" autocomplete="email" required></label>
         <label for="seller-password">Senha
@@ -7254,16 +7286,16 @@ function renderSellerAuth() {
       </form>
       <div class="seller-auth-actions">
         <button type="button" data-action="seller-google"><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">Continuar com Google</button>
-        <p>${isLogin ? "Ainda nÃ£o tem conta?" : "JÃ¡ tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
+        <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
       </div>
     </div>
-    <aside class="seller-auth-showcase" aria-label="BenefÃ­cios para vendedores">
+    <aside class="seller-auth-showcase" aria-label="Benefícios para vendedores">
       <div class="seller-shader-bg" data-hero-shader aria-hidden="true"></div>
       <div class="seller-showcase-card">
-        <strong>Venda beats, organize licenÃ§as e acompanhe downloads em tempo real.</strong>
+        <strong>Venda beats, organize licenças e acompanhe downloads em tempo real.</strong>
         <ul>
-          <li><i data-lucide="shield-check"></i>LicenÃ§as seguras</li>
-          <li><i data-lucide="audio-lines"></i>CatÃ¡logo profissional</li>
+          <li><i data-lucide="shield-check"></i>Licenças seguras</li>
+          <li><i data-lucide="audio-lines"></i>Catálogo profissional</li>
           <li><i data-lucide="download"></i>Entrega imediata</li>
         </ul>
       </div>
@@ -7432,7 +7464,7 @@ function openProfessionalContract(name) {
     <span><i data-lucide="handshake"></i>Contratar profissional</span>
     <h2>${profile.name}</h2>
     <p>${profile.specialty}</p>
-    <label>ServiÃ§o
+    <label>Serviço
       <select name="service">
         <option value="Projeto completo">${profile.role} / projeto completo</option>
         <option value="Consultoria NEXO">Consultoria NEXO</option>
@@ -7440,12 +7472,12 @@ function openProfessionalContract(name) {
       </select>
     </label>
     <label>Briefing
-      <textarea name="briefing" rows="4" placeholder="Descreva o que vocÃª precisa, prazo, referÃªncias e objetivo do lanÃ§amento"></textarea>
+      <textarea name="briefing" rows="4" placeholder="Descreva o que você precisa, prazo, referências e objetivo do lançamento"></textarea>
     </label>
     <div class="contract-summary">
       <span>Valor inicial</span><strong>${profile.price}</strong><small>Resposta: ${profile.response}</small>
     </div>
-    <button class="seller-submit" type="submit">Confirmar contrataÃ§Ã£o<i data-lucide="arrow-right"></i></button>
+    <button class="seller-submit" type="submit">Confirmar contratação<i data-lucide="arrow-right"></i></button>
   </form>`);
 }
 
@@ -7476,7 +7508,7 @@ function openAudioEditor() {
   openModal(`<section class="player-tool-modal audio-tool-modal">
     <span><i data-lucide="gauge"></i>Audio editor</span>
     <h2>${item.title}</h2>
-    <p>Controles de preview para testar energia, velocidade e tom antes de comprar ou baixar. A compra mantÃ©m o arquivo original.</p>
+    <p>Controles de preview para testar energia, velocidade e tom antes de comprar ou baixar. A compra mantém o arquivo original.</p>
     <label class="player-range">
       <div><strong>Speed</strong><em>${Math.round((appState.player.speed - 1) * 100)}%</em></div>
       <input type="range" min="0.65" max="1.5" step="0.01" value="${appState.player.speed}" data-action="player-speed">
@@ -7882,10 +7914,10 @@ function isEmailRateLimitError(error) {
 function friendlyAuthError(error) {
   if (isEmailRateLimitError(error)) return "Acesso liberado em modo seguro. Continue usando a plataforma enquanto sincronizamos sua conta.";
   const text = String(error?.message || "");
-  if (/invalid login|invalid credentials/i.test(text)) return "E-mail ou senha nÃ£o conferem. Revise os dados e tente novamente.";
-  if (/password/i.test(text)) return "A senha precisa atender aos requisitos mÃ­nimos da conta.";
+  if (/invalid login|invalid credentials/i.test(text)) return "E-mail ou senha não conferem. Revise os dados e tente novamente.";
+  if (/password/i.test(text)) return "A senha precisa atender aos requisitos mínimos da conta.";
   if (/email/i.test(text)) return "Confira o e-mail informado e tente novamente.";
-  return "NÃ£o foi possÃ­vel concluir agora. Tente novamente em instantes.";
+  return "Não foi possível concluir agora. Tente novamente em instantes.";
 }
 
 function unlockPreviewAccountFromProfile(profile, reason = "preview") {
@@ -7915,7 +7947,7 @@ async function handleAccountSubmit(form) {
     }
     const profile = profileFromAccountForm(form, email);
     unlockPreviewAccountFromProfile(profile);
-    showToast("Conta criada. Vamos personalizar sua experiÃªncia.", "badge-check");
+    showToast("Conta criada. Vamos personalizar sua experiência.", "badge-check");
     return;
   }
 
@@ -7956,7 +7988,7 @@ async function handleAccountSubmit(form) {
     } else if (data.user) {
       localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
       setLocalPreviewProfile({ ...profile, id: data.user.id, created_at: new Date().toISOString() });
-      showToast("Conta criada. Perfil liberado enquanto a sessÃ£o sincroniza.", "mail-check");
+      showToast("Conta criada. Perfil liberado enquanto a sessão sincroniza.", "mail-check");
     }
     localStorage.setItem("ansend-open-catalog-form", "true");
     if (location.hash !== "#perfil") location.hash = "perfil";
@@ -7966,7 +7998,7 @@ async function handleAccountSubmit(form) {
     if (mode === "signup" && isEmailRateLimitError(error)) {
       const profile = profileFromAccountForm(form, email);
       unlockPreviewAccountFromProfile(profile, "email");
-      showToast("Conta liberada. Vamos personalizar sua experiÃªncia.", "badge-check");
+      showToast("Conta liberada. Vamos personalizar sua experiência.", "badge-check");
       return;
     }
     showToast(friendlyAuthError(error), "triangle-alert");
@@ -7983,13 +8015,13 @@ async function handleLogout() {
   appState.authUser = null;
   appState.profile = null;
   clearLocalPreviewProfile();
-  showToast("VocÃª saiu da conta ANSEND", "log-out");
+  showToast("Você saiu da conta ANSEND", "log-out");
   renderRoute();
 }
 
 function scrollCatalog(button, direction) {
   const section = button.closest("section, .home-section");
-  const row = section?.querySelector(".playlist-row, .beat-row, .avatar-row, .featured-professional-grid");
+  const row = section?.querySelector(".playlist-row, .beat-row, .avatar-row, .featured-professional-grid, .category-grid");
   if (row) {
     if (typeof pauseAutoScroll === "function") pauseAutoScroll(row, 2400);
     row.scrollBy({ left: direction * Math.max(320, row.clientWidth * .72), behavior: "smooth" });
@@ -8319,7 +8351,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "seller-google") {
     if (!supabaseClient) {
-      showToast("Google entra na prÃ³xima etapa. Use e-mail e senha por enquanto.", "mail");
+      showToast("Google entra na próxima etapa. Use e-mail e senha por enquanto.", "mail");
       return;
     }
     supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + "#vendedor" } });
@@ -8690,6 +8722,9 @@ document.addEventListener("click", (event) => {
     openProfessionalProfile(playerActionBeat().producer);
     return;
   }
+  if (action === "category-click") {
+    appState.professionalCategory = target.dataset.category || "todos";
+  }
   if (action === "playlist") {
     location.hash = `playlist-${target.dataset.playlistId || slugify(target.dataset.title)}`;
     return;
@@ -8700,7 +8735,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "save-playlist") showToast(`Playlist salva: ${target.dataset.title}`, "bookmark-plus");
   if (action === "share-playlist") showToast(`Link copiado: ${target.dataset.title}`, "share-2");
-  if (action === "how-it-works") showToast("Explore, escolha sua licenÃ§a e baixe o beat imediatamente", "circle-help");
+  if (action === "how-it-works") showToast("Explore, escolha sua licença e baixe o beat imediatamente", "circle-help");
   if (action === "ai-next-route") {
     location.hash = target.dataset.route || "produtores";
     return;
@@ -8719,8 +8754,8 @@ document.addEventListener("click", (event) => {
     location.hash = "vendedor";
     return;
   }
-  if (action === "notifications") showToast("VocÃª tem 3 novos lanÃ§amentos", "bell");
-  if (action === "profile-edit") showToast("EdiÃ§Ã£o de perfil habilitada", "user-round");
+  if (action === "notifications") showToast("Você tem 3 novos lançamentos", "bell");
+  if (action === "profile-edit") showToast("Edição de perfil habilitada", "user-round");
   if (action === "toggle-profile-form") {
     const container = document.querySelector(".profile-catalog-form-container");
     if (container) {
@@ -8794,7 +8829,7 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (event.target.closest(".settings-panel")) {
-    showToast("ConfiguraÃ§Ã£o salva", "settings");
+    showToast("Configuração salva", "settings");
   }
 });
 
@@ -8956,7 +8991,7 @@ document.addEventListener("submit", async (event) => {
   if (aiForm) {
     event.preventDefault();
     const input = aiForm.elements.aiPrompt;
-    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lanÃ§amento profissional.";
+    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
     aiForm.classList.add("is-thinking");
     const quiz = promptToNexoQuiz(prompt);
     appState.nexoQuiz = quiz;
@@ -9040,7 +9075,7 @@ document.addEventListener("submit", async (event) => {
     });
     persistState();
     closeModal();
-    showToast(`ContrataÃ§Ã£o enviada para ${profile.name}`, "handshake");
+    showToast(`Contratação enviada para ${profile.name}`, "handshake");
     if (currentRoute() === "compras") renderRoute();
     return;
   }

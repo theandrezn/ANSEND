@@ -296,6 +296,17 @@ export default {
       });
     }
 
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    const contentType = response.headers.get("content-type");
+    if (contentType && (contentType.includes("text/html") || contentType.includes("javascript") || contentType.includes("text/css")) && !contentType.includes("charset")) {
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set("content-type", `${contentType}; charset=utf-8`);
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
+    }
+    return response;
   },
 };
