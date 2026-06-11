@@ -14846,10 +14846,10 @@ body:has(.nexo-feed-page) .footer {
   height: 110px !important;
   aspect-ratio: unset !important;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: none !important;
   border-radius: 12px !important;
-  background: linear-gradient(135deg, #080604, #111 62%, #050505) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .5) !important;
+  background: #000000 !important;
+  box-shadow: none !important;
   scroll-snap-align: start;
   cursor: pointer;
   isolation: isolate;
@@ -14857,14 +14857,7 @@ body:has(.nexo-feed-page) .footer {
 }
 
 .genre-banner-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, .1), rgba(0, 0, 0, .04) 54%, rgba(0, 0, 0, .16)),
-    linear-gradient(180deg, rgba(0, 0, 0, .06), rgba(0, 0, 0, .16));
-  pointer-events: none;
+  display: none !important;
 }
 
 .genre-banner-card img {
@@ -14873,7 +14866,7 @@ body:has(.nexo-feed-page) .footer {
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover !important;
   object-position: center;
   transition: transform .5s ease, filter .3s ease;
 }
@@ -14881,20 +14874,22 @@ body:has(.nexo-feed-page) .footer {
 .genre-banner-card:hover,
 .genre-banner-card:focus-visible {
   transform: translateY(-2px) scale(1.02) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, .6) !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
 }
 
 .genre-banner-card.is-active {
   transform: translateY(-2px) !important;
-  border-color: rgba(255, 255, 255, 0.6) !important;
-  box-shadow: 0 12px 32px rgba(255, 255, 255, 0.1), 0 8px 24px rgba(0, 0, 0, .6) !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .genre-banner-card:hover img,
 .genre-banner-card:focus-visible img {
   transform: scale(1.025);
-  filter: saturate(1.05) contrast(1.04);
+  filter: none;
 }
 
 .genre-banner-fallback {
