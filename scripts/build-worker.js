@@ -3,7 +3,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
-const entries = ["index.html", "styles.css", "hero-collage.css", "nexo-ia.css", "profile-page.css", "script.js", "assets"];
+const entries = ["index.html", "styles.css", "hero-collage.css", "nexo-ia.css", "profile-page.css", "script.js", "assets", "public"];
 
 function copyRecursive(source, target) {
   const stat = fs.statSync(source);
@@ -24,7 +24,9 @@ fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
 for (const entry of entries) {
-  copyRecursive(path.join(root, entry), path.join(dist, entry));
+  const source = path.join(root, entry);
+  if (!fs.existsSync(source)) continue;
+  copyRecursive(source, entry === "public" ? dist : path.join(dist, entry));
 }
 
 console.log(`Cloudflare Workers assets build ready: ${dist}`);

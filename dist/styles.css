@@ -14752,6 +14752,111 @@ body:has(.nexo-feed-page) .footer {
 }
 
 /* ─── Explore Catalogs Section (Trending) ─── */
+.genre-banner-section {
+  margin: 18px 0 22px;
+  padding: 0;
+  background: transparent;
+}
+
+.genre-banner-head {
+  margin-bottom: 14px;
+}
+
+.genre-banner-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 2px 8px;
+}
+
+.genre-banner-track::-webkit-scrollbar {
+  display: none;
+}
+
+.genre-banner-card {
+  position: relative;
+  flex: 0 0 clamp(340px, 42vw, 680px);
+  aspect-ratio: 16 / 5.15;
+  overflow: hidden;
+  border: 1px solid rgba(255, 106, 0, .24);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(255, 106, 0, .22), transparent 34%),
+    linear-gradient(135deg, #080604, #111 62%, #050505);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .42);
+  scroll-snap-align: start;
+  cursor: pointer;
+  isolation: isolate;
+  transition: transform .24s ease, border-color .24s ease, box-shadow .24s ease, filter .24s ease;
+}
+
+.genre-banner-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .1), rgba(0, 0, 0, .04) 54%, rgba(0, 0, 0, .16)),
+    linear-gradient(180deg, rgba(0, 0, 0, .06), rgba(0, 0, 0, .16));
+  pointer-events: none;
+}
+
+.genre-banner-card img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform .5s ease, filter .3s ease;
+}
+
+.genre-banner-card:hover,
+.genre-banner-card:focus-visible,
+.genre-banner-card.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(255, 106, 0, .72);
+  box-shadow: 0 24px 70px rgba(255, 106, 0, .14), 0 18px 55px rgba(0, 0, 0, .5);
+}
+
+.genre-banner-card:hover img,
+.genre-banner-card:focus-visible img {
+  transform: scale(1.025);
+  filter: saturate(1.05) contrast(1.04);
+}
+
+.genre-banner-fallback {
+  position: absolute;
+  left: 28px;
+  bottom: 24px;
+  z-index: 2;
+  display: none;
+  color: #fff;
+  font-size: clamp(32px, 5vw, 72px);
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  text-shadow: 0 10px 36px rgba(0, 0, 0, .72);
+}
+
+.genre-banner-card.is-missing .genre-banner-fallback {
+  display: block;
+}
+
+.genre-banner-card.is-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 2px solid rgba(255, 106, 0, .95);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 .explore-catalogs {
   margin-top: 20px;
   margin-bottom: 8px;
@@ -14792,6 +14897,21 @@ body:has(.nexo-feed-page) .footer {
 }
 
 @media (max-width: 900px) {
+  .genre-banner-section {
+    margin-top: 14px;
+  }
+
+  .genre-banner-card {
+    flex-basis: min(82vw, 420px);
+    border-radius: 16px;
+  }
+
+  .genre-banner-fallback {
+    left: 20px;
+    bottom: 18px;
+    font-size: clamp(28px, 12vw, 54px);
+  }
+
   .view-header-explorar {
     min-height: 100px !important;
     max-height: 130px;
