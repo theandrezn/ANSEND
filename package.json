@@ -10,7 +10,8 @@
     "test:auth-focus": "node tests/auth-focus-check.js",
     "test:paint-layer": "node tests/paint-layer-check.js",
     "test:profile-editor": "node tests/profile-editor-check.js",
-    "test:layout-shell": "node tests/layout-shell-check.js"
+    "test:layout-shell": "node tests/layout-shell-check.js",
+    "test:data-boundaries": "node tests/data-boundary-check.js"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

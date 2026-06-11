@@ -1101,7 +1101,11 @@ const appState = {
   contracts: JSON.parse(localStorage.getItem("ansend-contracts") || "[]"),
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
-  catalogItems: JSON.parse(localStorage.getItem("ansend-catalog-items") || "[]"),
+  // Community data always comes from Supabase. Keep owned and public records
+  // separate so private screens can never accidentally become marketplace data.
+  publicCatalogItems: [],
+  ownedCatalogItems: [],
+  publicProfiles: [],
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   nexoChatMessages: [],
   nexoChatLoading: false,
@@ -1185,27 +1189,21 @@ const licensePlans = {
 function professionalImage(profile) {
   if (profile?.avatar) return profile.avatar;
   if (profile?.avatar_url) return profile.avatar_url;
-  return img(avatarImages[(profile?.image || 0) % avatarImages.length]);
+  return "";
+}
+
+function professionalAvatarMarkup(profile, className = "") {
+  const source = professionalImage(profile);
+  const name = profile?.name || profile?.display_name || profile?.artistic_name || profile?.full_name || "ANSEND";
+  if (source) return `<img class="${className}" src="${htmlEscape(source)}" alt="Avatar de ${htmlEscape(name)}">`;
+  return `<span class="professional-avatar-fallback ${className}" aria-label="Avatar de ${htmlEscape(name)}">${htmlEscape(profileInitials(name))}</span>`;
 }
 
 function findProfessional(name) {
   const profiles = activeProfessionalProfiles();
   return profiles.find((profile) => profile.name === name)
     || profiles.find((profile) => profile.name.toLowerCase() === String(name || "").toLowerCase())
-    || profiles[0]
-    || {
-      name: name || "Profissional ANSEND",
-      role: "Profissional",
-      category: "produtores",
-      city: "Online",
-      image: 0,
-      rating: "Novo",
-      jobs: 0,
-      price: "Sob consulta",
-      specialty: "Perfil profissional ainda nao cadastrado.",
-      tags: ["ANSEND"],
-      response: "Disponivel",
-    };
+    || null;
 }
 
 function professionalsForNeed(prompt, limit = 5) {
@@ -1219,7 +1217,7 @@ function professionalsForNeed(prompt, limit = 5) {
   const categories = wanted.length ? wanted : ["beatmakers", "produtores", "designers", "curadores", "marketing"];
   return activeProfessionalProfiles()
     .filter((profile) => categories.includes(profile.category))
-    .sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0) || (b.jobs || 0) - (a.jobs || 0))
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
     .slice(0, limit);
 }
 
@@ -1265,7 +1263,7 @@ function fallbackNexoIntelligence(prompt) {
     recommendedProfessionals: recommendedPros.map((profile) => ({
       name: profile.name,
       role: profile.role,
-      reason: `${profile.specialty}. Score ${profile.rating}, ${profile.jobs} jobs.`,
+      reason: profile.specialty || `${profile.role} cadastrado na ANSEND.`,
       route: "produtores",
     })),
     recommendedBeats: recommendedBeats.map((item) => ({
@@ -2090,10 +2088,10 @@ function isRealFeedMedia(url) {
 }
 
 function currentCreatorIdentity(source = {}) {
-  const profile = activeProfile() || {};
+  const profile = profileForUserId(source.user_id) || {};
   return {
-    creatorId: source.user_id || appState.authUser?.id || profile.id || "local-preview",
-    creatorName: source.producer_name || source.artist_name || profile.artistic_name || profile.full_name || "ANSEND",
+    creatorId: source.user_id || profile.id || "",
+    creatorName: source.producer_name || source.artist_name || profile.display_name || profile.artistic_name || profile.full_name || "ANSEND",
     creatorAvatar: profile.avatar_url || profile.avatar || "",
     creatorRole: accountRoleLabel(profile.account_role) || "Criador",
   };
@@ -2192,34 +2190,17 @@ function createFeedItemFromService(source) {
 }
 
 function upsertFeedItem(feedItem) {
-  const normalized = normalizeFeedItem(feedItem);
-  if (!normalized) return null;
-  const items = readFeedList(NEXO_FEED_ITEMS_KEY);
-  const sourceKey = `${normalized.sourceType}:${normalized.sourceId}`;
-  const next = items.filter((item) => item.id !== normalized.id && `${item.sourceType}:${item.sourceId}` !== sourceKey);
-  if (normalized.isPublished) next.unshift(normalized);
-  writeFeedItems(next);
-  return normalized;
+  return normalizeFeedItem(feedItem);
 }
 
 function removeFeedItemForSource(sourceId, sourceType) {
-  const key = `${sourceType}:${sourceId}`;
-  writeFeedItems(readFeedList(NEXO_FEED_ITEMS_KEY).filter((item) => `${item.sourceType}:${item.sourceId}` !== key));
+  // Public feed content is derived from published database records.
 }
 
 function syncFeedItemsFromCatalog() {
-  const generated = publishedCatalogItems()
+  return publishedCatalogItems()
     .map((item) => createFeedItemFromBeat(item))
     .filter(Boolean);
-  if (!generated.length) return readStoredFeedItems();
-  const existing = readFeedList(NEXO_FEED_ITEMS_KEY);
-  const generatedKeys = new Set(generated.map((item) => `${item.sourceType}:${item.sourceId}`));
-  const merged = [
-    ...generated,
-    ...existing.filter((item) => !generatedKeys.has(`${item.sourceType}:${item.sourceId}`)),
-  ];
-  writeFeedItems(merged);
-  return merged.filter((item) => item.isPublished !== false);
 }
 
 function feedItemForEvent(id) {
@@ -3611,7 +3592,7 @@ function applyRoleDashboard() {
 }
 
 function persistCatalogItems() {
-  localStorage.setItem("ansend-catalog-items", JSON.stringify(appState.catalogItems));
+  // Catalog/community records are persisted in Supabase, never in localStorage.
 }
 
 function catalogOwnerId() {
@@ -3619,17 +3600,26 @@ function catalogOwnerId() {
 }
 
 function visibleCatalogItems() {
-  const owner = catalogOwnerId();
-  return appState.catalogItems.filter((item) => item.user_id === owner || (!appState.authUser && String(item.id || "").startsWith("local-")));
+  return appState.ownedCatalogItems;
 }
 
 function publishedCatalogItems() {
-  return appState.catalogItems.filter((item) => item.status === "published");
+  return appState.publicCatalogItems;
+}
+
+function syncCatalogCompatibilityState() {
+  // Kept as a transition hook for callers; public and private data remain separate.
+}
+
+function profileForUserId(userId) {
+  if (!userId) return null;
+  if (appState.profile?.id === userId) return appState.profile;
+  return appState.publicProfiles.find((profile) => profile.id === userId) || null;
 }
 
 function catalogItemToBeat(item) {
-  const active = activeProfile();
-  const producerName = item.producer_name || item.artist_name || active?.artistic_name || active?.full_name || "ANSEND";
+  const ownerProfile = profileForUserId(item.user_id);
+  const producerName = item.producer_name || item.artist_name || ownerProfile?.display_name || ownerProfile?.artistic_name || ownerProfile?.full_name || "ANSEND";
   const priceValue = Number(item.price || 0);
   const price = priceValue
     ? priceValue.toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
@@ -3643,6 +3633,7 @@ function catalogItemToBeat(item) {
   ].filter(Boolean);
   return {
     id: String(item.id),
+    user_id: item.user_id || null,
     title: item.title || "Sem titulo",
     producer: producerName,
     cover: item.cover_url || "assets/ansend-logo-square.png",
@@ -3692,62 +3683,65 @@ function profileToProfessional(profile = activeProfile()) {
   if (!profile?.account_role || profile.account_role === "artista") return null;
   const styles = asArray(profile.music_styles || profile.styles).filter(Boolean);
   return {
-    name: profile.artistic_name || profile.full_name || "Profissional ANSEND",
+    id: profile.id,
+    username: sanitizeHandle(profile.username || profile.handle || ""),
+    name: profile.display_name || profile.artistic_name || profile.full_name || "Profissional ANSEND",
     role: accountRoleLabel(profile.account_role),
     category: roleToProfessionalCategory(profile.account_role),
-    city: profile.location || "Online",
-    image: 0,
+    city: profile.location || "",
     avatar: profile.avatar_url || profile.avatar,
-    rating: "Novo",
-    jobs: 0,
-    price: "Sob consulta",
-    specialty: profile.bio || profile.headline || "Perfil profissional cadastrado na ANSEND.",
-    tags: styles.length ? styles.slice(0, 4) : ["ANSEND"],
-    response: "Disponivel",
+    rating: "",
+    jobs: null,
+    price: "",
+    specialty: profile.bio || profile.headline || "",
+    tags: styles.slice(0, 4),
+    response: "",
   };
 }
 
 function activeProfessionalProfiles() {
-  const current = profileToProfessional(activeProfile());
-  return current ? [current] : [];
+  return appState.publicProfiles.map((profile) => profileToProfessional(profile)).filter(Boolean);
+}
+
+async function loadPublicPlatformData() {
+  if (!supabaseClient) return;
+  const [profilesResult, catalogResult, beatsResult] = await Promise.all([
+    supabaseClient.from("public_profiles").select("*").order("created_at", { ascending: false }),
+    supabaseClient.from("catalog_items").select("*").eq("status", "published").order("created_at", { ascending: false }),
+    supabaseClient.from("beats").select("*").eq("status", "published").order("created_at", { ascending: false }),
+  ]);
+  if (profilesResult.error) console.error("Error loading public profiles", profilesResult.error);
+  if (catalogResult.error) console.error("Error loading public catalog", catalogResult.error);
+  if (beatsResult.error) console.error("Error loading public beats", beatsResult.error);
+  appState.publicProfiles = profilesResult.data || [];
+  appState.publicCatalogItems = [
+    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
+  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  syncCatalogCompatibilityState();
+}
+
+async function loadOwnedCatalogItems() {
+  if (!supabaseClient || !appState.authUser) {
+    appState.ownedCatalogItems = [];
+    syncCatalogCompatibilityState();
+    return;
+  }
+  const [catalogResult, beatsResult] = await Promise.all([
+    supabaseClient.from("catalog_items").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
+    supabaseClient.from("beats").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
+  ]);
+  if (catalogResult.error) console.error("Error loading owned catalog", catalogResult.error);
+  if (beatsResult.error) console.error("Error loading owned beats", beatsResult.error);
+  appState.ownedCatalogItems = [
+    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
+  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  syncCatalogCompatibilityState();
 }
 
 async function loadCatalogItems() {
-  if (!supabaseClient || !appState.authUser) return;
-  
-  let catalogData = [];
-  let beatsData = [];
-  
-  // 1. Load from catalog_items
-  const { data: catData, error: catError } = await supabaseClient
-    .from("catalog_items")
-    .select("*")
-    .order("created_at", { ascending: false });
-    
-  if (catError) {
-    console.error("Error loading catalog_items", catError);
-  } else if (catData) {
-    catalogData = catData.map(item => ({ ...item, source_table: "catalog_items" }));
-  }
-  
-  // 2. Load from beats
-  const { data: btsData, error: btsError } = await supabaseClient
-    .from("beats")
-    .select("*")
-    .order("created_at", { ascending: false });
-    
-  if (btsError) {
-    console.error("Error loading beats", btsError);
-  } else if (btsData) {
-    beatsData = btsData.map(item => ({ ...item, source_table: "beats" }));
-  }
-  
-  // 3. Combine and sort
-  appState.catalogItems = [...catalogData, ...beatsData].sort((a, b) => {
-    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-  });
-  
-  persistCatalogItems();
+  await Promise.all([loadPublicPlatformData(), loadOwnedCatalogItems()]);
 }
 
 function catalogPayloadFromForm(form) {
@@ -3790,18 +3784,16 @@ async function saveCatalogItem(form) {
       showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
       return;
     }
-    appState.catalogItems.unshift(data);
+    const saved = { ...data, source_table: "catalog_items" };
+    appState.ownedCatalogItems = dedupeById([saved, ...appState.ownedCatalogItems]);
+    if (saved.status === "published") {
+      appState.publicCatalogItems = dedupeById([saved, ...appState.publicCatalogItems]);
+    }
+    syncCatalogCompatibilityState();
     showToast("Item salvo no catalogo Supabase", "cloud-check");
   } else {
-    const localItem = {
-      ...payload,
-      id: `local-${Date.now()}`,
-      user_id: catalogOwnerId(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    appState.catalogItems.unshift(localItem);
-    showToast("Item salvo neste navegador. Entre para sincronizar no Supabase.", "hard-drive");
+    showToast("Entre na sua conta para publicar no catalogo.", "log-in");
+    return;
   }
 
   persistCatalogItems();
@@ -3815,7 +3807,8 @@ async function saveCatalogItem(form) {
 }
 
 async function deleteCatalogItem(id) {
-  const item = appState.catalogItems.find((entry) => entry.id === id);
+  const item = appState.ownedCatalogItems.find((entry) => entry.id === id);
+  if (!item) return;
   const table = (item && item.source_table === "beats") ? "beats" : "catalog_items";
   if (supabaseClient && appState.authUser && !String(id).startsWith("local-")) {
     const { error } = await supabaseClient.from(table).delete().eq("id", id);
@@ -3824,14 +3817,16 @@ async function deleteCatalogItem(id) {
       return;
     }
   }
-  appState.catalogItems = appState.catalogItems.filter((item) => item.id !== id);
+  appState.ownedCatalogItems = appState.ownedCatalogItems.filter((entry) => entry.id !== id);
+  appState.publicCatalogItems = appState.publicCatalogItems.filter((entry) => entry.id !== id);
+  syncCatalogCompatibilityState();
   persistCatalogItems();
   showToast("Item removido do catalogo", "trash-2");
   renderRoute();
 }
 
 async function toggleCatalogStatus(id) {
-  const item = appState.catalogItems.find((entry) => entry.id === id);
+  const item = appState.ownedCatalogItems.find((entry) => entry.id === id);
   if (!item) return;
   const nextStatus = item.status === "published" ? "draft" : "published";
   const table = item.source_table === "beats" ? "beats" : "catalog_items";
@@ -3844,9 +3839,14 @@ async function toggleCatalogStatus(id) {
     Object.assign(item, data);
     item.source_table = table;
   } else {
-    item.status = nextStatus;
-    item.updated_at = new Date().toISOString();
+    showToast("Entre na sua conta para alterar o catalogo.", "log-in");
+    return;
   }
+  appState.ownedCatalogItems = dedupeById([item, ...appState.ownedCatalogItems.filter((entry) => entry.id !== id)]);
+  appState.publicCatalogItems = nextStatus === "published"
+    ? dedupeById([item, ...appState.publicCatalogItems.filter((entry) => entry.id !== id)])
+    : appState.publicCatalogItems.filter((entry) => entry.id !== id);
+  syncCatalogCompatibilityState();
   persistCatalogItems();
   showToast(nextStatus === "published" ? "Item publicado" : "Item voltou para rascunho", nextStatus === "published" ? "badge-check" : "pencil");
   renderRoute();
@@ -4063,27 +4063,16 @@ function resolvePublicProfile(slug) {
       return current;
     }
   }
-  const item = publishedCatalogItems().find((catalogItem) => {
+  return appState.publicProfiles.find((profile) => {
     const candidates = [
-      catalogItem.profile_username,
-      catalogItem.username,
-      catalogItem.owner_username,
-      catalogItem.artist_name,
-      catalogItem.producer_name,
-      catalogItem.owner_name,
+      profile.username,
+      profile.handle,
+      profile.display_name,
+      profile.artistic_name,
+      profile.full_name,
     ].filter(Boolean).map(sanitizeHandle);
     return candidates.includes(cleanSlug);
-  });
-  if (!item) return null;
-  return {
-    id: item.user_id || "",
-    display_name: item.owner_name || item.artist_name || item.producer_name || "",
-    username: item.profile_username || item.username || item.owner_username || cleanSlug,
-    account_role: item.kind === "musica" ? "artista" : "beatmaker",
-    bio: "",
-    avatar_url: "",
-    banner_url: "",
-  };
+  }) || null;
 }
 
 function renderProfileNotFound(slug) {
@@ -4596,6 +4585,10 @@ function renderRoutePreservingAuthFocus(force = false) {
 async function initAuth() {
   if (!supabaseClient) {
     appState.profile = localPreviewProfile();
+    appState.publicProfiles = [];
+    appState.publicCatalogItems = [];
+    appState.ownedCatalogItems = [];
+    syncCatalogCompatibilityState();
     appState.authReady = true;
     syncAccountUi();
     renderRoutePreservingAuthFocus();
@@ -4604,11 +4597,14 @@ async function initAuth() {
   const { data } = await supabaseClient.auth.getSession();
   const previousUserId = appState.authUser?.id || null;
   appState.authUser = data.session?.user || null;
+  await loadPublicPlatformData();
   if (appState.authUser) {
     await loadProfile(appState.authUser);
-    await loadCatalogItems();
+    await loadOwnedCatalogItems();
   } else {
     appState.profile = localPreviewProfile();
+    appState.ownedCatalogItems = [];
+    syncCatalogCompatibilityState();
   }
   appState.authReady = true;
   syncAccountUi();
@@ -4616,11 +4612,14 @@ async function initAuth() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     const oldUserId = appState.authUser?.id || null;
     appState.authUser = session?.user || null;
+    await loadPublicPlatformData();
     if (appState.authUser) {
       await loadProfile(appState.authUser);
-      await loadCatalogItems();
+      await loadOwnedCatalogItems();
     } else {
       appState.profile = localPreviewProfile();
+      appState.ownedCatalogItems = [];
+      syncCatalogCompatibilityState();
     }
     syncAccountUi();
     renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
@@ -5360,7 +5359,7 @@ function renderPurchases() {
     </article>`;
   }).join("");
   const contractMarkup = appState.contracts.map((contract) => `<article>
-    <img src="${professionalImage(findProfessional(contract.professional))}" alt="">
+    ${professionalAvatarMarkup(findProfessional(contract.professional), "purchase-avatar")}
     <div><strong>${contract.professional}</strong><span>${contract.service} - ${contract.price}</span></div>
     <span class="purchase-status">${contract.status}</span>
     <button type="button" data-action="producer" data-title="${contract.professional}"><i data-lucide="user-round"></i>Perfil</button>
@@ -5711,25 +5710,15 @@ async function sendNexoChatMessage(rawMessage) {
 
 function professionalCard(profile) {
   return `<article class="professional-card" data-category="${profile.category}">
-    <button class="professional-save" type="button" data-action="producer" data-title="${profile.name}" aria-label="Salvar ${profile.name}"><i data-lucide="heart"></i></button>
-    
     <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
-      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+      ${professionalAvatarMarkup(profile)}
     </button>
     
     <span class="professional-role">${profile.role}</span>
-    <h3>${profile.name}<i data-lucide="badge-check"></i></h3>
-    <p class="professional-location-response">${profile.city} - responde em ${profile.response}</p>
-    
-    <p class="professional-specialty">${profile.specialty}</p>
-    
-    <div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
-    
-    <div class="professional-metrics">
-      <span><strong>${profile.rating}</strong><small>score</small></span>
-      <span><strong>${profile.jobs}</strong><small>jobs</small></span>
-      <span><strong>${profile.price}</strong><small>desde</small></span>
-    </div>
+    <h3>${profile.name}</h3>
+    ${profile.city ? `<p class="professional-location-response">${profile.city}</p>` : ""}
+    ${profile.specialty ? `<p class="professional-specialty">${profile.specialty}</p>` : ""}
+    ${profile.tags.length ? `<div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
     
     <div class="professional-actions">
       <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
@@ -5766,24 +5755,11 @@ function renderProducers() {
     </section>`;
     return;
   }
-  const featuredProfile = visibleProfiles[0];
   appView.innerHTML = `
     ${pageIntro("produtores")}
     <section class="professionals-directory">
       <div class="professional-tabs" aria-label="Categorias de profissionais">
         ${professionalCategories.map(professionalCategorySummary).join("")}
-      </div>
-      <div class="professional-spotlight">
-        <div>
-          <span><i data-lucide="sparkles"></i> Match recomendado pela NEXO</span>
-          <h2>${featuredProfile.name}</h2>
-          <p>${featuredProfile.specialty}</p>
-        </div>
-        <div class="professional-spotlight-meta">
-          <strong>${featuredProfile.role}</strong>
-          <small>${featuredProfile.rating} score - ${featuredProfile.jobs} entregas</small>
-          <button type="button" data-action="professional-contact" data-title="${featuredProfile.name}">Iniciar conversa</button>
-        </div>
       </div>
       <div class="professional-grid">
         ${visibleProfiles.map(professionalCard).join("")}
@@ -5854,11 +5830,22 @@ function renderPlaylistDetail() {
 function renderBeatDetail() {
   const hashId = location.hash.replace("#beat-", "");
   const item = findBeat(hashId);
+  const ownerProfile = profileForUserId(item.user_id || item.raw?.user_id);
+  const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
   const producerName = item.producer.replace("prod. ", "");
-  const producerIndex = Math.max(0, producers.indexOf(item.producer)) % avatarImages.length;
-  const producerAvatar = img(avatarImages[producerIndex]);
-  const related = marketplaceBeats().filter((beatItem) => beatItem.id !== item.id).slice(0, 6);
+  const related = marketplaceBeats()
+    .filter((beatItem) => beatItem.id !== item.id && (!item.user_id || beatItem.user_id === item.user_id))
+    .slice(0, 6);
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
+  const producerBio = ownerProfile?.bio ? `<p>${htmlEscape(ownerProfile.bio)}</p>` : "";
+  const producerStats = item.user_id
+    ? publishedCatalogItems().filter((entry) => entry.user_id === item.user_id).length
+    : 0;
+  const technicalDetails = [
+    item.tags[1]?.includes("BPM") ? ["BPM", item.tags[1].replace(" BPM", "")] : null,
+    item.tags[0] ? ["Genero", item.tags[0]] : null,
+    item.raw?.license_type ? ["Licenca", item.raw.license_type] : null,
+  ].filter(Boolean);
 
   appView.innerHTML = `
     <div class="beat-detail-page">
@@ -5870,11 +5857,10 @@ function renderBeatDetail() {
           <span class="detail-eyebrow">BEAT PROFISSIONAL - ${item.tags[0]}</span>
           <h1>${item.title}</h1>
           <button class="detail-producer-link" type="button" data-action="producer-focus">
-            <img src="${producerAvatar}" alt="">
-            <span><b>${producerName}</b><small>Produtor verificado</small></span>
-            <i data-lucide="badge-check"></i>
+            ${professionalAvatarMarkup(ownerProfessional || { name: producerName }, "detail-producer-avatar")}
+            <span><b>${producerName}</b><small>${ownerProfile ? accountRoleLabel(ownerProfile.account_role) : "Perfil ANSEND"}</small></span>
           </button>
-          <p>Beat com identidade urbana, graves definidos e espaco para sua voz. Pronto para gravar, licenciar e lancar.</p>
+          ${item.raw?.description ? `<p>${htmlEscape(item.raw.description)}</p>` : ""}
           <div class="detail-actions">
             <button class="detail-play" type="button" data-action="play" data-id="${item.id}"><i data-lucide="play"></i>Ouvir previa</button>
             <button class="detail-buy" type="button" data-action="buy" data-id="${item.id}">Comprar licenca</button>
@@ -5882,10 +5868,7 @@ function renderBeatDetail() {
           </div>
         </div>
         <div class="detail-stats" aria-label="Informacoes tecnicas do beat">
-          <span><small>BPM</small><strong>${item.tags[1].replace(" BPM", "")}</strong></span>
-          <span><small>Genero</small><strong>${item.tags[0]}</strong></span>
-          <span><small>Tom</small><strong>Fa menor</strong></span>
-          <span><small>Duracao</small><strong>02:45</strong></span>
+          ${technicalDetails.map(([label, value]) => `<span><small>${label}</small><strong>${htmlEscape(value)}</strong></span>`).join("")}
         </div>
       </section>
 
@@ -5901,11 +5884,11 @@ function renderBeatDetail() {
           <section class="producer-profile" id="producerProfile">
             <div class="producer-profile-cover" style="--producer-cover: url('${item.cover}')"></div>
             <div class="producer-profile-info">
-              <img src="${producerAvatar}" alt="Avatar de ${producerName}">
-              <div><span>PRODUTOR VERIFICADO</span><h2>${producerName}</h2><p>Produtor independente focado em ${item.tags[0]}, trap e sonoridades urbanas. Beats com mix limpa, identidade forte e entrega imediata dentro da ANSEND.</p></div>
+              ${professionalAvatarMarkup(ownerProfessional || { name: producerName }, "producer-profile-avatar")}
+              <div><span>PERFIL ANSEND</span><h2>${producerName}</h2>${producerBio}</div>
               <button type="button" data-action="follow-producer">Seguir</button>
             </div>
-            <div class="producer-profile-stats"><span><strong>${420 + producerIndex * 137}</strong><small>vendas</small></span><span><strong>${18 + producerIndex * 4} mil</strong><small>ouvintes mensais</small></span><span><strong>${36 + producerIndex * 3}</strong><small>beats publicados</small></span></div>
+            ${producerStats ? `<div class="producer-profile-stats"><span><strong>${producerStats}</strong><small>itens publicados</small></span></div>` : ""}
           </section>
 
           <section class="catalog-section detail-catalog">
@@ -5925,10 +5908,11 @@ function renderBeatDetail() {
 
 function renderSettings() {
   const profile = activeProfile();
+  const display = profileDisplayData(profile);
   const profileName = profile?.full_name || "Visitante ANSEND";
   const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
-    <div class="settings-profile"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80" alt=""><div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
+    <div class="settings-profile">${profileAvatarMarkup(display, "settings-avatar")}<div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
@@ -6617,27 +6601,16 @@ async function saveBeatRelease(status = "published") {
     data.source_table = "beats";
     savedCatalogItem = data;
     
-    // Update local state list
-    appState.catalogItems = appState.catalogItems.filter(item => item.id !== beatId);
-    appState.catalogItems.unshift(data);
-    persistCatalogItems();
+    appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems.filter(item => item.id !== beatId)]);
+    appState.publicCatalogItems = status === "published"
+      ? dedupeById([data, ...appState.publicCatalogItems.filter(item => item.id !== beatId)])
+      : appState.publicCatalogItems.filter(item => item.id !== beatId);
+    syncCatalogCompatibilityState();
     
     showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
   } else {
-    const localBeat = {
-      ...payload,
-      id: `local-${beatId}`,
-      user_id: catalogOwnerId(),
-      created_at: new Date().toISOString(),
-      source_table: "beats"
-    };
-    savedCatalogItem = localBeat;
-    
-    appState.catalogItems = appState.catalogItems.filter(item => item.id !== localBeat.id && item.id !== beatId);
-    appState.catalogItems.unshift(localBeat);
-    persistCatalogItems();
-    
-    showToast(status === "published" ? "Beat publicado localmente!" : "Rascunho salvo localmente!", "hard-drive");
+    showToast("Entre na sua conta para publicar uma musica.", "log-in");
+    return;
   }
 
   if (savedCatalogItem) {
@@ -7269,22 +7242,21 @@ function openModal(markup) {
 
 function openProfessionalProfile(name) {
   const profile = findProfessional(name);
+  if (!profile) {
+    showToast("Perfil profissional nao encontrado", "user-x");
+    return;
+  }
   const relatedBeats = beatMatchesForNeed(`${profile.role} ${profile.tags.join(" ")}`, 4);
   openModal(`<section class="professional-profile-modal">
     <header>
-      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+      ${professionalAvatarMarkup(profile)}
       <div>
         <span>${profile.role} verificado</span>
         <h2>${profile.name}</h2>
-        <p>${profile.specialty}</p>
+        ${profile.specialty ? `<p>${profile.specialty}</p>` : ""}
       </div>
     </header>
-    <div class="professional-modal-stats">
-      <span><strong>${profile.rating}</strong><small>score</small></span>
-      <span><strong>${profile.jobs}</strong><small>entregas</small></span>
-      <span><strong>${profile.price}</strong><small>desde</small></span>
-    </div>
-    <div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+    ${profile.tags.length ? `<div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
     <div class="professional-modal-actions">
       <button type="button" data-action="professional-contact" data-title="${profile.name}">Contratar ${profile.role}</button>
       <button type="button" data-action="ai-chip" data-prompt="Quero contratar ${profile.name} para ${profile.specialty}.">Pedir plano NEXO</button>
@@ -7297,6 +7269,10 @@ function openProfessionalProfile(name) {
 
 function openProfessionalContract(name) {
   const profile = findProfessional(name);
+  if (!profile) {
+    showToast("Perfil profissional nao encontrado", "user-x");
+    return;
+  }
   openModal(`<form class="contract-form" data-professional="${profile.name}">
     <span><i data-lucide="handshake"></i>Contratar profissional</span>
     <h2>${profile.name}</h2>
@@ -8388,7 +8364,7 @@ document.addEventListener("click", (event) => {
   }
   if (target.dataset.route && target.tagName === "BUTTON") location.hash = target.dataset.route;
   if (action === "play-catalog") {
-    const item = appState.catalogItems.find((entry) => entry.id === target.dataset.id);
+    const item = appState.ownedCatalogItems.find((entry) => entry.id === target.dataset.id);
     if (item) {
       updateMiniPlayer({
         id: item.id,
@@ -8885,12 +8861,16 @@ document.addEventListener("submit", async (event) => {
   if (contractForm) {
     event.preventDefault();
     const profile = findProfessional(contractForm.dataset.professional);
+    if (!profile) {
+      showToast("Perfil profissional nao encontrado", "user-x");
+      return;
+    }
     appState.contracts.unshift({
       id: `contract-${Date.now()}`,
       professional: profile.name,
       service: contractForm.elements.service.value,
       briefing: contractForm.elements.briefing.value.trim(),
-      price: profile.price,
+      price: "",
       status: "Briefing enviado",
       createdAt: new Date().toISOString(),
     });
