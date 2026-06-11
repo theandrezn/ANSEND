@@ -18774,7 +18774,8 @@ body[data-route="cadastrar"] #appView.app-view {
 }
 
 /* Cinematic Footer - Normal flow at the bottom of the page */
-.cinematic-footer {
+.cinematic-footer,
+body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
   position: relative !important;
   bottom: auto !important;
   left: auto !important;
@@ -18801,7 +18802,8 @@ body[data-route="cadastrar"] #appView.app-view {
   .footer-reveal-spacer {
     display: none !important;
   }
-  .cinematic-footer {
+  .cinematic-footer,
+  body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
     position: relative !important;
     left: auto !important;
     width: calc(100% + 40px) !important;
@@ -18811,6 +18813,8 @@ body[data-route="cadastrar"] #appView.app-view {
     height: auto !important;
     min-height: 480px !important;
     padding: 30px 20px 20px 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 }
 
@@ -19004,8 +19008,7 @@ body[data-route="cadastrar"] #appView.app-view {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center !important;
-  text-align: center !important;
+  justify-content: flex-end !important;
   gap: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
   padding-top: 20px !important;
