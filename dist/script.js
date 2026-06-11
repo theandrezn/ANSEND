@@ -3916,42 +3916,28 @@ async function saveCatalogItem(form) {
     return;
   }
 
-  if (supabaseClient && appState.authUser) {
-    const { data, error } = await supabaseClient
-      .from("catalog_items")
-      .insert({ ...payload, user_id: appState.authUser.id })
-      .select()
-      .single();
-    if (error) {
-      showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
-      return;
-    }
-    const saved = { ...data, source_table: "catalog_items" };
-    appState.ownedCatalogItems = dedupeById([saved, ...appState.ownedCatalogItems]);
-    if (saved.status === "published") {
-      appState.publicCatalogItems = dedupeById([saved, ...appState.publicCatalogItems]);
-    }
-    syncCatalogCompatibilityState();
-    showToast("Item salvo no catalogo Supabase", "cloud-check");
-  } else if (hasAccountAccess()) {
-    const profile = activeProfile();
-    const localItem = {
-      ...payload,
-      id: `local-${Date.now()}`,
-      user_id: profile?.id || `local-${Date.now()}`,
-      source_table: "catalog_items",
-      created_at: new Date().toISOString()
-    };
-    appState.ownedCatalogItems = dedupeById([localItem, ...appState.ownedCatalogItems]);
-    if (localItem.status === "published") {
-      appState.publicCatalogItems = dedupeById([localItem, ...appState.publicCatalogItems]);
-    }
-    syncCatalogCompatibilityState();
-    showToast("Item salvo no catalogo!", "check-circle");
-  } else {
-    showToast("Entre na sua conta para publicar no catalogo.", "log-in");
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Você precisa estar autenticado para salvar no catálogo.", "triangle-alert");
+    location.hash = "vendedor";
     return;
   }
+
+  const { data, error } = await supabaseClient
+    .from("catalog_items")
+    .insert({ ...payload, user_id: appState.authUser.id })
+    .select()
+    .single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
+    return;
+  }
+  const saved = { ...data, source_table: "catalog_items" };
+  appState.ownedCatalogItems = dedupeById([saved, ...appState.ownedCatalogItems]);
+  if (saved.status === "published") {
+    appState.publicCatalogItems = dedupeById([saved, ...appState.publicCatalogItems]);
+  }
+  syncCatalogCompatibilityState();
+  showToast("Item salvo no catalogo Supabase", "cloud-check");
 
   persistCatalogItems();
   form.reset();
@@ -6335,6 +6321,11 @@ async function handleReleaseUpload(file, type, progressCallback) {
 
 async function handleReleaseFile(file, type) {
   if (!file) return;
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Você precisa estar autenticado para enviar arquivos.", "triangle-alert");
+    location.hash = "vendedor";
+    return;
+  }
   const form = releaseFormElement();
   if (!form) return;
   
@@ -6738,63 +6729,41 @@ async function saveBeatRelease(status = "published") {
   const beatId = form.dataset.beatId;
   let savedCatalogItem = null;
   
-  if (supabaseClient && appState.authUser) {
-    const dbPayload = {
-      ...payload,
-      id: beatId,
-      user_id: appState.authUser.id
-    };
-    
-    const { data, error } = await supabaseClient
-      .from("beats")
-      .upsert(dbPayload)
-      .select()
-      .single();
-      
-    if (error) {
-      showToast(error.message || "Erro ao salvar no Supabase", "triangle-alert");
-      console.error(error);
-      return;
-    }
-    
-    // Add source_table property
-    data.source_table = "beats";
-    savedCatalogItem = data;
-    
-    appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems.filter(item => item.id !== beatId)]);
-    appState.publicCatalogItems = status === "published"
-      ? dedupeById([data, ...appState.publicCatalogItems.filter(item => item.id !== beatId)])
-      : appState.publicCatalogItems.filter(item => item.id !== beatId);
-    syncCatalogCompatibilityState();
-    
-    showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
-  } else if (hasAccountAccess()) {
-    // Local/onboarding fallback: user is logged in via profile or onboarding but
-    // does not have a Supabase auth session yet. Save locally so the UI stays consistent.
-    const profile = activeProfile();
-    const localItem = {
-      ...payload,
-      id: beatId,
-      user_id: profile?.id || appState.authUser?.id || `local-${Date.now()}`,
-      producer_name: payload.producer_name || profile?.artistic_name || profile?.full_name || "ANSEND",
-      source_table: "beats",
-      created_at: new Date().toISOString()
-    };
-    savedCatalogItem = localItem;
-
-    appState.ownedCatalogItems = dedupeById([localItem, ...appState.ownedCatalogItems.filter(item => item.id !== beatId)]);
-    appState.publicCatalogItems = status === "published"
-      ? dedupeById([localItem, ...appState.publicCatalogItems.filter(item => item.id !== beatId)])
-      : appState.publicCatalogItems.filter(item => item.id !== beatId);
-    syncCatalogCompatibilityState();
-
-    showToast(status === "published" ? "Beat publicado!" : "Rascunho salvo!", "check-circle");
-    // Persist locally-saved items to localStorage
-    persistCatalogItems();
-  } else {
-    showToast("Entre na sua conta para publicar uma musica.", "log-in");
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Você precisa estar autenticado para publicar ou salvar beats.", "triangle-alert");
+    location.hash = "vendedor";
     return;
   }
+
+  const dbPayload = {
+    ...payload,
+    id: beatId,
+    user_id: appState.authUser.id
+  };
+  
+  const { data, error } = await supabaseClient
+    .from("beats")
+    .upsert(dbPayload)
+    .select()
+    .single();
+    
+  if (error) {
+    showToast(error.message || "Erro ao salvar no Supabase", "triangle-alert");
+    console.error(error);
+    return;
+  }
+  
+  // Add source_table property
+  data.source_table = "beats";
+  savedCatalogItem = data;
+  
+  appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems.filter(item => item.id !== beatId)]);
+  appState.publicCatalogItems = status === "published"
+    ? dedupeById([data, ...appState.publicCatalogItems.filter(item => item.id !== beatId)])
+    : appState.publicCatalogItems.filter(item => item.id !== beatId);
+  syncCatalogCompatibilityState();
+  
+  showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
 
   if (savedCatalogItem) {
     if (status === "published") {
@@ -6819,6 +6788,19 @@ async function saveBeatRelease(status = "published") {
 }
 
 function renderMusicUpload() {
+  if (!supabaseClient || !appState.authUser) {
+    appView.innerHTML = `
+      <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
+        <div class="release-fallback-head" style="margin-bottom:24px;">
+          <i data-lucide="shield-alert" style="width:48px; height:48px; color:#ff6a00; margin:0 auto 16px;"></i>
+          <h2 style="font-size:28px; color:#fff; margin-top:8px;">Autenticação Necessária</h2>
+          <p style="color:#888; font-size:14px; margin-top:8px;">Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.</p>
+        </div>
+        <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer; text-decoration:none; display:inline-block;">Entrar / Criar Conta</a>
+      </section>`;
+    lucide.createIcons();
+    return;
+  }
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const beatId = generateUUID();
@@ -7722,7 +7704,7 @@ function updateMiniProgress() {
   const player = document.querySelector(".mini-player");
   if (!player) return;
   const audio = topBeatAudio();
-  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
+  const isAudioBeat = Boolean(appState.playing) && audio;
   const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
   const current = isAudioBeat ? audio.currentTime : Math.min(duration, Math.max(0, appState.player.previewTime || 0));
   const progress = Math.min(1, duration ? current / duration : 0);
@@ -7741,7 +7723,7 @@ function seekMiniPlayerToRatio(ratio) {
   if (!player) return;
   const audio = topBeatAudio();
   const safeRatio = Math.min(1, Math.max(0, ratio));
-  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
+  const isAudioBeat = Boolean(appState.playing) && audio;
   const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
   if (isAudioBeat) {
     audio.currentTime = safeRatio * duration;
@@ -7785,47 +7767,85 @@ function topBeatAudio() {
 }
 
 function setTopBeatPlaying(isPlaying) {
-  document.querySelector(".top-beat-card")?.classList.toggle("is-playing", isPlaying);
+  const isTopBeat = appState.playing === topBeatOfDay.id;
+  document.querySelector(".top-beat-card")?.classList.toggle("is-playing", isTopBeat && isPlaying);
   document.querySelectorAll('[data-action="hero-beat-play"]').forEach((button) => {
-    button.setAttribute("aria-label", isPlaying ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia");
-    button.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+    const active = isTopBeat && isPlaying;
+    button.setAttribute("aria-label", active ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia");
+    button.innerHTML = `<i data-lucide="${active ? "pause" : "play"}"></i>`;
   });
-  const miniButton = document.querySelector('[data-action="mini-play"]');
-  if (appState.playing === topBeatOfDay.id && miniButton) {
-    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
-  }
+
   const player = document.querySelector(".mini-player");
   if (player) {
-    const previewPlaying = Boolean(appState.playing) && appState.playing !== topBeatOfDay.id;
-    player.classList.toggle("is-playing", isPlaying || previewPlaying);
+    player.classList.toggle("is-playing", isPlaying);
   }
+  const miniButton = document.querySelector('[data-action="mini-play"]');
+  if (miniButton) {
+    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+  }
+
+  // Sincronizar todos os botões de play/pause da página
+  document.querySelectorAll('[data-action="play"], [data-action="play-catalog"], [data-action="nexo-feed-play"]').forEach((button) => {
+    const id = button.dataset.id || button.dataset.feedItemId;
+    const isThisPlaying = id && String(id) === String(appState.playing) && isPlaying;
+    button.innerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
+  });
+
   syncMiniPlayerState();
   lucide.createIcons();
 }
 
-async function playTopBeat({ quiet = false } = {}) {
+async function playBeat(item, { quiet = false } = {}) {
+  if (!item) return false;
   const audio = topBeatAudio();
   if (!audio) return false;
-  updateMiniPlayer(topBeatOfDay);
-  appState.playing = topBeatOfDay.id;
+
+  audio.pause();
+  appState.playing = item.id;
+  updateMiniPlayer(item);
+
+  let audioUrl = item.audio || item.audio_url || "";
+  if (!audioUrl && item.raw) {
+    audioUrl = item.raw.audio_url || "";
+  }
+
+  if (!audioUrl) {
+    showToast("Áudio não disponível para este beat", "alert-triangle");
+    setTopBeatPlaying(false);
+    return false;
+  }
+
+  const currentUrl = audio.src ? new URL(audio.src, window.location.href).href : "";
+  const targetUrl = new URL(audioUrl, window.location.href).href;
+
+  if (currentUrl !== targetUrl) {
+    audio.src = audioUrl;
+    audio.load();
+  }
+
   try {
     await audio.play();
     showMiniPlayer();
-    appState.topBeatUnlocked = true;
     setTopBeatPlaying(true);
-    if (!quiet) showToast("Tocando top 1 do dia: PSIIIKO", "play");
+    if (!quiet) showToast(`Tocando agora: ${item.title}`, "play");
     return true;
-  } catch (_error) {
+  } catch (error) {
+    console.error("Playback error", error);
     setTopBeatPlaying(false);
-    if (!quiet) showToast("Clique para liberar o player do beat", "play-circle");
+    if (!quiet) showToast("Erro ao reproduzir o áudio", "alert-triangle");
     return false;
   }
 }
 
+async function playTopBeat({ quiet = false } = {}) {
+  return playBeat(topBeatOfDay, { quiet });
+}
+
 function pauseTopBeat({ quiet = false } = {}) {
   const audio = topBeatAudio();
-  if (!audio) return;
-  audio.pause();
+  if (audio) {
+    audio.pause();
+  }
   setTopBeatPlaying(false);
   if (!quiet) showToast("Beat pausado", "pause");
 }
@@ -7833,8 +7853,13 @@ function pauseTopBeat({ quiet = false } = {}) {
 function toggleTopBeat() {
   const audio = topBeatAudio();
   if (!audio) return;
-  if (audio.paused) playTopBeat();
-  else pauseTopBeat();
+  if (appState.playing !== topBeatOfDay.id) {
+    playTopBeat();
+  } else if (audio.paused) {
+    audio.play().then(() => setTopBeatPlaying(true));
+  } else {
+    pauseTopBeat();
+  }
 }
 
 function playBeatByOffset(offset) {
@@ -7844,13 +7869,7 @@ function playBeatByOffset(offset) {
   const next = appState.player.shuffle && offset > 0
     ? queue[Math.floor(Math.random() * queue.length)]
     : queue[(index + offset + queue.length) % queue.length];
-  pauseTopBeat({ quiet: true });
-  appState.playing = next.id;
-  updateMiniPlayer(next);
-  document.querySelector(".mini-player")?.classList.add("is-playing");
-  showMiniPlayer();
-  showToast(`Tocando agora: ${next.title}`, "play");
-  if (next.id === topBeatOfDay.id) playTopBeat({ quiet: true });
+  playBeat(next, { quiet: true });
 }
 
 window.addEventListener("load", () => {
@@ -7860,6 +7879,8 @@ window.addEventListener("load", () => {
   window.setInterval(() => {
     const player = document.querySelector(".mini-player");
     if (!player?.classList.contains("is-playing")) return;
+    const audio = topBeatAudio();
+    if (audio && audio.src && !audio.paused) return;
     if (appState.playing === topBeatOfDay.id) return;
     appState.player.previewTime = appState.player.loop && appState.player.previewTime >= 165
       ? 0
@@ -8421,15 +8442,15 @@ document.addEventListener("click", (event) => {
       showToast("Selecione um arquivo de audio primeiro", "file-audio");
       return;
     }
-    updateMiniPlayer({
-      id: `release-preview-${Date.now()}`,
+    const item = {
+      id: `release-preview`,
       title: form.elements.title?.value || "Preview do release",
       producer: form.elements.artist?.value || "ANSEND",
       cover: form.elements.cover_url?.value || "assets/ansend-logo-square.png",
       audio: src,
       tags: [form.elements.genre?.value || "Preview"],
-    });
-    document.querySelector(".mini-player")?.classList.add("is-playing");
+    };
+    playBeat(item);
     return;
   }
   if (action === "logout-account") {
@@ -8450,10 +8471,19 @@ document.addEventListener("click", (event) => {
     const feedItem = feedItemForEvent(target.dataset.feedItemId);
     const item = findBeat(feedItem?.metadata?.beatId || feedItem?.sourceId || target.dataset.id);
     if (!item) return;
-    pauseTopBeat({ quiet: true });
-    appState.playing = item.id;
-    updateMiniPlayer(item);
-    document.querySelector(".mini-player")?.classList.add("is-playing");
+    if (appState.playing === item.id) {
+      const audio = topBeatAudio();
+      if (audio) {
+        if (audio.paused) {
+          audio.play().then(() => setTopBeatPlaying(true));
+        } else {
+          audio.pause();
+          setTopBeatPlaying(false);
+        }
+      }
+    } else {
+      playBeat(item);
+    }
     writeNexoFeedEvent(feedItem?.id || item.id, "click_cta", { item: feedItem || item, watchTimeMs: 0 });
     return;
   }
@@ -8553,14 +8583,20 @@ document.addEventListener("click", (event) => {
   if (action === "play-catalog") {
     const item = appState.ownedCatalogItems.find((entry) => entry.id === target.dataset.id);
     if (item) {
-      updateMiniPlayer({
-        id: item.id,
-        title: item.title,
-        producer: item.producer_name || item.artist_name || "ANSEND",
-        cover: item.cover_url || img("photo-1493225457124-a3eb161ffa5f"),
-        tags: [item.genre || "ANSEND", item.bpm ? `${item.bpm} BPM` : "Preview"],
-      });
-      showToast(`Tocando agora: ${item.title}`, "play");
+      const beatItem = catalogItemToBeat(item);
+      if (appState.playing === beatItem.id) {
+        const audio = topBeatAudio();
+        if (audio) {
+          if (audio.paused) {
+            audio.play().then(() => setTopBeatPlaying(true));
+          } else {
+            audio.pause();
+            setTopBeatPlaying(false);
+          }
+        }
+      } else {
+        playBeat(beatItem);
+      }
     }
     return;
   }
@@ -8600,12 +8636,22 @@ document.addEventListener("click", (event) => {
   }
   if (action === "play") {
     const item = findBeat(target.dataset.id);
-    pauseTopBeat({ quiet: true });
-    appState.playing = item.id;
-    updateMiniPlayer(item);
-    document.querySelector(".mini-player")?.classList.add("is-playing");
+    if (item) {
+      if (appState.playing === item.id) {
+        const audio = topBeatAudio();
+        if (audio) {
+          if (audio.paused) {
+            audio.play().then(() => setTopBeatPlaying(true));
+          } else {
+            audio.pause();
+            setTopBeatPlaying(false);
+          }
+        }
+      } else {
+        playBeat(item);
+      }
+    }
     if (target.closest(".queue-tool-modal")) closeModal();
-    showToast(`Tocando agora: ${item.title}`, "play");
   }
   if (action === "hero-beat-play") {
     toggleTopBeat();
@@ -8616,17 +8662,34 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "mini-play") {
-    if (appState.playing === topBeatOfDay.id) {
-      toggleTopBeat();
-      return;
+    const audio = topBeatAudio();
+    if (audio) {
+      if (audio.paused) {
+        const current = currentPlayingBeat();
+        let audioUrl = current?.audio || current?.audio_url || "";
+        if (!audioUrl && current?.raw) {
+          audioUrl = current.raw.audio_url || "";
+        }
+        if (audioUrl) {
+          const currentUrl = audio.src ? new URL(audio.src, window.location.href).href : "";
+          const targetUrl = new URL(audioUrl, window.location.href).href;
+          if (currentUrl !== targetUrl) {
+            audio.src = audioUrl;
+            audio.load();
+          }
+          audio.play().then(() => setTopBeatPlaying(true)).catch((err) => {
+            console.error("Playback error", err);
+            showToast("Erro ao reproduzir o áudio", "alert-triangle");
+            setTopBeatPlaying(false);
+          });
+        } else {
+          showToast("Áudio não disponível para este beat", "alert-triangle");
+        }
+      } else {
+        audio.pause();
+        setTopBeatPlaying(false);
+      }
     }
-    const player = document.querySelector(".mini-player");
-    const nextPlaying = !player?.classList.contains("is-playing");
-    if (nextPlaying) showMiniPlayer();
-    player?.classList.toggle("is-playing", nextPlaying);
-    syncMiniPlayerState();
-    lucide.createIcons();
-    showToast(nextPlaying ? `Tocando ${playerActionBeat().title}` : "Preview pausado", nextPlaying ? "play" : "pause");
     return;
   }
   if (action === "prev-track") {
