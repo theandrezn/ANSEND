@@ -18787,6 +18787,7 @@ body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
   min-height: 400px !important;
   display: flex !important;
   flex-direction: column !important;
+  align-items: center !important;
   justify-content: space-between !important;
   overflow: hidden !important;
   background: #000000 !important;
@@ -18927,6 +18928,8 @@ body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
   width: 100%;
   max-width: 1024px;
   margin: 50px auto 0 auto;
+  padding: 0 !important;
+  box-sizing: border-box;
 }
 
 .cinematic-footer .footer-heading {
@@ -19008,7 +19011,7 @@ body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-end !important;
+  justify-content: center !important;
   gap: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
   padding-top: 20px !important;
