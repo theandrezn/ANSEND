@@ -492,7 +492,6 @@ function languageSwitcherMarkup() {
 const englishTextPairs = [
   ["Minhas Músicas", "My Music"],
   ["Marketplace", "Marketplace"],
-  ["Insights", "Insights"],
   ["Ferramentas", "Tools"],
   ["Ofertas para membros", "Member Offers"],
   ["Lançar Música", "Release Music"],
@@ -2751,7 +2750,6 @@ function currentRouteFromHash() {
     "diretrizes-profissionais",
     "diretrizes-artistas",
     "suporte",
-    "insights",
     "ferramentas",
     "ofertas",
     "musicas",
@@ -7172,7 +7170,7 @@ function renderRoute() {
     hydrateView();
     return;
   }
-  if (route === "feed" || route === "insights") {
+  if (route === "feed") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
   }
