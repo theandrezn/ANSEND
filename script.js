@@ -3789,6 +3789,21 @@ async function saveCatalogItem(form) {
     }
     syncCatalogCompatibilityState();
     showToast("Item salvo no catalogo Supabase", "cloud-check");
+  } else if (hasAccountAccess()) {
+    const profile = activeProfile();
+    const localItem = {
+      ...payload,
+      id: `local-${Date.now()}`,
+      user_id: profile?.id || `local-${Date.now()}`,
+      source_table: "catalog_items",
+      created_at: new Date().toISOString()
+    };
+    appState.ownedCatalogItems = dedupeById([localItem, ...appState.ownedCatalogItems]);
+    if (localItem.status === "published") {
+      appState.publicCatalogItems = dedupeById([localItem, ...appState.publicCatalogItems]);
+    }
+    syncCatalogCompatibilityState();
+    showToast("Item salvo no catalogo!", "check-circle");
   } else {
     showToast("Entre na sua conta para publicar no catalogo.", "log-in");
     return;
@@ -3836,6 +3851,9 @@ async function toggleCatalogStatus(id) {
     }
     Object.assign(item, data);
     item.source_table = table;
+  } else if (hasAccountAccess()) {
+    item.status = nextStatus;
+    item.updated_at = new Date().toISOString();
   } else {
     showToast("Entre na sua conta para alterar o catalogo.", "log-in");
     return;
@@ -6606,6 +6624,27 @@ async function saveBeatRelease(status = "published") {
     syncCatalogCompatibilityState();
     
     showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
+  } else if (hasAccountAccess()) {
+    // Local/onboarding fallback: user is logged in via profile or onboarding but
+    // does not have a Supabase auth session yet. Save locally so the UI stays consistent.
+    const profile = activeProfile();
+    const localItem = {
+      ...payload,
+      id: beatId,
+      user_id: profile?.id || appState.authUser?.id || `local-${Date.now()}`,
+      producer_name: payload.producer_name || profile?.artistic_name || profile?.full_name || "ANSEND",
+      source_table: "beats",
+      created_at: new Date().toISOString()
+    };
+    savedCatalogItem = localItem;
+
+    appState.ownedCatalogItems = dedupeById([localItem, ...appState.ownedCatalogItems.filter(item => item.id !== beatId)]);
+    appState.publicCatalogItems = status === "published"
+      ? dedupeById([localItem, ...appState.publicCatalogItems.filter(item => item.id !== beatId)])
+      : appState.publicCatalogItems.filter(item => item.id !== beatId);
+    syncCatalogCompatibilityState();
+
+    showToast(status === "published" ? "Beat publicado!" : "Rascunho salvo!", "check-circle");
   } else {
     showToast("Entre na sua conta para publicar uma musica.", "log-in");
     return;
