@@ -2517,13 +2517,16 @@ function smartComboCard(input, index) {
 }
 
 function professionalMatchCard(profile) {
-  return `<article class="top-producer-card match-professional-card">
-    <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
-      <img src="${professionalImage(profile)}" alt="Avatar de ${profile.name}">
+  const matchLabel = profile.match?.score ? `${profile.match.score}% match` : profile.role || profile.category || "Profissional";
+  const verifiedMarkup = profile.verified === false ? "" : '<i data-lucide="badge-check"></i>';
+  return `<article class="recommended-professional-item match-professional-card">
+    <button class="recommended-professional-avatar" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
+      <img src="${professionalImage(profile)}" alt="Avatar de ${htmlEscape(profile.name)}">
     </button>
-    <strong>${profile.name}<i data-lucide="badge-check"></i></strong>
-    <span>${profile.match.score}% match</span>
-    <button class="top-producer-follow" type="button" data-action="producer" data-title="${profile.name}"><i data-lucide="user-plus"></i>${t("Seguir", "Follow")}</button>
+    <button class="recommended-professional-name" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}">
+      <span>${htmlEscape(profile.name)}</span>${verifiedMarkup}
+    </button>
+    <small>${htmlEscape(matchLabel)}</small>
   </article>`;
 }
 
@@ -2611,14 +2614,14 @@ function renderHomeDashboard() {
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStepShort")}`, profile.objective || "NEXO");
     setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Profissionais e servicos com maior match para voce" : "Professionals and services with the strongest fit for you");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes montados para sua fase atual" : "Packages shaped for your current stage");
-    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>${t("section.professionals")}`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
+    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
   } else {
     setText("featuredPreviewTitle", `<i data-lucide="flame"></i>${t("section.catalogs")}`, t("section.catalogsSubtitle"));
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStep")}`, appLocale.current === "pt-BR" ? "Responda o quiz e desbloqueie recomendacoes reais" : "Answer the quiz and unlock real recommendations");
     setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Seis sugestoes principais para resolver seu lancamento agora" : "Six top suggestions to move your release forward");
     setText("categoryTitle", `<i data-lucide="layout-grid"></i>${t("section.categories")}`, appLocale.current === "pt-BR" ? "Os cinco pilares do marketplace musical da ANSEND." : "The five pillars of ANSEND's music marketplace.");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes inteligentes para sair da ideia ate a divulgacao." : "Smart packages from idea to promotion.");
-    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>${t("section.professionals")}`, appLocale.current === "pt-BR" ? "Perfis verificados para seguir" : "Verified profiles to follow");
+    setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
     setText("recentActivityTitle", `<i data-lucide="clock-3"></i>${t("section.recent")}`, appLocale.current === "pt-BR" ? "Ranking de faixas adicionadas agora" : "Recently added track ranking");
   }
 
@@ -2637,6 +2640,9 @@ function renderHomeDashboard() {
     professionals.innerHTML = items.length
       ? items.map((item) => professionalMatchCard(item.match ? item : { ...item, match: { score: 100, reasons: ["Perfil cadastrado"] } })).join("")
       : emptyState("users-round", "Nenhum profissional cadastrado", "Crie sua conta profissional para aparecer nesta área.", "vendedor");
+  }
+  if (professionals?.querySelector(".empty-state")) {
+    professionals.innerHTML = `<section class="recommended-professionals-empty">Nenhum profissional recomendado ainda.</section>`;
   }
   if (activity) {
     activity.innerHTML = catalogBeats.length
@@ -3028,6 +3034,55 @@ function requestHomeScrollAnimationTick() {
 function setupHomeScrollAnimation() {
   document.querySelectorAll(".scroll-kinetic-section").forEach(buildHomeScrollText);
   requestHomeScrollAnimationTick();
+}
+
+function setupHomeParallax() {
+  if (currentRouteFromHash() !== "feed") return;
+  const homeGroups = [];
+  const firstGroup = appView.querySelector(".nexo-blocks-container");
+  if (firstGroup) {
+    firstGroup.classList.add("home-parallax");
+    homeGroups.push(firstGroup);
+  }
+
+  const tailSections = [
+    appView.querySelector(".smart-combos-section"),
+    appView.querySelector(".featured-professionals-section"),
+    appView.querySelector(".recent-activity-section"),
+  ].filter(Boolean);
+  if (tailSections.length) {
+    let tailGroup = tailSections[0].parentElement?.classList.contains("home-parallax")
+      ? tailSections[0].parentElement
+      : null;
+    if (!tailGroup) {
+      tailGroup = document.createElement("div");
+      tailGroup.className = "home-parallax home-parallax--tail";
+      tailSections[0].before(tailGroup);
+      tailSections.forEach((section) => tailGroup.appendChild(section));
+    }
+    homeGroups.push(tailGroup);
+  }
+
+  homeGroups.forEach((group) => {
+    [...group.querySelectorAll(":scope > .home-section")].forEach((section, index) => {
+      section.classList.add("home-parallax__section");
+      if (!section.querySelector(":scope > .home-parallax__content")) {
+        const content = document.createElement("div");
+        content.className = "home-parallax__content";
+        while (section.firstChild) content.appendChild(section.firstChild);
+        section.appendChild(content);
+      }
+      if (!section.querySelector(":scope > .home-parallax__layer")) {
+        const layerTypes = index % 3 === 1 ? ["back", "fore"] : ["deep", "back"];
+        layerTypes.forEach((type) => {
+          const layer = document.createElement("div");
+          layer.className = `home-parallax__layer home-parallax__layer--${type}`;
+          layer.setAttribute("aria-hidden", "true");
+          section.insertBefore(layer, section.firstChild);
+        });
+      }
+    });
+  });
 }
 
 window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true });
@@ -7157,6 +7212,7 @@ function renderSellerAuth() {
 function hydrateView() {
   appView.classList.add("route-slide-in");
   decorateControls();
+  setupHomeParallax();
   document.querySelectorAll('[data-action="favorite"][data-id]').forEach((button) => {
     button.classList.toggle("is-favorite", appState.favorites.has(button.dataset.id));
   });
