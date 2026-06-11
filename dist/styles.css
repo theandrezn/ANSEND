@@ -19097,8 +19097,7 @@ body[data-route="feed"] #appView.app-view {
   width: 100% !important;
   background-color: #000000 !important;
   transform-style: preserve-3d !important;
-  overflow: visible !important;
-  clip-path: inset(0);
+  overflow: hidden !important;
 }
 
 /* Base layer containing the real content - scrolls 1:1 and stretches the wrapper */
