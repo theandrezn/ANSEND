@@ -19832,6 +19832,79 @@ body[data-route="feed"] #appView.app-view {
   }
 }
 
+/* Home layout repair: keep parallax scoped away from sidebar/page geometry. */
+.page {
+  perspective: none !important;
+  transform-style: flat !important;
+}
+
+body[data-route="feed"] #appView.app-view {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+  transform-style: flat !important;
+}
+
+body[data-route="feed"] .home-parallax {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  perspective: 900px !important;
+  transform-style: preserve-3d !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--base {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 10 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--base > .nexo-blocks-container,
+body[data-route="feed"] .home-parallax__layer--base > .home-section {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--back,
+body[data-route="feed"] .home-parallax__layer--deep {
+  inset: 0 !important;
+  max-width: 100% !important;
+}
+
+body[data-route="feed"] .featured-professionals-section,
+body[data-route="feed"] .recent-activity-section {
+  padding-left: clamp(24px, 3.5vw, 64px) !important;
+  padding-right: clamp(24px, 3.5vw, 64px) !important;
+}
+
+body[data-route="feed"] .featured-professionals-section .section-head,
+body[data-route="feed"] .featured-professionals-section .featured-professional-grid,
+body[data-route="feed"] .recent-activity-section .section-head,
+body[data-route="feed"] .recent-activity-section .track-list {
+  width: min(100%, 1440px) !important;
+  max-width: 1440px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (max-width: 720px) {
+  body[data-route="feed"] .featured-professionals-section,
+  body[data-route="feed"] .recent-activity-section {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
 
 
 

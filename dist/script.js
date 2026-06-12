@@ -3763,6 +3763,8 @@ function catalogItemToBeat(item) {
     producer: producerName,
     cover: item.cover_url || "assets/ansend-logo-square.png",
     audio: item.audio_url || "",
+    audio_url: item.audio_url || "",
+    audio_path: item.audio_path || "",
     tags,
     price,
     badge: item.status === "published" ? "" : "Rascunho",
@@ -6260,6 +6262,25 @@ function setReleaseStep(step, form = releaseFormElement()) {
 }
 
 async function handleReleaseUpload(file, type, progressCallback) {
+  if (!supabaseClient) {
+    throw new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
+  }
+  if (!appState.authUser) {
+    throw new Error("Entre na sua conta para enviar arquivos e publicar.");
+  }
+  const isCover = type === "cover";
+  const isAudio = type === "audio";
+  const isStems = type === "stems";
+  const extension = String(file.name || "").split(".").pop()?.toLowerCase() || "";
+  if (isCover && !(/^image\/(png|jpe?g|webp)$/i.test(file.type || "") || ["jpg", "jpeg", "png", "webp"].includes(extension))) {
+    throw new Error("Envie uma capa JPG, PNG ou WEBP.");
+  }
+  if (isAudio && !(/^(audio\/|video\/mp4)/i.test(file.type || "") || ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension))) {
+    throw new Error("Envie um arquivo de audio valido.");
+  }
+  if (isStems && !(/(zip|x-zip-compressed)/i.test(file.type || "") || extension === "zip")) {
+    throw new Error("Envie os stems em um arquivo ZIP.");
+  }
   // Simulate progress visually
   let progress = 0;
   const interval = setInterval(() => {
@@ -6275,40 +6296,27 @@ async function handleReleaseUpload(file, type, progressCallback) {
     let url = "";
     let path = "";
     
-    if (supabaseClient && appState.authUser) {
-      const userId = appState.authUser.id;
-      const form = releaseFormElement();
-      const beatId = form.dataset.beatId;
-      const ext = file.name.split(".").pop();
-      const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
-      const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}.${ext}`;
-      path = `${userId}/${beatId}/${fileName}`;
+    const userId = appState.authUser.id;
+    const form = releaseFormElement();
+    const beatId = form.dataset.beatId;
+    const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
+    const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
+    const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
+    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}.${ext}`;
+    path = `${userId}/${beatId}/${fileName}`;
+    
+    const { error } = await supabaseClient.storage
+      .from(bucket)
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: true });
       
-      const { data, error } = await supabaseClient.storage
-        .from(bucket)
-        .upload(path, file, { upsert: true });
-        
-      if (error) throw error;
+    if (error) throw error;
+    
+    const { data: urlData } = supabaseClient.storage
+      .from(bucket)
+      .getPublicUrl(path);
       
-      const { data: urlData } = supabaseClient.storage
-        .from(bucket)
-        .getPublicUrl(path);
-        
-      url = urlData?.publicUrl || "";
-    } else {
-      // Local mock fallback
-      await new Promise(resolve => setTimeout(resolve, 800));
-      if (type === "cover") {
-        url = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.readAsDataURL(file);
-        });
-      } else {
-        url = URL.createObjectURL(file);
-      }
-      path = `local-path/${file.name}`;
-    }
+    url = urlData?.publicUrl || "";
+    if (!url) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
     
     clearInterval(interval);
     progressCallback(100);
@@ -6724,6 +6732,15 @@ async function saveBeatRelease(status = "published") {
   
   if (status === "published") {
     payload.published_at = new Date().toISOString();
+  }
+
+  if (status === "published") {
+    const hasPersistentCover = payload.cover_url && !/^(blob:|data:)/i.test(payload.cover_url);
+    const hasPersistentAudio = payload.audio_url && !/^(blob:|data:)/i.test(payload.audio_url);
+    if (!hasPersistentCover || !hasPersistentAudio || !payload.audio_path) {
+      showToast("Envie capa e audio para o storage antes de publicar.", "upload-cloud");
+      return;
+    }
   }
   
   const beatId = form.dataset.beatId;
