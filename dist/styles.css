@@ -21850,16 +21850,16 @@ body[data-route="feed"] .home-minimal-footer .footer-top-btn:focus-visible {
 
 /* Home beat catalog cards: clean Marketplace-style treatment without orange UI. */
 body[data-route="feed"] .featured-preview-section .featured-catalog-row {
-  grid-template-columns: repeat(auto-fill, 188px) !important;
-  grid-auto-columns: 188px !important;
-  gap: 16px !important;
+  grid-template-columns: repeat(auto-fill, 236px) !important;
+  grid-auto-columns: 236px !important;
+  gap: 20px !important;
   align-items: start !important;
   justify-content: start !important;
 }
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card {
-  width: 188px !important;
-  max-width: 188px !important;
+  width: 236px !important;
+  max-width: 236px !important;
   min-height: 0 !important;
   padding: 0 !important;
   border: 0 !important;
@@ -21875,7 +21875,7 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card::after
 }
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-cover-wrapper {
-  width: 188px !important;
+  width: 236px !important;
   aspect-ratio: 1 / 1 !important;
   border: 1px solid rgba(255, 255, 255, .08) !important;
   border-radius: 6px !important;
@@ -22002,7 +22002,7 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-title {
   color: #fff !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
   font-weight: 900 !important;
   line-height: 1.18 !important;
   letter-spacing: 0 !important;
@@ -22010,7 +22010,7 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-producer {
   color: rgba(255, 255, 255, .62) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   line-height: 1.2 !important;
 }
@@ -22030,13 +22030,13 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn {
   min-width: 0 !important;
-  height: 34px !important;
+  height: 38px !important;
   border: 1px solid #158cff !important;
   border-radius: 5px !important;
   color: #fff !important;
   background: #000 !important;
   box-shadow: none !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 900 !important;
 }
 
@@ -22048,8 +22048,8 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-
 }
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-download-btn {
-  width: 40px !important;
-  height: 34px !important;
+  width: 44px !important;
+  height: 38px !important;
   border: 1px solid rgba(255, 255, 255, .16) !important;
   border-radius: 5px !important;
   color: #fff !important;
@@ -22071,7 +22071,7 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-
   }
 
   body[data-route="feed"] .featured-preview-section .home-catalog-beat-card {
-    min-width: 188px !important;
+    min-width: 236px !important;
   }
 }
 
