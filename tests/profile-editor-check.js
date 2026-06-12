@@ -37,19 +37,6 @@ function serveStatic(req, res) {
 async function inspectEditor(page, viewport) {
   await page.setViewportSize(viewport);
   await page.goto(`${page.context()._options.baseURL}/index.html#perfil`, { waitUntil: "domcontentloaded" });
-  await page.evaluate(() => {
-    localStorage.setItem("ansendAccountAccess", "true");
-    localStorage.setItem("ansend-profile-preview", JSON.stringify({
-      id: "profile-editor-test",
-      display_name: "Perfil real",
-      username: "perfil-real",
-      account_role: "artista",
-      bio: "Bio real do perfil.",
-      avatar_url: "/assets/ansend-main-banner.png",
-      banner_url: "/assets/ansend-main-banner.png",
-    }));
-    location.reload();
-  });
   await page.waitForSelector('[data-action="toggle-edit-profile"]', { timeout: 30000 });
   await page.click('[data-action="toggle-edit-profile"]');
   await page.waitForSelector(".profile-editor-shell", { timeout: 10000 });
@@ -117,6 +104,71 @@ async function run() {
   const port = server.address().port;
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ baseURL: `http://127.0.0.1:${port}` });
+  await context.route("**/@supabase/supabase-js@*/dist/umd/supabase.min.js", (route) => {
+    route.fulfill({
+      contentType: "text/javascript",
+      body: `
+        (() => {
+          const user = {
+            id: "profile-editor-test",
+            email: "perfil.real@ansend.test",
+            role: "authenticated",
+            aud: "authenticated",
+            user_metadata: {
+              full_name: "Perfil real",
+              display_name: "Perfil real",
+              username: "perfil-real",
+              account_role: "artista",
+              music_styles: ["Trap", "R&B"]
+            }
+          };
+          const session = { user, access_token: "test-token", expires_at: Math.floor(Date.now() / 1000) + 3600 };
+          let profile = {
+            id: user.id,
+            email: user.email,
+            full_name: "Perfil real",
+            display_name: "Perfil real",
+            username: "perfil-real",
+            account_role: "artista",
+            bio: "Bio real do perfil.",
+            avatar_url: "/assets/ansend-main-banner.png",
+            banner_url: "/assets/ansend-main-banner.png",
+            music_styles: ["Trap", "R&B"]
+          };
+          function tableApi(table) {
+            const api = {
+              select() { return api; },
+              eq() { return api; },
+              order() { return Promise.resolve({ data: table === "public_profiles" ? [profile] : [], error: null }); },
+              maybeSingle() { return Promise.resolve({ data: table === "profiles" ? profile : null, error: null }); },
+              upsert(payload) {
+                profile = { ...profile, ...payload };
+                return { select: () => ({ single: () => Promise.resolve({ data: profile, error: null }) }) };
+              }
+            };
+            return api;
+          }
+          window.supabase = {
+            createClient() {
+              return {
+                auth: {
+                  getSession: () => Promise.resolve({ data: { session }, error: null }),
+                  getUser: () => Promise.resolve({ data: { user }, error: null }),
+                  onAuthStateChange: (callback) => {
+                    setTimeout(() => callback("INITIAL_SESSION", session), 0);
+                    return { data: { subscription: { unsubscribe() {} } } };
+                  },
+                  signOut: () => Promise.resolve({ error: null })
+                },
+                from: tableApi,
+                storage: { from: () => ({ upload: () => Promise.resolve({ data: null, error: null }), getPublicUrl: () => ({ data: { publicUrl: "" } }) }) }
+              };
+            }
+          };
+        })();
+      `,
+    });
+  });
   const page = await context.newPage();
   try {
     await inspectEditor(page, { width: 1366, height: 768 });

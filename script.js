@@ -4699,28 +4699,41 @@ function profileFromAuthUser(user, fallback = {}) {
 }
 
 async function loadProfile(user) {
-  if (!supabaseClient || !user) return;
+  if (!supabaseClient || !user) return null;
   const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (error) {
     debugAuth("profile_load_error", { userId: user.id, error: error.message });
+    appState.profile = profileFromAuthUser(user);
     showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
-    return;
+    return appState.profile;
   }
   const pending = JSON.parse(localStorage.getItem(pendingProfileKey(user.id)) || "null");
   if (!data && pending) {
-    const result = await upsertProfile(profileFromAuthUser(user, pending));
-    if (!result.error) localStorage.removeItem(pendingProfileKey(user.id));
+    const fallbackProfile = profileFromAuthUser(user, pending);
+    const result = await upsertProfile(fallbackProfile);
+    if (!result.error) {
+      localStorage.removeItem(pendingProfileKey(user.id));
+    } else {
+      appState.profile = fallbackProfile;
+      console.error("[ANSEND auth] profile upsert from pending failed", result.error);
+    }
     debugAuth("profile_created_from_pending", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
-    return;
+    return result.data || appState.profile;
   }
   if (!data) {
-    const result = await upsertProfile(profileFromAuthUser(user));
+    const fallbackProfile = profileFromAuthUser(user);
+    const result = await upsertProfile(fallbackProfile);
+    if (result.error) {
+      appState.profile = fallbackProfile;
+      console.error("[ANSEND auth] profile upsert from auth user failed", result.error);
+    }
     debugAuth("profile_created_from_auth_user", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
-    return;
+    return result.data || appState.profile;
   }
   appState.profile = data;
   clearLocalPreviewProfile();
   debugAuth("profile_loaded", { userId: user.id, profileId: data.id });
+  return data;
 }
 
 function syncAccountUi() {
@@ -7310,10 +7323,12 @@ function renderProfileLegacy() {
 
 function renderSellerAuth() {
   const isLogin = appState.sellerMode === "login";
-  const profile = appState.profile;
+  const profile = hasAccountAccess()
+    ? (appState.profile || profileFromAuthUser(appState.authUser))
+    : (isSupabaseConfigured ? null : appState.profile);
   const role = profile?.account_role || "produtor";
   const roleLabel = accountRoleLabel(role);
-  if (appState.authUser || profile) {
+  if (hasAccountAccess() || (!isSupabaseConfigured && profile)) {
     appView.innerHTML = `<section class="account-dashboard">
       <div class="account-hero-card">
         <div>
@@ -8161,18 +8176,34 @@ async function handleAccountSubmit(form) {
       },
     });
     if (error) throw error;
-    appState.authUser = data.session?.user || null;
-    if (data.session && data.user) {
-      const result = await upsertProfile(profile);
-      if (result.error) throw result.error;
+    if (data.user) {
+      localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
+    }
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) throw sessionError;
+    appState.authUser = sessionData.session?.user || data.session?.user || null;
+    if (appState.authUser) {
+      const result = await upsertProfile(profileFromAuthUser(appState.authUser, profile));
+      if (result.error) {
+        console.error("[ANSEND auth] signup profile upsert failed", result.error);
+        await loadProfile(appState.authUser);
+      } else {
+        localStorage.removeItem(pendingProfileKey(appState.authUser.id));
+      }
+      await loadOwnedCatalogItems();
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
-      localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
       showToast("Conta criada. Confirme o e-mail para iniciar a sessao.", "mail-check");
     }
     localStorage.setItem("ansend-open-catalog-form", "true");
-    if (location.hash !== (appState.authUser ? "#perfil" : "#vendedor")) location.hash = appState.authUser ? "perfil" : "vendedor";
-    renderRoute();
+    if (appState.authUser) {
+      setAuthFormMessage(form, "Conta criada. Abrindo seu painel...", "success");
+      redirectAfterLogin();
+    } else {
+      setAuthFormMessage(form, "Conta criada. Confirme seu e-mail e entre novamente para abrir o painel.", "success");
+      if (location.hash !== "#vendedor") location.hash = "vendedor";
+      renderRoute();
+    }
     launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
     if (mode === "signup" && isEmailRateLimitError(error)) {

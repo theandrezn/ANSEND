@@ -87,7 +87,59 @@ async function run() {
   const failures = [];
 
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await context.route("**/@supabase/supabase-js@*/dist/umd/supabase.min.js", (route) => {
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `
+          (() => {
+            const user = {
+              id: "layout-shell-test",
+              email: "layout@ansend.test",
+              role: "authenticated",
+              aud: "authenticated",
+              user_metadata: { full_name: "Layout Test", account_role: "artista", music_styles: ["Trap"] }
+            };
+            const session = { user, access_token: "test-token", expires_at: Math.floor(Date.now() / 1000) + 3600 };
+            const profile = {
+              id: user.id,
+              email: user.email,
+              full_name: "Layout Test",
+              display_name: "Layout Test",
+              username: "layout-test",
+              account_role: "artista",
+              music_styles: ["Trap"]
+            };
+            function tableApi(table) {
+              const api = {
+                select() { return api; },
+                eq() { return api; },
+                order() { return Promise.resolve({ data: table === "public_profiles" ? [profile] : [], error: null }); },
+                maybeSingle() { return Promise.resolve({ data: table === "profiles" ? profile : null, error: null }); },
+                upsert() { return { select: () => ({ single: () => Promise.resolve({ data: profile, error: null }) }) }; }
+              };
+              return api;
+            }
+            window.supabase = {
+              createClient() {
+                return {
+                  auth: {
+                    getSession: () => Promise.resolve({ data: { session }, error: null }),
+                    getUser: () => Promise.resolve({ data: { user }, error: null }),
+                    onAuthStateChange: (callback) => {
+                      setTimeout(() => callback("INITIAL_SESSION", session), 0);
+                      return { data: { subscription: { unsubscribe() {} } } };
+                    }
+                  },
+                  from: tableApi
+                };
+              }
+            };
+          })();
+        `,
+      });
+    });
+    const page = await context.newPage();
     page.baseUrl = `http://127.0.0.1:${port}`;
 
     for (const route of ["feed", "cadastrar"]) {
