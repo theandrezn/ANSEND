@@ -2595,9 +2595,18 @@ function smartComboCard(input, index) {
   </article>`;
 }
 
+function cleanVerifiedBadge(className = "professional-verified-badge") {
+  return `<span class="${className}" aria-label="Perfil verificado">
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="7" fill="#1d9bf0"></circle>
+      <path d="M5.05 8.18 6.95 10.1 11.1 5.9" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </span>`;
+}
+
 function professionalMatchCard(profile) {
   const matchLabel = profile.match?.score ? `${profile.match.score}% match` : profile.role || profile.category || "Profissional";
-  const verifiedMarkup = profile.verified === false ? "" : '<i data-lucide="badge-check"></i>';
+  const verifiedMarkup = profile.verified === false ? "" : cleanVerifiedBadge();
   return `<article class="recommended-professional-item match-professional-card">
     <button class="recommended-professional-avatar" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
       <img src="${professionalImage(profile)}" alt="Avatar de ${htmlEscape(profile.name)}">
@@ -2640,7 +2649,7 @@ function featuredProfessionalCard(name, index) {
   return `<article class="featured-professional-card">
     <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
     <div>
-      <strong>${name}<i data-lucide="badge-check"></i></strong>
+      <strong>${name}${cleanVerifiedBadge()}</strong>
       <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
     </div>
     <button type="button" data-action="producer" data-title="${name}">Ver perfil</button>
@@ -2653,7 +2662,7 @@ function topProducerNameCard(name, index) {
     <button class="top-producer-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
       <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
     </button>
-    <strong>${name}<i data-lucide="badge-check"></i></strong>
+    <strong>${name}${cleanVerifiedBadge()}</strong>
     <span>${followerCounts[index % followerCounts.length]} Followers</span>
     <button class="top-producer-follow" type="button" data-action="producer" data-title="${name}"><i data-lucide="user-plus"></i>${t("Seguir", "Follow")}</button>
   </article>`;

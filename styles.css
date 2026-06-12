@@ -541,6 +541,51 @@ body[data-route="feed"] .empty-state svg {
   stroke: var(--orange) !important;
 }
 
+.professional-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  flex: 0 0 auto;
+  color: #1d9bf0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.professional-verified-badge::before,
+.professional-verified-badge::after {
+  content: none !important;
+  display: none !important;
+}
+
+.professional-verified-badge svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  overflow: visible;
+  color: #1d9bf0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.professional-verified-badge circle {
+  fill: #1d9bf0 !important;
+  stroke: none !important;
+}
+
+.professional-verified-badge path {
+  fill: none !important;
+  stroke: #ffffff !important;
+}
+
 /* Badges of match in orange */
 body[data-route="feed"] .match-score,
 body[data-route="feed"] .match-pill,
