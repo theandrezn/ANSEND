@@ -13466,6 +13466,7 @@ body.onboarding-open {
   align-items: center !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   padding-bottom: 12px !important;
+  gap: 14px !important;
 }
 
 .cart-billing-header span {
@@ -21955,6 +21956,48 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .play-
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-info {
   padding: 10px 0 0 !important;
   gap: 4px !important;
+}
+
+.cart-header-actions,
+.purchase-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.purchase-actions {
+  margin: 0 0 12px !important;
+}
+
+.commerce-clear-btn {
+  min-height: 34px !important;
+  padding: 0 13px !important;
+  border: 1px solid rgba(239, 68, 68, .34) !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  color: #ff8a8a !important;
+  background: rgba(239, 68, 68, .08) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: background .18s ease, border-color .18s ease, color .18s ease !important;
+}
+
+.commerce-clear-btn:hover,
+.commerce-clear-btn:focus-visible {
+  border-color: rgba(239, 68, 68, .62) !important;
+  color: #fff !important;
+  background: rgba(239, 68, 68, .18) !important;
+}
+
+.commerce-clear-btn svg {
+  width: 14px !important;
+  height: 14px !important;
 }
 
 body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-title {

@@ -6021,7 +6021,10 @@ function renderPurchases() {
     <button type="button" data-action="producer" data-title="${contract.professional}"><i data-lucide="user-round"></i>Perfil</button>
   </article>`).join("");
   const hasItems = orderMarkup || contractMarkup;
-  appView.innerHTML = `${pageIntro("compras")}${hasItems ? `<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
+  const clearMarkup = hasItems
+    ? `<div class="purchase-actions"><button type="button" class="commerce-clear-btn" data-action="clear-purchases"><i data-lucide="trash-2"></i>Remover todos</button></div>`
+    : "";
+  appView.innerHTML = `${pageIntro("compras")}${hasItems ? `${clearMarkup}<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
 }
 
 function addToCart(id) {
@@ -6044,6 +6047,15 @@ function clearCart() {
   localStorage.setItem("ansend-cart", JSON.stringify([]));
 }
 
+function clearPurchases() {
+  appState.purchases = [];
+  appState.orders = [];
+  appState.contracts = [];
+  persistState();
+  showToast("Pedidos removidos", "trash-2");
+  if (currentRoute() === "compras") renderPurchases();
+}
+
 function renderCart() {
   const hasItems = appState.cart.length > 0;
   
@@ -6060,6 +6072,7 @@ function renderCart() {
     const priceVal = rawPrice || Number.parseFloat(normalizedPrice) || 0;
     return {
       ...beatItem,
+      cartId: id,
       priceVal,
       priceText
     };
@@ -6071,7 +6084,7 @@ function renderCart() {
   const itemCountLabel = items.length === 1 ? t("cart.itemSingular") : t("cart.itemPlural");
 
   const itemMarkup = items.map(item => `
-    <article class="cart-item" data-id="${item.id}">
+    <article class="cart-item" data-id="${item.id}" data-cart-id="${item.cartId}">
       <img src="${item.cover}" alt="Capa de ${item.title}" class="cart-item-art">
       <div class="cart-item-details">
         <h3>${item.title}</h3>
@@ -6079,7 +6092,7 @@ function renderCart() {
         <small class="cart-item-producer">${t("cart.byProducer")} ${item.producer}</small>
       </div>
       <div class="cart-item-price">${item.priceText}</div>
-      <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.id}">
+      <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.cartId}">
         <i data-lucide="x"></i>
       </button>
     </article>
@@ -6104,7 +6117,10 @@ function renderCart() {
       <div class="cart-left-col">
         <div class="cart-billing-header">
           <span>${t("cart.billing")}</span>
-          <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
+          <div class="cart-header-actions">
+            <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
+            <button type="button" class="commerce-clear-btn" data-action="clear-cart"><i data-lucide="trash-2"></i> Limpar carrinho</button>
+          </div>
         </div>
         <div class="cart-items-list">
           ${itemMarkup}
@@ -9514,6 +9530,16 @@ document.addEventListener("click", (event) => {
   if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
   if (action === "remove-from-cart") {
     removeFromCart(target.dataset.id);
+    return;
+  }
+  if (action === "clear-cart") {
+    clearCart();
+    showToast("Carrinho limpo", "trash-2");
+    if (currentRoute() === "carrinho") renderCart();
+    return;
+  }
+  if (action === "clear-purchases") {
+    clearPurchases();
     return;
   }
   if (action === "finalize-cart") {
