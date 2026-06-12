@@ -8178,6 +8178,26 @@ function clearOAuthRedirectIntent() {
   if (url.href !== window.location.href) window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
+async function validateOAuthProviderUrl(url) {
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      credentials: "omit",
+    });
+    if (response.status >= 400) {
+      const text = await response.text();
+      if (/provider is not enabled|unsupported provider/i.test(text)) {
+        throw new Error("Google OAuth ainda nao esta habilitado no Supabase Auth deste projeto.");
+      }
+      throw new Error("Supabase recusou o inicio do login com Google.");
+    }
+  } catch (error) {
+    if (/Google OAuth|Supabase recusou/i.test(error.message || "")) throw error;
+    debugAuth("google_oauth_preflight_skipped", { error: error.message || String(error) });
+  }
+}
+
 async function handleGoogleOAuth(button) {
   const form = button?.closest(".seller-auth-panel")?.querySelector(".seller-auth-form");
   if (!supabaseClient) {
@@ -8190,13 +8210,17 @@ async function handleGoogleOAuth(button) {
   setAuthFormMessage(form, "Abrindo login com Google...", "success");
   localStorage.setItem(OAUTH_REDIRECT_STORAGE_KEY, "#perfil");
   try {
-    const { error } = await supabaseClient.auth.signInWithOAuth({
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: googleOAuthRedirectUrl(),
+        skipBrowserRedirect: true,
       },
     });
     if (error) throw error;
+    if (!data?.url) throw new Error("Supabase nao retornou a URL de login do Google.");
+    await validateOAuthProviderUrl(data.url);
+    window.location.assign(data.url);
   } catch (error) {
     localStorage.removeItem(OAUTH_REDIRECT_STORAGE_KEY);
     button.disabled = false;

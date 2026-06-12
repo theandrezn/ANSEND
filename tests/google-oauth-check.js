@@ -75,7 +75,10 @@ function supabaseMock() {
               onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
               signInWithOAuth: (args) => {
                 window.__oauthArgs = args;
-                return Promise.resolve({ data: { provider: "google" }, error: null });
+                return Promise.resolve({
+                  data: { provider: "google", url: location.origin + "/index.html#google-oauth-test" },
+                  error: null
+                });
               }
             },
             from: tableApi
@@ -106,6 +109,7 @@ async function run() {
 
     if (oauthArgs.provider !== "google") throw new Error(`Wrong provider: ${JSON.stringify(oauthArgs)}`);
     const origin = await page.evaluate(() => location.origin);
+    if (oauthArgs.options.skipBrowserRedirect !== true) throw new Error("Google OAuth should validate before browser redirect");
     if (!oauthArgs.options.redirectTo.startsWith(origin)) throw new Error(`Wrong redirectTo: ${oauthArgs.options.redirectTo}`);
     if (!oauthArgs.options.redirectTo.includes("ansend_oauth=google")) throw new Error(`Missing OAuth callback marker: ${oauthArgs.options.redirectTo}`);
 

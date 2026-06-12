@@ -1,0 +1,18 @@
+project_id = "qxujynzqdursxaehchik"
+
+[auth]
+site_url = "https://ansend.andrrluis86.workers.dev"
+additional_redirect_urls = [
+  "https://ansend.andrrluis86.workers.dev",
+  "https://ansend.andrrluis86.workers.dev/**",
+  "http://localhost:3000",
+  "http://localhost:3000/**",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3000/**"
+]
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
