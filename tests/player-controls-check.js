@@ -123,6 +123,30 @@ async function run() {
     if (!report || report.beatId !== "top-beat-psiiiko" || report.reason !== "conteudo") {
       throw new Error(`Report was not saved: ${JSON.stringify(report)}`);
     }
+
+    await page.evaluate(() => {
+      appState.playing = topBeatOfDay.id;
+      updateMiniPlayer(topBeatOfDay);
+      showMiniPlayer();
+      document.querySelector(".mini-player")?.classList.add("is-playing");
+    });
+    await page.click('[data-action="close-mini-player"]');
+    const closeState = await page.evaluate(() => {
+      const player = document.querySelector(".mini-player");
+      const styles = getComputedStyle(player);
+      return {
+        closed: player.classList.contains("is-closed"),
+        active: player.classList.contains("is-active"),
+        playing: player.classList.contains("is-playing"),
+        hidden: player.hidden,
+        display: styles.display,
+        pointerEvents: styles.pointerEvents,
+        opacity: styles.opacity,
+      };
+    });
+    if (!closeState.closed || closeState.active || closeState.playing || !closeState.hidden || closeState.display !== "none") {
+      throw new Error(`Mini player close button did not hide the player: ${JSON.stringify(closeState)}`);
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

@@ -21703,10 +21703,16 @@ body .sidebar-main-btn:hover {
   transform: translate3d(0, 0, 0) !important;
 }
 
-.mini-player.is-closed:not(.is-active):not(.is-playing) {
+.mini-player.is-closed,
+.mini-player.is-closed.is-active,
+.mini-player.is-closed.is-playing {
   opacity: 0 !important;
   pointer-events: none !important;
   transform: translate3d(0, calc(100% + 18px), 0) !important;
+}
+
+.mini-player[hidden] {
+  display: none !important;
 }
 
 .mini-player .mini-track img {

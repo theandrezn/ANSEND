@@ -8493,6 +8493,11 @@ function syncMiniPlayerState() {
 function showMiniPlayer() {
   const player = document.querySelector(".mini-player");
   if (!player) return;
+  player.hidden = false;
+  player.style.removeProperty("opacity");
+  player.style.removeProperty("pointer-events");
+  player.style.removeProperty("transform");
+  player.removeAttribute("aria-hidden");
   player.classList.remove("is-closed");
   player.classList.add("is-active");
 }
@@ -8500,9 +8505,15 @@ function showMiniPlayer() {
 function closeMiniPlayer() {
   const player = document.querySelector(".mini-player");
   if (!player) return;
+  closePlayerFloatingPanels();
   pauseTopBeat({ quiet: true });
-  player.classList.remove("is-playing");
+  player.classList.remove("is-active", "is-playing");
   player.classList.add("is-closed");
+  player.style.setProperty("opacity", "0", "important");
+  player.style.setProperty("pointer-events", "none", "important");
+  player.style.setProperty("transform", "translate3d(0, calc(100% + 18px), 0)", "important");
+  player.setAttribute("aria-hidden", "true");
+  player.hidden = true;
   showToast("Player fechado. Clique em play para abrir de novo.", "x");
 }
 
