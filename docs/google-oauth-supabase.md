@@ -27,6 +27,15 @@ Em `Authentication > URL Configuration`:
   - `https://ansend.andrrluis86.workers.dev`
   - `https://ansend.andrrluis86.workers.dev/**`
 
+Remova entradas antigas como:
+
+```text
+http://localhost:3000
+http://localhost:3000/**
+```
+
+Se o `Site URL` continuar em `localhost:3000`, o Supabase pode concluir o OAuth e devolver `#access_token` para localhost, quebrando o login em producao.
+
 ## Nome mostrado pelo Google
 
 Configure o nome do aplicativo como `ANSEND` no Google Cloud em `APIs & Services > OAuth consent screen`.

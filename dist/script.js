@@ -5,6 +5,7 @@ const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI
 const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
+const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
 const isSupabaseConfigured = Boolean(
   window.supabase
   && SUPABASE_CONFIG.url
@@ -8185,10 +8186,10 @@ function redirectAfterLogin() {
 }
 
 function publicAppUrl() {
-  const configuredSiteUrl = SUPABASE_CONFIG.siteUrl || SUPABASE_CONFIG.siteURL || "";
+  const configuredSiteUrl = SUPABASE_CONFIG.siteUrl || SUPABASE_CONFIG.siteURL || ANSEND_PUBLIC_APP_URL;
   const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
   if (configuredSiteUrl && isLocalHost) return configuredSiteUrl;
-  if (configuredSiteUrl && !location.origin.includes("ansend.andrrluis86.workers.dev")) return configuredSiteUrl;
+  if (configuredSiteUrl && !location.origin.includes(new URL(ANSEND_PUBLIC_APP_URL).hostname)) return configuredSiteUrl;
   return location.origin;
 }
 
