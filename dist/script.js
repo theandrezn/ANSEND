@@ -2810,6 +2810,7 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 let revealObserver = null;
 let homeScrollAnimationRaf = null;
 let lastRoute = null;
+let lastPageTransitionKey = null;
 let heroTypewriterTimer = null;
 let heroTypewriterToken = 0;
 
@@ -2853,6 +2854,26 @@ function currentRouteFromHash() {
     "marketplace"
   ]);
   return knownRoutes.has(route) || routeTitles?.[route] ? route : "feed";
+}
+
+function PageTransition(container = appView, key = currentRoute()) {
+  if (!container || prefersReducedMotion.matches) return;
+  const transitionKey = String(key || currentRoute());
+  const existingWrapper = container.querySelector(":scope > .section-transition");
+  const previousKey = lastPageTransitionKey;
+  lastPageTransitionKey = transitionKey;
+  if (previousKey === transitionKey && existingWrapper?.dataset.transitionKey === transitionKey) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = previousKey === transitionKey ? "section-transition section-transition--static" : "section-transition";
+  wrapper.dataset.transitionKey = transitionKey;
+  const content = document.createElement("div");
+  content.className = "section-transition__content";
+  while (container.firstChild) {
+    content.appendChild(container.firstChild);
+  }
+  wrapper.appendChild(content);
+  container.appendChild(wrapper);
 }
 
 function updateSpotlight(event) {
@@ -6550,6 +6571,37 @@ function setCoverPreview(file, form = releaseFormElement()) {
   return previewUrl;
 }
 
+function setReleaseUploadError(dropzone, message = "") {
+  if (!dropzone) return;
+  dropzone.classList.toggle("has-upload-error", Boolean(message));
+  const errorNode = dropzone.querySelector(".release-upload-error");
+  if (errorNode) {
+    errorNode.textContent = message;
+    errorNode.hidden = !message;
+  }
+}
+
+function releaseStorageErrorMessage(error, type) {
+  const label = type === "cover" ? "capa" : type === "audio" ? "audio" : "arquivo";
+  const rawMessage = String(error?.message || error?.error_description || error?.error || "").trim();
+  if (/row-level security|permission|not authorized|unauthorized|jwt|403/i.test(rawMessage)) {
+    return `Nao foi possivel enviar a ${label}: sua sessao expirou ou nao tem permissao no Storage. Faca login novamente e tente de novo.`;
+  }
+  if (/already exists|duplicate|409/i.test(rawMessage)) {
+    return `Esse envio ficou preso em um arquivo anterior. Selecione a ${label} novamente.`;
+  }
+  if (/timeout|demorou|network|failed to fetch/i.test(rawMessage)) {
+    return `O upload da ${label} demorou demais. Verifique sua conexao e tente de novo.`;
+  }
+  return rawMessage || `Nao foi possivel enviar a ${label}. Tente novamente.`;
+}
+
+function releaseUploadTimeoutMs(type) {
+  if (type === "cover") return 20000;
+  if (type === "audio") return 60000;
+  return 90000;
+}
+
 function validateReleaseStep(step) {
   const form = releaseFormElement();
   if (!form) return false;
@@ -6773,14 +6825,15 @@ async function handleReleaseUpload(file, type, progressCallback) {
     const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
     const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
     const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
-    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}.${ext}`;
+    const uploadKey = `${Date.now()}-${generateUUID().slice(0, 8)}`;
+    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}-${uploadKey}.${ext}`;
     path = `${userId}/${beatId}/${fileName}`;
     
     const { error } = await withTimeout(supabaseClient.storage
       .from(bucket)
-      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: true }),
-      45000,
-      "O upload demorou demais. Verifique sua conexao e tente selecionar a capa novamente."
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false }),
+      releaseUploadTimeoutMs(type),
+      `O upload do ${type === "cover" ? "arquivo de capa" : type === "audio" ? "arquivo de audio" : "arquivo"} demorou demais.`
     );
       
     if (error) throw error;
@@ -6817,6 +6870,7 @@ async function handleReleaseFile(file, type) {
   const progressBar = dropzone?.querySelector(".upload-progress-bar");
   const progressPercent = dropzone?.querySelector(".upload-progress-percent");
   
+  setReleaseUploadError(dropzone, "");
   if (type === "cover") {
     setCoverPreview(file, form);
     syncReleaseForm(form);
@@ -6903,7 +6957,10 @@ async function handleReleaseFile(file, type) {
     setReleaseUploadInProgress(type, false, form);
     if (progressBar) progressBar.style.width = "0%";
     if (progressPercent) progressPercent.textContent = "0%";
-    showToast(err.message || "Erro ao carregar o arquivo.", "alert-triangle");
+    const message = releaseStorageErrorMessage(err, type);
+    setReleaseUploadError(dropzone, message);
+    console.error("Release upload failed", err);
+    showToast(message, "alert-triangle");
   }
 }
 
@@ -7313,7 +7370,7 @@ function renderMusicUpload() {
     + '<section class="release-panel" data-panel="1">'
     + '<div class="release-panel-header"><h2>Capa do Beat</h2><p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000x3000px.</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400x1400px</small><img class="release-cover-preview" alt="Preview da capa"><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400x1400px</small><img class="release-cover-preview" alt="Preview da capa"><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
     + '<div class="release-requirements"><strong>Recomendações</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>Mínimo 1400x1400px (ideal 3000x3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
     + '</div></section>'
 
@@ -7321,7 +7378,7 @@ function renderMusicUpload() {
     + '<section class="release-panel" data-panel="2">'
     + '<div class="release-panel-header"><h2>Arquivo de Áudio</h2><p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
     + '<div class="release-requirements"><strong>Áudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB · 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
     + '</div></section>'
 
@@ -7350,7 +7407,7 @@ function renderMusicUpload() {
     + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluídos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
     + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">Observações para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dúvida, entre em contato."></textarea></label></div>'
     + '</div><div>'
-    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
+    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
     + '</div></div></section>'
 
     // STEP 5 - Revisão
@@ -7796,6 +7853,7 @@ function renderRoute() {
   document.body.classList.remove("menu-open");
   if (!appState.authReady && authRequiredForRoute) {
     renderAuthLoading();
+    PageTransition(appView, route);
     hydrateView();
     return;
   }
@@ -7807,6 +7865,7 @@ function renderRoute() {
       renderSellerAuth();
     }
     window.scrollTo({ top: 0, behavior: "auto" });
+    PageTransition(appView, route);
     hydrateView();
     return;
   }
@@ -7841,6 +7900,7 @@ function renderRoute() {
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
+  PageTransition(appView, route);
   hydrateView();
 }
 
