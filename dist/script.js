@@ -1205,8 +1205,10 @@ function professionalImage(profile) {
 function professionalAvatarMarkup(profile, className = "") {
   const source = professionalImage(profile);
   const name = profile?.name || profile?.display_name || profile?.artistic_name || profile?.full_name || "ANSEND";
-  if (source) return `<img class="${className}" src="${htmlEscape(source)}" alt="Avatar de ${htmlEscape(name)}">`;
-  return `<span class="professional-avatar-fallback ${className}" aria-label="Avatar de ${htmlEscape(name)}">${htmlEscape(profileInitials(name))}</span>`;
+  const safeClass = htmlEscape(className || "");
+  const initials = htmlEscape(profileInitials(name));
+  if (source) return `<img class="${safeClass}" src="${htmlEscape(source)}" alt="Avatar de ${htmlEscape(name)}" onerror="this.outerHTML='&lt;span class=&quot;professional-avatar-fallback ${safeClass}&quot; aria-label=&quot;Avatar do profissional&quot;&gt;${initials}&lt;/span&gt;'">`;
+  return `<span class="professional-avatar-fallback ${safeClass}" aria-label="Avatar de ${htmlEscape(name)}">${initials}</span>`;
 }
 
 function findProfessional(name) {
@@ -3808,6 +3810,7 @@ function profileToProfessional(profile = activeProfile()) {
     category: roleToProfessionalCategory(profile.account_role),
     city: profile.location || "",
     avatar: profile.avatar_url || profile.avatar,
+    banner: profile.banner_url || profile.cover_url || profile.banner || "",
     rating: "",
     jobs: null,
     price: "",
@@ -5919,21 +5922,57 @@ async function sendNexoChatMessage(rawMessage) {
   }
 }
 
+function professionalStats(profile) {
+  const ownerItems = appState.publicCatalogItems.filter((item) => profile.id && item.user_id === profile.id);
+  const beatCount = ownerItems.filter((item) => item.source_table === "beats" || item.kind === "beat").length;
+  const serviceCount = Number(profile.jobs || profile.services_count || profile.service_count || 0) || 0;
+  const views = Number(profile.views || profile.view_count || profile.profile_views || 0) || 0;
+  return { services: serviceCount, beats: beatCount, views };
+}
+
+function compactStat(value) {
+  const number = Number(value || 0);
+  if (number >= 1000000) return `${(number / 1000000).toFixed(number >= 10000000 ? 0 : 1)}M`;
+  if (number >= 1000) return `${(number / 1000).toFixed(number >= 10000 ? 0 : 1)}K`;
+  return String(number);
+}
+
 function professionalCard(profile) {
-  return `<article class="professional-card" data-category="${profile.category}">
-    <button class="top-producer-avatar" type="button" data-action="producer" data-title="${profile.name}" aria-label="Abrir perfil de ${profile.name}">
+  const name = htmlEscape(profile.name || "Profissional ANSEND");
+  const role = htmlEscape(profile.role || "Profissional");
+  const bio = String(profile.specialty || "").trim();
+  const banner = profile.banner ? `style="--professional-banner: url('${htmlEscape(profile.banner)}')"` : "";
+  const visibleTags = (profile.tags || []).slice(0, 3);
+  const extraTags = Math.max(0, (profile.tags || []).length - visibleTags.length);
+  const stats = professionalStats(profile);
+  return `<article class="professional-card" data-category="${htmlEscape(profile.category || "")}">
+    <div class="professional-card-banner" ${banner}>
+      <button class="professional-card-hire" type="button" data-action="professional-contact" data-title="${name}">
+        <span>Contratar</span><i data-lucide="plus"></i>
+      </button>
+    </div>
+
+    <button class="professional-card-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
       ${professionalAvatarMarkup(profile)}
     </button>
-    
-    <span class="professional-role">${profile.role}</span>
-    <h3>${profile.name}</h3>
-    ${profile.city ? `<p class="professional-location-response">${profile.city}</p>` : ""}
-    ${profile.specialty ? `<p class="professional-specialty">${profile.specialty}</p>` : ""}
-    ${profile.tags.length ? `<div class="professional-tags">${profile.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
-    
+
+    <div class="professional-card-body">
+      <h3>${name}</h3>
+      <span class="professional-role">${role}</span>
+      ${bio ? `<p class="professional-specialty">${htmlEscape(bio)}</p>` : `<p class="professional-specialty is-empty" aria-hidden="true"></p>`}
+      ${visibleTags.length || extraTags ? `<div class="professional-tags">${visibleTags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("")}${extraTags ? `<span>+${extraTags}</span>` : ""}</div>` : ""}
+    </div>
+
+    <div class="professional-metrics" aria-label="Estatisticas do profissional">
+      <span><strong>${compactStat(stats.services)}</strong><small>Servicos</small></span>
+      <span><strong>${compactStat(stats.beats)}</strong><small>Beats</small></span>
+      <span><strong>${compactStat(stats.views)}</strong><small>Views</small></span>
+    </div>
+
     <div class="professional-actions">
-      <button type="button" data-action="producer" data-title="${profile.name}">Ver perfil</button>
-      <button type="button" data-action="professional-contact" data-title="${profile.name}">Contratar</button>
+      <button type="button" data-action="producer" data-title="${name}" aria-label="Ver perfil de ${name}"><i data-lucide="user-round"></i></button>
+      <button type="button" data-action="professional-contact" data-title="${name}" aria-label="Contratar ${name}"><i data-lucide="handshake"></i></button>
+      <button type="button" data-action="follow-producer" data-title="${name}" aria-label="Favoritar ${name}"><i data-lucide="heart"></i></button>
     </div>
   </article>`;
 }
@@ -8895,7 +8934,11 @@ document.addEventListener("click", (event) => {
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
   if (action === "follow-producer") {
     target.classList.toggle("is-following");
-    target.textContent = target.classList.contains("is-following") ? "Seguindo" : "Seguir";
+    if (target.closest(".professional-card")) {
+      target.setAttribute("aria-pressed", target.classList.contains("is-following") ? "true" : "false");
+    } else {
+      target.textContent = target.classList.contains("is-following") ? "Seguindo" : "Seguir";
+    }
   }
   if (action === "download") showToast("Download preparado com sucesso", "download");
   if (action === "seller") {
