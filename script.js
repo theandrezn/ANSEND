@@ -6708,7 +6708,8 @@ function professionalCategorySummary(category) {
   const count = category.id === "todos"
     ? profiles.length
     : profiles.filter((profile) => profile.category === category.id).length;
-  return `<button class="professional-tab ${category.id === appState.professionalCategory ? "is-active" : ""}" type="button" data-action="professional-filter" data-category="${category.id}">
+  const selected = category.id === appState.professionalCategory;
+  return `<button class="professional-tab ${selected ? "is-active" : ""}" type="button" data-action="professional-filter" data-category="${category.id}" aria-pressed="${selected ? "true" : "false"}" aria-label="Filtrar por ${htmlEscape(category.label)} (${count})">
     <i data-lucide="${category.icon}"></i>
     <span>${category.label}</span>
     <small>${count}</small>
