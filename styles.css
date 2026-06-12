@@ -668,6 +668,217 @@ body[data-route="feed"] .footer nav a:hover {
   }
 }
 
+/* Final global route stability guard.
+   Keep this at the end so legacy route animations and shell wrappers cannot
+   hide mounted content after auth, locale, image, or scroll hydration. */
+html,
+body {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 100dvh !important;
+  margin: 0 !important;
+  overflow-x: hidden !important;
+  background: #050505 !important;
+}
+
+body:not(.requires-auth) .sidebar,
+body:not(.requires-auth) .topbar,
+body:not(.requires-auth) .page,
+body:not(.requires-auth) #appView.app-view,
+body:not(.requires-auth) #appView.app-view > :not([hidden]) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+.page,
+#appView.app-view {
+  border: 0 !important;
+  border-radius: 0 !important;
+  max-width: none !important;
+  transform: none !important;
+  transform-style: flat !important;
+  perspective: none !important;
+  contain: none !important;
+}
+
+.route-slide-in,
+.route-slide-left,
+.route-slide-left.route-slide-in,
+.reveal-section,
+.scroll-reveal,
+[data-reveal],
+[data-reveal].is-visible {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  filter: none !important;
+  clip-path: none !important;
+  transition-property: color, background-color, border-color, box-shadow, opacity !important;
+}
+
+body:not([data-route="feed"]) .footer,
+body:not([data-route="feed"]) .cinematic-footer,
+body:not([data-route="feed"]) .footer-reveal-spacer,
+body:not([data-route="feed"]) .footer-trigger,
+body:not([data-route="feed"]) .scroll-footer,
+body:not([data-route="feed"]) .footer-shell {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+body[data-route="feed"] .footer:not([hidden]) {
+  display: grid !important;
+  height: auto !important;
+  max-height: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+@media (min-width: 721px) {
+  .sidebar {
+    left: 0 !important;
+    right: auto !important;
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
+  }
+
+  .page {
+    width: calc(100vw - var(--sidebar-width)) !important;
+    margin-left: var(--sidebar-width) !important;
+    margin-right: 0 !important;
+  }
+
+  .topbar,
+  #appView.app-view {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   ROUTE STABILITY PATCH - 2026-06-11
+   The application shell must paint every route as a full-screen app surface.
+   Route content is never allowed to depend on reveal/slide classes to stay
+   visible after navigation, async auth refreshes, or locale updates.
+   ========================================================================== */
+html,
+body,
+#appView,
+.page {
+  box-sizing: border-box !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body:not(.requires-auth) .sidebar {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+body:not(.requires-auth) .topbar {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.page,
+#appView.app-view,
+#appView.app-view > section,
+#appView.app-view > main,
+#appView.app-view > article,
+#appView.app-view > div {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+#appView.app-view {
+  display: block !important;
+  background:
+    radial-gradient(circle at 42% 34%, rgba(255, 106, 0, 0.12), transparent 34%),
+    radial-gradient(circle at 66% 70%, rgba(61, 18, 55, 0.16), transparent 38%),
+    #050505 !important;
+}
+
+#appView.app-view:not(.feed) {
+  padding: clamp(22px, 3vw, 48px) !important;
+}
+
+body[data-route="feed"] #appView.app-view,
+body[data-route="nexo-feed"] #appView.app-view,
+body[data-route="ia"] #appView.app-view,
+body[data-route="perfil"] #appView.app-view,
+body[data-route="perfil-publico"] #appView.app-view,
+body[data-route="cadastrar"] #appView.app-view {
+  padding: 0 !important;
+}
+
+.route-slide-in,
+.route-slide-left,
+.route-slide-left.route-slide-in,
+.reveal-section,
+.scroll-reveal,
+.is-visible,
+[data-reveal] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  filter: none !important;
+  clip-path: none !important;
+  transition-property: background-color, border-color, color, box-shadow, opacity !important;
+}
+
+body:not([data-route="feed"]) .footer,
+body:not([data-route="feed"]) .cinematic-footer,
+body:not([data-route="feed"]) .footer-reveal-spacer,
+body:not([data-route="feed"]) .footer-trigger,
+body:not([data-route="feed"]) .scroll-footer,
+body:not([data-route="feed"]) .footer-shell {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+body[data-route="feed"] .footer {
+  display: block;
+}
+
+body:not([data-route="feed"]) #appView.app-view::after,
+body:not([data-route="feed"]) .page::after {
+  content: none !important;
+}
+
+@media (min-width: 721px) {
+  body:not(.requires-auth) .page {
+    width: calc(100vw - var(--sidebar-width)) !important;
+    margin-left: var(--sidebar-width) !important;
+  }
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
@@ -19912,6 +20123,194 @@ body[data-route="feed"] .recent-activity-section .track-list {
   body[data-route="feed"] .recent-activity-section {
     padding-left: 16px !important;
     padding-right: 16px !important;
+  }
+}
+/* ==========================================================================
+   FINAL GLOBAL APP SHELL CONTRACT
+   Keeps the fixed sidebar from covering content and disables route-level
+   paint effects that can hide sections after navigation.
+   ========================================================================== */
+:root {
+  --sidebar-width: 260px;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  background: #050505;
+}
+
+body {
+  min-height: 100dvh;
+  isolation: isolate;
+}
+
+.ambient-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sidebar {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: var(--sidebar-width) !important;
+  min-width: var(--sidebar-width) !important;
+  max-width: var(--sidebar-width) !important;
+  height: 100dvh !important;
+  z-index: 120 !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+
+.page {
+  position: relative !important;
+  z-index: 1 !important;
+  width: calc(100vw - var(--sidebar-width)) !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 100dvh !important;
+  margin: 0 0 0 var(--sidebar-width) !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  background: #050505 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  perspective: none !important;
+  transform: none !important;
+  transform-style: flat !important;
+  contain: none !important;
+}
+
+.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  z-index: 110 !important;
+  box-sizing: border-box !important;
+}
+
+#appView.app-view {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 64px) !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  transform-style: flat !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+#appView.app-view > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.home-parallax,
+.home-parallax__layer--base,
+.home-parallax__layer--back,
+.home-parallax__layer--deep {
+  transform-style: flat !important;
+}
+
+.home-parallax__layer--back,
+.home-parallax__layer--deep {
+  transform: none !important;
+}
+
+.route-slide-in,
+.route-slide-left,
+.route-slide-left.route-slide-in,
+.reveal-section,
+.scroll-reveal,
+[data-reveal] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+body:not(.requires-auth) .sidebar,
+body:not(.requires-auth) .topbar,
+body:not(.requires-auth) .page,
+body:not(.requires-auth) #appView.app-view,
+body:not(.requires-auth) #appView.app-view > :not([hidden]) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+body:not([data-route="feed"]) .footer,
+body:not([data-route="feed"]) .cinematic-footer,
+body:not([data-route="feed"]) .footer-reveal-spacer,
+body:not([data-route="feed"]) .footer-trigger,
+body:not([data-route="feed"]) .scroll-footer,
+body:not([data-route="feed"]) .footer-shell {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+body.requires-auth .page {
+  width: 100vw !important;
+  margin-left: 0 !important;
+}
+
+body.requires-auth #appView.app-view {
+  min-height: 100dvh !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+
+  .sidebar {
+    width: 86px !important;
+    min-width: 86px !important;
+    max-width: 86px !important;
+    transform: translateX(-100%) !important;
+  }
+
+  body.sidebar-open .sidebar,
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  .page {
+    width: 100vw !important;
+    margin-left: 0 !important;
+  }
+
+  .topbar {
+    width: 100% !important;
   }
 }
 

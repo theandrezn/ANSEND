@@ -88,7 +88,7 @@ const i18n = {
     "common.save": "Salvar",
     "cart.billing": "Informações de cobrança e licenciamento",
     "cart.addInfo": "Adicionar dados",
-    "cart.trackLicense": "Faixa Â· Licença MP3 Â· Revisar licença",
+    "cart.trackLicense": "Faixa · Licença MP3 · Revisar licença",
     "cart.byProducer": "por",
     "cart.discount": "Adicione mais 1 faixa para ativar a promoção Compre 1 e Leve 2!",
     "cart.summary": "Resumo do carrinho",
@@ -189,7 +189,7 @@ const i18n = {
     "common.save": "Save",
     "cart.billing": "Billing and licensing information",
     "cart.addInfo": "Add Info",
-    "cart.trackLicense": "Track Â· MP3 License (MP3) Â· Review License",
+    "cart.trackLicense": "Track · MP3 License (MP3) · Review License",
     "cart.byProducer": "by",
     "cart.discount": "Add 1 more track to activate the Buy 1 Get 2 promotion!",
     "cart.summary": "Cart Summary",
@@ -2626,7 +2626,7 @@ function featuredProfessionalCard(name, index) {
     <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
     <div>
       <strong>${name}<i data-lucide="badge-check"></i></strong>
-      <span>${categories[index % categories.length]} Â· ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
+      <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
     </div>
     <button type="button" data-action="producer" data-title="${name}">Ver perfil</button>
   </article>`;
@@ -2648,7 +2648,7 @@ function recentActivityRow(item, index) {
   const labels = ["Plano gerado", "Beat favoritado", "Serviço contratado", "Combo montado", "Perfil seguido"];
   return `<article>
     <i data-lucide="${["sparkles", "heart", "shopping-bag", "boxes", "user-plus"][index] || "activity"}"></i>
-    <div><strong>${labels[index]}</strong><span>${item.title} Â· ${item.producer}</span></div>
+    <div><strong>${labels[index]}</strong><span>${item.title} · ${item.producer}</span></div>
     <small>${index + 2} min</small>
   </article>`;
 }
@@ -2757,8 +2757,8 @@ function trackRow(item, i) {
       <div class="airbit-meta-row">
         <span class="airbit-producer" data-action="producer" data-title="${item.producer}">${item.producer}</span>
         ${verifiedBadge}
-        <span class="airbit-divider">Â·</span>
-        <span class="airbit-details">${item.tags[1] || "98 BPM"} Â· ${item.tags[0]}</span>
+        <span class="airbit-divider">·</span>
+        <span class="airbit-details">${item.tags[1] || "98 BPM"} · ${item.tags[0]}</span>
       </div>
     </div>
     <div class="airbit-tags">
@@ -3155,36 +3155,16 @@ prefersReducedMotion.addEventListener?.("change", requestHomeScrollAnimationTick
 
 function setupScrollReveals() {
   if (revealObserver) revealObserver.disconnect();
-  document.querySelectorAll(".reveal-section").forEach((target) => {
-    target.classList.remove("reveal-section");
+  document.querySelectorAll(".reveal-section, .scroll-reveal, [data-reveal]").forEach((target) => {
+    target.classList.remove("reveal-section", "scroll-reveal");
     target.classList.add("is-visible");
     target.style.removeProperty("--reveal-delay");
+    target.style.removeProperty("opacity");
+    target.style.removeProperty("visibility");
+    target.style.removeProperty("transform");
+    target.style.removeProperty("filter");
+    target.style.removeProperty("clip-path");
   });
-  const route = currentRouteFromHash();
-  if (route !== "feed") return;
-  const targets = document.querySelectorAll(".home-section, .scroll-kinetic-section");
-  targets.forEach((target, index) => {
-    target.classList.add("reveal-section");
-    target.style.setProperty("--reveal-delay", `${Math.min(index * 34, 170)}ms`);
-    const rect = target.getBoundingClientRect();
-    const isInViewport = rect.top < window.innerHeight * 1.08 && rect.bottom > -window.innerHeight * 0.08;
-    if (isInViewport) target.classList.add("is-visible");
-  });
-  if (prefersReducedMotion.matches) {
-    targets.forEach((target) => target.classList.add("is-visible"));
-    return;
-  }
-  revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      entry.target.classList.add("is-visible");
-      revealObserver.unobserve(entry.target);
-    });
-  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
-  targets.forEach((target) => revealObserver.observe(target));
-  window.setTimeout(() => {
-    document.querySelectorAll(".reveal-section:not(.is-visible)").forEach((target) => target.classList.add("is-visible"));
-  }, 900);
 }
 
 function decorateControls() {
@@ -3233,16 +3213,16 @@ const routeTitles = {
   detalhe: ["Detalhe do beat", "Informações, licença e perfil do produtor."],
   carrinho: ["Carrinho", "Revise seus beats e finalize seu pedido."],
 };
-routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendacoes e proximos passos."];
-routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais e solucoes recomendadas."];
-routeTitles.compras = ["Pedidos", "Historico de pedidos, licencas e servicos contratados."];
-routeTitles.ia = ["NEXO IA", "Diagnostico musical inteligente para adaptar sua jornada."];
+routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendações e próximos passos."];
+routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais e soluções recomendadas."];
+routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços contratados."];
+routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
 
-routeTitles.perfil = ["Meu perfil", "Sua conta, catalogo e publicacoes na ANSEND."];
-routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referencias e licencas."];
+routeTitles.perfil = ["Meu perfil", "Sua conta, catálogo e publicações na ANSEND."];
+routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referências e licenças."];
 routeTitles["central-ansend"] = ["Central ANSEND", "Serviços, segurança, pagamentos, licenças, privacidade e uso da plataforma."];
 routeTitles.servicos = ["Serviços", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles["como-funciona"] = ["Como funciona", "Da ideia ao lançamento com diagnóstico da NEXO IA e profissionais recomendados."];
@@ -3688,7 +3668,7 @@ function applyRoleDashboard() {
   if (quickSubtitle && role === "beatmaker") quickSubtitle.textContent = "Atalhos para vender melhor sem baguncar sua rotina.";
   const mapEyebrow = hero.querySelector(".ai-map-card > span");
   const mapSubtitle = hero.querySelector(".ai-map-card > p");
-  if (mapEyebrow) mapEyebrow.textContent = dashboard.recommendationTitle || "MAPA DO LANCAMENTO";
+  if (mapEyebrow) mapEyebrow.textContent = dashboard.recommendationTitle || "MAPA DO LANÇAMENTO";
   if (mapTitle) mapTitle.textContent = dashboard.compactRecommendation ? "Diagnostico rapido" : "Diagnostico Musical IA";
   if (mapSubtitle) mapSubtitle.textContent = dashboard.recommendationSubtitle || "Conte sua ideia e receba uma ordem clara de execucao.";
   if (!appState.aiPlan || appState.aiPlan.role !== activeRoleKey()) defaultRolePreview(dashboard);
@@ -6383,7 +6363,7 @@ async function handleReleaseFile(file, type) {
       const player = audioPreview?.querySelector("audio");
       
       if (nameNode) nameNode.textContent = file.name;
-      if (sizeNode) sizeNode.textContent = `${sizeMB} MB Â· carregando...`;
+      if (sizeNode) sizeNode.textContent = `${sizeMB} MB · carregando...`;
       if (player) {
         player.src = result.url;
         player.hidden = false;
@@ -6392,7 +6372,7 @@ async function handleReleaseFile(file, type) {
           form.elements.duration_seconds.value = Math.round(duration);
           const minutes = Math.floor(duration / 60);
           const seconds = Math.round(duration % 60).toString().padStart(2, '0');
-          if (sizeNode) sizeNode.textContent = `${sizeMB} MB Â· ${minutes}:${seconds}`;
+          if (sizeNode) sizeNode.textContent = `${sizeMB} MB · ${minutes}:${seconds}`;
           syncReleaseForm(form);
         };
       }
@@ -6844,7 +6824,7 @@ function renderMusicUpload() {
     + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
     + '<input type="hidden" name="tags">'
 
-    // STEP 0 â€” Detalhes
+    // STEP 0 - Detalhes
     + '<section class="release-panel is-active" data-panel="0">'
     + '<div class="release-panel-header"><h2>Informações do Beat</h2><p>Adicione as informações principais para organizar seu beat no catálogo.</p></div>'
     + '<div class="release-form-grid">'
@@ -6894,7 +6874,7 @@ function renderMusicUpload() {
     + '<label class="release-field release-wide"><span class="release-label">Termos da licença (opcional)</span><textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados..."></textarea></label>'
     + '</div></section>'
 
-    // STEP 4 â€” Entrega
+    // STEP 4 - Entrega
     + '<section class="release-panel" data-panel="4">'
     + '<div class="release-panel-header"><h2>Entrega do Beat</h2><p>Especifique os arquivos que o comprador receberá.</p></div>'
     + '<div class="delivery-options-grid"><div>'
@@ -6904,12 +6884,12 @@ function renderMusicUpload() {
     + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
     + '</div></div></section>'
 
-    // STEP 5 â€” Revisão
+    // STEP 5 - Revisão
     + '<section class="release-panel" data-panel="5">'
     + '<div class="release-panel-header"><h2>Revisão Final</h2><p>Confira todas as informações antes de publicar.</p></div>'
     + '<div class="review-grid"><div class="review-left"><div class="review-cover-wrapper"><img class="review-cover-img" src="assets/ansend-logo-square.png" alt="Capa do beat"></div><div class="review-audio-section"><audio class="review-audio-player" controls preload="metadata"></audio></div></div>'
     + '<div class="review-details"><div class="review-header-info"><h3 data-review-title>Sem título</h3><p data-review-producer>por Produtor ANSEND</p></div>'
-    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>â€”</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>â€”</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>â€”</dd></div><div class="review-meta-item"><dt>Preço</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>Licença</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
+    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>-</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>-</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>-</dd></div><div class="review-meta-item"><dt>Preço</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>Licença</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
     + '<div class="review-description"><h4>Descrição</h4><p data-review-desc>Sem descrição fornecida.</p></div></div></div></section>'
 
     + '</form></div>'
@@ -6967,28 +6947,28 @@ function renderProfileLegacy() {
     : "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80";
 
   const role = profile?.account_role || "produtor";
-  let subtitleRole = "Produtor â€¢ Beatmaker â€¢ Sound Designer";
+  let subtitleRole = "Produtor • Beatmaker • Sound Designer";
   let bioText = "Produtor musical especializado em Trap, R&B e sons melódicos. Criando identidades sonoras, arranjos dinâmicos e mixagens profissionais de alta fidelidade para lançamentos urbanos.";
   let specialties = ["Produção Musical", "Mixagem", "Masterização", "Sound Design"];
   let location = "São Paulo, Brasil";
   
   if (role === "artista") {
-    subtitleRole = "Artista â€¢ Compositor â€¢ Intérprete";
+    subtitleRole = "Artista • Compositor • Intérprete";
     bioText = "Compositor e vocalista independente focado em novos fluxos do Rap, Trap e R&B. Colaborando com produtores para desenvolver hooks marcantes e identidades autênticas.";
     specialties = ["Composição", "Performance Vocal", "Toplining", "Direção de Voz"];
     location = "Salvador, Brasil";
   } else if (role === "curador") {
-    subtitleRole = "Curador â€¢ Playlist Manager â€¢ Editorial";
+    subtitleRole = "Curador • Playlist Manager • Editorial";
     bioText = "Curador musical e criador de tendências. Gerenciando playlists influentes de Trap, Drill e R&B, conectando artistas independentes com novos ouvintes diariamente.";
     specialties = ["Curadoria Editorial", "Playlist Placement", "Posicionamento", "Marketing"];
     location = "Rio de Janeiro, Brasil";
   } else if (role === "designer") {
-    subtitleRole = "Designer Visual â€¢ Diretor de Arte";
+    subtitleRole = "Designer Visual • Diretor de Arte";
     bioText = "Desenvolvedor de universos visuais para lançamentos musicais. Especializado em capas digitais 3D, canvas do Spotify, animações e branding completo para EPs e singles.";
     specialties = ["Capa de Single/EP", "Modelagem 3D", "Canvas", "Motion Graphics"];
     location = "Belo Horizonte, Brasil";
   } else if (role === "marketing") {
-    subtitleRole = "Estrategista de Marketing â€¢ Gestor de Tráfego";
+    subtitleRole = "Estrategista de Marketing • Gestor de Tráfego";
     bioText = "Estrategista focado em impulsionar lançamentos musicais nas plataformas de streaming. Campanhas de tráfego pago, crescimento de audiência e análise de dados de funil.";
     specialties = ["Tráfego Pago (ADS)", "Estratégia de Lançamento", "Growth", "Análise de Dados"];
     location = "São Paulo, Brasil";
@@ -7084,9 +7064,9 @@ function renderProfileLegacy() {
           <span class="profile-hero-role">${subtitleRole}</span>
           <div class="profile-hero-meta">
             <b>${roleLabel}</b>
-            <span class="meta-dot">â€¢</span>
+            <span class="meta-dot">•</span>
             <b>${specialties.length ? specialties.slice(0, 3).join(" + ") : "Estilos nao definidos"}</b>
-            <span class="meta-dot">â€¢</span>
+            <span class="meta-dot">•</span>
             <b>${location}</b>
           </div>
         </div>
@@ -7303,7 +7283,7 @@ function renderSellerAuth() {
 }
 
 function hydrateView() {
-  appView.classList.add("route-slide-in");
+  appView.classList.remove("route-slide-in", "route-slide-left");
   decorateControls();
   setupHomeParallax();
   document.querySelectorAll('[data-action="favorite"][data-id]').forEach((button) => {
@@ -7319,10 +7299,7 @@ function hydrateView() {
   updateSidebarProfile();
   applyTranslations();
   lucide.createIcons();
-  // Defer reveal setup to next frame so DOM layout is computed after innerHTML changes.
-  // This ensures getBoundingClientRect() returns accurate positions for viewport checks.
   requestAnimationFrame(() => setupScrollReveals());
-  setTimeout(() => appView.classList.remove("route-slide-in", "route-slide-left"), 620);
 }
 
 function currentRoute() {
@@ -7331,7 +7308,6 @@ function currentRoute() {
 
 function renderRoute() {
   const route = currentRoute();
-  const routeChanged = route !== lastRoute;
   lastRoute = route;
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
@@ -7343,7 +7319,7 @@ function renderRoute() {
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
   document.body.classList.remove("release-mode");
-  appView.classList.toggle("route-slide-left", routeChanged);
+  appView.classList.remove("route-slide-in", "route-slide-left");
   document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
   if (!appState.authReady && authRequiredForRoute) {
@@ -7391,7 +7367,7 @@ function renderRoute() {
   hydrateView();
 }
 
-const TOASTS_ENABLED = true;
+const TOASTS_ENABLED = false;
 
 function showToast(message, icon = "check-circle-2") {
   if (!TOASTS_ENABLED) {
@@ -7771,7 +7747,7 @@ function updateMiniPlayer(item, show = true) {
   player.dataset.currentBeat = item.id;
   player.querySelector(".mini-track img").src = item.cover;
   player.querySelector(".mini-track strong").textContent = item.title;
-  player.querySelector(".mini-track span").textContent = `${item.producer} Â· ${item.tags?.[1] || "153 BPM"}`;
+  player.querySelector(".mini-track span").textContent = `${item.producer} · ${item.tags?.[1] || "153 BPM"}`;
   const numericId = Number(String(item.id).replace(/\D/g, "")) || 4;
   player.querySelector(".mini-buy span").textContent = item.id === topBeatOfDay.id ? "$44.95" : `$${(24.95 + (numericId % 5) * 5).toFixed(2)}`;
   if (item.id !== topBeatOfDay.id && appState.player.previewTime >= 165) appState.player.previewTime = 11;
@@ -9245,5 +9221,6 @@ detectLocaleWithGeo()
     renderRoutePreservingAuthFocus();
     initAuth();
   });
+
 
 
