@@ -4939,10 +4939,16 @@ async function deleteProfessionalAccount(userId) {
     showToast("Você não pode remover a própria conta admin por aqui.", "shield-alert");
     return;
   }
-  const targetProfile = appState.adminProfiles.find((profile) => profile.id === userId);
-  const label = targetProfile?.email || targetProfile?.display_name || targetProfile?.full_name || "esta conta";
+  const targetProfile = appState.adminProfiles.find((profile) => profile.id === userId)
+    || activeProfessionalProfiles().find((profile) => profile.id === userId);
+  const label = targetProfile?.email
+    || targetProfile?.display_name
+    || targetProfile?.full_name
+    || targetProfile?.name
+    || "esta conta";
   const confirmed = window.confirm(`Remover definitivamente ${label}? Isso apaga perfil, beats, catálogo e usuário Auth.`);
   if (!confirmed) return;
+  const routeAfterDelete = currentRoute();
   const { data, error } = await supabaseClient.rpc("admin_delete_professional_account", { target_user_id: userId });
   if (error) {
     console.error("[ANSEND admin] delete failed", error);
@@ -4952,8 +4958,12 @@ async function deleteProfessionalAccount(userId) {
   showToast(`Conta removida: ${data?.email || label}`, "trash-2");
   await loadPublicPlatformData();
   await getAdminProfiles();
-  renderAdmin();
-  hydrateView();
+  if (routeAfterDelete === "admin") {
+    await renderAdmin();
+    hydrateView();
+    return;
+  }
+  renderRoute();
 }
 
 function syncAccountUi() {
@@ -6227,8 +6237,16 @@ function professionalCard(profile) {
   // Favorite active state
   const isFavorited = appState.favorites.has(profile.id);
   const favoriteClass = isFavorited ? "is-favorite" : "";
+  const isSelf = profile.id === appState.authUser?.id;
+  const adminDeleteButton = appState.isAdmin
+    ? `<button type="button" class="professional-card-admin-delete" data-action="admin-delete-profile" data-user-id="${profile.id}" aria-label="${isSelf ? "Sua conta admin protegida" : `Remover perfil ${htmlEscape(profile.name)}`}" title="${isSelf ? "Sua conta admin protegida" : "Remover perfil"}" ${isSelf ? "disabled" : ""}>
+        <i data-lucide="${isSelf ? "shield-check" : "x"}"></i>
+      </button>`
+    : "";
 
   return `<article class="professional-card spotlight-card" data-category="${profile.category}" data-id="${profile.id}">
+    ${adminDeleteButton}
+
     <!-- Top Banner -->
     <div class="professional-card-banner" style="${bannerStyle}"></div>
     

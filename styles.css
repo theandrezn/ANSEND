@@ -20335,6 +20335,83 @@ body[data-route="feed"] .recent-activity-section .track-list {
   }
 }
 
+/* Solid black site canvas.
+   Keep the image hero untouched; remove only broad ambient orange/purple
+   background washes from the shell and from Home sections below the hero. */
+html,
+body,
+#root,
+.page,
+#appView.app-view,
+.section-transition,
+.section-transition__content {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+body:not(.requires-auth) .ambient-glow,
+body:not(.requires-auth) .glow-blob {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+body[data-route="feed"] #appView.app-view,
+body[data-route="feed"] #appView.app-view.feed,
+body[data-route="feed"] .home-parallax,
+body[data-route="feed"] .home-parallax__layer--base,
+body[data-route="feed"] .nexo-blocks-container,
+body[data-route="feed"] .nexo-blocks-container .home-section,
+body[data-route="feed"] .smart-combos-section,
+body[data-route="feed"] .featured-professionals-section,
+body[data-route="feed"] .recent-activity-section {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--back,
+body[data-route="feed"] .home-parallax__layer--deep,
+body[data-route="feed"] .home-parallax-glow,
+body[data-route="feed"] .home-parallax-glow--1,
+body[data-route="feed"] .home-parallax-glow--2,
+body[data-route="feed"] .home-parallax-glow--3,
+body[data-route="feed"] .home-parallax-glow--4 {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  background: none !important;
+  filter: none !important;
+}
+
+body[data-route="feed"] .home-parallax::before,
+body[data-route="feed"] .home-parallax::after,
+body[data-route="feed"] .home-parallax__layer--base::before,
+body[data-route="feed"] .home-parallax__layer--base::after,
+body[data-route="feed"] .nexo-blocks-container::before,
+body[data-route="feed"] .nexo-blocks-container::after,
+body[data-route="feed"] .home-section::before,
+body[data-route="feed"] .home-section::after,
+body[data-route="feed"] .smart-combos-section::before,
+body[data-route="feed"] .smart-combos-section::after,
+body[data-route="feed"] .featured-professionals-section::before,
+body[data-route="feed"] .featured-professionals-section::after,
+body[data-route="feed"] .recent-activity-section::before,
+body[data-route="feed"] .recent-activity-section::after {
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+body[data-route="feed"] .cinematic-footer .footer-aurora {
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  filter: none !important;
+}
+
 /* Professionals directory: premium social profile cards. */
 .professionals-directory {
   gap: 24px;
@@ -20421,6 +20498,45 @@ body[data-route="feed"] .recent-activity-section .track-list {
 .professional-card-hire-btn:hover {
   background: #ffffff;
   transform: scale(1.02);
+}
+
+.professional-card-admin-delete {
+  position: absolute;
+  top: 24px;
+  left: 26px;
+  z-index: 12;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.74);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.34);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.professional-card-admin-delete:hover:not(:disabled) {
+  background: rgba(255,74,74,0.96);
+  border-color: rgba(255,255,255,0.28);
+  color: #ffffff;
+  transform: scale(1.04);
+}
+
+.professional-card-admin-delete:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.professional-card-admin-delete svg {
+  width: 18px;
+  height: 18px;
 }
 
 .professional-card-avatar-container {
