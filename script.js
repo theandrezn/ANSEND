@@ -2404,7 +2404,7 @@ function nexoFeedCard(item, index) {
   return `<article class="nexo-feed-card ${hasVisualMedia ? "" : "has-system-fallback"}" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}">
     <div class="nexo-feed-media">
       ${hasVisualMedia ? `<img src="${htmlEscape(media)}" alt="${htmlEscape(item.title)}">` : `<div class="nexo-feed-official-fallback"><i data-lucide="radio-tower"></i><span>ANSEND</span></div>`}
-      ${isBeat && item.audioUrl ? `<button type="button" class="nexo-feed-play" data-action="nexo-feed-play" data-feed-item-id="${item.id}" aria-label="Ouvir ${htmlEscape(item.title)}"><i data-lucide="play"></i></button>` : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
+      ${isBeat && item.audioUrl ? "" : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
@@ -2463,8 +2463,96 @@ function renderNexoFeed() {
   </section>`;
 }
 
+function nexoFeedPlaybackSvg(mode = "play") {
+  if (mode === "pause") {
+    return `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect x="20" y="16" width="8" height="32" rx="2" fill="currentColor"></rect><rect x="36" y="16" width="8" height="32" rx="2" fill="currentColor"></rect></svg>`;
+  }
+  return `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M24 18v28c0 2.7 2.9 4.3 5.2 2.9l22-14c2.1-1.3 2.1-4.5 0-5.8l-22-14C26.9 13.7 24 15.3 24 18z" fill="currentColor"></path></svg>`;
+}
+
+function showNexoFeedPlaybackOverlay(card, mode = "play", { persistent = false } = {}) {
+  const media = card?.querySelector(".nexo-feed-media");
+  if (!media) return;
+  media.querySelectorAll(".nexo-feed-play-feedback").forEach((item) => item.remove());
+  const feedback = document.createElement("div");
+  feedback.className = `nexo-feed-play-feedback${persistent ? " is-persistent" : ""}`;
+  feedback.innerHTML = `<span class="nexo-feed-play-feedback__button">${nexoFeedPlaybackSvg(mode)}</span>`;
+  media.appendChild(feedback);
+  if (!persistent) setTimeout(() => feedback.remove(), 620);
+}
+
+function clearNexoFeedPlaybackOverlay(card) {
+  card?.querySelectorAll(".nexo-feed-play-feedback").forEach((item) => item.remove());
+}
+
+function nexoFeedBeatForCard(card) {
+  const feedItem = feedItemForEvent(card?.dataset.feedItemId);
+  if (!feedItem || !["beat", "music"].includes(feedItem.type)) return null;
+  const beatId = String(feedItem.metadata?.beatId || feedItem.sourceId || feedItem.id || "");
+  return searchableBeatPool().find((item) => String(item.id) === beatId)
+    || (String(topBeatOfDay.id) === beatId ? topBeatOfDay : null);
+}
+
+function pauseNexoFeedCard(card, { fromUser = false } = {}) {
+  const item = nexoFeedBeatForCard(card);
+  const audio = topBeatAudio();
+  if (item && appState.playing === item.id && audio) {
+    audio.pause();
+    setTopBeatPlaying(false);
+  }
+  card?.classList.remove("is-playing");
+  card?.classList.toggle("is-paused", Boolean(fromUser));
+  if (fromUser) showNexoFeedPlaybackOverlay(card, "play", { persistent: true });
+  else clearNexoFeedPlaybackOverlay(card);
+}
+
+async function playNexoFeedCard(card, { fromUser = false } = {}) {
+  const item = nexoFeedBeatForCard(card);
+  if (!item) return false;
+  if (!fromUser && card?.dataset.userPaused === "true") return false;
+  const audio = topBeatAudio();
+  if (appState.playing === item.id && audio && !audio.paused) {
+    card?.classList.add("is-playing");
+    card?.classList.remove("is-paused");
+    if (!fromUser) clearNexoFeedPlaybackOverlay(card);
+    return true;
+  }
+  document.querySelectorAll(".nexo-feed-card").forEach((candidate) => {
+    if (candidate !== card) {
+      candidate.classList.remove("is-playing", "is-paused");
+      clearNexoFeedPlaybackOverlay(candidate);
+    }
+  });
+  const played = await playBeat(item, { quiet: true, suppressErrorLog: !fromUser });
+  if (!played) return false;
+  card?.classList.add("is-playing");
+  card?.classList.remove("is-paused");
+  card?.removeAttribute("data-user-paused");
+  if (fromUser) showNexoFeedPlaybackOverlay(card, "pause");
+  else clearNexoFeedPlaybackOverlay(card);
+  return true;
+}
+
+function toggleNexoFeedCardPlayback(card) {
+  if (!card) return;
+  const item = nexoFeedBeatForCard(card);
+  if (!item) return;
+  const audio = topBeatAudio();
+  const isPlaying = appState.playing === item.id && audio && !audio.paused;
+  if (isPlaying) {
+    card.dataset.userPaused = "true";
+    pauseNexoFeedCard(card, { fromUser: true });
+    writeNexoFeedEvent(card.dataset.feedItemId || item.id, "click_cta", { item, watchTimeMs: 0 });
+    return;
+  }
+  playNexoFeedCard(card, { fromUser: true });
+  writeNexoFeedEvent(card.dataset.feedItemId || item.id, "click_cta", { item, watchTimeMs: 0 });
+}
+
 function setActiveNexoFeedCard(card) {
   if (!card) return;
+  const previous = document.querySelector(".nexo-feed-card.is-active");
+  if (previous && previous !== card) pauseNexoFeedCard(previous, { fromUser: false });
   document.querySelectorAll(".nexo-feed-card").forEach((item) => item.classList.toggle("is-active", item === card));
 }
 
@@ -2492,6 +2580,7 @@ function setupNexoFeedObservers() {
       if (!id) return;
       if (entry.isIntersecting && entry.intersectionRatio >= .62) {
         setActiveNexoFeedCard(card);
+        playNexoFeedCard(card, { fromUser: false });
         if (!card.dataset.impressed) {
           writeNexoFeedEvent(id, "impression");
           writeNexoFeedEvent(id, "view_start");
@@ -2504,6 +2593,7 @@ function setupNexoFeedObservers() {
         ];
         nexoFeedTimers.set(id, timers);
       } else if (entry.intersectionRatio < .28 && nexoFeedTimers.has(id)) {
+        pauseNexoFeedCard(card, { fromUser: false });
         nexoFeedTimers.get(id).forEach(clearTimeout);
         nexoFeedTimers.delete(id);
         if (card.dataset.impressed && !card.dataset.completed) writeNexoFeedEvent(id, "skip_fast", { watchTimeMs: 1200 });
@@ -2512,6 +2602,7 @@ function setupNexoFeedObservers() {
   }, { threshold: [.25, .62, .9] });
   cards.forEach((card) => nexoFeedObserver.observe(card));
   setActiveNexoFeedCard(cards[0]);
+  requestAnimationFrame(() => playNexoFeedCard(cards[0], { fromUser: false }));
 }
 
 function musicProfileSummary(profile = getMusicProfile()) {
@@ -8348,7 +8439,7 @@ function setTopBeatPlaying(isPlaying) {
   }
 
   // Sincronizar todos os botões de play/pause da página
-  document.querySelectorAll('[data-action="play"], [data-action="play-catalog"], [data-action="nexo-feed-play"]').forEach((button) => {
+  document.querySelectorAll('[data-action="play"], [data-action="play-catalog"]').forEach((button) => {
     const id = button.dataset.id || button.dataset.feedItemId;
     const isThisPlaying = id && String(id) === String(appState.playing) && isPlaying;
     button.innerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
@@ -8358,7 +8449,7 @@ function setTopBeatPlaying(isPlaying) {
   lucide.createIcons();
 }
 
-async function playBeat(item, { quiet = false } = {}) {
+async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) {
   if (!item) return false;
   const audio = topBeatAudio();
   if (!audio) return false;
@@ -8393,7 +8484,7 @@ async function playBeat(item, { quiet = false } = {}) {
     if (!quiet) showToast(`Tocando agora: ${item.title}`, "play");
     return true;
   } catch (error) {
-    console.error("Playback error", error);
+    if (!suppressErrorLog) console.error("Playback error", error);
     setTopBeatPlaying(false);
     if (!quiet) showToast("Erro ao reproduzir o áudio", "alert-triangle");
     return false;
@@ -8901,68 +8992,8 @@ document.addEventListener("click", (event) => {
   if (clickedFeedMedia) {
     const feedCard = clickedFeedMedia.closest(".nexo-feed-card");
     if (feedCard && feedCard.dataset.feedType === "beat") {
-      const beatId = feedCard.dataset.feedItemId;
-      const item = findBeat(beatId);
-      if (item) {
-        const player = document.querySelector(".mini-player");
-        const isCurrent = appState.playing === item.id;
-        const isPlaying = isCurrent && player && player.classList.contains("is-playing");
-        
-        let playAction = true;
-        if (isCurrent) {
-          if (isPlaying) {
-            if (item.id === topBeatOfDay.id) {
-              pauseTopBeat({ quiet: true });
-            } else {
-              player.classList.remove("is-playing");
-              syncMiniPlayerState();
-              lucide.createIcons();
-            }
-            playAction = false;
-          } else {
-            if (item.id === topBeatOfDay.id) {
-              playTopBeat({ quiet: true });
-            } else {
-              player.classList.add("is-playing");
-              showMiniPlayer();
-              syncMiniPlayerState();
-              lucide.createIcons();
-            }
-            playAction = true;
-          }
-        } else {
-          if (appState.playing === topBeatOfDay.id) {
-            pauseTopBeat({ quiet: true });
-          }
-          appState.playing = item.id;
-          updateMiniPlayer(item);
-          document.querySelector(".mini-player")?.classList.add("is-playing");
-          syncMiniPlayerState();
-          lucide.createIcons();
-          if (item.id === topBeatOfDay.id) {
-            playTopBeat({ quiet: true });
-          }
-          writeNexoFeedEvent(item.id, "click_cta", { item, watchTimeMs: 0 });
-          playAction = true;
-        }
-
-        const feedback = document.createElement("div");
-        feedback.className = "nexo-feed-play-feedback";
-        feedback.innerHTML = `<i data-lucide="${playAction ? "play" : "pause"}"></i>`;
-        clickedFeedMedia.appendChild(feedback);
-        
-        if (window.lucide) {
-          window.lucide.createIcons({
-            nameAttr: "data-lucide"
-          });
-        }
-        
-        setTimeout(() => {
-          feedback.remove();
-        }, 650);
-
-        return;
-      }
+      toggleNexoFeedCardPlayback(feedCard);
+      return;
     }
   }
 
@@ -9178,26 +9209,6 @@ document.addEventListener("click", (event) => {
       target.innerHTML = `<i data-lucide="${input.type === "password" ? "eye" : "eye-off"}"></i>`;
       lucide.createIcons();
     }
-    return;
-  }
-  if (action === "nexo-feed-play") {
-    const feedItem = feedItemForEvent(target.dataset.feedItemId);
-    const item = findBeat(feedItem?.metadata?.beatId || feedItem?.sourceId || target.dataset.id);
-    if (!item) return;
-    if (appState.playing === item.id) {
-      const audio = topBeatAudio();
-      if (audio) {
-        if (audio.paused) {
-          audio.play().then(() => setTopBeatPlaying(true));
-        } else {
-          audio.pause();
-          setTopBeatPlaying(false);
-        }
-      }
-    } else {
-      playBeat(item);
-    }
-    writeNexoFeedEvent(feedItem?.id || item.id, "click_cta", { item: feedItem || item, watchTimeMs: 0 });
     return;
   }
   if (action === "nexo-feed-prev" || action === "nexo-feed-next") {

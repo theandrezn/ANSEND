@@ -15023,6 +15023,10 @@ body:has(.nexo-feed-page) .footer {
   }
 }
 
+.nexo-feed-play {
+  display: none !important;
+}
+
 /* TikTok-style play/pause feedback overlay inside feed card cover */
 .nexo-feed-play-feedback {
   position: absolute;
@@ -15031,18 +15035,37 @@ body:has(.nexo-feed-page) .footer {
   place-items: center;
   z-index: 10;
   pointer-events: none;
-  background: rgba(0, 0, 0, .05);
+  background: transparent;
 }
 
-.nexo-feed-play-feedback svg {
-  width: 76px;
-  height: 76px;
+.nexo-feed-play-feedback__button {
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(0, 0, 0, .76);
   color: #fff;
-  fill: rgba(255, 255, 255, 0.9);
-  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.5));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .48);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   opacity: 0;
   transform: scale(0.5);
   animation: tikTokPlayPulse 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.nexo-feed-play-feedback.is-persistent .nexo-feed-play-feedback__button {
+  opacity: 1;
+  transform: scale(1);
+  animation: none;
+}
+
+.nexo-feed-play-feedback svg {
+  width: 54px;
+  height: 54px;
+  color: #fff;
+  fill: currentColor;
 }
 
 @keyframes tikTokPlayPulse {
