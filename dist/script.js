@@ -1197,6 +1197,45 @@ const licensePlans = {
   },
 };
 
+Object.assign(licensePlans, {
+  basic: {
+    label: "MP3 Lease",
+    price: "R$ 79",
+    summary: "MP3 sem tag para validar a ideia e lancar com seguranca.",
+    rights: ["Arquivo MP3", "5.000 streams", "Distribuicao limitada", "Credito obrigatorio"],
+  },
+  wav: {
+    label: "WAV Lease",
+    price: "R$ 129",
+    summary: "Arquivo WAV para lancamento limpo em plataformas digitais.",
+    rights: ["Arquivo WAV", "25.000 streams", "Uso em video", "Credito obrigatorio"],
+  },
+  unlimited: {
+    label: "Unlimited WAV Lease",
+    price: "R$ 249",
+    summary: "WAV com teto ampliado para campanhas e crescimento.",
+    rights: ["WAV sem tag", "Streams ilimitados", "Monetizacao liberada", "Contrato digital"],
+  },
+  premium: {
+    label: "Trackout Lease",
+    price: "R$ 349",
+    summary: "Arquivos separados para mixagem profissional.",
+    rights: ["Trackouts inclusos", "100.000 streams", "Uso comercial", "Contrato prioritario"],
+  },
+  stems: {
+    label: "Unlimited + Track Stems",
+    price: "R$ 499",
+    summary: "Stems completos com uso digital ampliado.",
+    rights: ["Stems completos", "Streams ilimitados", "Monetizacao liberada", "Distribuicao digital"],
+  },
+  exclusive: {
+    label: "Full Monetization Lease",
+    price: "R$ 799",
+    summary: "Uso total com pacote completo de arquivos para campanha.",
+    rights: ["Arquivos completos", "Monetizacao total", "Direitos ampliados", "Suporte de lancamento"],
+  },
+});
+
 function professionalImage(profile) {
   if (profile?.avatar) return profile.avatar;
   if (profile?.avatar_url) return profile.avatar_url;
@@ -6120,8 +6159,18 @@ function mapCatalogItemToBeat(item) {
   };
 }
 
+function splitCartEntry(entry = "") {
+  const [beatId, licenseId = "premium"] = String(entry || "").split("::");
+  return { beatId, licenseId: licensePlans[licenseId] ? licenseId : "premium" };
+}
+
+function cartEntryKey(id, licenseId = "premium") {
+  return `${id}::${licensePlans[licenseId] ? licenseId : "premium"}`;
+}
+
 function findBeat(id) {
-  return searchableBeatPool().find((item) => item.id === id) || topBeatOfDay;
+  const { beatId } = splitCartEntry(id);
+  return searchableBeatPool().find((item) => item.id === beatId) || topBeatOfDay;
 }
 
 function pageIntro(route, actions = "") {
@@ -6203,9 +6252,10 @@ function renderPurchases() {
   appView.innerHTML = `${pageIntro("compras")}${hasItems ? `${clearMarkup}<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
 }
 
-function addToCart(id) {
-  if (!appState.cart.includes(id)) {
-    appState.cart.push(id);
+function addToCart(id, licenseId = "premium") {
+  const entry = cartEntryKey(id, licenseId);
+  if (!appState.cart.includes(entry)) {
+    appState.cart.push(entry);
     localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
     showToast("Adicionado ao carrinho", "shopping-cart");
   }
@@ -6241,14 +6291,18 @@ function renderCart() {
   }
 
   const items = appState.cart.map(id => {
-    const beatItem = findBeat(id) || topBeatOfDay;
-    const priceText = beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
+    const { beatId, licenseId } = splitCartEntry(id);
+    const beatItem = findBeat(beatId) || topBeatOfDay;
+    const license = licensePlans[licenseId] || licensePlans.premium;
+    const priceText = license.price || beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
     const rawPrice = Number(beatItem.raw?.price || 0);
     const normalizedPrice = String(priceText).replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
     const priceVal = rawPrice || Number.parseFloat(normalizedPrice) || 0;
     return {
       ...beatItem,
       cartId: id,
+      licenseId,
+      licenseLabel: license.label,
       priceVal,
       priceText
     };
@@ -6264,7 +6318,7 @@ function renderCart() {
       <img src="${item.cover}" alt="Capa de ${item.title}" class="cart-item-art">
       <div class="cart-item-details">
         <h3>${item.title}</h3>
-        <span>${t("cart.trackLicense")}</span>
+        <span>${item.licenseLabel} · Revisar licença</span>
         <small class="cart-item-producer">${t("cart.byProducer")} ${item.producer}</small>
       </div>
       <div class="cart-item-price">${item.priceText}</div>
@@ -6749,83 +6803,145 @@ function renderPlaylistDetail() {
     </div>`;
 }
 
+function beatDetailMiniCard(beat, context = "related") {
+  const price = beat.price || "R$ 79";
+  return `<article class="beat-mini-card" data-beat-id="${htmlEscape(beat.id)}">
+    <button class="beat-mini-cover" type="button" data-action="open-beat" data-id="${htmlEscape(beat.id)}" aria-label="Abrir ${htmlEscape(beat.title)}">
+      <img src="${htmlEscape(beat.cover)}" alt="Capa de ${htmlEscape(beat.title)}">
+      <span><i data-lucide="play"></i></span>
+    </button>
+    <button class="beat-mini-title" type="button" data-action="open-beat" data-id="${htmlEscape(beat.id)}">${htmlEscape(beat.title)}</button>
+    <small>${htmlEscape(beat.producer || "ANSEND")}</small>
+    <div>
+      <strong>${htmlEscape(price)}</strong>
+      <button type="button" data-action="buy" data-license="basic" data-id="${htmlEscape(beat.id)}" aria-label="Comprar ${htmlEscape(beat.title)}"><i data-lucide="shopping-bag"></i></button>
+    </div>
+  </article>`;
+}
+
+function licenseTermsMarkup(plan) {
+  const terms = plan.rights || [];
+  return terms.map((term) => `<span><i data-lucide="check-circle-2"></i>${htmlEscape(term)}</span>`).join("");
+}
+
 function renderBeatDetail() {
   const hashId = location.hash.replace("#beat-", "");
   const item = findBeat(hashId);
   const ownerProfile = profileForUserId(item.user_id || item.raw?.user_id);
   const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
-  const producerName = item.producer.replace("prod. ", "");
-  const related = marketplaceBeats()
-    .filter((beatItem) => beatItem.id !== item.id && (!item.user_id || beatItem.user_id === item.user_id))
-    .slice(0, 6);
+  const producerName = String(item.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+  const selectedLicense = "premium";
+  const selectedPlan = licensePlans[selectedLicense];
+  const catalog = marketplaceBeats();
+  const sameProducer = catalog
+    .filter((beatItem) => beatItem.id !== item.id && ((item.user_id && beatItem.user_id === item.user_id) || beatItem.producer === item.producer))
+    .slice(0, 4);
+  const related = catalog
+    .filter((beatItem) => beatItem.id !== item.id && beatItem.tags?.some((tag) => item.tags?.includes(tag)))
+    .concat(catalog.filter((beatItem) => beatItem.id !== item.id))
+    .filter((beatItem, index, list) => list.findIndex((entry) => entry.id === beatItem.id) === index)
+    .slice(0, 4);
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
-  const producerBio = ownerProfile?.bio ? `<p>${htmlEscape(ownerProfile.bio)}</p>` : "";
-  const producerStats = item.user_id
-    ? publishedCatalogItems().filter((entry) => entry.user_id === item.user_id).length
-    : 0;
-  const technicalDetails = [
-    item.tags[1]?.includes("BPM") ? ["BPM", item.tags[1].replace(" BPM", "")] : null,
-    item.tags[0] ? ["Genero", item.tags[0]] : null,
-    item.raw?.license_type ? ["Licenca", item.raw.license_type] : null,
-  ].filter(Boolean);
+  const bpm = item.raw?.bpm || item.tags?.find((tag) => /bpm/i.test(tag))?.replace(/\s*bpm/i, "") || "130";
+  const key = item.raw?.key || item.raw?.music_key || "C Minor";
+  const genre = item.raw?.genre || item.tags?.[0] || "Beat";
+  const published = item.raw?.published_at || item.raw?.created_at || item.createdAt || "";
+  const publishedLabel = published ? new Date(published).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "Recente";
+  const plays = Number(item.raw?.plays_count || item.raw?.views_count || 1200 + String(item.id).length * 17).toLocaleString("pt-BR");
+  const likes = Number(item.raw?.likes_count || (appState.favorites.has(item.id) ? 1 : 0) || 11).toLocaleString("pt-BR");
+  const tags = [...new Set([genre, ...(item.tags || [])])].filter(Boolean).slice(0, 5);
+  const description = item.raw?.description || "Preview profissional pronto para licenciamento na ANSEND.";
+  const licenseCards = Object.entries(licensePlans).map(([keyId, plan]) => `<button class="beat-license-card ${keyId === selectedLicense ? "is-selected" : ""}" type="button" data-action="select-beat-license" data-license="${keyId}" data-price="${htmlEscape(plan.price)}" aria-pressed="${keyId === selectedLicense ? "true" : "false"}">
+    <span>${htmlEscape(plan.label)}</span>
+    <strong>${htmlEscape(plan.price)}</strong>
+    <small>${htmlEscape(plan.summary)}</small>
+  </button>`).join("");
+  const sameProducerMarkup = sameProducer.length
+    ? sameProducer.map((beat) => beatDetailMiniCard(beat, "producer")).join("")
+    : `<div class="beat-detail-empty">Nenhum outro beat publicado ainda.</div>`;
+  const relatedMarkup = related.length
+    ? related.map((beat) => beatDetailMiniCard(beat, "related")).join("")
+    : `<div class="beat-detail-empty">Sem relacionados por enquanto.</div>`;
 
   appView.innerHTML = `
-    <div class="beat-detail-page">
-      <section class="beat-detail-hero" style="--detail-cover: url('${item.cover}')">
-        <div class="beat-detail-cover-wrap">
-          <img class="beat-detail-cover" src="${item.cover}" alt="Capa do beat ${item.title}">
-        </div>
-        <div class="beat-detail-copy">
-          <span class="detail-eyebrow">BEAT PROFISSIONAL - ${item.tags[0]}</span>
-          <h1>${item.title}</h1>
-          <button class="detail-producer-link" type="button" data-action="producer-focus">
-            ${professionalAvatarMarkup(ownerProfessional || { name: producerName }, "detail-producer-avatar")}
-            <span><b>${producerName}</b><small>${ownerProfile ? accountRoleLabel(ownerProfile.account_role) : "Perfil ANSEND"}</small></span>
+    <main class="beat-detail-page beat-market-detail" data-beat-id="${htmlEscape(item.id)}" data-selected-license="${selectedLicense}">
+      <div class="beat-detail-shell">
+        <aside class="beat-sidebar-card" aria-label="Preview do beat">
+          <button class="beat-sidebar-cover" type="button" data-action="play" data-id="${htmlEscape(item.id)}" aria-label="Tocar preview de ${htmlEscape(item.title)}">
+            <img src="${htmlEscape(item.cover)}" alt="Capa do beat ${htmlEscape(item.title)}">
+            <span><i data-lucide="play"></i></span>
           </button>
-          ${item.raw?.description ? `<p>${htmlEscape(item.raw.description)}</p>` : ""}
-          <div class="detail-actions">
-            <button class="detail-play" type="button" data-action="play" data-id="${item.id}"><i data-lucide="play"></i>Ouvir previa</button>
-            <button class="detail-buy" type="button" data-action="buy" data-id="${item.id}">Comprar licenca</button>
-            <button class="detail-favorite${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar"><i data-lucide="heart"></i></button>
+          <h1>${htmlEscape(item.title)}</h1>
+          <button class="beat-sidebar-producer" type="button" data-action="producer" ${profileTargetAttrs({ id: item.user_id || item.raw?.user_id || "", username: item.owner_username || item.raw?.profile_username || "", title: producerName })}>
+            ${htmlEscape(producerName)}
+          </button>
+          <div class="beat-sidebar-actions" aria-label="Acoes do beat">
+            <button class="${favoriteClass}" type="button" data-action="favorite" data-id="${htmlEscape(item.id)}" aria-label="Curtir"><i data-lucide="heart"></i></button>
+            <button type="button" data-action="share-current" data-id="${htmlEscape(item.id)}" aria-label="Compartilhar"><i data-lucide="repeat-2"></i></button>
+            <button type="button" data-action="add-playlist-current" data-id="${htmlEscape(item.id)}" aria-label="Salvar"><i data-lucide="bookmark"></i></button>
+            <button type="button" data-action="download" data-id="${htmlEscape(item.id)}" aria-label="Baixar demo"><i data-lucide="download"></i></button>
           </div>
-        </div>
-        <div class="detail-stats" aria-label="Informacoes tecnicas do beat">
-          ${technicalDetails.map(([label, value]) => `<span><small>${label}</small><strong>${htmlEscape(value)}</strong></span>`).join("")}
-        </div>
-      </section>
-
-      <section class="beat-detail-layout">
-        <div class="beat-detail-main">
-          <header class="detail-section-head"><div><span>ESCOLHA SUA LICENCA</span><h2>Arquivos prontos para sua proxima musica</h2></div></header>
-          <div class="license-grid">
-            <article><span>Basica</span><strong>${licensePlans.basic.price}</strong><p>${licensePlans.basic.summary}</p><ul>${licensePlans.basic.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="basic" data-id="${item.id}">Escolher basica</button></article>
-            <article class="is-featured"><em>Mais escolhida</em><span>Premium</span><strong>${licensePlans.premium.price}</strong><p>${licensePlans.premium.summary}</p><ul>${licensePlans.premium.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="premium" data-id="${item.id}">Escolher premium</button></article>
-            <article><span>Exclusiva</span><strong>${licensePlans.exclusive.price}</strong><p>${licensePlans.exclusive.summary}</p><ul>${licensePlans.exclusive.rights.map((right) => `<li>${right}</li>`).join("")}</ul><button type="button" data-action="buy" data-license="exclusive" data-id="${item.id}">Comprar exclusiva</button></article>
-          </div>
-
-          <section class="producer-profile" id="producerProfile">
-            <div class="producer-profile-cover" style="--producer-cover: url('${item.cover}')"></div>
-            <div class="producer-profile-info">
-              ${professionalAvatarMarkup(ownerProfessional || { name: producerName }, "producer-profile-avatar")}
-              <div><span>PERFIL ANSEND</span><h2>${producerName}</h2>${producerBio}</div>
-              <button type="button" data-action="follow-producer">Seguir</button>
-            </div>
-            ${producerStats ? `<div class="producer-profile-stats"><span><strong>${producerStats}</strong><small>itens publicados</small></span></div>` : ""}
-          </section>
-
-          <section class="catalog-section detail-catalog">
-            <div class="section-head"><div><h2><i data-lucide="flame"></i>Populares de ${producerName}</h2><p>Mais ouvidos e licenciados</p></div></div>
-            <div class="beat-row">${related.map(beatCard).join("")}</div>
-          </section>
-        </div>
-        <aside class="beat-detail-side">
-          <h3>Sobre este beat</h3>
-          <p>Produzido para artistas que procuram presenca, dinamica e uma base pronta para lancamento.</p>
-          <dl><div><dt>Publicado</dt><dd>4 de junho de 2026</dd></div><div><dt>Arquivos</dt><dd>WAV, MP3 e stems</dd></div><div><dt>Licenca</dt><dd>Contrato digital seguro</dd></div></dl>
-          <button type="button" data-action="producer-focus">Ver perfil do produtor<i data-lucide="arrow-down"></i></button>
+          <dl class="beat-sidebar-stats">
+            <div><dt>Plays</dt><dd>${plays}</dd></div>
+            <div><dt>Likes</dt><dd>${likes}</dd></div>
+            <div><dt>BPM</dt><dd>${htmlEscape(String(bpm))}</dd></div>
+            <div><dt>Key</dt><dd>${htmlEscape(key)}</dd></div>
+            <div><dt>Genero</dt><dd>${htmlEscape(genre)}</dd></div>
+            <div><dt>Publicado</dt><dd>${htmlEscape(publishedLabel)}</dd></div>
+          </dl>
+          <div class="beat-sidebar-tags">${tags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("")}</div>
+          <button class="beat-report-link" type="button" data-action="report-current" data-id="${htmlEscape(item.id)}">Reportar track</button>
         </aside>
+
+        <section class="beat-main-content">
+          <section class="beat-licensing-panel" aria-label="Licenciamento">
+            <header class="beat-panel-head">
+              <div>
+                <span>ANSEND LICENSE</span>
+                <h2>Licenciamento</h2>
+              </div>
+              <div class="beat-license-total">
+                <small>Total</small>
+                <strong data-license-total>${htmlEscape(selectedPlan.price)}</strong>
+              </div>
+              <button class="beat-cart-cta" type="button" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Adicionar ao carrinho</button>
+              <button class="beat-buy-cta" type="button" data-action="detail-buy-now" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Comprar agora</button>
+            </header>
+            <div class="beat-license-grid">${licenseCards}</div>
+          </section>
+
+          <section class="beat-terms-panel">
+            <header><h3>Termos de uso</h3><button type="button" aria-label="Expandir termos"><i data-lucide="chevron-up"></i></button></header>
+            <div class="beat-terms-list" data-license-terms>${licenseTermsMarkup(selectedPlan)}</div>
+          </section>
+
+          <section class="beat-rail-section">
+            <header><h3>Mais de ${htmlEscape(producerName)}</h3><button type="button" data-route="explorar">Ver todos</button></header>
+            <div class="beat-mini-grid">${sameProducerMarkup}</div>
+          </section>
+
+          <section class="beat-comments-panel">
+            <h3>Comentarios</h3>
+            <label class="beat-comment-field">
+              <span class="sr-only">Adicionar comentario</span>
+              <input type="text" placeholder="Adicionar comentario...">
+              <button type="button" aria-label="Enviar comentario"><i data-lucide="arrow-up"></i></button>
+            </label>
+            <div class="beat-comment-empty">Seja o primeiro a comentar.</div>
+          </section>
+
+          <section class="beat-rail-section">
+            <header><h3>Beats relacionados</h3><button type="button" data-route="explorar">Explorar</button></header>
+            <div class="beat-mini-grid">${relatedMarkup}</div>
+          </section>
+        </section>
+      </div>
+      <section class="beat-about-strip">
+        <strong>Sobre este beat</strong>
+        <p>${htmlEscape(description)}</p>
+        ${ownerProfessional ? `<button type="button" data-action="producer" ${profileTargetAttrs({ id: ownerProfile?.id, username: ownerProfile?.username, title: producerName })}>Ver perfil do produtor</button>` : ""}
       </section>
-    </div>`;
+    </main>`;
 }
 
 function renderSettings() {
@@ -8469,8 +8585,7 @@ function currentBeatUrl(item = playerActionBeat()) {
   return `${location.origin}${location.pathname}#beat-${item.id || topBeatOfDay.id}`;
 }
 
-async function shareCurrentBeat() {
-  const item = playerActionBeat();
+async function shareCurrentBeat(item = playerActionBeat()) {
   const url = currentBeatUrl(item);
   const shareData = {
     title: item.title || "Beat ANSEND",
@@ -8508,8 +8623,7 @@ function togglePlayerShuffle() {
   showToast(appState.player.shuffle ? "Shuffle ativado" : "Shuffle desativado", "shuffle");
 }
 
-function addCurrentToPlaylist() {
-  const item = playerActionBeat();
+function addCurrentToPlaylist(item = playerActionBeat()) {
   const saved = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
   if (!saved.includes(item.id)) saved.unshift(item.id);
   localStorage.setItem("ansend-saved-playlist", JSON.stringify(saved.slice(0, 40)));
@@ -8553,8 +8667,7 @@ function currentBeatArtistRoute(item = playerActionBeat()) {
   return publicProfileRoute(matchedProfile);
 }
 
-function openReportCurrentBeat() {
-  const item = playerActionBeat();
+function openReportCurrentBeat(item = playerActionBeat()) {
   openModal(`<form class="player-tool-modal report-tool-modal" data-report-beat-id="${htmlEscape(item.id)}">
     <span><i data-lucide="flag"></i>Denunciar</span>
     <h2>${htmlEscape(item.title || "Musica")}</h2>
@@ -8904,7 +9017,7 @@ function handleFavorite(id) {
 }
 
 function handleBuy(id, selectedPlan = "premium") {
-  addToCart(id);
+  addToCart(id, selectedPlan);
   location.hash = "carrinho";
 }
 
@@ -9692,6 +9805,33 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "favorite") handleFavorite(target.dataset.id);
+  if (action === "select-beat-license") {
+    const page = target.closest(".beat-market-detail");
+    const licenseId = target.dataset.license || "premium";
+    const plan = licensePlans[licenseId] || licensePlans.premium;
+    if (!page || !plan) return;
+    page.dataset.selectedLicense = licenseId;
+    page.querySelectorAll(".beat-license-card").forEach((card) => {
+      const selected = card === target;
+      card.classList.toggle("is-selected", selected);
+      card.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+    page.querySelector("[data-license-total]").textContent = plan.price;
+    page.querySelector("[data-license-terms]").innerHTML = licenseTermsMarkup(plan);
+    page.querySelectorAll("[data-action='detail-add-cart'], [data-action='detail-buy-now']").forEach((button) => {
+      button.dataset.license = licenseId;
+    });
+    lucide.createIcons();
+    return;
+  }
+  if (action === "detail-add-cart") {
+    addToCart(target.dataset.id, target.dataset.license || "premium");
+    return;
+  }
+  if (action === "detail-buy-now") {
+    openCheckout(target.dataset.id, target.dataset.license || "premium");
+    return;
+  }
   if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
   if (action === "remove-from-cart") {
     removeFromCart(target.dataset.id);
@@ -9709,14 +9849,15 @@ document.addEventListener("click", (event) => {
   }
   if (action === "finalize-cart") {
     if (appState.cart.length === 0) return;
-    appState.cart.forEach(beatId => {
+    appState.cart.forEach(entry => {
+      const { beatId, licenseId } = splitCartEntry(entry);
       if (!appState.purchases.includes(beatId)) {
         appState.purchases.unshift(beatId);
       }
       appState.orders.unshift({
         id: `order-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         beatId,
-        license: "premium",
+        license: licenseId,
         status: "Disponivel",
         createdAt: new Date().toISOString(),
       });
@@ -9850,7 +9991,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "share-current") {
     if (isPlayerDropdownAction) closePlayerMoreMenu();
-    shareCurrentBeat();
+    shareCurrentBeat(target.dataset.id ? findBeat(target.dataset.id) : playerActionBeat());
     return;
   }
   if (action === "repost-current") {
@@ -9869,12 +10010,12 @@ document.addEventListener("click", (event) => {
   }
   if (action === "report-current") {
     if (isPlayerDropdownAction) closePlayerMoreMenu();
-    openReportCurrentBeat();
+    openReportCurrentBeat(target.dataset.id ? findBeat(target.dataset.id) : playerActionBeat());
     return;
   }
   if (action === "add-playlist-current") {
     if (isPlayerDropdownAction) closePlayerMoreMenu();
-    addCurrentToPlaylist();
+    addCurrentToPlaylist(target.dataset.id ? findBeat(target.dataset.id) : playerActionBeat());
     return;
   }
   if (action === "shuffle-current") {
