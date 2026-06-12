@@ -108,7 +108,7 @@ async function run() {
     const oauthArgs = await page.evaluate(() => window.__oauthArgs);
 
     if (oauthArgs.provider !== "google") throw new Error(`Wrong provider: ${JSON.stringify(oauthArgs)}`);
-    const origin = await page.evaluate(() => location.origin);
+    const origin = "https://ansend.andrrluis86.workers.dev";
     if (oauthArgs.options.skipBrowserRedirect !== true) throw new Error("Google OAuth should validate before browser redirect");
     if (!oauthArgs.options.redirectTo.startsWith(origin)) throw new Error(`Wrong redirectTo: ${oauthArgs.options.redirectTo}`);
     if (!oauthArgs.options.redirectTo.includes("ansend_oauth=google")) throw new Error(`Missing OAuth callback marker: ${oauthArgs.options.redirectTo}`);

@@ -8184,9 +8184,16 @@ function redirectAfterLogin() {
   renderRoutePreservingAuthFocus(true);
 }
 
+function publicAppUrl() {
+  const configuredSiteUrl = SUPABASE_CONFIG.siteUrl || SUPABASE_CONFIG.siteURL || "";
+  const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
+  if (configuredSiteUrl && isLocalHost) return configuredSiteUrl;
+  if (configuredSiteUrl && !location.origin.includes("ansend.andrrluis86.workers.dev")) return configuredSiteUrl;
+  return location.origin;
+}
+
 function googleOAuthRedirectUrl() {
-  const url = new URL(window.location.href);
-  url.hash = "";
+  const url = new URL(publicAppUrl());
   url.searchParams.set("ansend_oauth", "google");
   return url.toString();
 }

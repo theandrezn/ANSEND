@@ -27,6 +27,24 @@ Em `Authentication > URL Configuration`:
   - `https://ansend.andrrluis86.workers.dev`
   - `https://ansend.andrrluis86.workers.dev/**`
 
+## Nome mostrado pelo Google
+
+Configure o nome do aplicativo como `ANSEND` no Google Cloud em `APIs & Services > OAuth consent screen`.
+
+Mesmo com o nome do app correto, o Google pode mostrar `qxujynzqdursxaehchik.supabase.co` porque o callback OAuth passa pelo domínio padrão do Supabase:
+
+```text
+https://qxujynzqdursxaehchik.supabase.co/auth/v1/callback
+```
+
+Para remover completamente esse domínio da tela do Google, configure um domínio customizado de Auth no Supabase, por exemplo:
+
+```text
+https://auth.ansend.com.br/auth/v1/callback
+```
+
+Depois disso, substitua o Authorized redirect URI no Google Cloud pelo callback do domínio customizado.
+
 ## CLI
 
 O repo tambem possui `supabase/config.toml` preparado para `supabase config push`.
