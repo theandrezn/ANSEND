@@ -20,6 +20,8 @@ create table if not exists public.profiles (
   youtube_url text,
   spotify_url text,
   soundcloud_url text,
+  auth_provider text,
+  last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -38,6 +40,8 @@ alter table public.profiles add column if not exists instagram_url text;
 alter table public.profiles add column if not exists youtube_url text;
 alter table public.profiles add column if not exists spotify_url text;
 alter table public.profiles add column if not exists soundcloud_url text;
+alter table public.profiles add column if not exists auth_provider text;
+alter table public.profiles add column if not exists last_login_at timestamptz;
 
 create unique index if not exists profiles_username_unique_idx
 on public.profiles (lower(username))
@@ -194,16 +198,22 @@ begin
     artistic_name,
     display_name,
     username,
+    avatar_url,
+    auth_provider,
+    last_login_at,
     music_styles
   )
   values (
     new.id,
     coalesce(new.email, ''),
-    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''),
     coalesce(new.raw_user_meta_data->>'account_role', 'artista'),
     nullif(new.raw_user_meta_data->>'artistic_name', ''),
-    nullif(new.raw_user_meta_data->>'display_name', ''),
+    nullif(coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'name'), ''),
     nullif(new.raw_user_meta_data->>'username', ''),
+    nullif(coalesce(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'), ''),
+    nullif(new.app_metadata->>'provider', ''),
+    now(),
     case
       when jsonb_typeof(new.raw_user_meta_data->'music_styles') = 'array'
         then array(select jsonb_array_elements_text(new.raw_user_meta_data->'music_styles'))
@@ -218,6 +228,9 @@ begin
     artistic_name = coalesce(excluded.artistic_name, public.profiles.artistic_name),
     display_name = coalesce(excluded.display_name, public.profiles.display_name),
     username = coalesce(excluded.username, public.profiles.username),
+    avatar_url = coalesce(excluded.avatar_url, public.profiles.avatar_url),
+    auth_provider = coalesce(excluded.auth_provider, public.profiles.auth_provider),
+    last_login_at = coalesce(public.profiles.last_login_at, excluded.last_login_at),
     music_styles = case
       when array_length(excluded.music_styles, 1) is null then public.profiles.music_styles
       else excluded.music_styles
@@ -243,16 +256,20 @@ insert into public.profiles (
   artistic_name,
   display_name,
   username,
+  avatar_url,
+  auth_provider,
   music_styles
 )
 select
   users.id,
   coalesce(users.email, ''),
-  coalesce(users.raw_user_meta_data->>'full_name', ''),
+  coalesce(users.raw_user_meta_data->>'full_name', users.raw_user_meta_data->>'name', ''),
   coalesce(users.raw_user_meta_data->>'account_role', 'artista'),
   nullif(users.raw_user_meta_data->>'artistic_name', ''),
-  nullif(users.raw_user_meta_data->>'display_name', ''),
+  nullif(coalesce(users.raw_user_meta_data->>'display_name', users.raw_user_meta_data->>'name'), ''),
   nullif(users.raw_user_meta_data->>'username', ''),
+  nullif(coalesce(users.raw_user_meta_data->>'avatar_url', users.raw_user_meta_data->>'picture'), ''),
+  nullif(users.app_metadata->>'provider', ''),
   case
     when jsonb_typeof(users.raw_user_meta_data->'music_styles') = 'array'
       then array(select jsonb_array_elements_text(users.raw_user_meta_data->'music_styles'))

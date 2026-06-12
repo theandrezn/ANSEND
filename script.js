@@ -4,6 +4,7 @@ const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
 const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
 const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
+const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const isSupabaseConfigured = Boolean(
   window.supabase
   && SUPABASE_CONFIG.url
@@ -4630,7 +4631,7 @@ async function saveProfileEdit(form) {
 
 async function upsertProfile(profile) {
   if (!supabaseClient || !appState.authUser) return { error: new Error("Supabase não configurado") };
-  const payload = {
+  const basePayload = {
     id: appState.authUser.id,
     email: appState.authUser.email || profile.email,
     full_name: profile.full_name,
@@ -4651,7 +4652,18 @@ async function upsertProfile(profile) {
     spotify_url: profile.spotify_url || null,
     soundcloud_url: profile.soundcloud_url || null,
   };
-  const { data, error } = await supabaseClient.from("profiles").upsert(payload, { onConflict: "id" }).select().single();
+  if (!Object.prototype.hasOwnProperty.call(profile, "avatar_url")) delete basePayload.avatar_url;
+  if (!Object.prototype.hasOwnProperty.call(profile, "avatar_path")) delete basePayload.avatar_path;
+  if (!Object.prototype.hasOwnProperty.call(profile, "banner_url")) delete basePayload.banner_url;
+  if (!Object.prototype.hasOwnProperty.call(profile, "banner_path")) delete basePayload.banner_path;
+  const payload = { ...basePayload };
+  const authProvider = profile.auth_provider || authProviderFromUser(appState.authUser);
+  if (authProvider) payload.auth_provider = authProvider;
+  if (profile.last_login_at) payload.last_login_at = profile.last_login_at;
+  let { data, error } = await supabaseClient.from("profiles").upsert(payload, { onConflict: "id" }).select().single();
+  if (error && /auth_provider|last_login_at|schema cache|column/i.test(error.message || "")) {
+    ({ data, error } = await supabaseClient.from("profiles").upsert(basePayload, { onConflict: "id" }).select().single());
+  }
   if (!error && data) appState.profile = data;
   return { data, error };
 }
@@ -4679,18 +4691,28 @@ function debugAuth(label, details = {}) {
   });
 }
 
+function authProviderFromUser(user) {
+  const identities = Array.isArray(user?.identities) ? user.identities : [];
+  return identities[0]?.provider || user?.app_metadata?.provider || null;
+}
+
 function profileFromAuthUser(user, fallback = {}) {
   const metadata = user?.user_metadata || {};
   const emailName = String(user?.email || "").split("@")[0] || "Usuario ANSEND";
+  const fullName = metadata.full_name || metadata.name || fallback.full_name || emailName;
+  const displayName = metadata.display_name || fallback.display_name || metadata.name || fullName;
+  const avatarUrl = metadata.avatar_url || metadata.picture || fallback.avatar_url || "";
   return {
     ...fallback,
     id: user?.id,
     email: user?.email || fallback.email || "",
-    full_name: metadata.full_name || fallback.full_name || emailName,
-    display_name: metadata.display_name || fallback.display_name || metadata.full_name || fallback.artistic_name || emailName,
+    full_name: fullName,
+    display_name: displayName,
     username: sanitizeHandle(metadata.username || fallback.username || emailName),
     account_role: metadata.account_role || fallback.account_role || "artista",
     artistic_name: metadata.artistic_name || fallback.artistic_name || null,
+    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+    auth_provider: fallback.auth_provider || authProviderFromUser(user),
     music_styles: Array.isArray(metadata.music_styles) && metadata.music_styles.length
       ? metadata.music_styles
       : (fallback.music_styles || preferredGenres()),
@@ -4798,6 +4820,12 @@ function renderRoutePreservingAuthFocus(force = false) {
 }
 
 async function initAuth() {
+  const oauthError = readOAuthCallbackError();
+  const shouldRedirectAfterOAuth = hasOAuthRedirectIntent();
+  if (oauthError) {
+    clearOAuthRedirectIntent();
+    showToast(`Google OAuth: ${oauthError}`, "triangle-alert");
+  }
   if (!supabaseClient) {
     appState.profile = localPreviewProfile();
     appState.publicProfiles = [];
@@ -4821,6 +4849,10 @@ async function initAuth() {
   appState.authUser = userData.user || data.session?.user || null;
   await loadPublicPlatformData();
   if (appState.authUser) {
+    await upsertProfile(profileFromAuthUser(appState.authUser, {
+      last_login_at: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
+      auth_provider: authProviderFromUser(appState.authUser),
+    }));
     await loadProfile(appState.authUser);
     await loadOwnedCatalogItems();
   } else {
@@ -4832,6 +4864,11 @@ async function initAuth() {
   }
   appState.authReady = true;
   syncAccountUi();
+  if (appState.authUser && shouldRedirectAfterOAuth) {
+    clearOAuthRedirectIntent();
+    redirectAfterLogin();
+    return;
+  }
   renderRoutePreservingAuthFocus(previousUserId !== (appState.authUser?.id || null));
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     debugAuth("auth_state_change", { event: _event, session });
@@ -4839,6 +4876,12 @@ async function initAuth() {
     appState.authUser = session?.user || null;
     await loadPublicPlatformData();
     if (appState.authUser) {
+      if (_event === "SIGNED_IN") {
+        await upsertProfile(profileFromAuthUser(appState.authUser, {
+          last_login_at: new Date().toISOString(),
+          auth_provider: authProviderFromUser(appState.authUser),
+        }));
+      }
       await loadProfile(appState.authUser);
       await loadOwnedCatalogItems();
     } else {
@@ -8106,6 +8149,64 @@ function redirectAfterLogin() {
   renderRoutePreservingAuthFocus(true);
 }
 
+function googleOAuthRedirectUrl() {
+  const url = new URL(window.location.href);
+  url.hash = "";
+  url.searchParams.set("ansend_oauth", "google");
+  return url.toString();
+}
+
+function readOAuthCallbackError() {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+  const error = params.get("error_description") || params.get("error") || hashParams.get("error_description") || hashParams.get("error");
+  return error ? decodeURIComponent(error.replace(/\+/g, " ")) : "";
+}
+
+function hasOAuthRedirectIntent() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("ansend_oauth") === "google" || localStorage.getItem(OAUTH_REDIRECT_STORAGE_KEY) === "#perfil";
+}
+
+function clearOAuthRedirectIntent() {
+  localStorage.removeItem(OAUTH_REDIRECT_STORAGE_KEY);
+  const url = new URL(window.location.href);
+  url.searchParams.delete("ansend_oauth");
+  url.searchParams.delete("error");
+  url.searchParams.delete("error_code");
+  url.searchParams.delete("error_description");
+  if (url.href !== window.location.href) window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+async function handleGoogleOAuth(button) {
+  const form = button?.closest(".seller-auth-panel")?.querySelector(".seller-auth-form");
+  if (!supabaseClient) {
+    setAuthFormMessage(form, "Supabase nao esta configurado neste ambiente.");
+    showToast("Supabase nao esta configurado para login com Google.", "triangle-alert");
+    return;
+  }
+  button.disabled = true;
+  button.dataset.loading = "true";
+  setAuthFormMessage(form, "Abrindo login com Google...", "success");
+  localStorage.setItem(OAUTH_REDIRECT_STORAGE_KEY, "#perfil");
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: googleOAuthRedirectUrl(),
+      },
+    });
+    if (error) throw error;
+  } catch (error) {
+    localStorage.removeItem(OAUTH_REDIRECT_STORAGE_KEY);
+    button.disabled = false;
+    button.dataset.loading = "false";
+    console.error("[ANSEND auth] Google OAuth failed", error);
+    setAuthFormMessage(form, friendlyAuthError(error));
+    showToast(friendlyAuthError(error), "triangle-alert");
+  }
+}
+
 function unlockPreviewAccountFromProfile(profile, reason = "preview") {
   const previewProfile = {
     ...profile,
@@ -8563,11 +8664,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "seller-google") {
-    if (!supabaseClient) {
-      showToast("Google entra na próxima etapa. Use e-mail e senha por enquanto.", "mail");
-      return;
-    }
-    supabaseClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname + "#vendedor" } });
+    handleGoogleOAuth(target);
     return;
   }
   if (action === "ai-chip") {
