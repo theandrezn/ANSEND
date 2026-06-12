@@ -3142,7 +3142,7 @@ function setupAutoScrollRows() {
   autoScrollRows = [];
   if (prefersReducedMotion.matches) return;
 
-  document.querySelectorAll(".playlist-row, .beat-row, .avatar-row").forEach((row) => {
+  document.querySelectorAll(".playlist-row, .beat-row, .avatar-row, .genre-banner-track").forEach((row) => {
     if (row.children.length < 2) return;
     prepareAutoScrollRow(row);
     if (row.scrollWidth > row.clientWidth + 12) {

@@ -2635,8 +2635,9 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .view-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 22px;
+  justify-content: start;
 }
 .empty-state {
   min-height: 320px;
@@ -13781,10 +13782,13 @@ body.onboarding-open {
   align-items: start !important;
 }
 
-.view-grid .minimal-beat-card {
+.view-grid .minimal-beat-card,
+.view-grid .minimal-playlist-card {
   position: relative !important;
   display: flex !important;
   flex-direction: column !important;
+  width: 100% !important;
+  max-width: 290px !important;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
@@ -15201,19 +15205,23 @@ body:has(.nexo-feed-page) .footer {
   padding: 2px 2px 8px;
 }
 
+.genre-banner-track.is-auto-scrolling {
+  scroll-snap-type: none !important;
+}
+
 .genre-banner-track::-webkit-scrollbar {
   display: none;
 }
 
 .genre-banner-card {
   position: relative;
-  flex: 0 0 280px !important;
-  width: 280px !important;
-  height: 110px !important;
+  flex: 0 0 320px !important;
+  width: 320px !important;
+  height: 160px !important;
   aspect-ratio: unset !important;
   overflow: hidden;
   border: none !important;
-  border-radius: 12px !important;
+  border-radius: 16px !important;
   background: #000000 !important;
   box-shadow: none !important;
   scroll-snap-align: start;
@@ -15234,7 +15242,11 @@ body:has(.nexo-feed-page) .footer {
   height: 100%;
   object-fit: cover !important;
   object-position: center;
-  transition: transform .5s ease, filter .3s ease;
+  filter: none !important;
+  opacity: 1 !important;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transition: transform .5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .genre-banner-card:hover,
@@ -15254,8 +15266,7 @@ body:has(.nexo-feed-page) .footer {
 
 .genre-banner-card:hover img,
 .genre-banner-card:focus-visible img {
-  transform: scale(1.025);
-  filter: none;
+  transform: scale(1.035);
 }
 
 .genre-banner-fallback {
@@ -15372,10 +15383,10 @@ body:has(.nexo-feed-page) .footer {
   }
 
   .genre-banner-card {
-    flex: 0 0 240px !important;
-    width: 240px !important;
-    height: 96px !important;
-    border-radius: 12px !important;
+    flex: 0 0 260px !important;
+    width: 260px !important;
+    height: 130px !important;
+    border-radius: 16px !important;
   }
 
   .genre-banner-fallback {
