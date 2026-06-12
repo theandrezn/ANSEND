@@ -144,6 +144,10 @@ async function run() {
               upsert(payload) {
                 profile = { ...profile, ...payload };
                 return { select: () => ({ single: () => Promise.resolve({ data: profile, error: null }) }) };
+              },
+              update(payload) {
+                profile = { ...profile, ...payload };
+                return { eq: () => ({ select: () => ({ maybeSingle: () => Promise.resolve({ data: profile, error: null }) }) }) };
               }
             };
             return api;

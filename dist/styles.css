@@ -14529,6 +14529,18 @@ body:has(.nexo-feed-page) .footer {
   background: #080604;
 }
 
+.profile-edit-error {
+  margin: 0;
+  color: #ffb4a8;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.profile-edit-error[hidden] {
+  display: none;
+}
+
 @media (max-width: 560px) {
   .app-modal {
     padding: 10px;

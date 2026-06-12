@@ -4580,16 +4580,17 @@ async function uploadProfileAsset(file, type) {
   if (!file) return { url: "", path: "" };
   if (supabaseClient && appState.authUser) {
     const bucket = type === "banner" ? "profile-banners" : "profile-avatars";
-    const path = `${appState.authUser.id}/${type}.${fileExtension(file)}`;
+    const path = `${appState.authUser.id}/${type}-${Date.now()}.${fileExtension(file)}`;
     const { error } = await supabaseClient.storage.from(bucket).upload(path, file, {
       cacheControl: "3600",
       contentType: file.type || "image/png",
-      upsert: true,
+      upsert: false,
     });
     if (!error) {
       const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path);
       return { url: data?.publicUrl || "", path };
     }
+    throw error;
   }
   return { url: await fileToDataUrl(file), path: "" };
 }
@@ -4830,42 +4831,78 @@ async function applyProfileImageFile(file, type) {
 }
 
 async function saveProfileEdit(form) {
-  const current = activeProfile() || {};
-  const avatarFile = form.elements.avatar_file?.files?.[0];
-  const bannerFile = form.elements.banner_file?.files?.[0];
-  const uploadedAvatar = await uploadProfileAsset(avatarFile, "avatar");
-  const uploadedBanner = await uploadProfileAsset(bannerFile, "banner");
-  const removeAvatar = form.elements.remove_avatar?.value === "true";
-  const removeBanner = form.elements.remove_banner?.value === "true";
-  const profile = {
-    ...current,
-    id: current.id || appState.authUser?.id || `local-profile-${Date.now()}`,
-    email: current.email || appState.authUser?.email || null,
-    full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
-    display_name: form.elements.display_name?.value.trim() || current.display_name || null,
-    username: sanitizeHandle(form.elements.username?.value || current.username || current.handle || ""),
-    artistic_name: current.artistic_name || null,
-    account_role: form.elements.account_role?.value || current.account_role || "artista",
-    avatar_url: removeAvatar ? null : (uploadedAvatar.url || current.avatar_url || current.photo_url || null),
-    avatar_path: removeAvatar ? null : (uploadedAvatar.path || current.avatar_path || null),
-    banner_url: removeBanner ? null : (uploadedBanner.url || current.banner_url || current.cover_url || null),
-    banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
-    bio: form.elements.bio?.value.trim() || null,
-    instagram_url: form.elements.instagram_url?.value.trim() || null,
-    youtube_url: form.elements.youtube_url?.value.trim() || null,
-    spotify_url: form.elements.spotify_url?.value.trim() || null,
-    soundcloud_url: form.elements.soundcloud_url?.value.trim() || null,
-    website_url: form.elements.website_url?.value.trim() || null,
-    music_styles: current.music_styles || preferredGenres(),
-    updated_at: new Date().toISOString(),
-  };
-  setLocalPreviewProfile(profile);
-  if (supabaseClient && appState.authUser) {
-    const result = await upsertProfile(profile);
-    if (!result.error) setLocalPreviewProfile({ ...profile, ...(result.data || {}) });
+  const submitButton = form.querySelector('button[type="submit"]');
+  let errorNode = form.querySelector(".profile-edit-error");
+  if (!errorNode) {
+    form.querySelector(".profile-editor-footer")?.insertAdjacentHTML("afterbegin", `<p class="profile-edit-error" hidden></p>`);
+    errorNode = form.querySelector(".profile-edit-error");
   }
-  closeModal();
-  renderRoute();
+  if (errorNode) {
+    errorNode.hidden = true;
+    errorNode.textContent = "";
+  }
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.dataset.originalText = submitButton.textContent;
+    submitButton.textContent = "Salvando...";
+  }
+  const current = activeProfile() || {};
+  try {
+    if (supabaseClient && !appState.authUser) throw new Error("Sessao expirada. Faca login novamente para salvar o perfil.");
+    const avatarFile = form.elements.avatar_file?.files?.[0];
+    const bannerFile = form.elements.banner_file?.files?.[0];
+    const uploadedAvatar = await uploadProfileAsset(avatarFile, "avatar");
+    const uploadedBanner = await uploadProfileAsset(bannerFile, "banner");
+    const removeAvatar = form.elements.remove_avatar?.value === "true";
+    const removeBanner = form.elements.remove_banner?.value === "true";
+    const profile = {
+      ...current,
+      id: appState.authUser?.id || current.id || `local-profile-${Date.now()}`,
+      email: appState.authUser?.email || current.email || null,
+      full_name: form.elements.full_name?.value.trim() || current.full_name || "Usuario ANSEND",
+      display_name: form.elements.display_name?.value.trim() || current.display_name || null,
+      username: sanitizeHandle(form.elements.username?.value || current.username || current.handle || ""),
+      artistic_name: current.artistic_name || null,
+      account_role: form.elements.account_role?.value || current.account_role || "artista",
+      avatar_url: removeAvatar ? null : (uploadedAvatar.url || current.avatar_url || current.photo_url || null),
+      avatar_path: removeAvatar ? null : (uploadedAvatar.path || current.avatar_path || null),
+      banner_url: removeBanner ? null : (uploadedBanner.url || current.banner_url || current.cover_url || null),
+      banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
+      bio: form.elements.bio?.value.trim() || null,
+      instagram_url: form.elements.instagram_url?.value.trim() || null,
+      youtube_url: form.elements.youtube_url?.value.trim() || null,
+      spotify_url: form.elements.spotify_url?.value.trim() || null,
+      soundcloud_url: form.elements.soundcloud_url?.value.trim() || null,
+      website_url: form.elements.website_url?.value.trim() || null,
+      music_styles: current.music_styles || preferredGenres(),
+      updated_at: new Date().toISOString(),
+    };
+    if (!supabaseClient) {
+      setLocalPreviewProfile(profile);
+      closeModal();
+      renderRoute();
+      return;
+    }
+    const result = await upsertProfile(profile);
+    if (result.error) throw result.error;
+    appState.profile = result.data || profile;
+    clearLocalPreviewProfile();
+    await loadPublicPlatformData();
+    closeModal();
+    renderRoute();
+  } catch (error) {
+    console.error("[ANSEND profile] save failed", error);
+    if (errorNode) {
+      errorNode.textContent = error?.message || "Nao foi possivel salvar o perfil.";
+      errorNode.hidden = false;
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = submitButton.dataset.originalText || "Salvar alteracoes";
+      delete submitButton.dataset.originalText;
+    }
+  }
 }
 
 async function upsertProfile(profile) {
@@ -4905,6 +4942,36 @@ async function upsertProfile(profile) {
   }
   if (!error && data) appState.profile = data;
   return { data, error };
+}
+
+async function touchProfileLoginMetadata({ lastLoginAt = null, authProvider = null } = {}) {
+  if (!supabaseClient || !appState.authUser) return null;
+  const payload = {
+    email: appState.authUser.email || appState.profile?.email || null,
+  };
+  const provider = authProvider || authProviderFromUser(appState.authUser);
+  if (provider) payload.auth_provider = provider;
+  if (lastLoginAt) payload.last_login_at = lastLoginAt;
+  let result = await supabaseClient
+    .from("profiles")
+    .update(payload)
+    .eq("id", appState.authUser.id)
+    .select()
+    .maybeSingle();
+  if (result.error && /auth_provider|last_login_at|schema cache|column/i.test(result.error.message || "")) {
+    result = await supabaseClient
+      .from("profiles")
+      .update({ email: payload.email })
+      .eq("id", appState.authUser.id)
+      .select()
+      .maybeSingle();
+  }
+  if (result.error) {
+    console.error("[ANSEND auth] profile login metadata update failed", result.error);
+    return null;
+  }
+  if (result.data) appState.profile = { ...(appState.profile || {}), ...result.data };
+  return result.data || null;
 }
 
 function debugAuth(label, details = {}) {
@@ -5163,11 +5230,11 @@ async function initAuth() {
   appState.authUser = userData.user || data.session?.user || null;
   await loadPublicPlatformData();
   if (appState.authUser) {
-    await upsertProfile(profileFromAuthUser(appState.authUser, {
-      last_login_at: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
-      auth_provider: authProviderFromUser(appState.authUser),
-    }));
     await loadProfile(appState.authUser);
+    await touchProfileLoginMetadata({
+      lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
+      authProvider: authProviderFromUser(appState.authUser),
+    });
     await loadAdminStatus();
     await loadOwnedCatalogItems();
   } else {
@@ -5193,13 +5260,13 @@ async function initAuth() {
     appState.authUser = session?.user || null;
     await loadPublicPlatformData();
     if (appState.authUser) {
-      if (_event === "SIGNED_IN") {
-        await upsertProfile(profileFromAuthUser(appState.authUser, {
-          last_login_at: new Date().toISOString(),
-          auth_provider: authProviderFromUser(appState.authUser),
-        }));
-      }
       await loadProfile(appState.authUser);
+      if (_event === "SIGNED_IN") {
+        await touchProfileLoginMetadata({
+          lastLoginAt: new Date().toISOString(),
+          authProvider: authProviderFromUser(appState.authUser),
+        });
+      }
       await loadAdminStatus();
       await loadOwnedCatalogItems();
     } else {

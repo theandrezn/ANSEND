@@ -62,6 +62,11 @@ function supabaseMock() {
             window.__profileUpsert = payload;
             profile = { ...profile, ...payload };
             return { select: () => ({ single: () => Promise.resolve({ data: profile, error: null }) }) };
+          },
+          update(payload) {
+            window.__profileUpdate = payload;
+            profile = { ...profile, ...payload };
+            return { eq: () => ({ select: () => ({ maybeSingle: () => Promise.resolve({ data: profile, error: null }) }) }) };
           }
         };
         return api;
@@ -118,8 +123,12 @@ async function run() {
     await callbackPage.goto(`/index.html?ansend_oauth=google`, { waitUntil: "domcontentloaded" });
     await callbackPage.waitForFunction(() => location.hash === "#perfil", null, { timeout: 30000 });
     const upsert = await callbackPage.evaluate(() => window.__profileUpsert);
-    if (!upsert || upsert.id !== "google-oauth-test" || upsert.auth_provider !== "google" || !upsert.last_login_at) {
+    const update = await callbackPage.evaluate(() => window.__profileUpdate);
+    if (!upsert || upsert.id !== "google-oauth-test" || upsert.auth_provider !== "google") {
       throw new Error(`Google callback did not sync profile: ${JSON.stringify(upsert)}`);
+    }
+    if (!update || update.auth_provider !== "google" || !update.last_login_at) {
+      throw new Error(`Google callback did not touch login metadata: ${JSON.stringify(update)}`);
     }
   } finally {
     await browser.close();
