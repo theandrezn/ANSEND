@@ -1742,8 +1742,9 @@ function playlistCard(input) {
 function beatCard(item) {
   const klass = item.badge === "Novo" ? "new" : item.badge === "Exclusivo" ? "exclusive" : "";
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
+  const homeCardClass = item.homeCard ? " home-catalog-beat-card" : "";
   const price = item.price || (item.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(item.title.length + (item.producer || "").length) % 6]);
-  return `<article class="beat-card minimal-beat-card" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
+  return `<article class="beat-card minimal-beat-card${homeCardClass}" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
     <div class="card-cover-wrapper">
       <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
       ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
@@ -2810,7 +2811,7 @@ function renderHomeDashboard() {
   if (featured) {
     const items = hasProfile ? recs.beats.slice(0, 6) : catalogBeats.slice(0, 6);
     featured.innerHTML = items.length
-      ? items.map((item, index) => beatCard({ ...item, badge: index === 0 && hasProfile ? "Match IA" : item.badge })).join("")
+      ? items.map((item) => beatCard({ ...item, homeCard: true, badge: "" })).join("")
       : emptyState("upload-cloud", "Nenhum catálogo publicado", "Cadastre beats ou músicas para alimentar esta vitrine.", "perfil");
   }
   if (professionals) {
