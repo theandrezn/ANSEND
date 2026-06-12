@@ -5,6 +5,7 @@ const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI
 const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
+const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
 const isSupabaseConfigured = Boolean(
   window.supabase
   && SUPABASE_CONFIG.url
@@ -1117,6 +1118,8 @@ const appState = {
   publicCatalogItems: [],
   ownedCatalogItems: [],
   publicProfiles: [],
+  isAdmin: false,
+  adminProfiles: [],
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   nexoChatMessages: [],
   nexoChatLoading: false,
@@ -2594,9 +2597,18 @@ function smartComboCard(input, index) {
   </article>`;
 }
 
+function cleanVerifiedBadge(className = "professional-verified-badge") {
+  return `<span class="${className}" aria-label="Perfil verificado">
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="7" fill="#1d9bf0"></circle>
+      <path d="M5.05 8.18 6.95 10.1 11.1 5.9" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </span>`;
+}
+
 function professionalMatchCard(profile) {
   const matchLabel = profile.match?.score ? `${profile.match.score}% match` : profile.role || profile.category || "Profissional";
-  const verifiedMarkup = profile.verified === false ? "" : '<i data-lucide="badge-check"></i>';
+  const verifiedMarkup = profile.verified === false ? "" : cleanVerifiedBadge();
   return `<article class="recommended-professional-item match-professional-card">
     <button class="recommended-professional-avatar" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
       <img src="${professionalImage(profile)}" alt="Avatar de ${htmlEscape(profile.name)}">
@@ -2639,7 +2651,7 @@ function featuredProfessionalCard(name, index) {
   return `<article class="featured-professional-card">
     <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
     <div>
-      <strong>${name}<i data-lucide="badge-check"></i></strong>
+      <strong>${name}${cleanVerifiedBadge()}</strong>
       <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
     </div>
     <button type="button" data-action="producer" data-title="${name}">Ver perfil</button>
@@ -2652,7 +2664,7 @@ function topProducerNameCard(name, index) {
     <button class="top-producer-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
       <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
     </button>
-    <strong>${name}<i data-lucide="badge-check"></i></strong>
+    <strong>${name}${cleanVerifiedBadge()}</strong>
     <span>${followerCounts[index % followerCounts.length]} Followers</span>
     <button class="top-producer-follow" type="button" data-action="producer" data-title="${name}"><i data-lucide="user-plus"></i>${t("Seguir", "Follow")}</button>
   </article>`;
@@ -2798,6 +2810,7 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 let revealObserver = null;
 let homeScrollAnimationRaf = null;
 let lastRoute = null;
+let lastPageTransitionKey = null;
 let heroTypewriterTimer = null;
 let heroTypewriterToken = 0;
 
@@ -2818,6 +2831,7 @@ function currentRouteFromHash() {
     "perfil",
     "cadastrar",
     "configuracoes",
+    "admin",
     "carrinho",
     "vendedor",
     "central-ansend",
@@ -2840,6 +2854,26 @@ function currentRouteFromHash() {
     "marketplace"
   ]);
   return knownRoutes.has(route) || routeTitles?.[route] ? route : "feed";
+}
+
+function PageTransition(container = appView, key = currentRoute()) {
+  if (!container || prefersReducedMotion.matches) return;
+  const transitionKey = String(key || currentRoute());
+  const existingWrapper = container.querySelector(":scope > .section-transition");
+  const previousKey = lastPageTransitionKey;
+  lastPageTransitionKey = transitionKey;
+  if (previousKey === transitionKey && existingWrapper?.dataset.transitionKey === transitionKey) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = previousKey === transitionKey ? "section-transition section-transition--static" : "section-transition";
+  wrapper.dataset.transitionKey = transitionKey;
+  const content = document.createElement("div");
+  content.className = "section-transition__content";
+  while (container.firstChild) {
+    content.appendChild(container.firstChild);
+  }
+  wrapper.appendChild(content);
+  container.appendChild(wrapper);
 }
 
 function updateSpotlight(event) {
@@ -3234,6 +3268,7 @@ routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua 
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
+routeTitles.admin = ["Admin", "Gerencie perfis e contas teste da comunidade."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catálogo e publicações na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referências e licenças."];
@@ -3703,7 +3738,11 @@ function applyRoleDashboard() {
 }
 
 function persistCatalogItems() {
-  // Save locally-created items to localStorage for persistence across reloads
+  if (appState.authUser) {
+    localStorage.removeItem("ansend-local-catalog");
+    return;
+  }
+  // Local preview only; authenticated accounts use Supabase as the source of truth.
   const localItems = appState.ownedCatalogItems.filter(item => String(item.id).startsWith("local-") || !appState.authUser);
   if (localItems.length > 0) {
     try {
@@ -3711,6 +3750,8 @@ function persistCatalogItems() {
     } catch (e) {
       console.warn("Could not persist local catalog items", e);
     }
+  } else {
+    localStorage.removeItem("ansend-local-catalog");
   }
 }
 
@@ -3748,7 +3789,7 @@ function catalogItemToBeat(item) {
     : (appLocale.current === "pt-BR" ? "Sob consulta" : "On request");
   const tags = [
     item.genre || (item.kind === "musica" ? "Musica" : "Beat"),
-    item.bpm ? `${item.bpm} BPM` : item.license_type || "Licenca",
+    item.subgenre || item.mood || (item.bpm ? `${item.bpm} BPM` : item.license_type || "Licenca"),
   ].filter(Boolean);
   return {
     id: String(item.id),
@@ -3785,7 +3826,8 @@ function userCatalogBeats() {
 }
 
 function searchableBeatPool() {
-  return dedupeById([...marketplaceBeats(), ...userCatalogBeats(), topBeatOfDay]);
+  const realItems = dedupeById([...marketplaceBeats(), ...userCatalogBeats()]);
+  return realItems.length ? realItems : [topBeatOfDay];
 }
 
 function roleToProfessionalCategory(role) {
@@ -3797,18 +3839,19 @@ function roleToProfessionalCategory(role) {
     curador: "curadores",
     marketing: "marketing",
   };
-  return map[role] || "produtores";
+  return map[role] || "artistas";
 }
 
 function profileToProfessional(profile = activeProfile()) {
-  if (!profile?.account_role || profile.account_role === "artista") return null;
+  if (!profile?.id || profile.is_public === false) return null;
+  const accountRole = profile.account_role || profile.role || "artista";
   const styles = asArray(profile.music_styles || profile.styles).filter(Boolean);
   return {
     id: profile.id,
     username: sanitizeHandle(profile.username || profile.handle || ""),
     name: profile.display_name || profile.artistic_name || profile.full_name || "Profissional ANSEND",
-    role: accountRoleLabel(profile.account_role),
-    category: roleToProfessionalCategory(profile.account_role),
+    role: accountRoleLabel(accountRole),
+    category: roleToProfessionalCategory(accountRole),
     city: profile.location || "",
     avatar: profile.avatar_url || profile.avatar,
     avatar_url: profile.avatar_url || profile.avatar || "",
@@ -3832,60 +3875,165 @@ function activeProfessionalProfiles() {
 
 async function loadPublicPlatformData() {
   if (!supabaseClient) return;
-  const [profilesResult, catalogResult, beatsResult] = await Promise.all([
-    supabaseClient.from("public_profiles").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("catalog_items").select("*").eq("status", "published").order("created_at", { ascending: false }),
-    supabaseClient.from("beats").select("*").eq("status", "published").order("created_at", { ascending: false }),
+  const [profiles, catalogItems, beats] = await Promise.all([
+    getPublicProfiles(),
+    getPublishedCatalogItems(),
+    getPublishedBeats(),
   ]);
-  if (profilesResult.error) console.error("Error loading public profiles", profilesResult.error);
-  if (catalogResult.error) console.error("Error loading public catalog", catalogResult.error);
-  if (beatsResult.error) console.error("Error loading public beats", beatsResult.error);
-  appState.publicProfiles = profilesResult.data || [];
+  appState.publicProfiles = profiles;
   appState.publicCatalogItems = [
-    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
-    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
+    ...catalogItems.map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...beats.map((item) => ({ ...item, source_table: "beats" })),
   ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
 }
 
 async function loadOwnedCatalogItems() {
-  // Always load local items from localStorage first
-  let localItems = [];
-  try {
-    const stored = localStorage.getItem("ansend-local-catalog");
-    if (stored) localItems = JSON.parse(stored) || [];
-  } catch (e) { /* ignore */ }
-
   if (!supabaseClient || !appState.authUser) {
-    // No Supabase auth: use only local items
+    let localItems = [];
+    try {
+      const stored = localStorage.getItem("ansend-local-catalog");
+      if (stored) localItems = JSON.parse(stored) || [];
+    } catch (e) { /* ignore */ }
     appState.ownedCatalogItems = dedupeById(localItems);
     syncCatalogCompatibilityState();
     return;
   }
-  const [catalogResult, beatsResult] = await Promise.all([
-    supabaseClient.from("catalog_items").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
-    supabaseClient.from("beats").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
+  const [catalogItems, beats] = await Promise.all([
+    getCatalogItemsByUserId(appState.authUser.id),
+    getBeatsByUserId(appState.authUser.id),
   ]);
-  if (catalogResult.error) console.error("Error loading owned catalog", catalogResult.error);
-  if (beatsResult.error) console.error("Error loading owned beats", beatsResult.error);
-  const supabaseItems = [
-    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
-    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
-  ];
-  // Merge Supabase items with local items (Supabase takes priority for duplicates)
-  appState.ownedCatalogItems = dedupeById([...supabaseItems, ...localItems])
+  appState.ownedCatalogItems = dedupeById([
+    ...catalogItems.map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...beats.map((item) => ({ ...item, source_table: "beats" })),
+  ])
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
 }
 
 async function loadCatalogItems() {
   await Promise.all([loadPublicPlatformData(), loadOwnedCatalogItems()]);
-  // Merge any locally published items into the public catalog list
-  const localPublished = appState.ownedCatalogItems.filter(item => item.status === "published");
-  if (localPublished.length > 0) {
-    appState.publicCatalogItems = dedupeById([...appState.publicCatalogItems, ...localPublished])
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
+async function getPublicProfiles() {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient
+    .from("public_profiles")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) {
+    console.error("Error loading public profiles", error);
+    return [];
   }
+  return data || [];
+}
+
+function hasMissingColumnError(error, column) {
+  return new RegExp(`\\b${column}\\b|schema cache|column`, "i").test(error?.message || "");
+}
+
+async function getPublishedRows(table) {
+  if (!supabaseClient) return [];
+  let result = await supabaseClient
+    .from(table)
+    .select("*")
+    .eq("status", "published")
+    .eq("is_public", true)
+    .order("created_at", { ascending: false });
+  if (result.error && hasMissingColumnError(result.error, "is_public")) {
+    result = await supabaseClient
+      .from(table)
+      .select("*")
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+  }
+  if (result.error) {
+    console.error(`Error loading public ${table}`, result.error);
+    return [];
+  }
+  return result.data || [];
+}
+
+function getPublishedCatalogItems() {
+  return getPublishedRows("catalog_items");
+}
+
+function getPublishedBeats() {
+  return getPublishedRows("beats");
+}
+
+async function getRowsByUserId(table, userId) {
+  if (!supabaseClient || !userId) return [];
+  const { data, error } = await supabaseClient
+    .from(table)
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error(`Error loading owned ${table}`, error);
+    return [];
+  }
+  return data || [];
+}
+
+function getCatalogItemsByUserId(userId) {
+  return getRowsByUserId("catalog_items", userId);
+}
+
+function getBeatsByUserId(userId) {
+  return getRowsByUserId("beats", userId);
+}
+
+function publicCatalogPayload(payload) {
+  return {
+    ...payload,
+    is_public: payload.status === "published",
+  };
+}
+
+async function insertCatalogItem(payload) {
+  const publicPayload = publicCatalogPayload({ ...payload, user_id: appState.authUser.id });
+  let { data, error } = await supabaseClient
+    .from("catalog_items")
+    .insert(publicPayload)
+    .select()
+    .single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    const { is_public, ...legacyPayload } = publicPayload;
+    ({ data, error } = await supabaseClient
+      .from("catalog_items")
+      .insert(legacyPayload)
+      .select()
+      .single());
+  }
+  return { data, error };
+}
+
+async function publishBeat(payload) {
+  const publicPayload = publicCatalogPayload({ ...payload, user_id: appState.authUser.id });
+  let { data, error } = await supabaseClient
+    .from("beats")
+    .upsert(publicPayload)
+    .select()
+    .single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    const { is_public, ...legacyPayload } = publicPayload;
+    ({ data, error } = await supabaseClient
+      .from("beats")
+      .upsert(legacyPayload)
+      .select()
+      .single());
+  }
+  return { data, error };
+}
+
+async function updateCatalogVisibility(table, id, status) {
+  const payload = publicCatalogPayload({ status });
+  let { data, error } = await supabaseClient.from(table).update(payload).eq("id", id).select().single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    ({ data, error } = await supabaseClient.from(table).update({ status }).eq("id", id).select().single());
+  }
+  return { data, error };
 }
 
 function catalogPayloadFromForm(form) {
@@ -3924,11 +4072,7 @@ async function saveCatalogItem(form) {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("catalog_items")
-    .insert({ ...payload, user_id: appState.authUser.id })
-    .select()
-    .single();
+  const { data, error } = await insertCatalogItem(payload);
   if (error) {
     showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
     return;
@@ -3941,7 +4085,6 @@ async function saveCatalogItem(form) {
   syncCatalogCompatibilityState();
   showToast("Item salvo no catalogo Supabase", "cloud-check");
 
-  persistCatalogItems();
   form.reset();
   appState.genre = "Todos";
   if (location.hash !== "#explorar") {
@@ -3976,7 +4119,7 @@ async function toggleCatalogStatus(id) {
   const nextStatus = item.status === "published" ? "draft" : "published";
   const table = item.source_table === "beats" ? "beats" : "catalog_items";
   if (supabaseClient && appState.authUser && !String(id).startsWith("local-")) {
-    const { data, error } = await supabaseClient.from(table).update({ status: nextStatus }).eq("id", id).select().single();
+    const { data, error } = await updateCatalogVisibility(table, id, nextStatus);
     if (error) {
       showToast(error.message || "Nao foi possivel atualizar", "triangle-alert");
       return;
@@ -4763,6 +4906,56 @@ async function loadProfile(user) {
   return data;
 }
 
+async function loadAdminStatus() {
+  appState.isAdmin = false;
+  if (!supabaseClient || !appState.authUser) return false;
+  const { data, error } = await supabaseClient.rpc("is_current_user_admin");
+  if (error) {
+    console.error("[ANSEND admin] admin status check failed", error);
+    return false;
+  }
+  appState.isAdmin = Boolean(data);
+  return appState.isAdmin;
+}
+
+async function getAdminProfiles() {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin) return [];
+  const { data, error } = await supabaseClient.rpc("admin_list_profiles");
+  if (error) {
+    console.error("[ANSEND admin] profile list failed", error);
+    showToast(error.message || "Não foi possível carregar os perfis admin.", "triangle-alert");
+    return [];
+  }
+  appState.adminProfiles = data || [];
+  return appState.adminProfiles;
+}
+
+async function deleteProfessionalAccount(userId) {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin) {
+    showToast("Acesso admin necessário para remover contas.", "shield-alert");
+    return;
+  }
+  if (!userId || userId === appState.authUser.id) {
+    showToast("Você não pode remover a própria conta admin por aqui.", "shield-alert");
+    return;
+  }
+  const targetProfile = appState.adminProfiles.find((profile) => profile.id === userId);
+  const label = targetProfile?.email || targetProfile?.display_name || targetProfile?.full_name || "esta conta";
+  const confirmed = window.confirm(`Remover definitivamente ${label}? Isso apaga perfil, beats, catálogo e usuário Auth.`);
+  if (!confirmed) return;
+  const { data, error } = await supabaseClient.rpc("admin_delete_professional_account", { target_user_id: userId });
+  if (error) {
+    console.error("[ANSEND admin] delete failed", error);
+    showToast(error.message || "Não foi possível remover a conta.", "triangle-alert");
+    return;
+  }
+  showToast(`Conta removida: ${data?.email || label}`, "trash-2");
+  await loadPublicPlatformData();
+  await getAdminProfiles();
+  renderAdmin();
+  hydrateView();
+}
+
 function syncAccountUi() {
   document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
   const route = currentRoute();
@@ -4797,7 +4990,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return ["compras", "perfil", "configuracoes", "cadastrar"].includes(route);
+  return ["compras", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
 function renderAuthLoading() {
@@ -4874,9 +5067,12 @@ async function initAuth() {
       auth_provider: authProviderFromUser(appState.authUser),
     }));
     await loadProfile(appState.authUser);
+    await loadAdminStatus();
     await loadOwnedCatalogItems();
   } else {
     appState.profile = null;
+    appState.isAdmin = false;
+    appState.adminProfiles = [];
     clearLocalPreviewProfile();
     appState.ownedCatalogItems = [];
     syncCatalogCompatibilityState();
@@ -4903,9 +5099,12 @@ async function initAuth() {
         }));
       }
       await loadProfile(appState.authUser);
+      await loadAdminStatus();
       await loadOwnedCatalogItems();
     } else {
       appState.profile = null;
+      appState.isAdmin = false;
+      appState.adminProfiles = [];
       clearLocalPreviewProfile();
       appState.ownedCatalogItems = [];
       syncCatalogCompatibilityState();
@@ -6267,13 +6466,67 @@ function renderSettings() {
   const display = profileDisplayData(profile);
   const profileName = profile?.full_name || "Visitante ANSEND";
   const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
+  const adminLink = appState.isAdmin
+    ? `<label><span><strong>Painel admin</strong><small>Remover contas teste de profissionais com segurança.</small></span><button type="button" data-route="admin">Abrir admin</button></label>`
+    : "";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
     <div class="settings-profile">${profileAvatarMarkup(display, "settings-avatar")}<div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
     <label><span><strong>Preferências musicais</strong><small>Refaça o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
+    ${adminLink}
   </section>`;
+}
+
+async function renderAdmin() {
+  if (!appState.authReady) {
+    renderAuthLoading();
+    return;
+  }
+  if (!appState.isAdmin) {
+    appView.innerHTML = `${pageIntro("admin")}<section class="admin-panel admin-denied">
+      <i data-lucide="shield-alert"></i>
+      <h2>Acesso admin necessário</h2>
+      <p>Entre com uma conta marcada como administradora para remover perfis teste.</p>
+      <button type="button" data-route="configuracoes">Voltar</button>
+    </section>`;
+    lucide.createIcons();
+    return;
+  }
+  const profiles = await getAdminProfiles();
+  const rows = profiles.map((profile) => {
+    const isSelf = profile.id === appState.authUser?.id;
+    const name = profile.display_name || profile.artistic_name || profile.full_name || "Perfil sem nome";
+    const role = accountRoleLabel(profile.account_role || "artista");
+    const createdAt = profile.created_at ? new Date(profile.created_at).toLocaleDateString("pt-BR") : "-";
+    return `<article class="admin-profile-row">
+      <div class="admin-profile-main">
+        ${profileAvatarMarkup(profileDisplayData(profile), "admin-profile-avatar")}
+        <span>
+          <strong>${htmlEscape(name)}</strong>
+          <small>${htmlEscape(profile.email || "sem email")} · ${htmlEscape(role)} · criado em ${createdAt}</small>
+        </span>
+      </div>
+      <button type="button" data-action="admin-delete-profile" data-user-id="${profile.id}" ${isSelf ? "disabled" : ""}>
+        <i data-lucide="${isSelf ? "shield-check" : "trash-2"}"></i>${isSelf ? "Sua conta admin" : "Remover"}
+      </button>
+    </article>`;
+  }).join("");
+  appView.innerHTML = `${pageIntro("admin")}<section class="admin-panel">
+    <header class="admin-panel-head">
+      <div>
+        <span>ANSEND admin</span>
+        <h2>Contas de profissionais</h2>
+        <p>Remova contas teste com função segura no Supabase. A própria conta admin fica protegida.</p>
+      </div>
+      <button type="button" data-action="admin-refresh"><i data-lucide="refresh-cw"></i>Atualizar</button>
+    </header>
+    <div class="admin-profile-list">
+      ${rows || `<section class="recommended-professionals-empty">Nenhum perfil encontrado.</section>`}
+    </div>
+  </section>`;
+  lucide.createIcons();
 }
 
 function generateUUID() {
@@ -6293,6 +6546,75 @@ function releaseFormElement() {
 
 function releaseCurrentStep(form = releaseFormElement()) {
   return Math.max(0, Math.min(5, Number(form?.dataset.releaseStep || 0)));
+}
+
+function releaseUploadFlag(type) {
+  return `uploading${String(type || "").charAt(0).toUpperCase()}${String(type || "").slice(1)}`;
+}
+
+function isReleaseUploadInProgress(type, form = releaseFormElement()) {
+  return form?.dataset?.[releaseUploadFlag(type)] === "true";
+}
+
+function setReleaseUploadInProgress(type, isUploading, form = releaseFormElement()) {
+  if (!form) return;
+  const flag = releaseUploadFlag(type);
+  if (isUploading) form.dataset[flag] = "true";
+  else delete form.dataset[flag];
+}
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
+function setCoverPreview(file, form = releaseFormElement()) {
+  if (!file || !form) return "";
+  const previewUrl = URL.createObjectURL(file);
+  const previousUrl = form.dataset.coverPreviewUrl;
+  if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
+  form.dataset.coverPreviewUrl = previewUrl;
+  const preview = form.querySelector(".release-cover-preview");
+  if (preview) {
+    preview.src = previewUrl;
+    preview.classList.add("has-preview");
+  }
+  form.querySelector(".release-cover-drop")?.classList.add("has-local-preview");
+  return previewUrl;
+}
+
+function setReleaseUploadError(dropzone, message = "") {
+  if (!dropzone) return;
+  dropzone.classList.toggle("has-upload-error", Boolean(message));
+  const errorNode = dropzone.querySelector(".release-upload-error");
+  if (errorNode) {
+    errorNode.textContent = message;
+    errorNode.hidden = !message;
+  }
+}
+
+function releaseStorageErrorMessage(error, type) {
+  const label = type === "cover" ? "capa" : type === "audio" ? "audio" : "arquivo";
+  const rawMessage = String(error?.message || error?.error_description || error?.error || "").trim();
+  if (/row-level security|permission|not authorized|unauthorized|jwt|403/i.test(rawMessage)) {
+    return `Nao foi possivel enviar a ${label}: sua sessao expirou ou nao tem permissao no Storage. Faca login novamente e tente de novo.`;
+  }
+  if (/already exists|duplicate|409/i.test(rawMessage)) {
+    return `Esse envio ficou preso em um arquivo anterior. Selecione a ${label} novamente.`;
+  }
+  if (/timeout|demorou|network|failed to fetch/i.test(rawMessage)) {
+    return `O upload da ${label} demorou demais. Verifique sua conexao e tente de novo.`;
+  }
+  return rawMessage || `Nao foi possivel enviar a ${label}. Tente novamente.`;
+}
+
+function releaseUploadTimeoutMs(type) {
+  if (type === "cover") return 20000;
+  if (type === "audio") return 60000;
+  return 90000;
 }
 
 function validateReleaseStep(step) {
@@ -6329,6 +6651,10 @@ function validateReleaseStep(step) {
   }
   
   if (step === 1) {
+    if (isReleaseUploadInProgress("cover", form)) {
+      showToast("Aguarde o upload da capa terminar.", "upload-cloud");
+      return false;
+    }
     const coverUrl = form.elements.cover_url?.value;
     if (!coverUrl) {
       showToast("Por favor, envie a capa do release", "alert-triangle");
@@ -6337,6 +6663,10 @@ function validateReleaseStep(step) {
   }
   
   if (step === 2) {
+    if (isReleaseUploadInProgress("audio", form)) {
+      showToast("Aguarde o upload do audio terminar.", "upload-cloud");
+      return false;
+    }
     const audioUrl = form.elements.audio_url?.value;
     if (!audioUrl) {
       showToast("Por favor, envie o arquivo de áudio principal", "alert-triangle");
@@ -6510,12 +6840,16 @@ async function handleReleaseUpload(file, type, progressCallback) {
     const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
     const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
     const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
-    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}.${ext}`;
+    const uploadKey = `${Date.now()}-${generateUUID().slice(0, 8)}`;
+    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}-${uploadKey}.${ext}`;
     path = `${userId}/${beatId}/${fileName}`;
     
-    const { error } = await supabaseClient.storage
+    const { error } = await withTimeout(supabaseClient.storage
       .from(bucket)
-      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: true });
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false }),
+      releaseUploadTimeoutMs(type),
+      `O upload do ${type === "cover" ? "arquivo de capa" : type === "audio" ? "arquivo de audio" : "arquivo"} demorou demais.`
+    );
       
     if (error) throw error;
     
@@ -6551,6 +6885,14 @@ async function handleReleaseFile(file, type) {
   const progressBar = dropzone?.querySelector(".upload-progress-bar");
   const progressPercent = dropzone?.querySelector(".upload-progress-percent");
   
+  setReleaseUploadError(dropzone, "");
+  if (type === "cover") {
+    setCoverPreview(file, form);
+    syncReleaseForm(form);
+  }
+  setReleaseUploadInProgress(type, true, form);
+  if (progressBar) progressBar.style.width = "0%";
+  if (progressPercent) progressPercent.textContent = "0%";
   if (progressContainer) progressContainer.style.display = "block";
   
   try {
@@ -6561,6 +6903,7 @@ async function handleReleaseFile(file, type) {
     
     // Hide progress bar after complete
     if (progressContainer) progressContainer.style.display = "none";
+    setReleaseUploadInProgress(type, false, form);
     
     // Set values
     if (type === "cover") {
@@ -6572,8 +6915,10 @@ async function handleReleaseFile(file, type) {
         preview.src = result.url;
         preview.classList.add("has-preview");
       }
-      dropzone.classList.add("has-file");
-      form.querySelector(".cover-actions-container").style.display = "block";
+      dropzone?.classList.add("has-file");
+      dropzone?.classList.remove("has-local-preview");
+      const coverActions = form.querySelector(".cover-actions-container");
+      if (coverActions) coverActions.style.display = "block";
       
       showToast("Capa enviada com sucesso!", "image");
     } else if (type === "audio") {
@@ -6605,7 +6950,7 @@ async function handleReleaseFile(file, type) {
         };
       }
       if (audioPreview) audioPreview.style.display = "flex";
-      dropzone.classList.add("has-file");
+      dropzone?.classList.add("has-file");
       
       showToast("Áudio enviado com sucesso!", "music");
     } else if (type === "stems") {
@@ -6616,7 +6961,7 @@ async function handleReleaseFile(file, type) {
       const nameNode = form.querySelector("[data-stems-name]");
       if (nameNode) nameNode.textContent = file.name;
       if (stemsPreview) stemsPreview.style.display = "block";
-      dropzone.classList.add("has-file");
+      dropzone?.classList.add("has-file");
       
       showToast("ZIP de Stems enviado com sucesso!", "archive");
     }
@@ -6624,40 +6969,28 @@ async function handleReleaseFile(file, type) {
     syncReleaseForm(form);
   } catch (err) {
     if (progressContainer) progressContainer.style.display = "none";
-    showToast(err.message || "Erro ao carregar o arquivo.", "alert-triangle");
+    setReleaseUploadInProgress(type, false, form);
+    if (progressBar) progressBar.style.width = "0%";
+    if (progressPercent) progressPercent.textContent = "0%";
+    const message = releaseStorageErrorMessage(err, type);
+    setReleaseUploadError(dropzone, message);
+    console.error("Release upload failed", err);
+    showToast(message, "alert-triangle");
   }
 }
 
 function handleReleaseFileInput(input) {
-  handleReleaseFile(input.files?.[0], input.dataset.uploadType);
+  handleReleaseFile(input.files?.[0], input.dataset.uploadType).finally(() => {
+    input.value = "";
+  });
 }
 
 function setupMusicUploadEventListeners() {
   const form = releaseFormElement();
   if (!form) return;
   
-  // Navigation: Back & Next using data-action attributes
-  // (buttons are inside the footer which is outside the form, inside .release-page)
   const releasePage = form.closest(".release-page") || document;
-  const backBtn = releasePage.querySelector('[data-action="release-back"]');
-  const nextBtn = releasePage.querySelector('[data-action="release-next"]');
-  
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      const current = releaseCurrentStep();
-      if (current > 0) setReleaseStep(current - 1);
-    });
-  }
-  
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      const current = releaseCurrentStep();
-      if (validateReleaseStep(current)) {
-        setReleaseStep(current + 1);
-      }
-    });
-  }
-  
+
   // Save Draft & Publish using data-action attributes
   const draftBtn = releasePage.querySelector('[data-action="save-draft"]');
   const publishBtn = releasePage.querySelector('[data-action="publish-catalog"]');
@@ -6673,31 +7006,6 @@ function setupMusicUploadEventListeners() {
       saveBeatRelease("published");
     });
   }
-  
-  // Stepper Header Buttons click navigation
-  const stepButtons = document.querySelectorAll(".release-step");
-  stepButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetStep = Number(btn.dataset.step);
-      const current = releaseCurrentStep();
-      
-      // Allow going backward freely, or going forward if valid
-      if (targetStep < current) {
-        setReleaseStep(targetStep);
-      } else if (targetStep > current) {
-        // Validate intermediate steps
-        let canGo = true;
-        for (let i = current; i < targetStep; i++) {
-          if (!validateReleaseStep(i)) {
-            setReleaseStep(i);
-            canGo = false;
-            break;
-          }
-        }
-        if (canGo) setReleaseStep(targetStep);
-      }
-    });
-  });
   
   // Initialize Custom Select Component Logic
   const customSelects = form.querySelectorAll(".custom-select");
@@ -6831,13 +7139,17 @@ function setupMusicUploadEventListeners() {
     removeCover.addEventListener("click", () => {
       form.elements.cover_url.value = "";
       form.elements.cover_path.value = "";
+      const previousUrl = form.dataset.coverPreviewUrl;
+      if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
+      delete form.dataset.coverPreviewUrl;
       const preview = form.querySelector(".release-cover-preview");
       if (preview) {
         preview.src = "";
         preview.classList.remove("has-preview");
       }
-      form.querySelector(".release-cover-drop")?.classList.remove("has-file");
-      form.querySelector(".cover-actions-container").style.display = "none";
+      form.querySelector(".release-cover-drop")?.classList.remove("has-file", "has-local-preview");
+      const coverActions = form.querySelector(".cover-actions-container");
+      if (coverActions) coverActions.style.display = "none";
       syncReleaseForm(form);
     });
   }
@@ -6966,11 +7278,7 @@ async function saveBeatRelease(status = "published") {
     user_id: appState.authUser.id
   };
   
-  const { data, error } = await supabaseClient
-    .from("beats")
-    .upsert(dbPayload)
-    .select()
-    .single();
+  const { data, error } = await publishBeat(dbPayload);
     
   if (error) {
     showToast(error.message || "Erro ao salvar no Supabase", "triangle-alert");
@@ -7077,7 +7385,7 @@ function renderMusicUpload() {
     + '<section class="release-panel" data-panel="1">'
     + '<div class="release-panel-header"><h2>Capa do Beat</h2><p>Envie uma capa quadrada de alta qualidade. Recomendamos 3000x3000px.</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400x1400px</small><img class="release-cover-preview" alt="Preview da capa"><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-dropzone release-cover-drop" data-upload-drop="cover"><input class="release-file-input" type="file" accept="image/png,image/jpeg,image/webp" data-upload-type="cover"><div class="release-upload-icon"><i data-lucide="image"></i></div><strong>Arraste ou selecione a capa</strong><small>JPG, PNG ou WEBP · mínimo 1400x1400px</small><img class="release-cover-preview" alt="Preview da capa"><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando capa...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
     + '<div class="release-requirements"><strong>Recomendações</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>Mínimo 1400x1400px (ideal 3000x3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
     + '</div></section>'
 
@@ -7085,7 +7393,7 @@ function renderMusicUpload() {
     + '<section class="release-panel" data-panel="2">'
     + '<div class="release-panel-header"><h2>Arquivo de Áudio</h2><p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p></div>'
     + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
+    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
     + '<div class="release-requirements"><strong>Áudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB · 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
     + '</div></section>'
 
@@ -7114,7 +7422,7 @@ function renderMusicUpload() {
     + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluídos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
     + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">Observações para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dúvida, entre em contato."></textarea></label></div>'
     + '</div><div>'
-    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
+    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
     + '</div></div></section>'
 
     // STEP 5 - Revisão
@@ -7560,6 +7868,7 @@ function renderRoute() {
   document.body.classList.remove("menu-open");
   if (!appState.authReady && authRequiredForRoute) {
     renderAuthLoading();
+    PageTransition(appView, route);
     hydrateView();
     return;
   }
@@ -7571,6 +7880,7 @@ function renderRoute() {
       renderSellerAuth();
     }
     window.scrollTo({ top: 0, behavior: "auto" });
+    PageTransition(appView, route);
     hydrateView();
     return;
   }
@@ -7598,12 +7908,14 @@ function renderRoute() {
     }
   }
   if (route === "configuracoes") renderSettings();
+  if (route === "admin") renderAdmin();
   if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
   if (route === "playlist") renderPlaylistDetail();
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
+  PageTransition(appView, route);
   hydrateView();
 }
 
@@ -8199,9 +8511,16 @@ function redirectAfterLogin() {
   renderRoutePreservingAuthFocus(true);
 }
 
+function publicAppUrl() {
+  const configuredSiteUrl = SUPABASE_CONFIG.siteUrl || SUPABASE_CONFIG.siteURL || ANSEND_PUBLIC_APP_URL;
+  const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
+  if (configuredSiteUrl && isLocalHost) return configuredSiteUrl;
+  if (configuredSiteUrl && !location.origin.includes(new URL(ANSEND_PUBLIC_APP_URL).hostname)) return configuredSiteUrl;
+  return location.origin;
+}
+
 function googleOAuthRedirectUrl() {
-  const url = new URL(window.location.href);
-  url.hash = "";
+  const url = new URL(publicAppUrl());
   url.searchParams.set("ansend_oauth", "google");
   return url.toString();
 }
@@ -8330,6 +8649,7 @@ async function handleAccountSubmit(form) {
       appState.authUser = sessionData.session?.user || data.session?.user || data.user || null;
       if (!appState.authUser || !sessionData.session) throw new Error("Sessao Supabase nao foi criada para este login.");
       await loadProfile(appState.authUser);
+      await loadAdminStatus();
       await loadCatalogItems();
       setAuthFormMessage(form, "Login realizado. Abrindo seu painel...", "success");
       showToast("Login realizado", "cloud-check");
@@ -8365,6 +8685,7 @@ async function handleAccountSubmit(form) {
       } else {
         localStorage.removeItem(pendingProfileKey(appState.authUser.id));
       }
+      await loadAdminStatus();
       await loadOwnedCatalogItems();
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
@@ -8402,6 +8723,8 @@ async function handleLogout() {
   }
   appState.authUser = null;
   appState.profile = null;
+  appState.isAdmin = false;
+  appState.adminProfiles = [];
   clearLocalPreviewProfile();
   showToast("Você saiu da conta ANSEND", "log-out");
   renderRoute();
@@ -8739,6 +9062,15 @@ document.addEventListener("click", (event) => {
   }
   if (action === "seller-google") {
     handleGoogleOAuth(target);
+    return;
+  }
+  if (action === "admin-refresh") {
+    renderAdmin();
+    hydrateView();
+    return;
+  }
+  if (action === "admin-delete-profile") {
+    deleteProfessionalAccount(target.dataset.userId);
     return;
   }
   if (action === "ai-chip") {

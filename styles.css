@@ -541,6 +541,51 @@ body[data-route="feed"] .empty-state svg {
   stroke: var(--orange) !important;
 }
 
+.professional-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  flex: 0 0 auto;
+  color: #1d9bf0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.professional-verified-badge::before,
+.professional-verified-badge::after {
+  content: none !important;
+  display: none !important;
+}
+
+.professional-verified-badge svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  overflow: visible;
+  color: #1d9bf0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.professional-verified-badge circle {
+  fill: #1d9bf0 !important;
+  stroke: none !important;
+}
+
+.professional-verified-badge path {
+  fill: none !important;
+  stroke: #ffffff !important;
+}
+
 /* Badges of match in orange */
 body[data-route="feed"] .match-score,
 body[data-route="feed"] .match-pill,
@@ -3493,9 +3538,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
 .verified-badge-blue {
   color: #3b82f6; /* Premium verification blue */
+  stroke: #3b82f6;
   fill: rgba(59, 130, 246, 0.1);
   width: 16px;
   height: 16px;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }
 
 .profile-hero-text h1 {
@@ -14325,12 +14374,16 @@ body:has(.nexo-feed-page) .footer {
 }
 
 .profile-verification-status {
-  color: var(--orange);
+  color: #9ca3af;
 }
 
 .verified-badge-blue {
-  color: var(--orange);
-  fill: rgba(255, 106, 0, .12);
+  color: #3b82f6;
+  stroke: #3b82f6;
+  fill: rgba(59, 130, 246, .12);
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }
 
 .profile-btn-primary,
@@ -18821,6 +18874,30 @@ body[data-route="cadastrar"] .upload-progress-bar {
   box-shadow: 0 0 10px rgba(255, 106, 0, 0.6) !important;
 }
 
+body[data-route="cadastrar"] .release-upload-error {
+  position: relative !important;
+  z-index: 4 !important;
+  width: 100% !important;
+  max-width: 640px !important;
+  margin: 12px auto 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 106, 0, 0.35) !important;
+  border-radius: 10px !important;
+  background: rgba(10, 10, 10, 0.86) !important;
+  color: #ffb07a !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  text-align: center !important;
+}
+
+body[data-route="cadastrar"] .release-upload-error[hidden] {
+  display: none !important;
+}
+
+body[data-route="cadastrar"] .release-dropzone.has-upload-error {
+  border-color: rgba(255, 106, 0, 0.55) !important;
+}
+
 body[data-route="cadastrar"] .release-cover-preview {
   position: absolute !important;
   inset: 0 !important;
@@ -19639,6 +19716,74 @@ body[data-route="cadastrar"] #appView.app-view {
 
 body[data-route="cadastrar"] #appView.app-view {
   padding-bottom: 88px !important;
+}
+
+.section-transition,
+.section-transition__content {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  background: transparent;
+}
+
+.section-transition__content {
+  animation: ansendGrowIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform-origin: center center;
+  will-change: opacity, transform, filter;
+}
+
+.section-transition--static .section-transition__content {
+  animation: none;
+  transform: none;
+  filter: none;
+}
+
+.section-transition__content > section,
+.section-transition__content > main,
+.section-transition__content > article,
+.section-transition__content > div {
+  width: 100%;
+  max-width: none;
+}
+
+body[data-route="feed"] .section-transition__content > section,
+body[data-route="feed"] .section-transition__content > div {
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.section-transition__content > .page-intro,
+.section-transition__content > .empty-state,
+.section-transition__content > .catalog-section,
+.section-transition__content > .view-grid,
+.section-transition__content > .purchase-list,
+.section-transition__content > .settings-panel {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@keyframes ansendGrowIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-transition__content {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 /* ==========================================================================
@@ -20812,7 +20957,121 @@ body .sidebar-main-btn:hover {
   }
 }
 
+.admin-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: rgba(5,5,5,.86);
+}
 
+.admin-panel-head,
+.admin-profile-row,
+.admin-profile-main {
+  display: flex;
+  align-items: center;
+}
+
+.admin-panel-head {
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-panel-head span {
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-panel-head h2 {
+  margin: 4px 0;
+  color: #fff;
+}
+
+.admin-panel-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-panel button {
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #fff;
+  background: rgba(255,255,255,.06);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-panel button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.admin-profile-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-profile-row {
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+
+.admin-profile-main {
+  min-width: 0;
+  gap: 12px;
+}
+
+.admin-profile-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,.08);
+  flex: 0 0 auto;
+}
+
+.admin-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-profile-main span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.admin-profile-main strong {
+  color: #fff;
+}
+
+.admin-profile-main small {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-denied {
+  place-items: center;
+  text-align: center;
+  padding-block: 56px;
+}
+
+.admin-denied svg {
+  color: var(--orange);
+}
 
 
 

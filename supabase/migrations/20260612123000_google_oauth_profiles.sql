@@ -30,7 +30,7 @@ begin
     nullif(coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'name'), ''),
     nullif(new.raw_user_meta_data->>'username', ''),
     nullif(coalesce(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'), ''),
-    nullif(new.app_metadata->>'provider', ''),
+    nullif(new.raw_app_meta_data->>'provider', ''),
     now(),
     case
       when jsonb_typeof(new.raw_user_meta_data->'music_styles') = 'array'
@@ -71,7 +71,7 @@ set
   full_name = coalesce(nullif(profiles.full_name, ''), users.raw_user_meta_data->>'full_name', users.raw_user_meta_data->>'name', ''),
   display_name = coalesce(profiles.display_name, users.raw_user_meta_data->>'display_name', users.raw_user_meta_data->>'name'),
   avatar_url = coalesce(profiles.avatar_url, users.raw_user_meta_data->>'avatar_url', users.raw_user_meta_data->>'picture'),
-  auth_provider = coalesce(profiles.auth_provider, users.app_metadata->>'provider'),
+  auth_provider = coalesce(profiles.auth_provider, users.raw_app_meta_data->>'provider'),
   updated_at = now()
 from auth.users as users
 where profiles.id = users.id;
