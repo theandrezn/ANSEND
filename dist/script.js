@@ -7102,17 +7102,12 @@ function validateReleaseStep(step) {
   
   if (step === 0) {
     const title = form.elements.title?.value?.trim();
-    const producer = form.elements.producer_name?.value?.trim();
     const genre = form.elements.genre?.value;
     const bpm = form.elements.bpm?.value;
     const musicalKey = form.elements.musical_key?.value?.trim();
     
     if (!title) {
       showToast("Título é obrigatório", "alert-triangle");
-      return false;
-    }
-    if (!producer) {
-      showToast("Produtor é obrigatório", "alert-triangle");
       return false;
     }
     if (!genre) {
@@ -7799,6 +7794,79 @@ async function saveBeatRelease(status = "published") {
   }
 }
 
+function hydrateReleaseDetailsStep(form, producerName, genreOptions, keyOptions) {
+  const panel = form?.querySelector('.release-panel[data-panel="0"]');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="release-panel-header release-details-header">
+      <h2>Informações do Beat</h2>
+      <p>Preencha apenas o essencial agora. Você pode adicionar detalhes extras se quiser melhorar a descoberta do beat.</p>
+    </div>
+    <div class="release-producer-note" aria-label="Produtor vinculado ao perfil">
+      <span>Publicado por</span>
+      <strong>${htmlEscape(producerName)}</strong>
+    </div>
+    <div class="release-form-grid release-essential-grid">
+      <label class="release-field release-wide">
+        <span class="release-label">Título do beat *</span>
+        <input name="title" type="text" placeholder="Ex: Chill Vibing Trap Beat" required>
+      </label>
+      <div class="release-field">
+        <span class="release-label">Gênero *</span>
+        <div class="custom-select" data-select-id="genre">
+          <input type="hidden" name="genre" required>
+          <button type="button" class="custom-select-trigger"><span>Selecione o gênero</span><i data-lucide="chevron-down"></i></button>
+          <div class="custom-select-options">${genreOptions}</div>
+        </div>
+      </div>
+      <label class="release-field">
+        <span class="release-label">BPM *</span>
+        <input name="bpm" type="number" min="40" max="240" placeholder="Ex: 140" required>
+      </label>
+      <div class="release-field">
+        <span class="release-label">Tom musical / Key *</span>
+        <div class="custom-select" data-select-id="musical_key">
+          <input type="hidden" name="musical_key" required>
+          <button type="button" class="custom-select-trigger"><span>Selecione o tom</span><i data-lucide="chevron-down"></i></button>
+          <div class="custom-select-options">${keyOptions}</div>
+        </div>
+      </div>
+    </div>
+    <details class="release-advanced-details">
+      <summary>
+        <span><i data-lucide="sliders-horizontal"></i>Adicionar mais detalhes</span>
+        <small>opcional</small>
+        <i data-lucide="chevron-down"></i>
+      </summary>
+      <div class="release-form-grid release-advanced-grid">
+        <label class="release-field">
+          <span class="release-label">Subgênero <small>opcional</small></span>
+          <input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap">
+        </label>
+        <label class="release-field">
+          <span class="release-label">Mood / vibe <small>opcional</small></span>
+          <input name="mood" type="text" placeholder="Ex: Energético, Melancólico">
+        </label>
+        <label class="release-field release-wide">
+          <span class="release-label">Tags <small>opcional</small></span>
+          <input name="release_tags" type="text" placeholder="Ex: trap, melódico, piano, sombrio">
+        </label>
+        <label class="release-field release-wide">
+          <span class="release-label">Descrição curta <small>opcional</small></span>
+          <textarea name="description" rows="3" placeholder="Escreva uma breve descrição para o catálogo."></textarea>
+        </label>
+        <fieldset class="release-radio-group release-wide">
+          <legend>Essa faixa já foi lançada antes? <small>opcional</small></legend>
+          <div class="release-radio-options">
+            <label><input type="radio" name="already_released" value="true"> Sim</label>
+            <label><input type="radio" name="already_released" value="false" checked> Não</label>
+          </div>
+        </fieldset>
+      </div>
+    </details>
+  `;
+}
+
 function renderMusicUpload() {
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
@@ -7816,6 +7884,7 @@ function renderMusicUpload() {
   }
   const profile = activeProfile();
   const display = profileDisplayData(profile);
+  const releaseProducerName = display.name || profile?.artistic_name || profile?.full_name || profile?.username || appState.authUser?.email?.split("@")[0] || "ANSEND";
   const beatId = generateUUID();
   const stepLabels = ["Detalhes","Capa","Faixa","Preço","Entrega","Revisão"];
   const genreList = ["Trap","Funk","Drill","R&B","Boom Bap","Afrobeat","Gospel Trap","Pop","Lo-Fi","Piseiro","Sertanejo","Reggaeton"];
@@ -7839,6 +7908,7 @@ function renderMusicUpload() {
     + '<input type="hidden" name="stems_url"><input type="hidden" name="stems_path">'
     + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
     + '<input type="hidden" name="tags">'
+    + '<input type="hidden" name="producer_name" value="' + htmlEscape(releaseProducerName) + '">'
 
     // STEP 0 - Detalhes
     + '<section class="release-panel is-active" data-panel="0">'
@@ -7916,6 +7986,7 @@ function renderMusicUpload() {
     + '<div class="release-footer-actions"><button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button><button type="button" class="release-draft-btn" data-action="save-draft">Salvar Rascunho</button><button type="button" class="release-next-btn" data-action="release-next">Próximo</button><button type="button" class="release-submit-btn" data-action="publish-catalog" style="display:none;">Publicar</button></div>'
     + '</div></footer></section>';
 
+  hydrateReleaseDetailsStep(releaseFormElement(), releaseProducerName, genreOptions, keyOptions);
   setupMusicUploadEventListeners();
   syncReleaseForm();
   lucide.createIcons();
