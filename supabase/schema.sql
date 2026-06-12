@@ -235,6 +235,37 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_auth_user();
 
+insert into public.profiles (
+  id,
+  email,
+  full_name,
+  account_role,
+  artistic_name,
+  display_name,
+  username,
+  music_styles
+)
+select
+  users.id,
+  coalesce(users.email, ''),
+  coalesce(users.raw_user_meta_data->>'full_name', ''),
+  coalesce(users.raw_user_meta_data->>'account_role', 'artista'),
+  nullif(users.raw_user_meta_data->>'artistic_name', ''),
+  nullif(users.raw_user_meta_data->>'display_name', ''),
+  nullif(users.raw_user_meta_data->>'username', ''),
+  case
+    when jsonb_typeof(users.raw_user_meta_data->'music_styles') = 'array'
+      then array(select jsonb_array_elements_text(users.raw_user_meta_data->'music_styles'))
+    else '{}'
+  end
+from auth.users as users
+where not exists (
+  select 1
+  from public.profiles as profiles
+  where profiles.id = users.id
+)
+on conflict (id) do nothing;
+
 create table if not exists public.catalog_items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -402,8 +433,12 @@ on conflict (id) do update set public = excluded.public;
 
 -- Policies for profile media
 drop policy if exists "Profile avatars are public" on storage.objects;
+drop policy if exists "Public can read profile avatars" on storage.objects;
+create policy "Public can read profile avatars" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-avatars');
 
 drop policy if exists "Profile banners are public" on storage.objects;
+drop policy if exists "Public can read profile banners" on storage.objects;
+create policy "Public can read profile banners" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-banners');
 
 drop policy if exists "Users can manage own profile avatars" on storage.objects;
 create policy "Users can manage own profile avatars" on storage.objects for all to authenticated using (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text) with check (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text);
@@ -413,6 +448,8 @@ create policy "Users can manage own profile banners" on storage.objects for all 
 
 -- Policies for beat-covers
 drop policy if exists "Public Access Covers" on storage.objects;
+drop policy if exists "Public can read beat covers" on storage.objects;
+create policy "Public can read beat covers" on storage.objects for select to anon, authenticated using (bucket_id = 'beat-covers');
 
 drop policy if exists "Users can upload their own covers" on storage.objects;
 create policy "Users can upload their own covers" on storage.objects for insert to authenticated with check (bucket_id = 'beat-covers' and (storage.foldername(name))[1] = auth.uid()::text);
@@ -425,6 +462,8 @@ create policy "Users can delete their own covers" on storage.objects for delete 
 
 -- Policies for beat-audio
 drop policy if exists "Public Access Audio" on storage.objects;
+drop policy if exists "Public can read beat audio" on storage.objects;
+create policy "Public can read beat audio" on storage.objects for select to anon, authenticated using (bucket_id = 'beat-audio');
 
 drop policy if exists "Users can upload their own audio" on storage.objects;
 create policy "Users can upload their own audio" on storage.objects for insert to authenticated with check (bucket_id = 'beat-audio' and (storage.foldername(name))[1] = auth.uid()::text);

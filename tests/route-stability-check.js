@@ -27,7 +27,7 @@ const routes = [
   { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
   { hash: "ia", required: ["Converse com a inteligencia musical"], selector: ".nexo-chat-page" },
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
-  { hash: "cadastrar", required: ["Lan", "Música"], selector: ".release-page" },
+  { hash: "cadastrar", required: ["Autentica", "Necess"], selector: ".release-fallback-page" },
   { hash: "carrinho", required: ["Carrinho"], selector: ".view-header-carrinho" },
   { hash: "vendedor", required: ["ANSEND"], selector: ".seller-auth" },
 ];

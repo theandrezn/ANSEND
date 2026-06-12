@@ -11,8 +11,19 @@ const isSupabaseConfigured = Boolean(
   && SUPABASE_CONFIG.publishableKey !== SUPABASE_KEY_PLACEHOLDER
 );
 const supabaseClient = isSupabaseConfigured
-  ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.publishableKey)
+  ? window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.publishableKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  })
   : null;
+const AUTH_DEBUG_ENABLED = Boolean(
+  location.hostname === "localhost"
+  || location.hostname === "127.0.0.1"
+  || localStorage.getItem("ansend-auth-debug") === "true"
+);
 
 const localeConfig = {
   "pt-BR": {
@@ -1110,7 +1121,7 @@ const appState = {
   nexoChatLoading: false,
   nexoChatError: "",
   authUser: null,
-  profile: JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
+  profile: supabaseClient ? null : JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
   authReady: !supabaseClient,
   query: "",
   genre: "Todos",
@@ -3985,7 +3996,7 @@ function pendingProfileKey(userId) {
 }
 
 function activeProfile() {
-  return appState.profile || appState.onboardingProfile || localPreviewProfile() || null;
+  return appState.profile || appState.onboardingProfile || null;
 }
 
 function accountRoleLabel(role = activeProfile()?.account_role) {
@@ -4037,7 +4048,7 @@ function accountGreeting() {
 
 function setLocalPreviewProfile(profile) {
   appState.profile = profile;
-  localStorage.setItem("ansend-profile-preview", JSON.stringify(profile));
+  if (!supabaseClient) localStorage.setItem("ansend-profile-preview", JSON.stringify(profile));
 }
 
 function localPreviewProfile() {
@@ -4059,6 +4070,7 @@ function localPreviewProfile() {
 
 function clearLocalPreviewProfile() {
   localStorage.removeItem("ansend-profile-preview");
+  localStorage.removeItem("ansendAccountAccess");
 }
 
 function profileDisplayData(profile = activeProfile()) {
@@ -4641,21 +4653,71 @@ async function upsertProfile(profile) {
   return { data, error };
 }
 
+function debugAuth(label, details = {}) {
+  if (!AUTH_DEBUG_ENABLED) return;
+  const rawSession = details.session || null;
+  const safeSession = rawSession ? {
+    hasSession: true,
+    expires_at: rawSession.expires_at || null,
+    user: rawSession.user ? {
+      id: rawSession.user.id,
+      role: rawSession.user.role,
+      aud: rawSession.user.aud,
+    } : null,
+  } : { hasSession: false };
+  const { session, ...rest } = details;
+  console.debug("[ANSEND auth]", label, {
+    route: currentRoute(),
+    authReady: appState.authReady,
+    userId: appState.authUser?.id || null,
+    profileId: appState.profile?.id || null,
+    ...rest,
+    session: safeSession,
+  });
+}
+
+function profileFromAuthUser(user, fallback = {}) {
+  const metadata = user?.user_metadata || {};
+  const emailName = String(user?.email || "").split("@")[0] || "Usuario ANSEND";
+  return {
+    ...fallback,
+    id: user?.id,
+    email: user?.email || fallback.email || "",
+    full_name: metadata.full_name || fallback.full_name || emailName,
+    display_name: metadata.display_name || fallback.display_name || metadata.full_name || fallback.artistic_name || emailName,
+    username: sanitizeHandle(metadata.username || fallback.username || emailName),
+    account_role: metadata.account_role || fallback.account_role || "artista",
+    artistic_name: metadata.artistic_name || fallback.artistic_name || null,
+    music_styles: Array.isArray(metadata.music_styles) && metadata.music_styles.length
+      ? metadata.music_styles
+      : (fallback.music_styles || preferredGenres()),
+    onboarding_goal: fallback.onboarding_goal || appState.onboardingProfile?.goal || null,
+  };
+}
+
 async function loadProfile(user) {
   if (!supabaseClient || !user) return;
   const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (error) {
+    debugAuth("profile_load_error", { userId: user.id, error: error.message });
     showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
     return;
   }
   const pending = JSON.parse(localStorage.getItem(pendingProfileKey(user.id)) || "null");
   if (!data && pending) {
-    const result = await upsertProfile(pending);
+    const result = await upsertProfile(profileFromAuthUser(user, pending));
     if (!result.error) localStorage.removeItem(pendingProfileKey(user.id));
+    debugAuth("profile_created_from_pending", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
+    return;
+  }
+  if (!data) {
+    const result = await upsertProfile(profileFromAuthUser(user));
+    debugAuth("profile_created_from_auth_user", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
     return;
   }
   appState.profile = data;
   clearLocalPreviewProfile();
+  debugAuth("profile_loaded", { userId: user.id, profileId: data.id });
 }
 
 function syncAccountUi() {
@@ -4673,16 +4735,11 @@ function syncAccountUi() {
 }
 
 function hasAccountAccess() {
-  return Boolean(
-    appState.authUser ||
-    appState.profile ||
-    appState.onboardingProfile ||
-    localStorage.getItem("ansendAccountAccess") === "true"
-  );
+  return Boolean(appState.authUser);
 }
 
 function protectedRoute(route) {
-  return ["compras", "perfil", "configuracoes"].includes(route);
+  return ["compras", "perfil", "configuracoes", "cadastrar"].includes(route);
 }
 
 function renderAuthLoading() {
@@ -4691,6 +4748,20 @@ function renderAuthLoading() {
     <span>Verificando sua conta</span>
     <strong>Preparando acesso seguro</strong>
   </section>`;
+}
+
+function renderReleaseAuthRequired(reason = "missing-session") {
+  debugAuth("release_auth_blocked", { reason });
+  appView.innerHTML = `
+    <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
+      <div class="release-fallback-head" style="margin-bottom:24px;">
+        <i data-lucide="shield-alert" style="width:48px; height:48px; color:#ff6a00; margin:0 auto 16px;"></i>
+        <h2 style="font-size:28px; color:#fff; margin-top:8px;">AutenticaÃ§Ã£o NecessÃ¡ria</h2>
+        <p style="color:#888; font-size:14px; margin-top:8px;">VocÃª precisa criar uma conta ou fazer login para lanÃ§ar suas mÃºsicas e beats na plataforma.</p>
+      </div>
+      <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer; text-decoration:none; display:inline-block;">Entrar / Criar Conta</a>
+    </section>`;
+  lucide.createIcons();
 }
 
 function isEditingSellerAuth() {
@@ -4722,22 +4793,32 @@ async function initAuth() {
     renderRoutePreservingAuthFocus();
     return;
   }
-  const { data } = await supabaseClient.auth.getSession();
+  const { data, error: sessionError } = await supabaseClient.auth.getSession();
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  debugAuth("init_get_session", {
+    session: data.session || null,
+    getSessionError: sessionError?.message || null,
+    getUserId: userData.user?.id || null,
+    getUserError: userError?.message || null,
+  });
   const previousUserId = appState.authUser?.id || null;
-  appState.authUser = data.session?.user || null;
+  appState.authUser = userData.user || data.session?.user || null;
   await loadPublicPlatformData();
   if (appState.authUser) {
     await loadProfile(appState.authUser);
     await loadOwnedCatalogItems();
   } else {
-    appState.profile = localPreviewProfile();
+    appState.profile = null;
+    clearLocalPreviewProfile();
     appState.ownedCatalogItems = [];
     syncCatalogCompatibilityState();
+    debugAuth("init_no_session", { reason: "Supabase returned no authenticated user" });
   }
   appState.authReady = true;
   syncAccountUi();
   renderRoutePreservingAuthFocus(previousUserId !== (appState.authUser?.id || null));
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    debugAuth("auth_state_change", { event: _event, session });
     const oldUserId = appState.authUser?.id || null;
     appState.authUser = session?.user || null;
     await loadPublicPlatformData();
@@ -4745,9 +4826,11 @@ async function initAuth() {
       await loadProfile(appState.authUser);
       await loadOwnedCatalogItems();
     } else {
-      appState.profile = localPreviewProfile();
+      appState.profile = null;
+      clearLocalPreviewProfile();
       appState.ownedCatalogItems = [];
       syncCatalogCompatibilityState();
+      debugAuth("auth_state_no_session", { event: _event, reason: "Auth state changed without session" });
     }
     syncAccountUi();
     renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
@@ -6785,7 +6868,12 @@ async function saveBeatRelease(status = "published") {
 }
 
 function renderMusicUpload() {
+  if (!appState.authReady) {
+    renderAuthLoading();
+    return;
+  }
   if (!supabaseClient || !appState.authUser) {
+    debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
       <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
         <div class="release-fallback-head" style="margin-bottom:24px;">
@@ -7329,7 +7417,11 @@ function renderRoute() {
   }
   if (authRequiredForRoute) {
     appState.sellerMode = appState.sellerMode || "login";
-    renderSellerAuth();
+    if (route === "cadastrar") {
+      renderReleaseAuthRequired("route_guard_no_session");
+    } else {
+      renderSellerAuth();
+    }
     window.scrollTo({ top: 0, behavior: "auto" });
     hydrateView();
     return;
@@ -7972,8 +8064,9 @@ async function handleAccountSubmit(form) {
     if (mode === "login") {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      appState.authUser = data.user;
-      await loadProfile(data.user);
+      appState.authUser = data.session?.user || data.user || null;
+      if (!appState.authUser) throw new Error("Sessao Supabase nao foi criada para este login.");
+      await loadProfile(appState.authUser);
       await loadCatalogItems();
       showToast("Login realizado", "cloud-check");
       renderRoute();
@@ -7994,18 +8087,17 @@ async function handleAccountSubmit(form) {
       },
     });
     if (error) throw error;
-    appState.authUser = data.user;
+    appState.authUser = data.session?.user || null;
     if (data.session && data.user) {
       const result = await upsertProfile(profile);
       if (result.error) throw result.error;
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
       localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
-      setLocalPreviewProfile({ ...profile, id: data.user.id, created_at: new Date().toISOString() });
-      showToast("Conta criada. Perfil liberado enquanto a sessão sincroniza.", "mail-check");
+      showToast("Conta criada. Confirme o e-mail para iniciar a sessao.", "mail-check");
     }
     localStorage.setItem("ansend-open-catalog-form", "true");
-    if (location.hash !== "#perfil") location.hash = "perfil";
+    if (location.hash !== (appState.authUser ? "#perfil" : "#vendedor")) location.hash = appState.authUser ? "perfil" : "vendedor";
     renderRoute();
     launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
@@ -9184,7 +9276,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 function updateSidebarProfile() {
-  const profile = activeProfile();
+  const profile = hasAccountAccess() ? activeProfile() : null;
   const display = profileDisplayData(profile);
   
   const nameEl = document.querySelector(".sidebar-profile-name");
