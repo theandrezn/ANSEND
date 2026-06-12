@@ -72,6 +72,11 @@ body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-page {
   scroll-behavior: auto;
 }
 
+body[data-route="ia"] #appView:has(.nexo-chat-page) .nexo-chat-shell {
+  padding-top: clamp(128px, 12vh, 152px);
+  grid-template-rows: minmax(260px, 1fr) auto auto;
+}
+
 .nexo-chat-welcome {
   flex: 1;
   min-height: 280px;
