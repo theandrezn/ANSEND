@@ -498,7 +498,6 @@ body[data-route="feed"] .top-producer-card .top-producer-avatar {
   box-shadow: none !important;
 }
 
-body[data-route="feed"] .match-professional-card img,
 body[data-route="feed"] .top-producer-card img {
   width: 100% !important;
   height: 100% !important;
@@ -506,6 +505,16 @@ body[data-route="feed"] .top-producer-card img {
   object-fit: cover !important;
   border: 2px solid var(--orange) !important;
   box-shadow: 0 0 15px rgba(255, 106, 0, 0.2) !important;
+  margin-bottom: 0 !important;
+}
+
+body[data-route="feed"] .match-professional-card img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: none !important;
+  box-shadow: none !important;
   margin-bottom: 0 !important;
 }
 
@@ -11979,8 +11988,8 @@ body.onboarding-open {
   gap: 6px !important;
   color: #fff !important;
   background: transparent !important;
-  font-size: 15px !important;
-  font-weight: 800 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
   line-height: 1.15 !important;
   cursor: pointer !important;
 }
