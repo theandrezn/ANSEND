@@ -8217,7 +8217,6 @@ function closePlayerVolumePanel() {
 function closePlayerFloatingPanels() {
   document.querySelector(".audio-editor-popover")?.remove();
   closePlayerVolumePanel();
-  closePlayerVolumePanel();
   closePlayerMoreMenu();
 }
 
@@ -8259,8 +8258,9 @@ function openVolumePanel() {
   const icon = volume <= .02 ? "volume-x" : volume < .45 ? "volume-1" : "volume-2";
   document.body.insertAdjacentHTML("beforeend", `<section class="player-volume-popover" role="dialog" aria-modal="false" aria-label="Controle de volume" style="right:${right}px; bottom:${bottom}px">
     <button type="button" class="player-volume-mute" data-action="player-mute" aria-label="${volume <= .02 ? "Ativar som" : "Mutar"}"><i data-lucide="${icon}"></i></button>
-    <input type="range" min="0" max="1" step="0.01" value="${volume}" data-action="player-volume" aria-label="Volume do player">
+    <input class="player-volume-slider" type="range" min="0" max="1" step="0.01" value="${volume}" data-action="player-volume" aria-label="Volume do player">
     <em>${Math.round(volume * 100)}%</em>
+    <button type="button" class="player-volume-close" data-action="close-volume-panel" aria-label="Fechar volume"><i data-lucide="x"></i></button>
   </section>`);
   trigger?.setAttribute("aria-expanded", "true");
   lucide.createIcons();
@@ -9610,6 +9610,10 @@ document.addEventListener("click", (event) => {
   }
   if (action === "volume") {
     openVolumePanel();
+    return;
+  }
+  if (action === "close-volume-panel") {
+    closePlayerVolumePanel();
     return;
   }
   if (action === "player-mute") {

@@ -64,6 +64,10 @@ async function run() {
     await page.waitForSelector(".player-volume-popover");
     const visibleVolume = await page.locator(".player-volume-popover").isVisible();
     if (!visibleVolume) throw new Error("Volume popover did not open.");
+    const volumeBox = await page.locator(".player-volume-popover").boundingBox();
+    if (!volumeBox || volumeBox.height > 86 || volumeBox.width > 320) {
+      throw new Error(`Volume popover is too large: ${JSON.stringify(volumeBox)}`);
+    }
     await page.locator('.player-volume-popover [data-action="player-volume"]').evaluate((input) => {
       input.value = "0.35";
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -82,6 +86,10 @@ async function run() {
     await page.click('[data-action="player-mute"]');
     const restored = await page.evaluate(() => appState.player.volume);
     if (restored < 0.34 || restored > 0.36) throw new Error(`Unmute did not restore previous volume: ${restored}`);
+    await page.click('[data-action="close-volume-panel"]');
+    await page.waitForSelector(".player-volume-popover", { state: "detached" });
+    await page.click('[data-action="volume"]');
+    await page.waitForSelector(".player-volume-popover");
     await page.mouse.click(20, 20);
     await page.waitForSelector(".player-volume-popover", { state: "detached" });
 
