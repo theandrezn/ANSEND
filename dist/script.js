@@ -7376,7 +7376,7 @@ function renderSellerAuth() {
         <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
         <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
       </div>
-      <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}">
+      <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}" novalidate>
         ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name"></label>
         <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
         <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
@@ -7388,6 +7388,7 @@ function renderSellerAuth() {
             <button type="button" data-action="toggle-password" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
           </span>
         </label>
+        <p class="seller-auth-message" data-auth-message hidden></p>
         <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i></button>
       </form>
       <div class="seller-auth-actions">
@@ -8065,6 +8066,31 @@ function friendlyAuthError(error) {
   return "Não foi possível concluir agora. Tente novamente em instantes.";
 }
 
+function setAuthFormMessage(form, message = "", type = "error") {
+  const messageEl = form?.querySelector("[data-auth-message]");
+  if (!messageEl) return;
+  messageEl.textContent = message;
+  messageEl.hidden = !message;
+  messageEl.dataset.type = type;
+}
+
+function setAuthSubmitState(form, isLoading) {
+  const submitButton = form?.querySelector(".seller-submit");
+  if (!submitButton) return;
+  submitButton.disabled = isLoading;
+  submitButton.dataset.loading = isLoading ? "true" : "false";
+  submitButton.innerHTML = isLoading
+    ? `Entrando...<i data-lucide="loader-circle"></i>`
+    : `${form.dataset.mode === "login" ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i>`;
+  lucide.createIcons();
+}
+
+function redirectAfterLogin() {
+  const targetHash = "#perfil";
+  if (location.hash !== targetHash) location.hash = targetHash;
+  renderRoutePreservingAuthFocus(true);
+}
+
 function unlockPreviewAccountFromProfile(profile, reason = "preview") {
   const previewProfile = {
     ...profile,
@@ -8080,13 +8106,20 @@ function unlockPreviewAccountFromProfile(profile, reason = "preview") {
 }
 
 async function handleAccountSubmit(form) {
+  if (form.classList.contains("is-submitting")) return;
   const mode = form.dataset.mode;
   const email = form.elements.email.value.trim();
   const password = form.elements.password.value;
-  if (!email || !password) return;
+  setAuthFormMessage(form);
+  if (!email || !password) {
+    setAuthFormMessage(form, "Preencha e-mail e senha para entrar.");
+    form.reportValidity?.();
+    return;
+  }
 
   if (!supabaseClient) {
     if (mode === "login") {
+      setAuthFormMessage(form, "Supabase nao esta configurado neste ambiente.");
       showToast("Use criar conta para liberar acesso neste ambiente.", "user-plus");
       return;
     }
@@ -8097,18 +8130,20 @@ async function handleAccountSubmit(form) {
   }
 
   form.classList.add("is-submitting");
-  const submitButton = form.querySelector(".seller-submit");
-  if (submitButton) submitButton.disabled = true;
+  setAuthSubmitState(form, true);
   try {
     if (mode === "login") {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      appState.authUser = data.session?.user || data.user || null;
-      if (!appState.authUser) throw new Error("Sessao Supabase nao foi criada para este login.");
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      appState.authUser = sessionData.session?.user || data.session?.user || data.user || null;
+      if (!appState.authUser || !sessionData.session) throw new Error("Sessao Supabase nao foi criada para este login.");
       await loadProfile(appState.authUser);
       await loadCatalogItems();
+      setAuthFormMessage(form, "Login realizado. Abrindo seu painel...", "success");
       showToast("Login realizado", "cloud-check");
-      renderRoute();
+      redirectAfterLogin();
       return;
     }
 
@@ -8146,10 +8181,12 @@ async function handleAccountSubmit(form) {
       showToast("Conta liberada. Vamos personalizar sua experiência.", "badge-check");
       return;
     }
+    console.error("[ANSEND auth] login/signup failed", error);
+    setAuthFormMessage(form, friendlyAuthError(error));
     showToast(friendlyAuthError(error), "triangle-alert");
   } finally {
     form.classList.remove("is-submitting");
-    if (submitButton) submitButton.disabled = false;
+    setAuthSubmitState(form, false);
   }
 }
 

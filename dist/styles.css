@@ -3123,6 +3123,20 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   opacity: .72;
   pointer-events: none;
 }
+.seller-auth-message {
+  min-height: 20px;
+  margin: -2px 0 0;
+  color: #ffb4a8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.seller-auth-message[hidden] {
+  display: none;
+}
+.seller-auth-message[data-type="success"] {
+  color: #9ff0c2;
+}
 .password-wrap {
   position: relative;
   display: block;
@@ -3165,6 +3179,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .seller-submit svg {
   width: 18px;
+}
+.seller-submit[data-loading="true"] svg {
+  animation: authSpin .8s linear infinite;
+}
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
 }
 .seller-auth-actions {
   max-width: 500px;
