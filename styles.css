@@ -22176,3 +22176,95 @@ body[data-route="feed"] .recent-activity-section .airbit-view-all:hover svg {
   stroke: #000 !important;
 }
 
+/* Universal catalog card controls: monochrome across Home and Marketplace. */
+.minimal-beat-card .fav-over,
+.minimal-beat-card .play-over,
+.minimal-beat-card .beat-card-buy-btn,
+.minimal-beat-card .beat-card-download-btn {
+  color: #fff !important;
+  background: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  box-shadow: none !important;
+}
+
+.minimal-beat-card .fav-over svg,
+.minimal-beat-card .play-over svg,
+.minimal-beat-card .beat-card-buy-btn svg,
+.minimal-beat-card .beat-card-download-btn svg {
+  color: currentColor !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+.minimal-beat-card .play-over {
+  background: rgba(0, 0, 0, .68) !important;
+  border-color: rgba(255, 255, 255, .18) !important;
+}
+
+.minimal-beat-card .fav-over:hover,
+.minimal-beat-card .fav-over:focus-visible,
+.minimal-beat-card .play-over:hover,
+.minimal-beat-card .play-over:focus-visible,
+.minimal-beat-card .beat-card-download-btn:hover,
+.minimal-beat-card .beat-card-download-btn:focus-visible {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .08) !important;
+  border-color: rgba(255, 255, 255, .32) !important;
+}
+
+.minimal-beat-card .fav-over.is-favorite {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .08) !important;
+  border-color: rgba(255, 255, 255, .32) !important;
+}
+
+.minimal-beat-card .fav-over.is-favorite svg {
+  fill: none !important;
+  stroke: #fff !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn {
+  border-radius: 999px !important;
+  font-weight: 900 !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn:hover,
+.minimal-beat-card .beat-card-buy-btn:focus-visible {
+  color: #000 !important;
+  background: #fff !important;
+  border-color: #fff !important;
+}
+
+.minimal-beat-card .beat-card-buy-btn:hover svg,
+.minimal-beat-card .beat-card-buy-btn:focus-visible svg {
+  color: #000 !important;
+  stroke: #000 !important;
+}
+
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-download-btn {
+  border-color: rgba(255, 255, 255, .18) !important;
+  border-radius: 999px !important;
+}
+
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn:hover,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn:focus-visible {
+  color: #000 !important;
+  background: #fff !important;
+  border-color: #fff !important;
+}
+
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .fav-over svg,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .play-over svg,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn svg,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-download-btn svg {
+  color: currentColor !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn:hover svg,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn:focus-visible svg {
+  color: #000 !important;
+  stroke: #000 !important;
+}
