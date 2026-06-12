@@ -55,33 +55,6 @@ body.requires-auth .seller-auth {
   margin: 0 !important;
   overflow: visible !important;
 }
-.auth-gate-loading {
-  width: min(420px, calc(100vw - 32px));
-  min-height: 260px;
-  padding: 34px;
-  border: 1px solid rgba(255, 106, 0, .24);
-  border-radius: 22px;
-  display: grid;
-  place-items: center;
-  gap: 12px;
-  text-align: center;
-  background: linear-gradient(145deg, rgba(8, 6, 4, .96), rgba(0, 0, 0, .94));
-  box-shadow: 0 28px 90px rgba(0, 0, 0, .55), 0 0 46px rgba(255, 106, 0, .12);
-}
-.auth-gate-loading img {
-  width: 150px;
-}
-.auth-gate-loading span {
-  color: var(--orange);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-.auth-gate-loading strong {
-  color: var(--text);
-  font-size: 24px;
-}
 body.requires-auth .seller-auth {
   background: #000000 !important;
 }

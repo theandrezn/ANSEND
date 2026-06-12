@@ -8,6 +8,7 @@
     "deploy": "npm run build && wrangler deploy",
     "test:routes": "node tests/route-stability-check.js",
     "test:auth-focus": "node tests/auth-focus-check.js",
+    "test:auth-no-block": "node tests/auth-no-block-check.js",
     "test:paint-layer": "node tests/paint-layer-check.js",
     "test:profile-editor": "node tests/profile-editor-check.js",
     "test:profile-persistence": "node tests/profile-persistence-check.js",

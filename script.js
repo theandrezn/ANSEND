@@ -5267,14 +5267,6 @@ function protectedRoute(route) {
   return ["compras", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
-function renderAuthLoading() {
-  appView.innerHTML = `<section class="auth-gate-loading" aria-live="polite">
-    <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
-    <span>Verificando sua conta</span>
-    <strong>Preparando acesso seguro</strong>
-  </section>`;
-}
-
 function renderReleaseAuthRequired(reason = "missing-session") {
   debugAuth("release_auth_blocked", { reason });
   appView.innerHTML = `
@@ -5306,6 +5298,74 @@ function renderRoutePreservingAuthFocus(force = false) {
   renderRoute();
 }
 
+const INITIAL_AUTH_TIMEOUT_MS = 2200;
+
+function timeoutResult(label) {
+  return { timedOut: true, label, data: {}, error: null };
+}
+
+function withAuthTimeout(promise, label, timeoutMs = INITIAL_AUTH_TIMEOUT_MS) {
+  let timeoutId;
+  return Promise.race([
+    promise.then((value) => ({ ...value, timedOut: false })),
+    new Promise((resolve) => {
+      timeoutId = setTimeout(() => resolve(timeoutResult(label)), timeoutMs);
+    }),
+  ]).finally(() => clearTimeout(timeoutId));
+}
+
+async function loadPublicPlatformDataSafe(reason = "auth") {
+  try {
+    await loadPublicPlatformData();
+  } catch (error) {
+    debugAuth("public_data_load_failed", { reason, error: error?.message || String(error) });
+  }
+}
+
+async function hydrateAuthenticatedUser(user, options = {}) {
+  if (!user) return;
+  appState.authUser = user;
+  await loadProfile(user);
+  if (options.touchLogin) {
+    await touchProfileLoginMetadata({
+      lastLoginAt: options.lastLoginAt || null,
+      authProvider: authProviderFromUser(user),
+    });
+  }
+  await loadAdminStatus();
+  await loadOwnedCatalogItems();
+}
+
+function clearAuthenticatedSession(reason = "no-session") {
+  appState.authUser = null;
+  appState.profile = null;
+  appState.isAdmin = false;
+  appState.adminProfiles = [];
+  clearLocalPreviewProfile();
+  appState.ownedCatalogItems = [];
+  syncCatalogCompatibilityState();
+  debugAuth(reason, { reason });
+}
+
+async function reconcileInitialSession(sessionPromise, reason = "initial_timeout") {
+  try {
+    const { data, error } = await sessionPromise;
+    if (error) {
+      debugAuth("late_session_error", { reason, error: error.message });
+      return;
+    }
+    const user = data?.session?.user || null;
+    if (!user || appState.authUser?.id === user.id) return;
+    await loadPublicPlatformDataSafe("late_session");
+    await hydrateAuthenticatedUser(user, { touchLogin: false });
+    appState.authReady = true;
+    syncAccountUi();
+    renderRoutePreservingAuthFocus(true);
+  } catch (error) {
+    debugAuth("late_session_failed", { reason, error: error?.message || String(error) });
+  }
+}
+
 async function initAuth() {
   const oauthError = readOAuthCallbackError();
   const shouldRedirectAfterOAuth = hasOAuthRedirectIntent();
@@ -5324,36 +5384,46 @@ async function initAuth() {
     renderRoutePreservingAuthFocus();
     return;
   }
-  const { data, error: sessionError } = await supabaseClient.auth.getSession();
-  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-  debugAuth("init_get_session", {
-    session: data.session || null,
-    getSessionError: sessionError?.message || null,
-    getUserId: userData.user?.id || null,
-    getUserError: userError?.message || null,
-  });
   const previousUserId = appState.authUser?.id || null;
-  appState.authUser = userData.user || data.session?.user || null;
-  await loadPublicPlatformData();
-  if (appState.authUser) {
-    await loadProfile(appState.authUser);
-    await touchProfileLoginMetadata({
-      lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
-      authProvider: authProviderFromUser(appState.authUser),
-    });
-    await loadAdminStatus();
-    await loadOwnedCatalogItems();
-  } else {
-    appState.profile = null;
-    appState.isAdmin = false;
-    appState.adminProfiles = [];
-    clearLocalPreviewProfile();
-    appState.ownedCatalogItems = [];
-    syncCatalogCompatibilityState();
-    debugAuth("init_no_session", { reason: "Supabase returned no authenticated user" });
+  const sessionPromise = supabaseClient.auth.getSession();
+  try {
+    const sessionResult = await withAuthTimeout(sessionPromise, "getSession");
+    if (sessionResult.timedOut) {
+      debugAuth("init_get_session_timeout", { timeoutMs: INITIAL_AUTH_TIMEOUT_MS });
+      reconcileInitialSession(sessionPromise, "getSession_timeout");
+      await loadPublicPlatformDataSafe("initial_timeout");
+      clearAuthenticatedSession("init_session_timeout_fallback");
+    } else {
+      const session = sessionResult.data?.session || null;
+      const userResult = session
+        ? await withAuthTimeout(supabaseClient.auth.getUser(), "getUser")
+        : { data: { user: null }, error: null, timedOut: false };
+      const user = userResult.data?.user || session?.user || null;
+      debugAuth("init_get_session", {
+        session,
+        getSessionError: sessionResult.error?.message || null,
+        getUserId: user?.id || null,
+        getUserTimedOut: Boolean(userResult.timedOut),
+        getUserError: userResult.error?.message || null,
+      });
+      await loadPublicPlatformDataSafe("initial_session");
+      if (user) {
+        await hydrateAuthenticatedUser(user, {
+          touchLogin: true,
+          lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
+        });
+      } else {
+        clearAuthenticatedSession("init_no_session");
+      }
+    }
+  } catch (error) {
+    debugAuth("init_auth_failed", { error: error?.message || String(error) });
+    await loadPublicPlatformDataSafe("initial_error");
+    clearAuthenticatedSession("init_error_fallback");
+  } finally {
+    appState.authReady = true;
+    syncAccountUi();
   }
-  appState.authReady = true;
-  syncAccountUi();
   if (appState.authUser && shouldRedirectAfterOAuth) {
     clearOAuthRedirectIntent();
     redirectAfterLogin();
@@ -5363,29 +5433,28 @@ async function initAuth() {
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     debugAuth("auth_state_change", { event: _event, session });
     const oldUserId = appState.authUser?.id || null;
-    appState.authUser = session?.user || null;
-    await loadPublicPlatformData();
-    if (appState.authUser) {
-      await loadProfile(appState.authUser);
-      if (_event === "SIGNED_IN") {
-        await touchProfileLoginMetadata({
-          lastLoginAt: new Date().toISOString(),
-          authProvider: authProviderFromUser(appState.authUser),
+    try {
+      await loadPublicPlatformDataSafe("auth_state_change");
+      if (session?.user) {
+        appState.authUser = session.user;
+        await hydrateAuthenticatedUser(session.user, {
+          touchLogin: _event === "SIGNED_IN",
+          lastLoginAt: _event === "SIGNED_IN" ? new Date().toISOString() : null,
         });
+        if (_event === "SIGNED_IN") {
+          clearOAuthRedirectIntent();
+        }
+      } else {
+        clearAuthenticatedSession("auth_state_no_session");
       }
-      await loadAdminStatus();
-      await loadOwnedCatalogItems();
-    } else {
-      appState.profile = null;
-      appState.isAdmin = false;
-      appState.adminProfiles = [];
-      clearLocalPreviewProfile();
-      appState.ownedCatalogItems = [];
-      syncCatalogCompatibilityState();
-      debugAuth("auth_state_no_session", { event: _event, reason: "Auth state changed without session" });
+    } catch (error) {
+      debugAuth("auth_state_failed", { event: _event, error: error?.message || String(error) });
+      if (session?.user) appState.authUser = session.user;
+    } finally {
+      appState.authReady = true;
+      syncAccountUi();
+      renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
     }
-    syncAccountUi();
-    renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
   });
 }
 
@@ -6778,10 +6847,6 @@ function renderSettings() {
 }
 
 async function renderAdmin() {
-  if (!appState.authReady) {
-    renderAuthLoading();
-    return;
-  }
   if (!appState.isAdmin) {
     appView.innerHTML = `${pageIntro("admin")}<section class="admin-panel admin-denied">
       <i data-lucide="shield-alert"></i>
@@ -7619,10 +7684,6 @@ async function saveBeatRelease(status = "published") {
 }
 
 function renderMusicUpload() {
-  if (!appState.authReady) {
-    renderAuthLoading();
-    return;
-  }
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
@@ -8164,12 +8225,6 @@ function renderRoute() {
   appView.classList.remove("route-slide-in", "route-slide-left");
   document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
-  if (!appState.authReady && authRequiredForRoute) {
-    renderAuthLoading();
-    PageTransition(appView, route);
-    hydrateView();
-    return;
-  }
   if (authRequiredForRoute) {
     appState.sellerMode = appState.sellerMode || "login";
     if (route === "cadastrar") {
