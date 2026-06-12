@@ -3811,7 +3811,12 @@ function profileToProfessional(profile = activeProfile()) {
     category: roleToProfessionalCategory(profile.account_role),
     city: profile.location || "",
     avatar: profile.avatar_url || profile.avatar,
+    avatar_url: profile.avatar_url || profile.avatar || "",
     banner: profile.banner_url || profile.cover_url || profile.banner || "",
+    cover_url: profile.banner_url || profile.cover_url || profile.banner || "",
+    services_count: profile.services_count || 0,
+    beats_count: appState.publicCatalogItems ? appState.publicCatalogItems.filter(item => item.user_id === profile.id).length : 0,
+    views_count: profile.views_count || 0,
     rating: "",
     jobs: null,
     price: "",
@@ -5994,42 +5999,72 @@ function compactStat(value) {
 }
 
 function professionalCard(profile) {
-  const name = htmlEscape(profile.name || "Profissional ANSEND");
-  const role = htmlEscape(profile.role || "Profissional");
-  const bio = String(profile.specialty || "").trim();
-  const banner = profile.banner ? `style="--professional-banner: url('${htmlEscape(profile.banner)}')"` : "";
-  const visibleTags = (profile.tags || []).slice(0, 3);
-  const extraTags = Math.max(0, (profile.tags || []).length - visibleTags.length);
-  const stats = professionalStats(profile);
-  return `<article class="professional-card" data-category="${htmlEscape(profile.category || "")}">
-    <div class="professional-card-banner" ${banner}>
-      <button class="professional-card-hire" type="button" data-action="professional-contact" data-title="${name}">
-        <span>Contratar</span><i data-lucide="plus"></i>
+  const bannerUrl = profile.cover_url || profile.banner;
+  const bannerStyle = bannerUrl 
+    ? `background-image: url('${htmlEscape(bannerUrl)}'); background-size: cover; background-position: center;` 
+    : `background: linear-gradient(135deg, #181818 0%, #292929 50%, #101010 100%);`;
+
+  const initials = profileInitials(profile.name);
+  const avatarHtml = profile.avatar_url 
+    ? `<img class="professional-card-avatar-img" src="${htmlEscape(profile.avatar_url)}" alt="Avatar de ${htmlEscape(profile.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
+       <span class="professional-card-avatar-fallback" style="display: none;">${htmlEscape(initials)}</span>`
+    : `<span class="professional-card-avatar-fallback">${htmlEscape(initials)}</span>`;
+
+  // Favorite active state
+  const isFavorited = appState.favorites.has(profile.id);
+  const favoriteClass = isFavorited ? "is-favorite" : "";
+
+  return `<article class="professional-card spotlight-card" data-category="${profile.category}" data-id="${profile.id}">
+    <!-- Top Banner -->
+    <div class="professional-card-banner" style="${bannerStyle}"></div>
+    
+    <!-- Contratar + Button on banner -->
+    <button type="button" class="professional-card-hire-btn" data-action="professional-contact" data-title="${htmlEscape(profile.name)}">Contratar +</button>
+    
+    <!-- Avatar -->
+    <div class="professional-card-avatar-container">
+      ${avatarHtml}
+    </div>
+    
+    <!-- Info -->
+    <div class="professional-card-info">
+      <h3 class="professional-card-name">${htmlEscape(profile.name)}</h3>
+      <span class="professional-card-role">${htmlEscape(profile.role)}</span>
+    </div>
+    
+    <!-- Tags -->
+    <div class="professional-card-tags">
+      ${profile.tags && profile.tags.length ? profile.tags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("") : `<span class="professional-card-tag-fallback">${htmlEscape(profile.role)}</span>`}
+    </div>
+    
+    <!-- Statistics Block -->
+    <div class="professional-card-stats">
+      <div class="professional-card-stat-item">
+        <strong class="professional-card-stat-num">${profile.services_count || 0}</strong>
+        <span class="professional-card-stat-label">Serviços</span>
+      </div>
+      <div class="professional-card-stat-item">
+        <strong class="professional-card-stat-num">${profile.beats_count || 0}</strong>
+        <span class="professional-card-stat-label">Beats</span>
+      </div>
+      <div class="professional-card-stat-item">
+        <strong class="professional-card-stat-num">${profile.views_count || 0}</strong>
+        <span class="professional-card-stat-label">Views</span>
+      </div>
+    </div>
+    
+    <!-- Footer Actions -->
+    <footer class="professional-card-footer">
+      <button type="button" class="professional-card-footer-btn" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Ver perfil">
+        <i data-lucide="user-round"></i>
       </button>
-    </div>
-
-    <button class="professional-card-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
-      ${professionalAvatarMarkup(profile)}
-    </button>
-
-    <div class="professional-card-body">
-      <h3>${name}</h3>
-      <span class="professional-role">${role}</span>
-      ${bio ? `<p class="professional-specialty">${htmlEscape(bio)}</p>` : `<p class="professional-specialty is-empty" aria-hidden="true"></p>`}
-      ${visibleTags.length || extraTags ? `<div class="professional-tags">${visibleTags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("")}${extraTags ? `<span>+${extraTags}</span>` : ""}</div>` : ""}
-    </div>
-
-    <div class="professional-metrics" aria-label="Estatisticas do profissional">
-      <span><strong>${compactStat(stats.services)}</strong><small>Servicos</small></span>
-      <span><strong>${compactStat(stats.beats)}</strong><small>Beats</small></span>
-      <span><strong>${compactStat(stats.views)}</strong><small>Views</small></span>
-    </div>
-
-    <div class="professional-actions">
-      <button type="button" data-action="producer" data-title="${name}" aria-label="Ver perfil de ${name}"><i data-lucide="user-round"></i></button>
-      <button type="button" data-action="professional-contact" data-title="${name}" aria-label="Contratar ${name}"><i data-lucide="handshake"></i></button>
-      <button type="button" data-action="follow-producer" data-title="${name}" aria-label="Favoritar ${name}"><i data-lucide="heart"></i></button>
-    </div>
+      <button type="button" class="professional-card-footer-btn" data-action="professional-contact" data-title="${htmlEscape(profile.name)}" aria-label="Contratar">
+        <i data-lucide="handshake"></i>
+      </button>
+      <button type="button" class="professional-card-footer-btn ${favoriteClass}" data-action="favorite" data-id="${profile.id}" aria-label="Favoritar">
+        <i data-lucide="heart"></i>
+      </button>
+    </footer>
   </article>`;
 }
 
