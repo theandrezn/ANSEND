@@ -1118,6 +1118,8 @@ const appState = {
   publicCatalogItems: [],
   ownedCatalogItems: [],
   publicProfiles: [],
+  isAdmin: false,
+  adminProfiles: [],
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   nexoChatMessages: [],
   nexoChatLoading: false,
@@ -2828,6 +2830,7 @@ function currentRouteFromHash() {
     "perfil",
     "cadastrar",
     "configuracoes",
+    "admin",
     "carrinho",
     "vendedor",
     "central-ansend",
@@ -3244,6 +3247,7 @@ routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua 
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
+routeTitles.admin = ["Admin", "Gerencie perfis e contas teste da comunidade."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catálogo e publicações na ANSEND."];
 routeTitles.playlist = ["Playlist", "Pack selecionado com beats, referências e licenças."];
@@ -4881,6 +4885,56 @@ async function loadProfile(user) {
   return data;
 }
 
+async function loadAdminStatus() {
+  appState.isAdmin = false;
+  if (!supabaseClient || !appState.authUser) return false;
+  const { data, error } = await supabaseClient.rpc("is_current_user_admin");
+  if (error) {
+    console.error("[ANSEND admin] admin status check failed", error);
+    return false;
+  }
+  appState.isAdmin = Boolean(data);
+  return appState.isAdmin;
+}
+
+async function getAdminProfiles() {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin) return [];
+  const { data, error } = await supabaseClient.rpc("admin_list_profiles");
+  if (error) {
+    console.error("[ANSEND admin] profile list failed", error);
+    showToast(error.message || "Não foi possível carregar os perfis admin.", "triangle-alert");
+    return [];
+  }
+  appState.adminProfiles = data || [];
+  return appState.adminProfiles;
+}
+
+async function deleteProfessionalAccount(userId) {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin) {
+    showToast("Acesso admin necessário para remover contas.", "shield-alert");
+    return;
+  }
+  if (!userId || userId === appState.authUser.id) {
+    showToast("Você não pode remover a própria conta admin por aqui.", "shield-alert");
+    return;
+  }
+  const targetProfile = appState.adminProfiles.find((profile) => profile.id === userId);
+  const label = targetProfile?.email || targetProfile?.display_name || targetProfile?.full_name || "esta conta";
+  const confirmed = window.confirm(`Remover definitivamente ${label}? Isso apaga perfil, beats, catálogo e usuário Auth.`);
+  if (!confirmed) return;
+  const { data, error } = await supabaseClient.rpc("admin_delete_professional_account", { target_user_id: userId });
+  if (error) {
+    console.error("[ANSEND admin] delete failed", error);
+    showToast(error.message || "Não foi possível remover a conta.", "triangle-alert");
+    return;
+  }
+  showToast(`Conta removida: ${data?.email || label}`, "trash-2");
+  await loadPublicPlatformData();
+  await getAdminProfiles();
+  renderAdmin();
+  hydrateView();
+}
+
 function syncAccountUi() {
   document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
   const route = currentRoute();
@@ -4900,7 +4954,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return ["compras", "perfil", "configuracoes", "cadastrar"].includes(route);
+  return ["compras", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
 function renderAuthLoading() {
@@ -4977,9 +5031,12 @@ async function initAuth() {
       auth_provider: authProviderFromUser(appState.authUser),
     }));
     await loadProfile(appState.authUser);
+    await loadAdminStatus();
     await loadOwnedCatalogItems();
   } else {
     appState.profile = null;
+    appState.isAdmin = false;
+    appState.adminProfiles = [];
     clearLocalPreviewProfile();
     appState.ownedCatalogItems = [];
     syncCatalogCompatibilityState();
@@ -5006,9 +5063,12 @@ async function initAuth() {
         }));
       }
       await loadProfile(appState.authUser);
+      await loadAdminStatus();
       await loadOwnedCatalogItems();
     } else {
       appState.profile = null;
+      appState.isAdmin = false;
+      appState.adminProfiles = [];
       clearLocalPreviewProfile();
       appState.ownedCatalogItems = [];
       syncCatalogCompatibilityState();
@@ -6370,13 +6430,67 @@ function renderSettings() {
   const display = profileDisplayData(profile);
   const profileName = profile?.full_name || "Visitante ANSEND";
   const profileRole = profile?.account_role ? accountRoleLabel(profile.account_role) : "Conta não criada";
+  const adminLink = appState.isAdmin
+    ? `<label><span><strong>Painel admin</strong><small>Remover contas teste de profissionais com segurança.</small></span><button type="button" data-route="admin">Abrir admin</button></label>`
+    : "";
   appView.innerHTML = `${pageIntro("configuracoes")}<section class="settings-panel">
     <div class="settings-profile">${profileAvatarMarkup(display, "settings-avatar")}<div><strong>${profileName}</strong><span>${profileRole}</span></div><button type="button" data-route="perfil">Conta</button></div>
     <label><span><strong>Reprodução automática</strong><small>Tocar a próxima faixa automaticamente.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Notificações de lançamentos</strong><small>Receber novidades dos produtores seguidos.</small></span><input type="checkbox" checked></label>
     <label><span><strong>Qualidade de áudio</strong><small>Defina a qualidade padrão das prévias.</small></span><select><option>Alta qualidade</option><option>Economia de dados</option></select></label>
     <label><span><strong>Preferências musicais</strong><small>Refaça o quiz para atualizar playlists e beats recomendados.</small></span><button type="button" data-action="restart-onboarding">Refazer quiz</button></label>
+    ${adminLink}
   </section>`;
+}
+
+async function renderAdmin() {
+  if (!appState.authReady) {
+    renderAuthLoading();
+    return;
+  }
+  if (!appState.isAdmin) {
+    appView.innerHTML = `${pageIntro("admin")}<section class="admin-panel admin-denied">
+      <i data-lucide="shield-alert"></i>
+      <h2>Acesso admin necessário</h2>
+      <p>Entre com uma conta marcada como administradora para remover perfis teste.</p>
+      <button type="button" data-route="configuracoes">Voltar</button>
+    </section>`;
+    lucide.createIcons();
+    return;
+  }
+  const profiles = await getAdminProfiles();
+  const rows = profiles.map((profile) => {
+    const isSelf = profile.id === appState.authUser?.id;
+    const name = profile.display_name || profile.artistic_name || profile.full_name || "Perfil sem nome";
+    const role = accountRoleLabel(profile.account_role || "artista");
+    const createdAt = profile.created_at ? new Date(profile.created_at).toLocaleDateString("pt-BR") : "-";
+    return `<article class="admin-profile-row">
+      <div class="admin-profile-main">
+        ${profileAvatarMarkup(profileDisplayData(profile), "admin-profile-avatar")}
+        <span>
+          <strong>${htmlEscape(name)}</strong>
+          <small>${htmlEscape(profile.email || "sem email")} · ${htmlEscape(role)} · criado em ${createdAt}</small>
+        </span>
+      </div>
+      <button type="button" data-action="admin-delete-profile" data-user-id="${profile.id}" ${isSelf ? "disabled" : ""}>
+        <i data-lucide="${isSelf ? "shield-check" : "trash-2"}"></i>${isSelf ? "Sua conta admin" : "Remover"}
+      </button>
+    </article>`;
+  }).join("");
+  appView.innerHTML = `${pageIntro("admin")}<section class="admin-panel">
+    <header class="admin-panel-head">
+      <div>
+        <span>ANSEND admin</span>
+        <h2>Contas de profissionais</h2>
+        <p>Remova contas teste com função segura no Supabase. A própria conta admin fica protegida.</p>
+      </div>
+      <button type="button" data-action="admin-refresh"><i data-lucide="refresh-cw"></i>Atualizar</button>
+    </header>
+    <div class="admin-profile-list">
+      ${rows || `<section class="recommended-professionals-empty">Nenhum perfil encontrado.</section>`}
+    </div>
+  </section>`;
+  lucide.createIcons();
 }
 
 function generateUUID() {
@@ -7697,6 +7811,7 @@ function renderRoute() {
     }
   }
   if (route === "configuracoes") renderSettings();
+  if (route === "admin") renderAdmin();
   if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
   if (route === "playlist") renderPlaylistDetail();
@@ -8436,6 +8551,7 @@ async function handleAccountSubmit(form) {
       appState.authUser = sessionData.session?.user || data.session?.user || data.user || null;
       if (!appState.authUser || !sessionData.session) throw new Error("Sessao Supabase nao foi criada para este login.");
       await loadProfile(appState.authUser);
+      await loadAdminStatus();
       await loadCatalogItems();
       setAuthFormMessage(form, "Login realizado. Abrindo seu painel...", "success");
       showToast("Login realizado", "cloud-check");
@@ -8471,6 +8587,7 @@ async function handleAccountSubmit(form) {
       } else {
         localStorage.removeItem(pendingProfileKey(appState.authUser.id));
       }
+      await loadAdminStatus();
       await loadOwnedCatalogItems();
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
@@ -8508,6 +8625,8 @@ async function handleLogout() {
   }
   appState.authUser = null;
   appState.profile = null;
+  appState.isAdmin = false;
+  appState.adminProfiles = [];
   clearLocalPreviewProfile();
   showToast("Você saiu da conta ANSEND", "log-out");
   renderRoute();
@@ -8845,6 +8964,15 @@ document.addEventListener("click", (event) => {
   }
   if (action === "seller-google") {
     handleGoogleOAuth(target);
+    return;
+  }
+  if (action === "admin-refresh") {
+    renderAdmin();
+    hydrateView();
+    return;
+  }
+  if (action === "admin-delete-profile") {
+    deleteProfessionalAccount(target.dataset.userId);
     return;
   }
   if (action === "ai-chip") {
