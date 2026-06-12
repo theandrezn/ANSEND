@@ -2811,7 +2811,7 @@ function renderHomeDashboard() {
   if (featured) {
     const items = hasProfile ? recs.beats.slice(0, 6) : catalogBeats.slice(0, 6);
     featured.innerHTML = items.length
-      ? items.map((item) => beatCard({ ...item, homeCard: true, badge: "" })).join("")
+      ? items.map((item) => beatCard({ ...item, homeCard: true, badge: "", match: null })).join("")
       : emptyState("upload-cloud", "Nenhum catálogo publicado", "Cadastre beats ou músicas para alimentar esta vitrine.", "perfil");
   }
   if (professionals) {
