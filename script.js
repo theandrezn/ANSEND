@@ -1744,6 +1744,11 @@ function beatCard(item) {
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
   const homeCardClass = item.homeCard ? " home-catalog-beat-card" : "";
   const price = item.price || (item.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(item.title.length + (item.producer || "").length) % 6]);
+  const producerAttrs = profileTargetAttrs({
+    id: item.user_id || item.raw?.user_id || "",
+    username: item.owner_username || item.profile_username || item.raw?.profile_username || item.raw?.username || item.raw?.owner_username || "",
+    title: item.producer,
+  });
   return `<article class="beat-card minimal-beat-card${homeCardClass}" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
     <div class="card-cover-wrapper">
       <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
@@ -1753,10 +1758,10 @@ function beatCard(item) {
     </div>
     <div class="card-info">
       <h3 class="card-title">${item.title}</h3>
-      <div class="card-producer">
+      <button class="card-producer" type="button" data-action="producer" ${producerAttrs} aria-label="Abrir perfil de ${htmlEscape(item.producer)}">
         <span>${item.producer}</span>
         <i data-lucide="badge-check" class="verified-badge"></i>
-      </div>
+      </button>
       ${item.match ? `<span class="match-pill beat-match-pill">${item.match.score}% match - ${item.match.reasons[0]}</span>` : ""}
       <div class="card-actions-row">
         <button class="beat-card-buy-btn" type="button" data-action="buy" data-id="${item.id}" aria-label="Comprar licença">
@@ -2172,6 +2177,7 @@ function currentCreatorIdentity(source = {}) {
   return {
     creatorId: source.user_id || profile.id || "",
     creatorName: source.producer_name || source.artist_name || profile.display_name || profile.artistic_name || profile.full_name || "ANSEND",
+    creatorUsername: sanitizeHandle(profile.username || profile.handle || source.profile_username || source.username || source.owner_username || ""),
     creatorAvatar: profile.avatar_url || profile.avatar || "",
     creatorRole: accountRoleLabel(profile.account_role) || "Criador",
   };
@@ -2185,6 +2191,7 @@ function normalizeFeedItem(item) {
     id: String(item.id),
     creatorId: item.creatorId || "local-preview",
     creatorName: item.creatorName || "ANSEND",
+    creatorUsername: sanitizeHandle(item.creatorUsername || item.profile_username || item.username || item.owner_username || ""),
     creatorAvatar: item.creatorAvatar || "",
     creatorRole: item.creatorRole || "Criador",
     type: item.type || "post",
@@ -2395,6 +2402,7 @@ function nexoFeedCard(item, index) {
   const isSavedBeat = isBeat && appState.favorites.has(beatId);
   const author = item.creatorName || "ANSEND";
   const authorImage = isRealFeedMedia(item.creatorAvatar) ? item.creatorAvatar : "";
+  const authorAttrs = profileTargetAttrs({ id: item.creatorId, username: item.creatorUsername, title: author });
   const media = item.coverUrl || item.mediaUrl || "";
   const hasVisualMedia = isRealFeedMedia(media);
   const meta = [item.creatorRole, item.priceLabel || item.price].filter(Boolean).slice(0, 2).join(" - ");
@@ -2406,12 +2414,14 @@ function nexoFeedCard(item, index) {
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
-        ${authorImage ? `<img src="${htmlEscape(authorImage)}" alt="">` : `<span class="nexo-feed-avatar-fallback">${htmlEscape(author.slice(0, 1).toUpperCase())}</span>`}
-        <div>
+        <button class="nexo-feed-author-media" type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}" ${authorAttrs} aria-label="Abrir perfil de ${htmlEscape(author)}">
+          ${authorImage ? `<img src="${htmlEscape(authorImage)}" alt="">` : `<span class="nexo-feed-avatar-fallback">${htmlEscape(author.slice(0, 1).toUpperCase())}</span>`}
+        </button>
+        <button class="nexo-feed-author-copy" type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}" ${authorAttrs}>
           <strong>${htmlEscape(author)}</strong>
           <span>${htmlEscape(meta || "Publicacao real")}</span>
-        </div>
-        <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}">Ver</button>
+        </button>
+        <button type="button" data-action="nexo-feed-profile" data-feed-item-id="${item.id}" ${authorAttrs}>Ver</button>
       </div>
       <h2>${htmlEscape(item.title)}</h2>
       <p>${htmlEscape(item.description || "Publicado na ANSEND.")}</p>
@@ -2698,11 +2708,12 @@ function cleanVerifiedBadge(className = "professional-verified-badge") {
 function professionalMatchCard(profile) {
   const matchLabel = profile.match?.score ? `${profile.match.score}% match` : profile.role || profile.category || "Profissional";
   const verifiedMarkup = profile.verified === false ? "" : cleanVerifiedBadge();
+  const profileAttrs = profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name });
   return `<article class="recommended-professional-item match-professional-card">
-    <button class="recommended-professional-avatar" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
+    <button class="recommended-professional-avatar" type="button" data-action="producer" ${profileAttrs} aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
       <img src="${professionalImage(profile)}" alt="Avatar de ${htmlEscape(profile.name)}">
     </button>
-    <button class="recommended-professional-name" type="button" data-action="producer" data-title="${htmlEscape(profile.name)}">
+    <button class="recommended-professional-name" type="button" data-action="producer" ${profileAttrs}>
       <span>${htmlEscape(profile.name)}</span>${verifiedMarkup}
     </button>
     <small>${htmlEscape(matchLabel)}</small>
@@ -2847,6 +2858,11 @@ function sectionTemplate([title, subtitle, icon, content]) {
 }
 
 function trackRow(item, i) {
+  const producerAttrs = profileTargetAttrs({
+    id: item.user_id || item.raw?.user_id || "",
+    username: item.owner_username || item.profile_username || item.raw?.profile_username || item.raw?.username || item.raw?.owner_username || "",
+    title: item.producer,
+  });
   const coverHtml = `<div class="airbit-cover" data-action="play" data-id="${item.id}">
     <img src="${item.cover}" alt="Mini capa ${item.title}">
     <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
@@ -2863,7 +2879,7 @@ function trackRow(item, i) {
         <strong class="airbit-track-title" data-action="play" data-id="${item.id}">${item.title}</strong>
       </div>
       <div class="airbit-meta-row">
-        <span class="airbit-producer" data-action="producer" data-title="${item.producer}">${item.producer}</span>
+        <button class="airbit-producer" type="button" data-action="producer" ${producerAttrs}>${item.producer}</button>
         ${verifiedBadge}
         <span class="airbit-divider">·</span>
         <span class="airbit-details">${item.tags[1] || "98 BPM"} · ${item.tags[0]}</span>
@@ -3876,6 +3892,7 @@ function catalogItemToBeat(item) {
   return {
     id: String(item.id),
     user_id: item.user_id || null,
+    owner_username: ownerProfile?.username || ownerProfile?.handle || item.profile_username || item.username || item.owner_username || "",
     title: item.title || "Sem titulo",
     producer: producerName,
     cover: item.cover_url || "assets/ansend-logo-square.png",
@@ -4329,6 +4346,8 @@ function profileDisplayData(profile = activeProfile()) {
       youtube: profile?.youtube_url || profile?.youtube || "",
       spotify: profile?.spotify_url || profile?.spotify || "",
       soundcloud: profile?.soundcloud_url || profile?.soundcloud || "",
+      tiktok: profile?.tiktok_url || profile?.tiktok || "",
+      beatstars: profile?.beatstars_url || profile?.beatstars || "",
       website: profile?.website_url || profile?.website || "",
     },
   };
@@ -4356,6 +4375,101 @@ function sanitizeHandle(value = "") {
     .slice(0, 32);
 }
 
+function safeDecode(value = "") {
+  try {
+    return decodeURIComponent(String(value || ""));
+  } catch (error) {
+    return String(value || "");
+  }
+}
+
+function normalizeProfileLink(platform, value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(raw)) return raw;
+  const withoutProtocol = raw.replace(/^\/+/, "");
+  if (/^[a-z0-9][a-z0-9.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(withoutProtocol)) {
+    return `https://${withoutProtocol}`;
+  }
+  const handle = withoutProtocol.replace(/^@+/, "").replace(/^\/+/, "");
+  if (!handle) return "";
+  const encodedHandle = encodeURIComponent(handle);
+  const socialBases = {
+    instagram: `https://instagram.com/${encodedHandle}`,
+    tiktok: `https://tiktok.com/@${encodedHandle}`,
+    youtube: `https://youtube.com/@${encodedHandle}`,
+    spotify: `https://open.spotify.com/search/${encodedHandle}`,
+    soundcloud: `https://soundcloud.com/${encodedHandle}`,
+    beatstars: `https://www.beatstars.com/${encodedHandle}`,
+    website: `https://${withoutProtocol}`,
+  };
+  return socialBases[platform] || `https://${withoutProtocol}`;
+}
+
+function profileRouteToken(profile) {
+  if (!profile) return "";
+  const display = profileDisplayData(profile);
+  const username = sanitizeHandle(profile.username || profile.handle || display.username || "");
+  if (username) return username;
+  const id = String(profile.id || "").trim();
+  if (id) return encodeURIComponent(id);
+  return sanitizeHandle(display.name || profile.full_name || "");
+}
+
+function profileMatchesReference(profile, reference = {}) {
+  if (!profile) return false;
+  const rawId = String(reference.id || "").trim();
+  const rawUsername = String(reference.username || "").trim();
+  const rawTitle = String(reference.title || "").trim();
+  if (rawId && String(profile.id || "") === rawId) return true;
+  const cleanValues = [rawUsername, rawTitle].map(sanitizeHandle).filter(Boolean);
+  if (!cleanValues.length) return false;
+  const display = profileDisplayData(profile);
+  const candidates = [
+    profile.username,
+    profile.handle,
+    display.username,
+    display.name,
+    profile.display_name,
+    profile.artistic_name,
+    profile.full_name,
+  ].filter(Boolean).map(sanitizeHandle);
+  return cleanValues.some((value) => candidates.includes(value));
+}
+
+function resolveProfileReference(reference = {}) {
+  const profiles = [activeProfile(), ...appState.publicProfiles].filter(Boolean);
+  return profiles.find((profile) => profileMatchesReference(profile, reference)) || null;
+}
+
+function profileTargetAttrs(reference = {}) {
+  const attrs = [];
+  const id = String(reference.id || "").trim();
+  const username = sanitizeHandle(reference.username || "");
+  const title = String(reference.title || "").trim();
+  if (id) attrs.push(`data-profile-id="${htmlEscape(id)}"`);
+  if (username) attrs.push(`data-profile-username="${htmlEscape(username)}"`);
+  if (title) attrs.push(`data-title="${htmlEscape(title)}"`);
+  return attrs.join(" ");
+}
+
+function publicProfileRouteFromTarget(target) {
+  if (!target) return "";
+  const reference = {
+    id: target.dataset.profileId || target.dataset.userId || "",
+    username: target.dataset.profileUsername || target.dataset.username || "",
+    title: target.dataset.title || "",
+  };
+  const profile = resolveProfileReference(reference);
+  if (profile) return publicProfileRoute(profile);
+  const username = sanitizeHandle(reference.username);
+  if (username) return `perfil-${username}`;
+  const id = String(reference.id || "").trim();
+  if (id && id !== "local-preview") return `perfil-${encodeURIComponent(id)}`;
+  const title = sanitizeHandle(reference.title);
+  return title && title !== "ansend" ? `perfil-${title}` : "";
+}
+
 function profileAvatarMarkup(display, className = "profile-avatar") {
   const avatar = display?.avatar || "";
   if (avatar && !avatar.includes("undefined")) {
@@ -4366,13 +4480,16 @@ function profileAvatarMarkup(display, className = "profile-avatar") {
 
 function profileSocialLinks(display) {
   const links = [
-    ["instagram", "Instagram", display.links.instagram],
-    ["youtube", "YouTube", display.links.youtube],
-    ["music-4", "Spotify", display.links.spotify],
-    ["radio", "SoundCloud", display.links.soundcloud],
-    ["globe", "Site", display.links.website],
-  ].filter(([, , url]) => url);
-  return links.map(([icon, label, url]) => `<a href="${htmlEscape(url)}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i>${label}<i data-lucide="external-link"></i></a>`).join("");
+    ["instagram", "instagram", "Instagram", display.links.instagram],
+    ["youtube", "youtube", "YouTube", display.links.youtube],
+    ["music-4", "spotify", "Spotify", display.links.spotify],
+    ["radio", "soundcloud", "SoundCloud", display.links.soundcloud],
+    ["music", "tiktok", "TikTok", display.links.tiktok],
+    ["badge-dollar-sign", "beatstars", "BeatStars", display.links.beatstars],
+    ["globe", "website", "Site", display.links.website],
+  ].map(([icon, platform, label, url]) => [icon, label, normalizeProfileLink(platform, url)])
+    .filter(([, , url]) => url);
+  return links.map(([icon, label, url]) => `<a href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer"><i data-lucide="${icon}"></i>${label}<i data-lucide="external-link"></i></a>`).join("");
 }
 
 function profileHeroBackgroundStyle(display) {
@@ -4429,25 +4546,22 @@ function profileCatalogFor(profile, isOwner) {
 }
 
 function resolvePublicProfile(slug) {
-  const cleanSlug = sanitizeHandle(slug);
+  const rawSlug = safeDecode(slug).trim();
+  const cleanSlug = sanitizeHandle(rawSlug);
   const current = activeProfile();
-  if (current) {
-    const currentDisplay = profileDisplayData(current);
-    if (cleanSlug && [currentDisplay.username, sanitizeHandle(currentDisplay.name), sanitizeHandle(current.full_name)].includes(cleanSlug)) {
-      return current;
-    }
-  }
-  return appState.publicProfiles.find((profile) => {
+  const matches = (profile) => {
+    if (rawSlug && String(profile.id || "") === rawSlug) return true;
     const candidates = [
-      profile.id,
       profile.username,
       profile.handle,
       profile.display_name,
       profile.artistic_name,
       profile.full_name,
     ].filter(Boolean).map(sanitizeHandle);
-    return candidates.includes(cleanSlug);
-  }) || null;
+    return cleanSlug && candidates.includes(cleanSlug);
+  };
+  if (current && matches(current)) return current;
+  return appState.publicProfiles.find(matches) || null;
 }
 
 function renderProfileNotFound(slug) {
@@ -4861,11 +4975,11 @@ async function saveProfileEdit(form) {
       banner_url: removeBanner ? null : (uploadedBanner.url || current.banner_url || current.cover_url || null),
       banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
       bio: form.elements.bio?.value.trim() || null,
-      instagram_url: form.elements.instagram_url?.value.trim() || null,
-      youtube_url: form.elements.youtube_url?.value.trim() || null,
-      spotify_url: form.elements.spotify_url?.value.trim() || null,
-      soundcloud_url: form.elements.soundcloud_url?.value.trim() || null,
-      website_url: form.elements.website_url?.value.trim() || null,
+      instagram_url: normalizeProfileLink("instagram", form.elements.instagram_url?.value) || null,
+      youtube_url: normalizeProfileLink("youtube", form.elements.youtube_url?.value) || null,
+      spotify_url: normalizeProfileLink("spotify", form.elements.spotify_url?.value) || null,
+      soundcloud_url: normalizeProfileLink("soundcloud", form.elements.soundcloud_url?.value) || null,
+      website_url: normalizeProfileLink("website", form.elements.website_url?.value) || null,
       music_styles: current.music_styles || preferredGenres(),
       updated_at: new Date().toISOString(),
     };
@@ -8366,9 +8480,8 @@ function openCommentsPanel() {
 
 function publicProfileRoute(profile) {
   if (!profile) return "";
-  const display = profileDisplayData(profile);
-  const slug = sanitizeHandle(profile.username || profile.handle || display.username || display.name || profile.full_name || profile.id);
-  return slug ? `perfil-${slug}` : "";
+  const token = profileRouteToken(profile);
+  return token ? `perfil-${token}` : "";
 }
 
 function currentBeatArtistRoute(item = playerActionBeat()) {
@@ -9468,8 +9581,12 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "nexo-feed-profile") {
-      if (item.creatorName && item.creatorName !== "ANSEND") openProfessionalProfile(item.creatorName);
-      else location.hash = "perfil";
+      const route = publicProfileRouteFromTarget(target) || publicProfileRoute(resolveProfileReference({
+        id: item.creatorId,
+        username: item.creatorUsername,
+        title: item.creatorName,
+      }));
+      location.hash = route || "perfil";
       return;
     }
     if (action === "nexo-feed-hide") {
@@ -9748,7 +9865,8 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "producer") {
-    location.hash = `perfil-${slugify(target.dataset.title || "profissional")}`;
+    const route = publicProfileRouteFromTarget(target);
+    if (route) location.hash = route;
     return;
   }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
