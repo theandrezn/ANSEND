@@ -4775,6 +4775,21 @@ function syncAccountUi() {
   if (avatar && profile?.full_name) {
     avatar.setAttribute("aria-label", `Conta de ${profile.full_name}`);
   }
+
+  // Update premium navbar auth button text based on login state
+  const authBtnText = document.querySelector(".navbar-auth-btn .auth-btn-text");
+  if (authBtnText) {
+    if (hasAccountAccess()) {
+      const email = appState.authUser?.email || "";
+      const name = profile?.full_name || profile?.artistic_name || email || "Minha Conta";
+      authBtnText.textContent = name.length > 25 ? name.substring(0, 22) + "..." : name;
+      if (appState.authUser?.email && !profile?.full_name && !profile?.artistic_name) {
+        authBtnText.textContent = appState.authUser.email;
+      }
+    } else {
+      authBtnText.textContent = appLocale.current === "pt-BR" ? "Entrar" : "Sign In";
+    }
+  }
 }
 
 function hasAccountAccess() {
@@ -9571,12 +9586,51 @@ function initSidebarListeners() {
   });
 }
 
+function initNavbarListeners() {
+  // Listen for clicks on the navbar auth button
+  document.addEventListener("click", (event) => {
+    const authBtn = event.target.closest(".navbar-auth-btn");
+    if (authBtn) {
+      if (hasAccountAccess()) {
+        const container = authBtn.closest(".navbar-auth-container");
+        if (container) {
+          const expanded = authBtn.getAttribute("aria-expanded") === "true";
+          authBtn.setAttribute("aria-expanded", !expanded ? "true" : "false");
+          container.classList.toggle("dropdown-open", !expanded);
+        }
+      } else {
+        location.hash = "vendedor";
+      }
+      return;
+    }
+
+    // Close dropdown on click outside
+    if (!event.target.closest(".navbar-auth-container")) {
+      document.querySelectorAll(".navbar-auth-container").forEach((c) => {
+        c.classList.remove("dropdown-open");
+        c.querySelector(".navbar-auth-btn")?.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    // Close dropdown on clicking any option item
+    const dropdownItem = event.target.closest(".navbar-dropdown .dropdown-item");
+    if (dropdownItem) {
+      const container = dropdownItem.closest(".navbar-auth-container");
+      if (container) {
+        container.classList.remove("dropdown-open");
+        container.querySelector(".navbar-auth-btn")?.setAttribute("aria-expanded", "false");
+      }
+    }
+  });
+}
+
 setLocale(detectLocale(), { manual: false });
 detectLocaleWithGeo()
   .then((locale) => setLocale(locale, { manual: false }))
   .catch(() => setLocale(detectLocale(), { manual: false }))
   .finally(() => {
     initSidebarListeners();
+    initNavbarListeners();
     renderRoutePreservingAuthFocus();
     initAuth();
   });

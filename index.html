@@ -154,23 +154,59 @@
 
     <div class="page">
       <header class="topbar">
-        <button class="icon-btn menu-toggle" type="button" aria-label="Abrir menu"><i data-lucide="menu"></i></button>
-        <a class="mobile-brand" href="#feed" data-route="feed" aria-label="ANSEND início">
-          <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+        <!-- Left Logo -->
+        <a class="navbar-logo-circle" href="#feed" data-route="feed" aria-label="ANSEND início">
+          <img src="assets/ansend-logo-square.png" alt="ANSEND">
         </a>
-        <form class="search" role="search">
-          <label class="sr-only" for="search">Buscar</label>
-          <i data-lucide="search"></i>
-          <input id="search" type="search" placeholder="Buscar beats, artistas, serviços, BPM ou vibe" />
-        </form>
-        <div class="top-icons">
-          <button class="icon-btn" type="button" data-action="notifications" aria-label="Notificações"><i data-lucide="bell"></i></button>
-          <button class="icon-btn" type="button" data-route="favoritos" aria-label="Favoritos"><i data-lucide="heart"></i></button>
-          <button class="icon-btn" type="button" data-route="carrinho" aria-label="Carrinho"><i data-lucide="shopping-cart"></i></button>
-          <button class="icon-btn" type="button" data-route="perfil" aria-label="Conta"><i data-lucide="user-round"></i></button>
-          <button class="avatar-btn" type="button" data-route="perfil" aria-label="Avatar do perfil">
-            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80" alt="" />
+        
+        <!-- Hamburger menu (mobile only) -->
+        <button class="menu-toggle navbar-menu-toggle" type="button" aria-label="Abrir menu">
+          <i data-lucide="menu"></i>
+        </button>
+
+        <!-- Center Links -->
+        <nav class="navbar-links">
+          <a class="navbar-link" data-route="feed" href="#feed">Início</a>
+          <a class="navbar-link" data-route="produtores" href="#produtores">Profissionais</a>
+          <a class="navbar-link" data-route="musicas" href="#musicas">Músicas</a>
+          <a class="navbar-link" data-route="ia" href="#ia">NEXO IA</a>
+        </nav>
+
+        <!-- Right Auth Pill Button with Dropdown -->
+        <div class="navbar-auth-container">
+          <button class="navbar-auth-btn" type="button" aria-expanded="false" aria-haspopup="true">
+            <span class="auth-btn-text">Entrar</span>
           </button>
+          <div class="navbar-dropdown">
+            <a class="dropdown-item" data-route="perfil" href="#perfil">
+              <i data-lucide="user"></i>
+              <span>Meu Perfil</span>
+            </a>
+            <a class="dropdown-item" data-route="favoritos" href="#favoritos">
+              <i data-lucide="heart"></i>
+              <span>Favoritos</span>
+            </a>
+            <a class="dropdown-item" data-route="carrinho" href="#carrinho">
+              <i data-lucide="shopping-cart"></i>
+              <span>Carrinho</span>
+            </a>
+            <a class="dropdown-item" data-route="compras" href="#compras">
+              <i data-lucide="shopping-bag"></i>
+              <span>Pedidos</span>
+            </a>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item logout-btn" type="button" data-action="logout-account">
+              <i data-lucide="log-out"></i>
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden search input to prevent JS errors -->
+        <div style="display: none;">
+          <form class="search" role="search">
+            <input id="search" type="search" placeholder="Buscar..." />
+          </form>
         </div>
       </header>
 
