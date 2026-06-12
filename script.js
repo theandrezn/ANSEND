@@ -6512,6 +6512,44 @@ function releaseCurrentStep(form = releaseFormElement()) {
   return Math.max(0, Math.min(5, Number(form?.dataset.releaseStep || 0)));
 }
 
+function releaseUploadFlag(type) {
+  return `uploading${String(type || "").charAt(0).toUpperCase()}${String(type || "").slice(1)}`;
+}
+
+function isReleaseUploadInProgress(type, form = releaseFormElement()) {
+  return form?.dataset?.[releaseUploadFlag(type)] === "true";
+}
+
+function setReleaseUploadInProgress(type, isUploading, form = releaseFormElement()) {
+  if (!form) return;
+  const flag = releaseUploadFlag(type);
+  if (isUploading) form.dataset[flag] = "true";
+  else delete form.dataset[flag];
+}
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+}
+
+function setCoverPreview(file, form = releaseFormElement()) {
+  if (!file || !form) return "";
+  const previewUrl = URL.createObjectURL(file);
+  const previousUrl = form.dataset.coverPreviewUrl;
+  if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
+  form.dataset.coverPreviewUrl = previewUrl;
+  const preview = form.querySelector(".release-cover-preview");
+  if (preview) {
+    preview.src = previewUrl;
+    preview.classList.add("has-preview");
+  }
+  form.querySelector(".release-cover-drop")?.classList.add("has-local-preview");
+  return previewUrl;
+}
+
 function validateReleaseStep(step) {
   const form = releaseFormElement();
   if (!form) return false;
@@ -6546,6 +6584,10 @@ function validateReleaseStep(step) {
   }
   
   if (step === 1) {
+    if (isReleaseUploadInProgress("cover", form)) {
+      showToast("Aguarde o upload da capa terminar.", "upload-cloud");
+      return false;
+    }
     const coverUrl = form.elements.cover_url?.value;
     if (!coverUrl) {
       showToast("Por favor, envie a capa do release", "alert-triangle");
@@ -6554,6 +6596,10 @@ function validateReleaseStep(step) {
   }
   
   if (step === 2) {
+    if (isReleaseUploadInProgress("audio", form)) {
+      showToast("Aguarde o upload do audio terminar.", "upload-cloud");
+      return false;
+    }
     const audioUrl = form.elements.audio_url?.value;
     if (!audioUrl) {
       showToast("Por favor, envie o arquivo de áudio principal", "alert-triangle");
@@ -6730,9 +6776,12 @@ async function handleReleaseUpload(file, type, progressCallback) {
     const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}.${ext}`;
     path = `${userId}/${beatId}/${fileName}`;
     
-    const { error } = await supabaseClient.storage
+    const { error } = await withTimeout(supabaseClient.storage
       .from(bucket)
-      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: true });
+      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: true }),
+      45000,
+      "O upload demorou demais. Verifique sua conexao e tente selecionar a capa novamente."
+    );
       
     if (error) throw error;
     
@@ -6768,6 +6817,13 @@ async function handleReleaseFile(file, type) {
   const progressBar = dropzone?.querySelector(".upload-progress-bar");
   const progressPercent = dropzone?.querySelector(".upload-progress-percent");
   
+  if (type === "cover") {
+    setCoverPreview(file, form);
+    syncReleaseForm(form);
+  }
+  setReleaseUploadInProgress(type, true, form);
+  if (progressBar) progressBar.style.width = "0%";
+  if (progressPercent) progressPercent.textContent = "0%";
   if (progressContainer) progressContainer.style.display = "block";
   
   try {
@@ -6778,6 +6834,7 @@ async function handleReleaseFile(file, type) {
     
     // Hide progress bar after complete
     if (progressContainer) progressContainer.style.display = "none";
+    setReleaseUploadInProgress(type, false, form);
     
     // Set values
     if (type === "cover") {
@@ -6789,8 +6846,10 @@ async function handleReleaseFile(file, type) {
         preview.src = result.url;
         preview.classList.add("has-preview");
       }
-      dropzone.classList.add("has-file");
-      form.querySelector(".cover-actions-container").style.display = "block";
+      dropzone?.classList.add("has-file");
+      dropzone?.classList.remove("has-local-preview");
+      const coverActions = form.querySelector(".cover-actions-container");
+      if (coverActions) coverActions.style.display = "block";
       
       showToast("Capa enviada com sucesso!", "image");
     } else if (type === "audio") {
@@ -6822,7 +6881,7 @@ async function handleReleaseFile(file, type) {
         };
       }
       if (audioPreview) audioPreview.style.display = "flex";
-      dropzone.classList.add("has-file");
+      dropzone?.classList.add("has-file");
       
       showToast("Áudio enviado com sucesso!", "music");
     } else if (type === "stems") {
@@ -6833,7 +6892,7 @@ async function handleReleaseFile(file, type) {
       const nameNode = form.querySelector("[data-stems-name]");
       if (nameNode) nameNode.textContent = file.name;
       if (stemsPreview) stemsPreview.style.display = "block";
-      dropzone.classList.add("has-file");
+      dropzone?.classList.add("has-file");
       
       showToast("ZIP de Stems enviado com sucesso!", "archive");
     }
@@ -6841,40 +6900,25 @@ async function handleReleaseFile(file, type) {
     syncReleaseForm(form);
   } catch (err) {
     if (progressContainer) progressContainer.style.display = "none";
+    setReleaseUploadInProgress(type, false, form);
+    if (progressBar) progressBar.style.width = "0%";
+    if (progressPercent) progressPercent.textContent = "0%";
     showToast(err.message || "Erro ao carregar o arquivo.", "alert-triangle");
   }
 }
 
 function handleReleaseFileInput(input) {
-  handleReleaseFile(input.files?.[0], input.dataset.uploadType);
+  handleReleaseFile(input.files?.[0], input.dataset.uploadType).finally(() => {
+    input.value = "";
+  });
 }
 
 function setupMusicUploadEventListeners() {
   const form = releaseFormElement();
   if (!form) return;
   
-  // Navigation: Back & Next using data-action attributes
-  // (buttons are inside the footer which is outside the form, inside .release-page)
   const releasePage = form.closest(".release-page") || document;
-  const backBtn = releasePage.querySelector('[data-action="release-back"]');
-  const nextBtn = releasePage.querySelector('[data-action="release-next"]');
-  
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      const current = releaseCurrentStep();
-      if (current > 0) setReleaseStep(current - 1);
-    });
-  }
-  
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      const current = releaseCurrentStep();
-      if (validateReleaseStep(current)) {
-        setReleaseStep(current + 1);
-      }
-    });
-  }
-  
+
   // Save Draft & Publish using data-action attributes
   const draftBtn = releasePage.querySelector('[data-action="save-draft"]');
   const publishBtn = releasePage.querySelector('[data-action="publish-catalog"]');
@@ -6890,31 +6934,6 @@ function setupMusicUploadEventListeners() {
       saveBeatRelease("published");
     });
   }
-  
-  // Stepper Header Buttons click navigation
-  const stepButtons = document.querySelectorAll(".release-step");
-  stepButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetStep = Number(btn.dataset.step);
-      const current = releaseCurrentStep();
-      
-      // Allow going backward freely, or going forward if valid
-      if (targetStep < current) {
-        setReleaseStep(targetStep);
-      } else if (targetStep > current) {
-        // Validate intermediate steps
-        let canGo = true;
-        for (let i = current; i < targetStep; i++) {
-          if (!validateReleaseStep(i)) {
-            setReleaseStep(i);
-            canGo = false;
-            break;
-          }
-        }
-        if (canGo) setReleaseStep(targetStep);
-      }
-    });
-  });
   
   // Initialize Custom Select Component Logic
   const customSelects = form.querySelectorAll(".custom-select");
@@ -7048,13 +7067,17 @@ function setupMusicUploadEventListeners() {
     removeCover.addEventListener("click", () => {
       form.elements.cover_url.value = "";
       form.elements.cover_path.value = "";
+      const previousUrl = form.dataset.coverPreviewUrl;
+      if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
+      delete form.dataset.coverPreviewUrl;
       const preview = form.querySelector(".release-cover-preview");
       if (preview) {
         preview.src = "";
         preview.classList.remove("has-preview");
       }
-      form.querySelector(".release-cover-drop")?.classList.remove("has-file");
-      form.querySelector(".cover-actions-container").style.display = "none";
+      form.querySelector(".release-cover-drop")?.classList.remove("has-file", "has-local-preview");
+      const coverActions = form.querySelector(".cover-actions-container");
+      if (coverActions) coverActions.style.display = "none";
       syncReleaseForm(form);
     });
   }
