@@ -81,7 +81,8 @@ function supabaseMock() {
                 });
               }
             },
-            from: tableApi
+            from: tableApi,
+            rpc: () => Promise.resolve({ data: [], error: null })
           };
         }
       };

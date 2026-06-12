@@ -56,54 +56,88 @@ async function run() {
   });
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
-  const failures = [];
-
-  try {
-    await page.goto(`http://127.0.0.1:${server.address().port}/index.html#biblioteca`, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+    const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    await page.route("**/@supabase/supabase-js@*/dist/umd/supabase.min.js", (route) => {
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `
+          (() => {
+            window.supabase = {
+              createClient() {
+                return {
+                  auth: {
+                    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+                    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+                    onAuthStateChange: (callback) => {
+                      setTimeout(() => callback("INITIAL_SESSION", null), 0);
+                      return { data: { subscription: { unsubscribe() {} } } };
+                    }
+                  },
+                  from: () => {
+                    const api = {
+                      select: () => api,
+                      eq: () => api,
+                      order: () => Promise.resolve({ data: [], error: null }),
+                      maybeSingle: () => Promise.resolve({ data: null, error: null })
+                    };
+                    return api;
+                  },
+                  rpc: () => Promise.resolve({ data: [], error: null })
+                };
+              }
+            };
+          })();
+        `,
+      });
     });
-    await page.waitForTimeout(3500);
+    const failures = [];
 
-    const metrics = await page.evaluate(() => {
-      const pageElement = document.querySelector(".page");
-      const ambient = document.querySelector(".ambient-glow");
-      const heading = document.querySelector(".view-header-biblioteca h1");
-      const emptyTitle = document.querySelector(".empty-state h2");
+    try {
+      await page.goto(`http://127.0.0.1:${server.address().port}/index.html#biblioteca`, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
+      await page.waitForTimeout(3500);
 
-      function styleOf(element) {
-        if (!element) return null;
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
+      const metrics = await page.evaluate(() => {
+        const pageElement = document.querySelector(".page");
+        const ambient = document.querySelector(".ambient-glow");
+        const heading = document.querySelector(".view-header-biblioteca h1");
+        const emptyTitle = document.querySelector(".empty-state h2");
+
+        function styleOf(element) {
+          if (!element) return null;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return {
+            position: style.position,
+            zIndex: style.zIndex,
+            opacity: style.opacity,
+            visibility: style.visibility,
+            display: style.display,
+            color: style.color,
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            text: (element.textContent || "").trim(),
+          };
+        }
+
         return {
-          position: style.position,
-          zIndex: style.zIndex,
-          opacity: style.opacity,
-          visibility: style.visibility,
-          display: style.display,
-          color: style.color,
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-          text: (element.textContent || "").trim(),
+          route: document.body.dataset.route,
+          page: styleOf(pageElement),
+          ambient: styleOf(ambient),
+          heading: styleOf(heading),
+          emptyTitle: styleOf(emptyTitle),
         };
-      }
+      });
 
-      return {
-        route: document.body.dataset.route,
-        page: styleOf(pageElement),
-        ambient: styleOf(ambient),
-        heading: styleOf(heading),
-        emptyTitle: styleOf(emptyTitle),
-      };
-    });
 
-    if (metrics.route !== "biblioteca") failures.push(`Expected biblioteca route, got ${metrics.route}`);
-    if (metrics.page?.position !== "relative") failures.push(`.page must create a stacking context, got position=${metrics.page?.position}`);
-    if (metrics.page?.zIndex === "auto" || Number(metrics.page?.zIndex) < 1) failures.push(`.page must render above ambient glow, got z-index=${metrics.page?.zIndex}`);
-    if (Number(metrics.ambient?.zIndex || 0) >= Number(metrics.page?.zIndex || 0)) failures.push(`ambient glow z-index ${metrics.ambient?.zIndex} must stay below page z-index ${metrics.page?.zIndex}`);
-    if (metrics.heading?.text !== "Biblioteca" || metrics.heading.width < 100 || metrics.heading.height < 20) failures.push("Biblioteca heading is not paintable");
-    if (metrics.emptyTitle?.text !== "Biblioteca vazia" || metrics.emptyTitle.width < 100 || metrics.emptyTitle.height < 20) failures.push("Empty library title is not paintable");
+      if (metrics.route !== "biblioteca") failures.push(`Expected biblioteca route, got ${metrics.route}`);
+      if (metrics.page?.position !== "relative") failures.push(`.page must create a stacking context, got position=${metrics.page?.position}`);
+      if (metrics.page?.zIndex === "auto" || Number(metrics.page?.zIndex) < 1) failures.push(`.page must render above ambient glow, got z-index=${metrics.page?.zIndex}`);
+      if (Number(metrics.ambient?.zIndex || 0) >= Number(metrics.page?.zIndex || 0)) failures.push(`ambient glow z-index ${metrics.ambient?.zIndex} must stay below page z-index ${metrics.page?.zIndex}`);
+      if (metrics.heading?.text !== "Biblioteca" || metrics.heading.width < 100 || metrics.heading.height < 20) failures.push("Biblioteca heading is not paintable");
+      if (metrics.emptyTitle?.text !== "Biblioteca vazia" || metrics.emptyTitle.width < 100 || metrics.emptyTitle.height < 20) failures.push("Empty library title is not paintable");
 
     if (failures.length) {
       console.error(`Paint layer check failed:\n- ${failures.join("\n- ")}`);

@@ -131,7 +131,8 @@ async function run() {
                       return { data: { subscription: { unsubscribe() {} } } };
                     }
                   },
-                  from: tableApi
+                  from: tableApi,
+                  rpc: (method) => Promise.resolve({ data: method === "is_current_user_admin" ? false : [], error: null })
                 };
               }
             };

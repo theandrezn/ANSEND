@@ -161,6 +161,7 @@ async function run() {
                   signOut: () => Promise.resolve({ error: null })
                 },
                 from: tableApi,
+                rpc: () => Promise.resolve({ data: [], error: null }),
                 storage: { from: () => ({ upload: () => Promise.resolve({ data: null, error: null }), getPublicUrl: () => ({ data: { publicUrl: "" } }) }) }
               };
             }
