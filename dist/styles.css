@@ -3493,9 +3493,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
 .verified-badge-blue {
   color: #3b82f6; /* Premium verification blue */
+  stroke: #3b82f6;
   fill: rgba(59, 130, 246, 0.1);
   width: 16px;
   height: 16px;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }
 
 .profile-hero-text h1 {
@@ -14325,12 +14329,16 @@ body:has(.nexo-feed-page) .footer {
 }
 
 .profile-verification-status {
-  color: var(--orange);
+  color: #9ca3af;
 }
 
 .verified-badge-blue {
-  color: var(--orange);
-  fill: rgba(255, 106, 0, .12);
+  color: #3b82f6;
+  stroke: #3b82f6;
+  fill: rgba(59, 130, 246, .12);
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }
 
 .profile-btn-primary,
