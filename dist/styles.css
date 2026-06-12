@@ -1050,8 +1050,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   font-weight: 900;
 }
 .brand-logo-wordmark {
-  width: 106px;
-  height: 26px;
+  width: auto !important;
+  height: 32px !important;
   display: block;
   object-fit: contain;
   object-position: left center;
