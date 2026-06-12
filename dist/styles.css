@@ -1076,6 +1076,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   -webkit-text-fill-color: transparent;
   font-weight: 900;
 }
+.brand-logo-wordmark {
+  width: 106px;
+  height: 26px;
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+}
 .brand-logo-square {
   width: 32px;
   height: 32px;
@@ -21493,6 +21500,11 @@ body .brand span {
   background: #ffffff !important;
   -webkit-background-clip: unset !important;
   -webkit-text-fill-color: #ffffff !important;
+}
+
+body .brand-logo-wordmark {
+  background: transparent !important;
+  filter: none !important;
 }
 
 body .brand-logo-square {
