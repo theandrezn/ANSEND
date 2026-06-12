@@ -22,6 +22,7 @@ create table if not exists public.profiles (
   soundcloud_url text,
   auth_provider text,
   last_login_at timestamptz,
+  is_public boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -42,6 +43,7 @@ alter table public.profiles add column if not exists spotify_url text;
 alter table public.profiles add column if not exists soundcloud_url text;
 alter table public.profiles add column if not exists auth_provider text;
 alter table public.profiles add column if not exists last_login_at timestamptz;
+alter table public.profiles add column if not exists is_public boolean not null default true;
 
 create unique index if not exists profiles_username_unique_idx
 on public.profiles (lower(username))
@@ -77,9 +79,12 @@ create table if not exists public.public_profiles (
   spotify_url text,
   soundcloud_url text,
   music_styles text[] not null default '{}',
+  is_public boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.public_profiles add column if not exists is_public boolean not null default true;
 
 alter table public.public_profiles enable row level security;
 
@@ -101,14 +106,19 @@ security definer
 set search_path = public
 as $$
 begin
+  if new.is_public is false then
+    delete from public.public_profiles where id = new.id;
+    return new;
+  end if;
+
   insert into public.public_profiles (
     id, display_name, username, full_name, artistic_name, account_role, bio,
     avatar_url, banner_url, website_url, instagram_url, youtube_url, spotify_url,
-    soundcloud_url, music_styles, created_at, updated_at
+    soundcloud_url, music_styles, is_public, created_at, updated_at
   ) values (
     new.id, new.display_name, new.username, new.full_name, new.artistic_name, new.account_role, new.bio,
     new.avatar_url, new.banner_url, new.website_url, new.instagram_url, new.youtube_url, new.spotify_url,
-    new.soundcloud_url, new.music_styles, new.created_at, new.updated_at
+    new.soundcloud_url, new.music_styles, new.is_public, new.created_at, new.updated_at
   )
   on conflict (id) do update set
     display_name = excluded.display_name,
@@ -125,10 +135,13 @@ begin
     spotify_url = excluded.spotify_url,
     soundcloud_url = excluded.soundcloud_url,
     music_styles = excluded.music_styles,
+    is_public = excluded.is_public,
     updated_at = excluded.updated_at;
   return new;
 end;
 $$;
+
+revoke execute on function public.sync_public_profile() from public, anon, authenticated;
 
 drop trigger if exists profiles_sync_public on public.profiles;
 create trigger profiles_sync_public
@@ -138,13 +151,14 @@ for each row execute function public.sync_public_profile();
 insert into public.public_profiles (
   id, display_name, username, full_name, artistic_name, account_role, bio,
   avatar_url, banner_url, website_url, instagram_url, youtube_url, spotify_url,
-  soundcloud_url, music_styles, created_at, updated_at
+  soundcloud_url, music_styles, is_public, created_at, updated_at
 )
 select
   id, display_name, username, full_name, artistic_name, account_role, bio,
   avatar_url, banner_url, website_url, instagram_url, youtube_url, spotify_url,
-  soundcloud_url, music_styles, created_at, updated_at
+  soundcloud_url, music_styles, is_public, created_at, updated_at
 from public.profiles
+where is_public is true
 on conflict (id) do nothing;
 
 drop policy if exists "Public profiles are readable" on public.public_profiles;
@@ -212,7 +226,7 @@ begin
     nullif(coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'name'), ''),
     nullif(new.raw_user_meta_data->>'username', ''),
     nullif(coalesce(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'), ''),
-    nullif(new.app_metadata->>'provider', ''),
+    nullif(new.raw_app_meta_data->>'provider', ''),
     now(),
     case
       when jsonb_typeof(new.raw_user_meta_data->'music_styles') = 'array'
@@ -269,7 +283,7 @@ select
   nullif(coalesce(users.raw_user_meta_data->>'display_name', users.raw_user_meta_data->>'name'), ''),
   nullif(users.raw_user_meta_data->>'username', ''),
   nullif(coalesce(users.raw_user_meta_data->>'avatar_url', users.raw_user_meta_data->>'picture'), ''),
-  nullif(users.app_metadata->>'provider', ''),
+  nullif(users.raw_app_meta_data->>'provider', ''),
   case
     when jsonb_typeof(users.raw_user_meta_data->'music_styles') = 'array'
       then array(select jsonb_array_elements_text(users.raw_user_meta_data->'music_styles'))
@@ -296,6 +310,7 @@ create table if not exists public.catalog_items (
   price numeric(10,2) check (price is null or price >= 0),
   license_type text not null default 'basic' check (license_type in ('basic', 'premium', 'exclusive', 'free')),
   status text not null default 'draft' check (status in ('draft', 'published', 'sold', 'archived')),
+  is_public boolean not null default true,
   description text,
   audio_url text,
   cover_url text,
@@ -303,6 +318,8 @@ create table if not exists public.catalog_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.catalog_items add column if not exists is_public boolean not null default true;
 
 alter table public.catalog_items enable row level security;
 
@@ -321,7 +338,7 @@ create policy "Published or owned catalog is readable"
 on public.catalog_items
 for select
 to anon, authenticated
-using (status = 'published' or (select auth.uid()) = user_id);
+using ((status = 'published' and is_public is true) or (select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert their catalog" on public.catalog_items;
 create policy "Users can insert their catalog"
@@ -381,10 +398,13 @@ create table if not exists public.beats (
   duration_seconds numeric,
   file_size numeric,
   status text not null default 'draft' check (status in ('draft', 'published', 'sold', 'archived')),
+  is_public boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   published_at timestamptz
 );
+
+alter table public.beats add column if not exists is_public boolean not null default true;
 
 -- Enable RLS
 alter table public.beats enable row level security;
@@ -407,7 +427,7 @@ create policy "Published or owned beats are readable"
 on public.beats
 for select
 to anon, authenticated
-using (status = 'published' or (select auth.uid()) = user_id);
+using ((status = 'published' and is_public is true) or (select auth.uid()) = user_id);
 
 -- INSERT: users can insert their own beats
 drop policy if exists "Users can insert their own beats" on public.beats;
@@ -451,11 +471,9 @@ on conflict (id) do update set public = excluded.public;
 -- Policies for profile media
 drop policy if exists "Profile avatars are public" on storage.objects;
 drop policy if exists "Public can read profile avatars" on storage.objects;
-create policy "Public can read profile avatars" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-avatars');
 
 drop policy if exists "Profile banners are public" on storage.objects;
 drop policy if exists "Public can read profile banners" on storage.objects;
-create policy "Public can read profile banners" on storage.objects for select to anon, authenticated using (bucket_id = 'profile-banners');
 
 drop policy if exists "Users can manage own profile avatars" on storage.objects;
 create policy "Users can manage own profile avatars" on storage.objects for all to authenticated using (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text) with check (bucket_id = 'profile-avatars' and (storage.foldername(name))[1] = auth.uid()::text);
@@ -466,7 +484,6 @@ create policy "Users can manage own profile banners" on storage.objects for all 
 -- Policies for beat-covers
 drop policy if exists "Public Access Covers" on storage.objects;
 drop policy if exists "Public can read beat covers" on storage.objects;
-create policy "Public can read beat covers" on storage.objects for select to anon, authenticated using (bucket_id = 'beat-covers');
 
 drop policy if exists "Users can upload their own covers" on storage.objects;
 create policy "Users can upload their own covers" on storage.objects for insert to authenticated with check (bucket_id = 'beat-covers' and (storage.foldername(name))[1] = auth.uid()::text);
@@ -480,7 +497,6 @@ create policy "Users can delete their own covers" on storage.objects for delete 
 -- Policies for beat-audio
 drop policy if exists "Public Access Audio" on storage.objects;
 drop policy if exists "Public can read beat audio" on storage.objects;
-create policy "Public can read beat audio" on storage.objects for select to anon, authenticated using (bucket_id = 'beat-audio');
 
 drop policy if exists "Users can upload their own audio" on storage.objects;
 create policy "Users can upload their own audio" on storage.objects for insert to authenticated with check (bucket_id = 'beat-audio' and (storage.foldername(name))[1] = auth.uid()::text);

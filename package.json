@@ -12,7 +12,7 @@
     "test:profile-editor": "node tests/profile-editor-check.js",
     "test:google-oauth": "node tests/google-oauth-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
-    "test:data-boundaries": "node tests/data-boundary-check.js"
+    "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

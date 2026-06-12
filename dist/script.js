@@ -3704,7 +3704,11 @@ function applyRoleDashboard() {
 }
 
 function persistCatalogItems() {
-  // Save locally-created items to localStorage for persistence across reloads
+  if (appState.authUser) {
+    localStorage.removeItem("ansend-local-catalog");
+    return;
+  }
+  // Local preview only; authenticated accounts use Supabase as the source of truth.
   const localItems = appState.ownedCatalogItems.filter(item => String(item.id).startsWith("local-") || !appState.authUser);
   if (localItems.length > 0) {
     try {
@@ -3712,6 +3716,8 @@ function persistCatalogItems() {
     } catch (e) {
       console.warn("Could not persist local catalog items", e);
     }
+  } else {
+    localStorage.removeItem("ansend-local-catalog");
   }
 }
 
@@ -3749,7 +3755,7 @@ function catalogItemToBeat(item) {
     : (appLocale.current === "pt-BR" ? "Sob consulta" : "On request");
   const tags = [
     item.genre || (item.kind === "musica" ? "Musica" : "Beat"),
-    item.bpm ? `${item.bpm} BPM` : item.license_type || "Licenca",
+    item.subgenre || item.mood || (item.bpm ? `${item.bpm} BPM` : item.license_type || "Licenca"),
   ].filter(Boolean);
   return {
     id: String(item.id),
@@ -3786,7 +3792,8 @@ function userCatalogBeats() {
 }
 
 function searchableBeatPool() {
-  return dedupeById([...marketplaceBeats(), ...userCatalogBeats(), topBeatOfDay]);
+  const realItems = dedupeById([...marketplaceBeats(), ...userCatalogBeats()]);
+  return realItems.length ? realItems : [topBeatOfDay];
 }
 
 function roleToProfessionalCategory(role) {
@@ -3798,18 +3805,19 @@ function roleToProfessionalCategory(role) {
     curador: "curadores",
     marketing: "marketing",
   };
-  return map[role] || "produtores";
+  return map[role] || "artistas";
 }
 
 function profileToProfessional(profile = activeProfile()) {
-  if (!profile?.account_role || profile.account_role === "artista") return null;
+  if (!profile?.id || profile.is_public === false) return null;
+  const accountRole = profile.account_role || profile.role || "artista";
   const styles = asArray(profile.music_styles || profile.styles).filter(Boolean);
   return {
     id: profile.id,
     username: sanitizeHandle(profile.username || profile.handle || ""),
     name: profile.display_name || profile.artistic_name || profile.full_name || "Profissional ANSEND",
-    role: accountRoleLabel(profile.account_role),
-    category: roleToProfessionalCategory(profile.account_role),
+    role: accountRoleLabel(accountRole),
+    category: roleToProfessionalCategory(accountRole),
     city: profile.location || "",
     avatar: profile.avatar_url || profile.avatar,
     avatar_url: profile.avatar_url || profile.avatar || "",
@@ -3833,60 +3841,165 @@ function activeProfessionalProfiles() {
 
 async function loadPublicPlatformData() {
   if (!supabaseClient) return;
-  const [profilesResult, catalogResult, beatsResult] = await Promise.all([
-    supabaseClient.from("public_profiles").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("catalog_items").select("*").eq("status", "published").order("created_at", { ascending: false }),
-    supabaseClient.from("beats").select("*").eq("status", "published").order("created_at", { ascending: false }),
+  const [profiles, catalogItems, beats] = await Promise.all([
+    getPublicProfiles(),
+    getPublishedCatalogItems(),
+    getPublishedBeats(),
   ]);
-  if (profilesResult.error) console.error("Error loading public profiles", profilesResult.error);
-  if (catalogResult.error) console.error("Error loading public catalog", catalogResult.error);
-  if (beatsResult.error) console.error("Error loading public beats", beatsResult.error);
-  appState.publicProfiles = profilesResult.data || [];
+  appState.publicProfiles = profiles;
   appState.publicCatalogItems = [
-    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
-    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
+    ...catalogItems.map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...beats.map((item) => ({ ...item, source_table: "beats" })),
   ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
 }
 
 async function loadOwnedCatalogItems() {
-  // Always load local items from localStorage first
-  let localItems = [];
-  try {
-    const stored = localStorage.getItem("ansend-local-catalog");
-    if (stored) localItems = JSON.parse(stored) || [];
-  } catch (e) { /* ignore */ }
-
   if (!supabaseClient || !appState.authUser) {
-    // No Supabase auth: use only local items
+    let localItems = [];
+    try {
+      const stored = localStorage.getItem("ansend-local-catalog");
+      if (stored) localItems = JSON.parse(stored) || [];
+    } catch (e) { /* ignore */ }
     appState.ownedCatalogItems = dedupeById(localItems);
     syncCatalogCompatibilityState();
     return;
   }
-  const [catalogResult, beatsResult] = await Promise.all([
-    supabaseClient.from("catalog_items").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
-    supabaseClient.from("beats").select("*").eq("user_id", appState.authUser.id).order("created_at", { ascending: false }),
+  const [catalogItems, beats] = await Promise.all([
+    getCatalogItemsByUserId(appState.authUser.id),
+    getBeatsByUserId(appState.authUser.id),
   ]);
-  if (catalogResult.error) console.error("Error loading owned catalog", catalogResult.error);
-  if (beatsResult.error) console.error("Error loading owned beats", beatsResult.error);
-  const supabaseItems = [
-    ...(catalogResult.data || []).map((item) => ({ ...item, source_table: "catalog_items" })),
-    ...(beatsResult.data || []).map((item) => ({ ...item, source_table: "beats" })),
-  ];
-  // Merge Supabase items with local items (Supabase takes priority for duplicates)
-  appState.ownedCatalogItems = dedupeById([...supabaseItems, ...localItems])
+  appState.ownedCatalogItems = dedupeById([
+    ...catalogItems.map((item) => ({ ...item, source_table: "catalog_items" })),
+    ...beats.map((item) => ({ ...item, source_table: "beats" })),
+  ])
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
 }
 
 async function loadCatalogItems() {
   await Promise.all([loadPublicPlatformData(), loadOwnedCatalogItems()]);
-  // Merge any locally published items into the public catalog list
-  const localPublished = appState.ownedCatalogItems.filter(item => item.status === "published");
-  if (localPublished.length > 0) {
-    appState.publicCatalogItems = dedupeById([...appState.publicCatalogItems, ...localPublished])
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
+async function getPublicProfiles() {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient
+    .from("public_profiles")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) {
+    console.error("Error loading public profiles", error);
+    return [];
   }
+  return data || [];
+}
+
+function hasMissingColumnError(error, column) {
+  return new RegExp(`\\b${column}\\b|schema cache|column`, "i").test(error?.message || "");
+}
+
+async function getPublishedRows(table) {
+  if (!supabaseClient) return [];
+  let result = await supabaseClient
+    .from(table)
+    .select("*")
+    .eq("status", "published")
+    .eq("is_public", true)
+    .order("created_at", { ascending: false });
+  if (result.error && hasMissingColumnError(result.error, "is_public")) {
+    result = await supabaseClient
+      .from(table)
+      .select("*")
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+  }
+  if (result.error) {
+    console.error(`Error loading public ${table}`, result.error);
+    return [];
+  }
+  return result.data || [];
+}
+
+function getPublishedCatalogItems() {
+  return getPublishedRows("catalog_items");
+}
+
+function getPublishedBeats() {
+  return getPublishedRows("beats");
+}
+
+async function getRowsByUserId(table, userId) {
+  if (!supabaseClient || !userId) return [];
+  const { data, error } = await supabaseClient
+    .from(table)
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error(`Error loading owned ${table}`, error);
+    return [];
+  }
+  return data || [];
+}
+
+function getCatalogItemsByUserId(userId) {
+  return getRowsByUserId("catalog_items", userId);
+}
+
+function getBeatsByUserId(userId) {
+  return getRowsByUserId("beats", userId);
+}
+
+function publicCatalogPayload(payload) {
+  return {
+    ...payload,
+    is_public: payload.status === "published",
+  };
+}
+
+async function insertCatalogItem(payload) {
+  const publicPayload = publicCatalogPayload({ ...payload, user_id: appState.authUser.id });
+  let { data, error } = await supabaseClient
+    .from("catalog_items")
+    .insert(publicPayload)
+    .select()
+    .single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    const { is_public, ...legacyPayload } = publicPayload;
+    ({ data, error } = await supabaseClient
+      .from("catalog_items")
+      .insert(legacyPayload)
+      .select()
+      .single());
+  }
+  return { data, error };
+}
+
+async function publishBeat(payload) {
+  const publicPayload = publicCatalogPayload({ ...payload, user_id: appState.authUser.id });
+  let { data, error } = await supabaseClient
+    .from("beats")
+    .upsert(publicPayload)
+    .select()
+    .single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    const { is_public, ...legacyPayload } = publicPayload;
+    ({ data, error } = await supabaseClient
+      .from("beats")
+      .upsert(legacyPayload)
+      .select()
+      .single());
+  }
+  return { data, error };
+}
+
+async function updateCatalogVisibility(table, id, status) {
+  const payload = publicCatalogPayload({ status });
+  let { data, error } = await supabaseClient.from(table).update(payload).eq("id", id).select().single();
+  if (error && hasMissingColumnError(error, "is_public")) {
+    ({ data, error } = await supabaseClient.from(table).update({ status }).eq("id", id).select().single());
+  }
+  return { data, error };
 }
 
 function catalogPayloadFromForm(form) {
@@ -3925,11 +4038,7 @@ async function saveCatalogItem(form) {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("catalog_items")
-    .insert({ ...payload, user_id: appState.authUser.id })
-    .select()
-    .single();
+  const { data, error } = await insertCatalogItem(payload);
   if (error) {
     showToast(error.message || "Nao foi possivel salvar no Supabase", "triangle-alert");
     return;
@@ -3942,7 +4051,6 @@ async function saveCatalogItem(form) {
   syncCatalogCompatibilityState();
   showToast("Item salvo no catalogo Supabase", "cloud-check");
 
-  persistCatalogItems();
   form.reset();
   appState.genre = "Todos";
   if (location.hash !== "#explorar") {
@@ -3977,7 +4085,7 @@ async function toggleCatalogStatus(id) {
   const nextStatus = item.status === "published" ? "draft" : "published";
   const table = item.source_table === "beats" ? "beats" : "catalog_items";
   if (supabaseClient && appState.authUser && !String(id).startsWith("local-")) {
-    const { data, error } = await supabaseClient.from(table).update({ status: nextStatus }).eq("id", id).select().single();
+    const { data, error } = await updateCatalogVisibility(table, id, nextStatus);
     if (error) {
       showToast(error.message || "Nao foi possivel atualizar", "triangle-alert");
       return;
@@ -6952,11 +7060,7 @@ async function saveBeatRelease(status = "published") {
     user_id: appState.authUser.id
   };
   
-  const { data, error } = await supabaseClient
-    .from("beats")
-    .upsert(dbPayload)
-    .select()
-    .single();
+  const { data, error } = await publishBeat(dbPayload);
     
   if (error) {
     showToast(error.message || "Erro ao salvar no Supabase", "triangle-alert");
