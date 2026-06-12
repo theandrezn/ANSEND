@@ -8139,25 +8139,38 @@ function playerActionBeat() {
   return currentPlayingBeat() || topBeatOfDay;
 }
 
+function closePlayerMoreMenu() {
+  document.querySelector(".player-more-dropdown")?.remove();
+  document.querySelector('[data-action="more-player"]')?.setAttribute("aria-expanded", "false");
+}
+
+function closePlayerFloatingPanels() {
+  document.querySelector(".audio-editor-popover")?.remove();
+  closePlayerMoreMenu();
+}
+
 function openAudioEditor() {
-  const item = playerActionBeat();
-  openModal(`<section class="player-tool-modal audio-tool-modal">
-    <span><i data-lucide="gauge"></i>Audio editor</span>
-    <h2>${item.title}</h2>
-    <p>Controles de preview para testar energia, velocidade e tom antes de comprar ou baixar. A compra mantém o arquivo original.</p>
-    <label class="player-range">
-      <div><strong>Speed</strong><em>${Math.round((appState.player.speed - 1) * 100)}%</em></div>
+  closePlayerFloatingPanels();
+  document.body.insertAdjacentHTML("beforeend", `<section class="audio-editor-popover" role="dialog" aria-modal="false" aria-label="Audio Editor">
+    <header>
+      <h2>Audio Editor</h2>
+      <button type="button" data-action="close-audio-editor" aria-label="Fechar Audio Editor"><i data-lucide="x"></i></button>
+    </header>
+    <p>Note: These playback controls are purely for inspiration and will not be applied to downloads or purchases.</p>
+    <label class="audio-editor-slider">
+      <span>Speed</span>
       <input type="range" min="0.65" max="1.5" step="0.01" value="${appState.player.speed}" data-action="player-speed">
+      <em>${Math.round((appState.player.speed - 1) * 100)}%</em>
     </label>
-    <label class="player-range">
-      <div><strong>Pitch</strong><em>${appState.player.pitch} ST</em></div>
+    <label class="audio-editor-slider">
+      <span>Pitch</span>
       <input type="range" min="-6" max="6" step="1" value="${appState.player.pitch}" data-action="player-pitch">
+      <em>${appState.player.pitch} ST</em>
     </label>
-    <div class="player-tool-actions">
-      <button type="button" data-action="reset-player-editor">Reset</button>
-      <button type="button" data-action="buy-current">Comprar licenca</button>
-    </div>
+    <button class="audio-editor-reset" type="button" data-action="reset-player-editor">Reset</button>
   </section>`);
+  applyLocaleTextOverrides(document.querySelector(".audio-editor-popover"));
+  lucide.createIcons();
 }
 
 function lyricsForBeat(item) {
@@ -8190,15 +8203,9 @@ function openLyricsPanel() {
 }
 
 function openVolumePanel() {
-  openModal(`<section class="player-tool-modal volume-tool-modal">
-    <span><i data-lucide="volume-2"></i>Volume</span>
-    <h2>Preview do player</h2>
-    <p>Ajuste o volume local do beat sem alterar arquivos comprados.</p>
-    <label class="player-range">
-      <div><strong>Volume</strong><em>${Math.round(appState.player.volume * 100)}%</em></div>
-      <input type="range" min="0" max="1" step="0.01" value="${appState.player.volume}" data-action="player-volume">
-    </label>
-  </section>`);
+  appState.player.volume = appState.player.volume <= .02 ? .82 : 0;
+  persistState();
+  syncMiniPlayerState();
 }
 
 function queueItems() {
@@ -8270,20 +8277,27 @@ function openCommentsPanel() {
 }
 
 function openMorePlayerMenu() {
-  const item = playerActionBeat();
-  openModal(`<section class="player-tool-modal more-tool-modal">
-    <span><i data-lucide="ellipsis"></i>Mais opcoes</span>
-    <h2>${item.title}</h2>
-    <div class="more-action-list">
-      <button type="button" data-action="repost-current"><i data-lucide="repeat"></i>Repost</button>
-      <button type="button" data-action="comments-current"><i data-lucide="message-circle"></i>Comments</button>
-      <button type="button" data-action="share-current"><i data-lucide="share-2"></i>Share</button>
-      <button type="button" data-action="add-playlist-current"><i data-lucide="bookmark-plus"></i>Add to Playlist</button>
-      <button type="button" data-action="shuffle-current"><i data-lucide="shuffle"></i>${appState.player.shuffle ? "Turn shuffle off" : "Turn shuffle on"}</button>
-      <button type="button" data-action="go-current-track"><i data-lucide="disc-3"></i>Go to Track</button>
-      <button type="button" data-action="go-current-artist"><i data-lucide="user-round"></i>Go to Artist</button>
-    </div>
-  </section>`);
+  const trigger = document.querySelector('[data-action="more-player"]');
+  if (document.querySelector(".player-more-dropdown")) {
+    closePlayerMoreMenu();
+    return;
+  }
+  document.querySelector(".audio-editor-popover")?.remove();
+  const rect = trigger?.getBoundingClientRect();
+  const right = rect ? Math.max(12, window.innerWidth - rect.right - 8) : 128;
+  const bottom = rect ? Math.max(88, window.innerHeight - rect.top + 8) : 96;
+  document.body.insertAdjacentHTML("beforeend", `<div class="player-more-dropdown" role="menu" style="right:${right}px; bottom:${bottom}px">
+    <button type="button" role="menuitem" data-action="repost-current">Repost</button>
+    <button type="button" role="menuitem" data-action="comments-current">Comments</button>
+    <button type="button" role="menuitem" data-action="share-current">Share</button>
+    <hr>
+    <button type="button" role="menuitem" data-action="add-playlist-current">Add to Playlist</button>
+    <button type="button" role="menuitem" data-action="shuffle-current">${appState.player.shuffle ? "Turn shuffle off" : "Turn shuffle on"}</button>
+    <hr>
+    <button type="button" role="menuitem" data-action="go-current-track">Go to Track</button>
+    <button type="button" role="menuitem" data-action="go-current-artist">Go to Artist</button>
+  </div>`);
+  trigger?.setAttribute("aria-expanded", "true");
 }
 
 function miniWaveformBars(progress = 0) {
@@ -8999,12 +9013,19 @@ document.addEventListener("click", (event) => {
 
   const clickedBeatCard = event.target.closest(".beat-card");
   const target = event.target.closest("button, a");
+  if (!event.target.closest(".player-more-dropdown") && !event.target.closest('[data-action="more-player"]')) {
+    closePlayerMoreMenu();
+  }
+  if (!event.target.closest(".audio-editor-popover") && !event.target.closest('[data-action="edit-beat"]')) {
+    document.querySelector(".audio-editor-popover")?.remove();
+  }
   if (!target && clickedBeatCard) {
     location.hash = `beat-${clickedBeatCard.dataset.beatId}`;
     return;
   }
   if (!target) return;
   const action = target.dataset.action;
+  const isPlayerDropdownAction = Boolean(target.closest(".player-more-dropdown"));
   const feedHost = target.closest(".nexo-feed-card");
   if (feedHost && action && !action.startsWith("nexo-feed-")) {
     const feedItemId = feedHost.dataset.feedItemId;
@@ -9014,6 +9035,10 @@ document.addEventListener("click", (event) => {
   if (action === "close-modal") {
     closeModal();
     closeMusicPreferenceQuiz();
+    return;
+  }
+  if (action === "close-audio-editor") {
+    document.querySelector(".audio-editor-popover")?.remove();
     return;
   }
   if (action === "profile-editor-tab") {
@@ -9474,10 +9499,12 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "share-current") {
+    if (isPlayerDropdownAction) closePlayerMoreMenu();
     shareCurrentBeat();
     return;
   }
   if (action === "repost-current") {
+    if (isPlayerDropdownAction) closePlayerMoreMenu();
     const item = playerActionBeat();
     const reposts = JSON.parse(localStorage.getItem("ansend-reposts") || "[]");
     if (!reposts.includes(item.id)) reposts.unshift(item.id);
@@ -9486,25 +9513,29 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "comments-current") {
+    if (isPlayerDropdownAction) closePlayerMoreMenu();
     openCommentsPanel();
     return;
   }
   if (action === "add-playlist-current") {
+    if (isPlayerDropdownAction) closePlayerMoreMenu();
     addCurrentToPlaylist();
     return;
   }
   if (action === "shuffle-current") {
     togglePlayerShuffle();
-    openMorePlayerMenu();
+    closePlayerMoreMenu();
     return;
   }
   if (action === "go-current-track") {
     const item = playerActionBeat();
+    closePlayerFloatingPanels();
     closeModal();
     location.hash = item.id === topBeatOfDay.id ? "feed" : item.id;
     return;
   }
   if (action === "go-current-artist") {
+    closePlayerFloatingPanels();
     closeModal();
     openProfessionalProfile(playerActionBeat().producer);
     return;
@@ -9679,7 +9710,7 @@ document.addEventListener("input", (event) => {
   if (action === "player-speed") appState.player.speed = value;
   if (action === "player-pitch") appState.player.pitch = value;
   if (action === "player-volume") appState.player.volume = value;
-  const label = input.closest(".player-range")?.querySelector("em");
+  const label = input.closest(".player-range, .audio-editor-slider")?.querySelector("em");
   if (label && action === "player-speed") label.textContent = `${Math.round((appState.player.speed - 1) * 100)}%`;
   if (label && action === "player-pitch") label.textContent = `${appState.player.pitch} ST`;
   if (label && action === "player-volume") label.textContent = `${Math.round(appState.player.volume * 100)}%`;
@@ -9879,6 +9910,7 @@ document.addEventListener("submit", async (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     document.body.classList.remove("menu-open");
+    closePlayerFloatingPanels();
     closeModal();
   }
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".beat-card")) {

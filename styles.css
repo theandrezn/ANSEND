@@ -20435,6 +20435,353 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   filter: none !important;
 }
 
+/* BeatStars-style bottom player, compact editor and anchored more menu. */
+#appView.app-view {
+  padding-bottom: 118px;
+}
+
+.mini-player {
+  left: var(--sidebar-width) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 95 !important;
+  width: auto !important;
+  height: 86px !important;
+  padding: 6px 72px 10px 22px !important;
+  display: grid !important;
+  grid-template-columns: minmax(240px, 360px) minmax(360px, 1fr) minmax(360px, 520px) !important;
+  grid-template-rows: 28px 42px !important;
+  align-items: center !important;
+  gap: 0 22px !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, .1) !important;
+  border-radius: 0 !important;
+  background: #000000 !important;
+  box-shadow: 0 -20px 62px rgba(0, 0, 0, .72) !important;
+}
+
+.mini-player.is-active,
+.mini-player.is-playing {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+.mini-player.is-closed {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(calc(100% + 16px)) !important;
+}
+
+.mini-player .mini-close {
+  top: 10px !important;
+  right: 12px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-color: rgba(255, 255, 255, .16) !important;
+  background: rgba(255, 255, 255, .04) !important;
+  color: rgba(255, 255, 255, .72) !important;
+}
+
+.mini-waveform {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 !important;
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+  width: 100% !important;
+  gap: 10px !important;
+  margin: 0 !important;
+  color: #f5f5f5 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+.mini-wave-bars {
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  overflow: hidden !important;
+}
+
+.mini-wave-bars span {
+  width: 2px !important;
+  flex: 0 0 2px !important;
+  background: rgba(255, 255, 255, .2) !important;
+}
+
+.mini-wave-bars span.is-active {
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: none !important;
+}
+
+.mini-track {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding-left: 0 !important;
+}
+
+.mini-player .mini-track img {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 5px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  background: #111 !important;
+}
+
+.mini-player .mini-track strong,
+.mini-player .mini-track span {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.mini-player .mini-track strong {
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.mini-player .mini-track span {
+  color: rgba(255, 255, 255, .58) !important;
+  font-size: 11px !important;
+}
+
+.mini-controls {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 18px !important;
+  margin: 0 !important;
+}
+
+.mini-tools {
+  grid-column: 3 !important;
+  grid-row: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  margin: 0 !important;
+}
+
+.mini-player button {
+  color: #f7f7f7 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mini-player button:hover {
+  background: rgba(255, 255, 255, .08) !important;
+}
+
+.mini-player button.is-active,
+.mini-player.is-looping [data-action="loop-beat"] {
+  color: #ffd400 !important;
+  text-shadow: none !important;
+}
+
+.mini-player .mini-play-button {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.mini-tools button {
+  width: auto !important;
+  min-width: 30px !important;
+  height: 32px !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+.mini-buy {
+  min-width: 104px !important;
+  height: 42px !important;
+  padding: 0 16px !important;
+  color: #002211 !important;
+  background: linear-gradient(135deg, var(--buy-green), var(--buy-green-2)) !important;
+  box-shadow: 0 12px 28px rgba(var(--buy-green-rgb), .28) !important;
+}
+
+.audio-editor-popover {
+  position: fixed;
+  left: 50%;
+  bottom: 102px;
+  z-index: 120;
+  width: min(410px, calc(100vw - 36px));
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: #181818;
+  color: #fff;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .46);
+  transform: translateX(-50%);
+}
+
+.audio-editor-popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.audio-editor-popover h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.audio-editor-popover header button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.audio-editor-popover p {
+  margin: 10px 0 8px;
+  color: rgba(255, 255, 255, .62);
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.audio-editor-slider {
+  min-height: 50px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 5px;
+  background: #080808;
+}
+
+.audio-editor-slider span,
+.audio-editor-slider em {
+  color: rgba(255, 255, 255, .78);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audio-editor-slider em {
+  text-align: right;
+}
+
+.audio-editor-slider input {
+  width: 100%;
+  accent-color: #ffd400;
+}
+
+.audio-editor-reset {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 16px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  color: #fff;
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.player-more-dropdown {
+  position: fixed;
+  z-index: 130;
+  width: 142px;
+  padding: 6px 0;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 6px;
+  background: #181818;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .4);
+}
+
+.player-more-dropdown button {
+  width: 100%;
+  min-height: 26px;
+  padding: 0 12px;
+  border: 0;
+  color: rgba(255, 255, 255, .88);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-more-dropdown button:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+}
+
+.player-more-dropdown hr {
+  height: 1px;
+  margin: 6px 0;
+  border: 0;
+  background: rgba(255, 255, 255, .08);
+}
+
+@media (max-width: 1100px) {
+  #appView.app-view {
+    padding-bottom: 158px;
+  }
+
+  .mini-player {
+    left: 0 !important;
+    height: 138px !important;
+    padding: 8px 14px 12px !important;
+    grid-template-columns: minmax(210px, 1fr) minmax(220px, 1fr) !important;
+    grid-template-rows: 30px 46px 38px !important;
+  }
+
+  .mini-waveform {
+    grid-column: 1 / -1 !important;
+  }
+
+  .mini-track {
+    grid-column: 1 !important;
+  }
+
+  .mini-controls {
+    grid-column: 2 !important;
+  }
+
+  .mini-tools {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    justify-content: center !important;
+  }
+
+  .audio-editor-popover {
+    bottom: 154px;
+  }
+}
+
 /* Professionals directory: premium social profile cards. */
 .professionals-directory {
   gap: 24px;
@@ -21235,6 +21582,24 @@ body .sidebar-main-btn:hover {
 
 .admin-denied svg {
   color: var(--orange);
+}
+
+.mini-player.is-active,
+.mini-player.is-playing {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.mini-player.is-closed:not(.is-active):not(.is-playing) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate3d(0, calc(100% + 18px), 0) !important;
+}
+
+.mini-player .mini-track img {
+  object-fit: cover !important;
+  object-position: center !important;
 }
 
 
