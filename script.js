@@ -2847,17 +2847,10 @@ function sectionTemplate([title, subtitle, icon, content]) {
 }
 
 function trackRow(item, i) {
-  const isNew = i < 3;
-  const coverHtml = isNew 
-    ? `<div class="airbit-cover airbit-cover-new" data-action="play" data-id="${item.id}">
-         <img src="${item.cover}" alt="Mini capa ${item.title}">
-         <span class="airbit-new-badge">NEW!</span>
-         <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
-       </div>`
-    : `<div class="airbit-cover" data-action="play" data-id="${item.id}">
-         <img src="${item.cover}" alt="Mini capa ${item.title}">
-         <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
-       </div>`;
+  const coverHtml = `<div class="airbit-cover" data-action="play" data-id="${item.id}">
+    <img src="${item.cover}" alt="Mini capa ${item.title}">
+    <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
+  </div>`;
 
   const verifiedBadge = `<span class="airbit-verified"><i data-lucide="crown"></i></span>`;
   const tagsHtml = item.tags.slice(0, 3).map(tag => `<span class="airbit-tag-chip">#${tag}</span>`).join("");

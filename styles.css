@@ -22075,5 +22075,104 @@ body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-
   }
 }
 
+/* Recent list: use real covers and keep controls monochrome. */
+body[data-route="feed"] .recent-activity-section .section-head h2 svg,
+body[data-route="feed"] .recent-activity-section .airbit-view-all svg,
+body[data-route="feed"] .recent-activity-section .airbit-verified,
+body[data-route="feed"] .recent-activity-section .airbit-verified svg,
+body[data-route="feed"] .recent-activity-section .airbit-actions svg,
+body[data-route="feed"] .recent-activity-section .airbit-cover-hover svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  fill: none !important;
+}
 
+body[data-route="feed"] .recent-activity-section .airbit-cover,
+body[data-route="feed"] .recent-activity-section .airbit-cover-new {
+  background: #0a0a0a !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-cover img,
+body[data-route="feed"] .recent-activity-section .airbit-cover-new img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-new-badge {
+  display: none !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-track-title:hover,
+body[data-route="feed"] .recent-activity-section .airbit-producer:hover,
+body[data-route="feed"] .recent-activity-section .airbit-tag-chip:hover {
+  color: #fff !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-tag-chip:hover {
+  border-color: rgba(255, 255, 255, .22) !important;
+  background: rgba(255, 255, 255, .06) !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-favorite-btn,
+body[data-route="feed"] .recent-activity-section .airbit-more-btn {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .035) !important;
+  border: 1px solid rgba(255, 255, 255, .1) !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-favorite-btn:hover,
+body[data-route="feed"] .recent-activity-section .airbit-more-btn:hover {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .28) !important;
+  background: rgba(255, 255, 255, .08) !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-favorite-btn:hover svg,
+body[data-route="feed"] .recent-activity-section .airbit-more-btn:hover svg {
+  fill: none !important;
+  stroke: #fff !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-buy-btn {
+  color: #fff !important;
+  background: #050505 !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  box-shadow: none !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-buy-btn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  fill: none !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-buy-btn:hover {
+  color: #000 !important;
+  background: #fff !important;
+  border-color: #fff !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-buy-btn:hover svg {
+  color: #000 !important;
+  stroke: #000 !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-view-all {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .18) !important;
+  background: #050505 !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-view-all:hover {
+  color: #000 !important;
+  border-color: #fff !important;
+  background: #fff !important;
+}
+
+body[data-route="feed"] .recent-activity-section .airbit-view-all:hover svg {
+  color: #000 !important;
+  stroke: #000 !important;
+}
 
