@@ -7,6 +7,9 @@ additional_redirect_urls = [
   "https://ansend.andrrluis86.workers.dev/**"
 ]
 
+[auth.email]
+enable_confirmations = true
+
 [auth.external.google]
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"

@@ -14,6 +14,7 @@
     "test:profile-persistence": "node tests/profile-persistence-check.js",
     "test:player-controls": "node tests/player-controls-check.js",
     "test:google-oauth": "node tests/google-oauth-check.js",
+    "test:email-confirmation": "node tests/email-confirmation-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
     "test:i18n": "node tests/i18n-language-check.js",

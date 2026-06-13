@@ -5,6 +5,7 @@ const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI
 const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
+const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
 const isSupabaseConfigured = Boolean(
   window.supabase
@@ -3004,6 +3005,8 @@ function currentRouteFromHash() {
     "admin",
     "carrinho",
     "vendedor",
+    "confirmar-email",
+    "email-confirmed",
     "central-ansend",
     "servicos",
     "como-funciona",
@@ -3438,6 +3441,8 @@ routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua 
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
+routeTitles["confirmar-email"] = ["Confirme seu e-mail", "Abra o link enviado para ativar sua conta ANSEND."];
+routeTitles["email-confirmed"] = ["E-mail confirmado", "Finalizando o acesso seguro da sua conta ANSEND."];
 routeTitles.admin = ["Admin", "Gerencie perfis e contas teste da comunidade."];
 
 routeTitles.perfil = ["Meu perfil", "Sua conta, catálogo e publicações na ANSEND."];
@@ -5441,6 +5446,7 @@ async function reconcileInitialSession(sessionPromise, reason = "initial_timeout
 async function initAuth() {
   const oauthError = readOAuthCallbackError();
   const shouldRedirectAfterOAuth = hasOAuthRedirectIntent();
+  const shouldRedirectAfterEmailConfirmation = hasEmailConfirmationIntent();
   if (oauthError) {
     clearOAuthRedirectIntent();
     showToast(`Google OAuth: ${oauthError}`, "triangle-alert");
@@ -5501,6 +5507,19 @@ async function initAuth() {
     redirectAfterLogin();
     return;
   }
+  if (appState.authUser && shouldRedirectAfterEmailConfirmation) {
+    clearEmailConfirmation();
+    clearEmailConfirmationIntent();
+    showToast("E-mail confirmado. Bem-vindo a ANSEND.", "badge-check");
+    redirectAfterLogin();
+    return;
+  }
+  if (!appState.authUser && shouldRedirectAfterEmailConfirmation) {
+    clearEmailConfirmationIntent();
+    if (location.hash !== "#confirmar-email") location.hash = "confirmar-email";
+    renderRoutePreservingAuthFocus(true);
+    return;
+  }
   renderRoutePreservingAuthFocus(previousUserId !== (appState.authUser?.id || null));
   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     debugAuth("auth_state_change", { event: _event, session });
@@ -5515,6 +5534,8 @@ async function initAuth() {
         });
         if (_event === "SIGNED_IN") {
           clearOAuthRedirectIntent();
+          clearEmailConfirmation();
+          clearEmailConfirmationIntent();
         }
       } else {
         clearAuthenticatedSession("auth_state_no_session");
@@ -8720,6 +8741,73 @@ function renderSellerAuth() {
   </section>`;
 }
 
+function pendingEmailConfirmation() {
+  try {
+    return JSON.parse(localStorage.getItem(EMAIL_CONFIRMATION_STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function rememberEmailConfirmation(payload) {
+  localStorage.setItem(EMAIL_CONFIRMATION_STORAGE_KEY, JSON.stringify({
+    email: payload.email,
+    name: payload.name || "",
+    role: payload.role || "",
+    createdAt: new Date().toISOString(),
+  }));
+}
+
+function clearEmailConfirmation() {
+  localStorage.removeItem(EMAIL_CONFIRMATION_STORAGE_KEY);
+}
+
+function emailConfirmationRedirectUrl() {
+  const url = new URL(publicAppUrl());
+  url.searchParams.set("ansend_email", "confirmed");
+  return url.toString();
+}
+
+function hasEmailConfirmationIntent() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("ansend_email") === "confirmed" || currentRouteFromHash() === "email-confirmed";
+}
+
+function clearEmailConfirmationIntent() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("ansend_email");
+  if (url.href !== window.location.href) window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function renderEmailConfirmation() {
+  const pending = pendingEmailConfirmation() || {};
+  const email = pending.email || appState.authUser?.email || "";
+  const safeEmail = email ? htmlEscape(email) : "seu e-mail";
+  appView.innerHTML = `<section class="email-confirmation-page" aria-labelledby="emailConfirmationTitle">
+    <div class="email-confirmation-card">
+      <div class="email-confirmation-art" aria-hidden="true">
+        <div class="email-confirmation-envelope">
+          <span></span>
+          <i data-lucide="check"></i>
+        </div>
+      </div>
+      <p class="email-confirmation-brand">ANSEND</p>
+      <h1 id="emailConfirmationTitle">Voce esta pronto!</h1>
+      <h2>Confira seu e-mail para comecar.</h2>
+      <p class="email-confirmation-copy">Enviamos um link de ativacao para <strong>${safeEmail}</strong>. Abra a mensagem e confirme sua conta ANSEND para concluir o cadastro.</p>
+      <button class="email-confirmation-gmail" type="button" data-action="open-gmail">
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" aria-hidden="true">
+        Abrir Gmail
+      </button>
+      <p class="email-confirmation-resend">
+        Nao recebeu o e-mail?
+        <button type="button" data-action="resend-confirmation-email" ${email ? "" : "disabled"}>Reenviar link</button>
+      </p>
+      <p class="seller-auth-message email-confirmation-message" data-auth-message hidden></p>
+    </div>
+  </section>`;
+}
+
 function hydrateView() {
   appView.classList.remove("route-slide-in", "route-slide-left");
   decorateControls();
@@ -8799,6 +8887,7 @@ function renderRoute() {
   if (route === "admin") renderAdmin();
   if (route === "carrinho") renderCart();
   if (route === "vendedor") renderSellerAuth();
+  if (route === "confirmar-email" || route === "email-confirmed") renderEmailConfirmation();
   if (route === "playlist") renderPlaylistDetail();
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
@@ -9582,6 +9671,61 @@ async function handleGoogleOAuth(button) {
   }
 }
 
+async function handleResendConfirmationEmail(button) {
+  const panel = button?.closest(".email-confirmation-card");
+  const messageEl = panel?.querySelector("[data-auth-message]");
+  const pending = pendingEmailConfirmation();
+  const email = pending?.email || "";
+  if (!email) {
+    if (messageEl) {
+      messageEl.textContent = "Volte ao cadastro e informe seu e-mail novamente.";
+      messageEl.dataset.type = "error";
+      messageEl.hidden = false;
+    }
+    return;
+  }
+  if (!supabaseClient?.auth?.resend) {
+    if (messageEl) {
+      messageEl.textContent = "Reenvio indisponivel neste ambiente. Abra o e-mail enviado ou tente criar a conta novamente.";
+      messageEl.dataset.type = "error";
+      messageEl.hidden = false;
+    }
+    return;
+  }
+  button.disabled = true;
+  button.dataset.loading = "true";
+  if (messageEl) {
+    messageEl.textContent = "Reenviando link de confirmacao...";
+    messageEl.dataset.type = "success";
+    messageEl.hidden = false;
+  }
+  try {
+    const { error } = await supabaseClient.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: emailConfirmationRedirectUrl(),
+      },
+    });
+    if (error) throw error;
+    if (messageEl) {
+      messageEl.textContent = "Novo link enviado. Confira sua caixa de entrada.";
+      messageEl.dataset.type = "success";
+      messageEl.hidden = false;
+    }
+  } catch (error) {
+    console.error("[ANSEND auth] confirmation resend failed", error);
+    if (messageEl) {
+      messageEl.textContent = friendlyAuthError(error);
+      messageEl.dataset.type = "error";
+      messageEl.hidden = false;
+    }
+  } finally {
+    button.disabled = false;
+    button.dataset.loading = "false";
+  }
+}
+
 function unlockPreviewAccountFromProfile(profile, reason = "preview") {
   const previewProfile = {
     ...profile,
@@ -9644,6 +9788,7 @@ async function handleAccountSubmit(form) {
       email,
       password,
       options: {
+        emailRedirectTo: emailConfirmationRedirectUrl(),
         data: {
           full_name: profile.full_name,
           account_role: profile.account_role,
@@ -9671,18 +9816,25 @@ async function handleAccountSubmit(form) {
       await loadOwnedCatalogItems();
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
+      rememberEmailConfirmation({
+        email,
+        name: profile.full_name,
+        role: profile.account_role,
+      });
       showToast("Conta criada. Confirme o e-mail para iniciar a sessao.", "mail-check");
     }
     localStorage.setItem("ansend-open-catalog-form", "true");
     if (appState.authUser) {
+      clearEmailConfirmation();
       setAuthFormMessage(form, "Conta criada. Abrindo seu painel...", "success");
       redirectAfterLogin();
+      launchFirstAccountQuiz(profile, data.user);
     } else {
-      setAuthFormMessage(form, "Conta criada. Confirme seu e-mail e entre novamente para abrir o painel.", "success");
-      if (location.hash !== "#vendedor") location.hash = "vendedor";
-      renderRoute();
+      setAuthFormMessage(form, "Conta criada. Confira seu e-mail para ativar o acesso.", "success");
+      if (location.hash !== "#confirmar-email") location.hash = "confirmar-email";
+      renderEmailConfirmation();
+      hydrateView();
     }
-    launchFirstAccountQuiz(profile, data.user);
   } catch (error) {
     if (mode === "signup" && isEmailRateLimitError(error)) {
       const profile = profileFromAccountForm(form, email);
@@ -9998,6 +10150,14 @@ document.addEventListener("click", (event) => {
   }
   if (action === "seller-google") {
     handleGoogleOAuth(target);
+    return;
+  }
+  if (action === "open-gmail") {
+    window.open("https://mail.google.com/mail/u/0/#inbox", "_blank", "noopener,noreferrer");
+    return;
+  }
+  if (action === "resend-confirmation-email") {
+    handleResendConfirmationEmail(target);
     return;
   }
   if (action === "admin-refresh") {

@@ -3282,6 +3282,153 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background: transparent;
   font-weight: 900;
 }
+.email-confirmation-page {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  place-items: center;
+  padding: clamp(48px, 8vw, 96px) 20px;
+  background: #000;
+}
+.email-confirmation-card {
+  width: min(100%, 430px);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  color: #fff;
+}
+.email-confirmation-art {
+  width: 138px;
+  height: 138px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 70% 20%, rgba(45, 118, 255, .82), transparent 36%),
+    radial-gradient(circle at 25% 78%, rgba(255, 62, 148, .86), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02));
+  box-shadow: 0 24px 80px rgba(71, 113, 255, .22);
+}
+.email-confirmation-envelope {
+  position: relative;
+  width: 78px;
+  height: 58px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ff4fa3, #ff7b5c 42%, #4775ff);
+  border: 1px solid rgba(255, 255, 255, .48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .34), 0 16px 34px rgba(0, 0, 0, .3);
+}
+.email-confirmation-envelope::before,
+.email-confirmation-envelope::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0));
+  clip-path: polygon(0 0, 50% 56%, 100% 0, 100% 100%, 0 100%);
+}
+.email-confirmation-envelope span {
+  position: absolute;
+  top: 9px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6f5cff, #20d4ff);
+  transform: rotate(45deg);
+  filter: blur(.1px);
+}
+.email-confirmation-envelope svg {
+  position: relative;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  color: #102062;
+  stroke-width: 3.4;
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, .28));
+}
+.email-confirmation-brand {
+  margin: 0;
+  color: rgba(255, 255, 255, .42);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+.email-confirmation-card h1,
+.email-confirmation-card h2 {
+  margin: 0;
+  line-height: 1.18;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.email-confirmation-card h1 {
+  font-size: clamp(28px, 4vw, 34px);
+}
+.email-confirmation-card h2 {
+  font-size: clamp(24px, 3.3vw, 30px);
+}
+.email-confirmation-copy {
+  max-width: 390px;
+  margin: 4px 0 18px;
+  color: rgba(255, 255, 255, .68);
+  font-size: 15px;
+  line-height: 1.52;
+}
+.email-confirmation-copy strong {
+  color: #fff;
+}
+.email-confirmation-gmail {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  background: #050505;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+.email-confirmation-gmail img {
+  width: 20px;
+  height: 20px;
+}
+.email-confirmation-gmail:hover,
+.email-confirmation-gmail:focus-visible {
+  border-color: rgba(255, 255, 255, .34);
+  background: #0b0b0b;
+}
+.email-confirmation-resend {
+  margin: 0;
+  color: rgba(255, 255, 255, .7);
+  font-size: 13px;
+}
+.email-confirmation-resend button {
+  min-height: 32px;
+  border: 0;
+  padding: 0 4px;
+  color: #9b7cff;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.email-confirmation-resend button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.email-confirmation-resend button[data-loading="true"] {
+  color: rgba(255, 255, 255, .62);
+}
+.email-confirmation-message {
+  margin-top: 8px;
+  text-align: center;
+}
 .account-role-picker {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
