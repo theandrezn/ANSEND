@@ -10,6 +10,10 @@ additional_redirect_urls = [
 [auth.email]
 enable_confirmations = true
 
+[auth.email.template.confirmation]
+subject = "Confirme seu acesso a ANSEND"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.external.google]
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
