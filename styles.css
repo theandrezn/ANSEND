@@ -20323,6 +20323,11 @@ body {
   border-radius: 0 !important;
 }
 
+.topbar[hidden],
+body:not([data-route="feed"]) .topbar {
+  display: none !important;
+}
+
 #appView.app-view {
   width: 100% !important;
   max-width: none !important;
@@ -20331,6 +20336,10 @@ body {
   border: 0 !important;
   border-radius: 0 !important;
   background: #000000 !important;
+}
+
+body:not([data-route="feed"]) #appView.app-view {
+  min-height: 100dvh !important;
 }
 
 /* Home is intentionally full bleed. Its own sections provide their spacing. */
@@ -20461,6 +20470,11 @@ body {
   max-width: none !important;
 }
 
+.topbar[hidden],
+body:not([data-route="feed"]) .topbar {
+  display: none !important;
+}
+
 #appView.app-view {
   width: 100% !important;
   min-width: 0 !important;
@@ -20569,6 +20583,10 @@ body.requires-auth #appView.app-view {
   background: #000000 !important;
   border: 0 !important;
   border-radius: 0 !important;
+}
+
+body:not([data-route="feed"]) #appView.app-view {
+  min-height: 100vh !important;
 }
 
 body[data-route="feed"] #appView.app-view,

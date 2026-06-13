@@ -5320,6 +5320,7 @@ function syncAccountUi() {
   document.body.classList.toggle("is-authenticated", hasAccountAccess());
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
+  syncPrimaryNavbarVisibility(route);
   const avatar = document.querySelector(".avatar-btn");
   const profile = activeProfile();
   if (avatar && profile?.full_name) {
@@ -8856,11 +8857,18 @@ function currentRoute() {
   return currentRouteFromHash();
 }
 
+function syncPrimaryNavbarVisibility(route) {
+  const primaryNavbar = document.querySelector(".topbar");
+  if (!primaryNavbar) return;
+  primaryNavbar.hidden = route !== "feed";
+}
+
 function renderRoute() {
   const route = currentRoute();
   lastRoute = route;
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
+  syncPrimaryNavbarVisibility(route);
   const accountAccess = hasAccountAccess();
   const authRequiredForRoute = !accountAccess && protectedRoute(route);
   appView.classList.add("app-view");
