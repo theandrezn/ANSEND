@@ -8670,8 +8670,8 @@ body.onboarding-open { overflow: hidden; }
 
 .language-switcher button.is-active {
   color: #fff;
-  background: #ff6a00;
-  box-shadow: 0 8px 24px rgba(255, 106, 0, .24);
+  background: rgba(255, 255, 255, .14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
 }
 
 .language-switcher button:focus-visible {
@@ -8682,6 +8682,18 @@ body.onboarding-open { overflow: hidden; }
 .inline-language-switcher {
   width: fit-content;
   margin: 12px 0 18px;
+}
+
+.navbar-language-switcher {
+  height: 36px;
+  padding: 3px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.navbar-language-switcher button {
+  min-width: 32px;
+  height: 28px;
+  font-size: 11px;
 }
 
 @media (max-width: 760px) {

@@ -33,12 +33,13 @@ const localeConfig = {
     countryFocus: "BR",
     dateFormat: "dd/MM/yyyy",
   },
-  en: {
+  "en-US": {
     currency: "USD",
     countryFocus: "GLOBAL",
     dateFormat: "MM/dd/yyyy",
   },
 };
+localeConfig.en = localeConfig["en-US"];
 
 const i18n = {
   "pt-BR": {
@@ -244,6 +245,33 @@ const i18n = {
     "route.perfil.subtitle": "Your account, catalog, and ANSEND publications.",
   },
 };
+Object.assign(i18n["pt-BR"], {
+  "nav.myMusic": "Minhas Musicas",
+  "nav.marketplace": "Marketplace",
+  "nav.tools": "Ferramentas",
+  "nav.memberOffers": "Ofertas para membros",
+  "nav.language": "Idioma",
+  "nav.support": "Suporte",
+  "auth.logout": "Sair",
+  "brand.home": "ANSEND inicio",
+  "profile.open": "Acessar perfil",
+  "common.openMenu": "Abrir menu",
+  "common.closeMenu": "Fechar menu",
+});
+Object.assign(i18n.en, {
+  "nav.myMusic": "My Music",
+  "nav.marketplace": "Marketplace",
+  "nav.tools": "Tools",
+  "nav.memberOffers": "Member offers",
+  "nav.language": "Language",
+  "nav.support": "Support",
+  "auth.logout": "Sign out",
+  "brand.home": "ANSEND home",
+  "profile.open": "Open profile",
+  "common.openMenu": "Open menu",
+  "common.closeMenu": "Close menu",
+});
+i18n["en-US"] = i18n.en;
 
 const appLocale = {
   current: "pt-BR",
@@ -251,7 +279,11 @@ const appLocale = {
 };
 
 function supportedLocale(locale) {
-  return locale === "pt-BR" || locale === "en" ? locale : null;
+  const normalized = String(locale || "").trim();
+  const lower = normalized.toLowerCase();
+  if (lower === "pt" || lower === "pt-br" || lower.startsWith("pt-")) return "pt-BR";
+  if (lower === "en" || lower === "en-us" || lower.startsWith("en-")) return "en-US";
+  return null;
 }
 
 function savedLocale() {
@@ -311,9 +343,9 @@ async function detectLocaleWithGeo() {
 }
 
 function setLocale(locale, options = {}) {
-  const next = supportedLocale(locale) || "en";
+  const next = supportedLocale(locale) || "en-US";
   appLocale.current = next;
-  document.documentElement.lang = next === "pt-BR" ? "pt-BR" : "en";
+  document.documentElement.lang = next;
   if (options.manual !== false) {
     localStorage.setItem("ansend_locale", next);
     localStorage.setItem("ansend_locale_detected_at", new Date().toISOString());
@@ -323,7 +355,7 @@ function setLocale(locale, options = {}) {
 }
 
 function t(key, fallback = "") {
-  return i18n[appLocale.current]?.[key] || i18n.en[key] || fallback || key;
+  return i18n[appLocale.current]?.[key] || i18n["en-US"]?.[key] || fallback || key;
 }
 
 function getRegionalContent(locale = appLocale.current, country = appLocale.country) {
@@ -493,8 +525,8 @@ function ensureLanguageSwitcher() {
 function languageSwitcherInnerHtml() {
   return `
     <i data-lucide="globe-2" aria-hidden="true"></i>
-    <button type="button" data-action="set-locale" data-locale-option="pt-BR" aria-pressed="false">PT</button>
-    <button type="button" data-action="set-locale" data-locale-option="en" aria-pressed="false">EN</button>
+    <button type="button" data-action="set-locale" data-locale-option="pt-BR" aria-label="Português do Brasil" aria-pressed="false">🇧🇷</button>
+    <button type="button" data-action="set-locale" data-locale-option="en-US" aria-label="English United States" aria-pressed="false">🇺🇸</button>
   `;
 }
 
@@ -840,6 +872,7 @@ const englishTextPairs = [
 
 const localeTextMaps = {
   en: new Map(englishTextPairs),
+  "en-US": new Map(englishTextPairs),
   "pt-BR": englishTextPairs.reduce((map, [pt, en]) => {
     if (!map.has(en)) map.set(en, pt);
     return map;
@@ -10885,7 +10918,7 @@ function updateSidebarProfile() {
 function initSidebarListeners() {
   // Language toggle inside the sidebar
   document.querySelector(".sidebar-lang-btn")?.addEventListener("click", () => {
-    const nextLocale = appLocale.current === "pt-BR" ? "en" : "pt-BR";
+    const nextLocale = appLocale.current === "pt-BR" ? "en-US" : "pt-BR";
     setLocale(nextLocale, { manual: true });
     renderRoute();
   });

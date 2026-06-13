@@ -16,6 +16,7 @@
     "test:google-oauth": "node tests/google-oauth-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
+    "test:i18n": "node tests/i18n-language-check.js",
     "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js"
   },
   "devDependencies": {
@@ -23,6 +24,9 @@
     "wrangler": "^4.98.0"
   },
   "dependencies": {
-    "gsap": "^3.15.0"
+    "gsap": "^3.15.0",
+    "i18next": "^26.3.1",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "react-i18next": "^17.0.8"
   }
 }
