@@ -7051,6 +7051,72 @@ function withTimeout(promise, ms, message) {
   return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
 }
 
+const releaseUploadTokens = new Map();
+const releaseLastFiles = new Map();
+const RELEASE_COVER_DRAFT_PREFIX = "ansend-release-cover-draft";
+const RELEASE_COVER_MAX_DIMENSION = 3000;
+const RELEASE_COVER_TARGET_BYTES = 3 * 1024 * 1024;
+const RELEASE_COVER_HARD_LIMIT_BYTES = 40 * 1024 * 1024;
+
+function releaseCoverDraftKey() {
+  return `${RELEASE_COVER_DRAFT_PREFIX}:${appState.authUser?.id || "guest"}`;
+}
+
+function sanitizeStorageSegment(value, fallback = "file") {
+  return String(value || fallback)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || fallback;
+}
+
+function setReleaseProgress(dropzone, percent, label) {
+  if (!dropzone) return;
+  const progressContainer = dropzone.querySelector(".upload-progress-container");
+  const progressBar = dropzone.querySelector(".upload-progress-bar");
+  const progressPercent = dropzone.querySelector(".upload-progress-percent");
+  const progressLabel = dropzone.querySelector(".upload-progress-header span:first-child");
+  const nextPercent = Math.max(0, Math.min(100, Math.round(percent || 0)));
+  if (progressContainer) progressContainer.style.display = "block";
+  if (progressBar) progressBar.style.width = `${nextPercent}%`;
+  if (progressPercent) progressPercent.textContent = `${nextPercent}%`;
+  if (progressLabel && label) progressLabel.textContent = label;
+}
+
+function resetReleaseProgress(dropzone, hide = true) {
+  if (!dropzone) return;
+  const progressContainer = dropzone.querySelector(".upload-progress-container");
+  const progressBar = dropzone.querySelector(".upload-progress-bar");
+  const progressPercent = dropzone.querySelector(".upload-progress-percent");
+  const progressLabel = dropzone.querySelector(".upload-progress-header span:first-child");
+  if (progressBar) progressBar.style.width = "0%";
+  if (progressPercent) progressPercent.textContent = "0%";
+  if (progressLabel) progressLabel.textContent = "Enviando arquivo...";
+  if (progressContainer && hide) progressContainer.style.display = "none";
+}
+
+function startReleaseProgressTicker(dropzone, start = 35, max = 92, label = "Enviando arquivo...") {
+  let progress = start;
+  setReleaseProgress(dropzone, progress, label);
+  return window.setInterval(() => {
+    progress = Math.min(max, progress + Math.max(1, Math.round((max - progress) * 0.12)));
+    setReleaseProgress(dropzone, progress, label);
+  }, 420);
+}
+
+function setReleaseUploadSuccess(dropzone, message = "") {
+  if (!dropzone) return;
+  dropzone.classList.toggle("has-upload-success", Boolean(message));
+  dropzone.classList.remove("has-upload-error");
+  const errorNode = dropzone.querySelector(".release-upload-error");
+  if (errorNode) {
+    errorNode.textContent = message;
+    errorNode.hidden = !message;
+  }
+}
+
 function setCoverPreview(file, form = releaseFormElement()) {
   if (!file || !form) return "";
   const previewUrl = URL.createObjectURL(file);
@@ -7066,12 +7132,71 @@ function setCoverPreview(file, form = releaseFormElement()) {
   return previewUrl;
 }
 
-function setReleaseUploadError(dropzone, message = "") {
+function setPersistentCoverPreview(url, form = releaseFormElement()) {
+  if (!url || !form) return;
+  const previousUrl = form.dataset.coverPreviewUrl;
+  if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
+  delete form.dataset.coverPreviewUrl;
+  const preview = form.querySelector(".release-cover-preview");
+  if (preview) {
+    preview.src = url;
+    preview.classList.add("has-preview");
+  }
+  const dropzone = form.querySelector(".release-cover-drop");
+  dropzone?.classList.add("has-file");
+  dropzone?.classList.remove("has-local-preview");
+  const coverActions = form.querySelector(".cover-actions-container");
+  if (coverActions) coverActions.style.display = "block";
+}
+
+function persistReleaseCoverDraft(url, path, form = releaseFormElement()) {
+  if (!url || !path) return;
+  try {
+    window.localStorage.setItem(releaseCoverDraftKey(), JSON.stringify({
+      url,
+      path,
+      beatId: form?.dataset?.beatId || null,
+      savedAt: Date.now()
+    }));
+  } catch (err) {
+    console.warn("Nao foi possivel salvar o rascunho local da capa.", err);
+  }
+}
+
+function clearReleaseCoverDraft() {
+  try {
+    window.localStorage.removeItem(releaseCoverDraftKey());
+  } catch (err) {
+    console.warn("Nao foi possivel limpar o rascunho local da capa.", err);
+  }
+}
+
+function restoreReleaseCoverDraft(form = releaseFormElement()) {
+  if (!form) return;
+  try {
+    const raw = window.localStorage.getItem(releaseCoverDraftKey());
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (!draft?.url || !draft?.path) return;
+    form.elements.cover_url.value = draft.url;
+    form.elements.cover_path.value = draft.path;
+    setPersistentCoverPreview(draft.url, form);
+  } catch (err) {
+    console.warn("Nao foi possivel restaurar o rascunho local da capa.", err);
+  }
+}
+
+function setReleaseUploadError(dropzone, message = "", options = {}) {
   if (!dropzone) return;
   dropzone.classList.toggle("has-upload-error", Boolean(message));
+  dropzone.classList.remove("has-upload-success");
   const errorNode = dropzone.querySelector(".release-upload-error");
   if (errorNode) {
-    errorNode.textContent = message;
+    if (message && options.retryType) {
+      errorNode.innerHTML = `${htmlEscape(message)} <button type="button" class="release-upload-retry" data-action="retry-upload" data-upload-type="${htmlEscape(options.retryType)}">Tentar novamente</button>`;
+    } else {
+      errorNode.textContent = message;
+    }
     errorNode.hidden = !message;
   }
 }
@@ -7092,9 +7217,77 @@ function releaseStorageErrorMessage(error, type) {
 }
 
 function releaseUploadTimeoutMs(type) {
-  if (type === "cover") return 20000;
+  if (type === "cover") return 180000;
   if (type === "audio") return 60000;
   return 90000;
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Nao foi possivel ler as dimensoes da imagem."));
+    };
+    image.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+}
+
+async function optimizeCoverImage(file) {
+  const extension = String(file.name || "").split(".").pop()?.toLowerCase() || "";
+  const validType = /^image\/(png|jpe?g|webp)$/i.test(file.type || "") || ["jpg", "jpeg", "png", "webp"].includes(extension);
+  if (!validType) throw new Error("Formato nao permitido. Use JPG, PNG ou WEBP.");
+  if (file.size > RELEASE_COVER_HARD_LIMIT_BYTES) {
+    throw new Error("A imagem e muito pesada para o navegador otimizar. Use uma imagem menor e tente novamente.");
+  }
+
+  const image = await loadImageElement(file);
+  const scale = Math.min(1, RELEASE_COVER_MAX_DIMENSION / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("Nao foi possivel preparar a capa para envio.");
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  let mime = "image/webp";
+  let blob = null;
+  for (const quality of [0.86, 0.78, 0.7, 0.62]) {
+    blob = await canvasToBlob(canvas, mime, quality);
+    if (blob && blob.size <= RELEASE_COVER_TARGET_BYTES) break;
+  }
+  if (!blob) {
+    mime = "image/jpeg";
+    blob = await canvasToBlob(canvas, mime, 0.82);
+  }
+  if (!blob) throw new Error("Nao foi possivel otimizar a capa. Tente outra imagem.");
+
+  const optimizedExt = mime === "image/webp" ? "webp" : "jpg";
+  const baseName = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), "cover");
+  const optimizedFile = new File([blob], `${baseName}.${optimizedExt}`, { type: mime, lastModified: Date.now() });
+  return {
+    file: optimizedFile,
+    width,
+    height,
+    originalBytes: file.size,
+    optimizedBytes: optimizedFile.size,
+    wasOptimized: optimizedFile.size < file.size || scale < 1 || mime !== file.type
+  };
 }
 
 function validateReleaseStep(step) {
@@ -7294,54 +7487,45 @@ async function handleReleaseUpload(file, type, progressCallback) {
   if (isStems && !(/(zip|x-zip-compressed)/i.test(file.type || "") || extension === "zip")) {
     throw new Error("Envie os stems em um arquivo ZIP.");
   }
-  // Simulate progress visually
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += Math.floor(Math.random() * 10) + 5;
-    if (progress > 85) {
-      progress = 85;
-      clearInterval(interval);
-    }
-    progressCallback(progress);
-  }, 100);
 
-  try {
-    let url = "";
-    let path = "";
+  let url = "";
+  let path = "";
+  
+  const userId = appState.authUser.id;
+  const form = releaseFormElement();
+  const beatId = form?.dataset?.beatId || generateUUID();
+  const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
+  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
+  const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
+  const uploadKey = `${Date.now()}-${generateUUID().slice(0, 8)}`;
+  const folder = type === "cover" ? "covers" : type === "audio" ? "audio" : "stems";
+  const fileBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), type);
+  const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}-${fileBase}-${uploadKey}.${ext}`;
+  path = `${userId}/${folder}/${beatId}/${fileName}`;
+  
+  progressCallback?.(55);
+  const uploadOptions = {
+    cacheControl: "3600",
+    contentType: file.type || undefined,
+    upsert: type === "cover"
+  };
+  const { error } = await withTimeout(
+    supabaseClient.storage.from(bucket).upload(path, file, uploadOptions),
+    releaseUploadTimeoutMs(type),
+    `O upload da ${type === "cover" ? "capa" : type === "audio" ? "audio" : "arquivo"} demorou demais.`
+  );
     
-    const userId = appState.authUser.id;
-    const form = releaseFormElement();
-    const beatId = form.dataset.beatId;
-    const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
-    const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
-    const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
-    const uploadKey = `${Date.now()}-${generateUUID().slice(0, 8)}`;
-    const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}-${uploadKey}.${ext}`;
-    path = `${userId}/${beatId}/${fileName}`;
+  if (error) throw error;
+  
+  const { data: urlData } = supabaseClient.storage
+    .from(bucket)
+    .getPublicUrl(path);
     
-    const { error } = await withTimeout(supabaseClient.storage
-      .from(bucket)
-      .upload(path, file, { cacheControl: "3600", contentType: file.type || undefined, upsert: false }),
-      releaseUploadTimeoutMs(type),
-      `O upload do ${type === "cover" ? "arquivo de capa" : type === "audio" ? "arquivo de audio" : "arquivo"} demorou demais.`
-    );
-      
-    if (error) throw error;
-    
-    const { data: urlData } = supabaseClient.storage
-      .from(bucket)
-      .getPublicUrl(path);
-      
-    url = urlData?.publicUrl || "";
-    if (!url) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
-    
-    clearInterval(interval);
-    progressCallback(100);
-    return { url, path };
-  } catch (error) {
-    clearInterval(interval);
-    throw error;
-  }
+  url = urlData?.publicUrl || "";
+  if (!url) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
+  
+  progressCallback?.(100);
+  return { url, path };
 }
 
 async function handleReleaseFile(file, type) {
@@ -7451,6 +7635,133 @@ async function handleReleaseFile(file, type) {
     setReleaseUploadError(dropzone, message);
     console.error("Release upload failed", err);
     showToast(message, "alert-triangle");
+  }
+}
+
+async function handleReleaseFile(file, type) {
+  if (!file) return;
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Voce precisa estar autenticado para enviar arquivos.", "triangle-alert");
+    location.hash = "vendedor";
+    return;
+  }
+  const form = releaseFormElement();
+  if (!form) return;
+  const dropzone = form.querySelector(`[data-upload-drop="${type}"]`);
+  const uploadToken = generateUUID();
+  let progressTimer = null;
+
+  releaseUploadTokens.set(type, uploadToken);
+  releaseLastFiles.set(type, file);
+  setReleaseUploadError(dropzone, "");
+  setReleaseUploadSuccess(dropzone, "");
+  resetReleaseProgress(dropzone, false);
+
+  if (type === "cover") {
+    setCoverPreview(file, form);
+    form.elements.cover_url.value = "";
+    form.elements.cover_path.value = "";
+    syncReleaseForm(form);
+  }
+
+  setReleaseUploadInProgress(type, true, form);
+  setReleaseProgress(dropzone, type === "cover" ? 8 : 5, type === "cover" ? "Preparando imagem..." : "Preparando arquivo...");
+
+  try {
+    let uploadFile = file;
+    if (type === "cover") {
+      if (file.size > RELEASE_COVER_TARGET_BYTES) {
+        setReleaseProgress(dropzone, 14, "A imagem e muito pesada, estamos otimizando...");
+      }
+      const optimized = await optimizeCoverImage(file);
+      if (releaseUploadTokens.get(type) !== uploadToken) return;
+      uploadFile = optimized.file;
+      console.info("Cover optimized for upload", {
+        originalBytes: optimized.originalBytes,
+        optimizedBytes: optimized.optimizedBytes,
+        width: optimized.width,
+        height: optimized.height,
+        wasOptimized: optimized.wasOptimized
+      });
+      setReleaseProgress(dropzone, 38, "Imagem pronta. Enviando capa...");
+    }
+
+    progressTimer = startReleaseProgressTicker(dropzone, type === "cover" ? 42 : 10, 92, type === "cover" ? "Enviando capa..." : "Enviando arquivo...");
+    const result = await handleReleaseUpload(uploadFile, type, (progress) => {
+      if (releaseUploadTokens.get(type) === uploadToken) {
+        setReleaseProgress(dropzone, progress, type === "cover" ? "Finalizando capa..." : "Finalizando arquivo...");
+      }
+    });
+
+    if (progressTimer) window.clearInterval(progressTimer);
+    if (releaseUploadTokens.get(type) !== uploadToken) return;
+    setReleaseProgress(dropzone, 100, type === "cover" ? "Capa enviada com sucesso" : "Arquivo enviado com sucesso");
+    window.setTimeout(() => {
+      if (releaseUploadTokens.get(type) === uploadToken) resetReleaseProgress(dropzone, true);
+    }, 650);
+    setReleaseUploadInProgress(type, false, form);
+
+    if (type === "cover") {
+      form.elements.cover_url.value = result.url;
+      form.elements.cover_path.value = result.path;
+      setPersistentCoverPreview(result.url, form);
+      persistReleaseCoverDraft(result.url, result.path, form);
+      setReleaseUploadSuccess(dropzone, "Capa enviada com sucesso.");
+      showToast("Capa enviada com sucesso!", "image");
+    } else if (type === "audio") {
+      form.elements.audio_url.value = result.url;
+      form.elements.audio_path.value = result.path;
+      
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      form.elements.file_size.value = file.size;
+      
+      const audioPreview = form.querySelector(".release-audio-preview");
+      const nameNode = form.querySelector("[data-audio-name]");
+      const sizeNode = form.querySelector("[data-audio-size]");
+      const player = audioPreview?.querySelector("audio");
+      
+      if (nameNode) nameNode.textContent = file.name;
+      if (sizeNode) sizeNode.textContent = `${sizeMB} MB - carregando...`;
+      if (player) {
+        player.src = result.url;
+        player.hidden = false;
+        player.onloadedmetadata = () => {
+          const duration = player.duration;
+          form.elements.duration_seconds.value = Math.round(duration);
+          const minutes = Math.floor(duration / 60);
+          const seconds = Math.round(duration % 60).toString().padStart(2, "0");
+          if (sizeNode) sizeNode.textContent = `${sizeMB} MB - ${minutes}:${seconds}`;
+          syncReleaseForm(form);
+        };
+      }
+      if (audioPreview) audioPreview.style.display = "flex";
+      dropzone?.classList.add("has-file");
+      showToast("Audio enviado com sucesso!", "music");
+    } else if (type === "stems") {
+      form.elements.stems_url.value = result.url;
+      form.elements.stems_path.value = result.path;
+      const stemsPreview = form.querySelector(".stems-preview");
+      const nameNode = form.querySelector("[data-stems-name]");
+      if (nameNode) nameNode.textContent = file.name;
+      if (stemsPreview) stemsPreview.style.display = "block";
+      dropzone?.classList.add("has-file");
+      showToast("ZIP de Stems enviado com sucesso!", "archive");
+    }
+    
+    syncReleaseForm(form);
+  } catch (err) {
+    if (progressTimer) window.clearInterval(progressTimer);
+    if (releaseUploadTokens.get(type) !== uploadToken) return;
+    resetReleaseProgress(dropzone, true);
+    setReleaseUploadInProgress(type, false, form);
+    const message = releaseStorageErrorMessage(err, type);
+    setReleaseUploadError(dropzone, message, { retryType: type });
+    console.error("Release upload failed", err);
+    showToast(message, "alert-triangle");
+  } finally {
+    if (releaseUploadTokens.get(type) === uploadToken) {
+      setReleaseUploadInProgress(type, false, form);
+    }
   }
 }
 
@@ -7614,6 +7925,7 @@ function setupMusicUploadEventListeners() {
     removeCover.addEventListener("click", () => {
       form.elements.cover_url.value = "";
       form.elements.cover_path.value = "";
+      clearReleaseCoverDraft();
       const previousUrl = form.dataset.coverPreviewUrl;
       if (previousUrl?.startsWith("blob:")) URL.revokeObjectURL(previousUrl);
       delete form.dataset.coverPreviewUrl;
@@ -7772,6 +8084,7 @@ async function saveBeatRelease(status = "published") {
   syncCatalogCompatibilityState();
   
   showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
+  if (status === "published") clearReleaseCoverDraft();
 
   if (savedCatalogItem) {
     if (status === "published") {
@@ -7989,6 +8302,7 @@ function renderMusicUpload() {
 
   hydrateReleaseDetailsStep(releaseFormElement(), releaseProducerName, genreOptions, keyOptions);
   setupMusicUploadEventListeners();
+  restoreReleaseCoverDraft();
   syncReleaseForm();
   lucide.createIcons();
 }
@@ -9848,6 +10162,16 @@ document.addEventListener("click", (event) => {
     }
   }
   if (target.dataset.route && target.tagName === "BUTTON") location.hash = target.dataset.route;
+  if (action === "retry-upload") {
+    const type = target.dataset.uploadType;
+    const file = releaseLastFiles.get(type);
+    if (!file) {
+      showToast("Selecione o arquivo novamente para tentar o envio.", "upload-cloud");
+      return;
+    }
+    handleReleaseFile(file, type);
+    return;
+  }
   if (action === "play-catalog") {
     const item = appState.ownedCatalogItems.find((entry) => entry.id === target.dataset.id);
     if (item) {
