@@ -8832,15 +8832,54 @@ body.onboarding-open { overflow: hidden; }
 }
 
 .navbar-language-switcher {
-  height: 36px;
-  padding: 3px;
-  background: rgba(255, 255, 255, .04);
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  height: 36px !important;
+  padding: 3px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 999px !important;
 }
 
 .navbar-language-switcher button {
-  min-width: 32px;
-  height: 28px;
-  font-size: 11px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.navbar-language-switcher button .flag-icon {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  opacity: 0.45 !important;
+  filter: grayscale(15%) !important;
+  transition: all 0.2s ease !important;
+  display: block !important;
+}
+
+.navbar-language-switcher button:hover .flag-icon {
+  opacity: 0.8 !important;
+  filter: none !important;
+}
+
+.navbar-language-switcher button.is-active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.navbar-language-switcher button.is-active .flag-icon {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: scale(1.05) !important;
 }
 
 @media (max-width: 760px) {

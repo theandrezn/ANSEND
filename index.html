@@ -178,8 +178,50 @@
 
           <!-- Right Auth Pill Button with Dropdown -->
           <div class="language-switcher navbar-language-switcher" aria-label="Language">
-            <button type="button" data-action="set-locale" data-locale-option="pt-BR" aria-label="Portugues do Brasil" aria-pressed="false">BR</button>
-            <button type="button" data-action="set-locale" data-locale-option="en-US" aria-label="English United States" aria-pressed="false">US</button>
+            <button type="button" data-action="set-locale" data-locale-option="pt-BR" aria-label="Portugues do Brasil" aria-pressed="false">
+              <svg viewBox="0 0 100 100" class="flag-icon" aria-hidden="true">
+                <clipPath id="circleClipBR">
+                  <circle cx="50" cy="50" r="50" />
+                </clipPath>
+                <g clip-path="url(#circleClipBR)">
+                  <rect width="100" height="100" fill="#009c3b" />
+                  <polygon points="50,10 90,50 50,90 10,50" fill="#ffdf00" />
+                  <circle cx="50" cy="50" r="22" fill="#002776" />
+                  <path d="M28,52 C38,44 62,44 72,52 C68,48 58,45 50,45 C42,45 32,48 28,52 Z" fill="#ffffff" />
+                </g>
+              </svg>
+            </button>
+            <button type="button" data-action="set-locale" data-locale-option="en-US" aria-label="English United States" aria-pressed="false">
+              <svg viewBox="0 0 100 100" class="flag-icon" aria-hidden="true">
+                <clipPath id="circleClipUS">
+                  <circle cx="50" cy="50" r="50" />
+                </clipPath>
+                <g clip-path="url(#circleClipUS)">
+                  <rect width="100" height="100" fill="#ffffff" />
+                  <rect y="0" width="100" height="7.7" fill="#b22234" />
+                  <rect y="15.4" width="100" height="7.7" fill="#b22234" />
+                  <rect y="30.8" width="100" height="7.7" fill="#b22234" />
+                  <rect y="46.2" width="100" height="7.7" fill="#b22234" />
+                  <rect y="61.6" width="100" height="7.7" fill="#b22234" />
+                  <rect y="77" width="100" height="7.7" fill="#b22234" />
+                  <rect y="92.3" width="100" height="7.7" fill="#b22234" />
+                  <rect width="50" height="53.8" fill="#3c3b6e" />
+                  <circle cx="10" cy="11" r="2" fill="#ffffff" />
+                  <circle cx="25" cy="11" r="2" fill="#ffffff" />
+                  <circle cx="40" cy="11" r="2" fill="#ffffff" />
+                  <circle cx="17.5" cy="19" r="2" fill="#ffffff" />
+                  <circle cx="32.5" cy="19" r="2" fill="#ffffff" />
+                  <circle cx="10" cy="27" r="2" fill="#ffffff" />
+                  <circle cx="25" cy="27" r="2" fill="#ffffff" />
+                  <circle cx="40" cy="27" r="2" fill="#ffffff" />
+                  <circle cx="17.5" cy="35" r="2" fill="#ffffff" />
+                  <circle cx="32.5" cy="35" r="2" fill="#ffffff" />
+                  <circle cx="10" cy="43" r="2" fill="#ffffff" />
+                  <circle cx="25" cy="43" r="2" fill="#ffffff" />
+                  <circle cx="40" cy="43" r="2" fill="#ffffff" />
+                </g>
+              </svg>
+            </button>
           </div>
           <div class="navbar-auth-container">
             <button class="navbar-auth-btn" type="button" aria-expanded="false" aria-haspopup="true">
