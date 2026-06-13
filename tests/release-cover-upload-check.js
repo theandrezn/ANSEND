@@ -105,7 +105,10 @@ async function run() {
           window.supabase = {
             createClient: () => ({
               auth: {
-                getSession: async () => ({ data: { session: { user: testUser } }, error: null }),
+                getSession: async () => {
+                  window.__sessionReads = (window.__sessionReads || 0) + 1;
+                  return { data: { session: { user: testUser } }, error: null };
+                },
                 getUser: async () => ({ data: { user: testUser }, error: null }),
                 onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
               },
@@ -172,6 +175,7 @@ async function run() {
       progress: document.querySelector(".upload-progress-percent")?.textContent,
       errorText: document.querySelector(".release-upload-error")?.textContent || "",
       upload: window.__coverUpload,
+      sessionReads: window.__sessionReads || 0,
     }));
 
     if (!result.coverUrl || !result.coverPath) throw new Error("Cover URL/path were not saved after upload.");
@@ -180,6 +184,7 @@ async function run() {
     if (/demorou demais/i.test(result.errorText)) throw new Error("False timeout message appeared after successful upload.");
     if (result.upload.bucket !== "beat-covers") throw new Error(`Unexpected bucket: ${result.upload.bucket}`);
     if (!result.upload.uploadPath.startsWith("test-user/covers/")) throw new Error(`Unexpected RLS-safe path: ${result.upload.uploadPath}`);
+    if (result.sessionReads < 2) throw new Error("Upload did not revalidate the current Supabase session before Storage upload.");
   } finally {
     await browser.close();
     server.close();

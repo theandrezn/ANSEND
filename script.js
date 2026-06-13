@@ -7105,6 +7105,29 @@ function withTimeout(promise, ms, message) {
   return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
 }
 
+async function currentReleaseUploadUser() {
+  if (!supabaseClient) {
+    throw new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
+  }
+  const { data, error } = await withTimeout(
+    supabaseClient.auth.getSession(),
+    10000,
+    "Nao foi possivel validar sua sessao antes do upload."
+  );
+  if (error) throw error;
+  const sessionUser = data?.session?.user || null;
+  if (!sessionUser?.id) {
+    clearAuthenticatedSession("release_upload_no_session");
+    throw new Error("Entre na sua conta para enviar arquivos e publicar.");
+  }
+  if (appState.authUser?.id !== sessionUser.id) {
+    appState.authUser = sessionUser;
+    await loadProfile(sessionUser);
+    syncAccountUi();
+  }
+  return sessionUser;
+}
+
 const releaseUploadTokens = new Map();
 const releaseLastFiles = new Map();
 const RELEASE_COVER_DRAFT_PREFIX = "ansend-release-cover-draft";
@@ -7522,12 +7545,7 @@ function setReleaseStep(step, form = releaseFormElement()) {
 }
 
 async function handleReleaseUpload(file, type, progressCallback) {
-  if (!supabaseClient) {
-    throw new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
-  }
-  if (!appState.authUser) {
-    throw new Error("Entre na sua conta para enviar arquivos e publicar.");
-  }
+  const uploadUser = await currentReleaseUploadUser();
   const isCover = type === "cover";
   const isAudio = type === "audio";
   const isStems = type === "stems";
@@ -7545,7 +7563,7 @@ async function handleReleaseUpload(file, type, progressCallback) {
   let url = "";
   let path = "";
   
-  const userId = appState.authUser.id;
+  const userId = uploadUser.id;
   const form = releaseFormElement();
   const beatId = form?.dataset?.beatId || generateUUID();
   const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
