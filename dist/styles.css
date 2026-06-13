@@ -3266,9 +3266,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   color: white;
   background: rgba(255, 255, 255, .035);
 }
+.google-brand-icon,
 .seller-auth-actions img {
   width: 18px;
   height: 18px;
+  flex: 0 0 18px;
+  display: block;
 }
 .seller-auth-actions p {
   margin: 0;
@@ -3394,9 +3397,11 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   font-weight: 800;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
 }
+.email-confirmation-gmail .google-brand-icon,
 .email-confirmation-gmail img {
   width: 20px;
   height: 20px;
+  flex-basis: 20px;
 }
 .email-confirmation-gmail:hover,
 .email-confirmation-gmail:focus-visible {

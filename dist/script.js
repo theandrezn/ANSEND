@@ -7,6 +7,12 @@ const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
+const GOOGLE_ICON_MARKUP = `<svg class="google-brand-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.29h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.89c2.27-2.09 3.53-5.17 3.53-8.64z"/>
+  <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.89-3c-1.08.72-2.46 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.25v3.1C3.23 21.3 7.29 24 12 24z"/>
+  <path fill="#FBBC05" d="M5.27 14.28A7.22 7.22 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.25A11.95 11.95 0 0 0 0 12c0 1.93.46 3.76 1.25 5.38l4.02-3.1z"/>
+  <path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.18 15.23 0 12 0 7.29 0 3.23 2.7 1.25 6.62l4.02 3.1C6.22 6.87 8.87 4.76 12 4.76z"/>
+</svg>`;
 const isSupabaseConfigured = Boolean(
   window.supabase
   && SUPABASE_CONFIG.url
@@ -486,7 +492,7 @@ function applyTranslations(root = document) {
     if (emailInput) emailInput.placeholder = appLocale.current === "pt-BR" ? "voce@email.com" : "you@email.com";
     if (passwordInput) passwordInput.placeholder = appLocale.current === "pt-BR" ? "Sua senha" : "Your password";
     if (submit) submit.innerHTML = `${appLocale.current === "pt-BR" ? (isLogin ? "Entrar no painel" : "Criar conta") : (isLogin ? "Enter dashboard" : "Create account")}<i data-lucide="arrow-right"></i>`;
-    if (google) google.innerHTML = `<img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">${appLocale.current === "pt-BR" ? "Continuar com Google" : "Continue with Google"}`;
+    if (google) google.innerHTML = `${GOOGLE_ICON_MARKUP}${appLocale.current === "pt-BR" ? "Continuar com Google" : "Continue with Google"}`;
     if (modeText) modeText.innerHTML = `${appLocale.current === "pt-BR" ? (isLogin ? "Ainda nao tem conta?" : "Ja tem conta?") : (isLogin ? "Do not have an account yet?" : "Already have an account?")} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${appLocale.current === "pt-BR" ? (isLogin ? "Criar conta" : "Entrar") : (isLogin ? "Create account" : "Sign in")}</button>`;
     const showcase = document.querySelector(".seller-showcase-card");
     if (showcase) {
@@ -8741,7 +8747,7 @@ function renderSellerAuth() {
         <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i></button>
       </form>
       <div class="seller-auth-actions">
-        <button type="button" data-action="seller-google"><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="">Continuar com Google</button>
+        <button type="button" data-action="seller-google">${GOOGLE_ICON_MARKUP}Continuar com Google</button>
         <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
       </div>
     </div>
@@ -8814,7 +8820,7 @@ function renderEmailConfirmation() {
       <h2>Confira seu e-mail para comecar.</h2>
       <p class="email-confirmation-copy">Enviamos um link de ativacao para <strong>${safeEmail}</strong>. Abra a mensagem e confirme sua conta ANSEND para concluir o cadastro.</p>
       <button class="email-confirmation-gmail" type="button" data-action="open-gmail">
-        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" aria-hidden="true">
+        ${GOOGLE_ICON_MARKUP}
         Abrir Gmail
       </button>
       <p class="email-confirmation-resend">
