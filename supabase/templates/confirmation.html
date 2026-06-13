@@ -9,80 +9,100 @@
   </head>
   <body style="margin:0; padding:0; background:#000000; color:#ffffff; font-family:Arial, Helvetica, sans-serif;">
     <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
-      Ative sua conta ANSEND para acessar o marketplace inteligente da musica.
+      Confirme seu e-mail para ativar sua conta ANSEND.
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; background:#000000; border-collapse:collapse;">
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; min-width:100%; background:#000000; border-collapse:collapse;">
       <tr>
-        <td align="center" style="padding:40px 16px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; max-width:560px; border-collapse:collapse;">
+        <td align="center" style="padding:46px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; max-width:520px; border-collapse:collapse;">
             <tr>
-              <td style="padding:0 0 22px 0;">
+              <td align="center" style="padding:0 0 28px 0;">
                 <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                   <tr>
-                    <td width="42" height="42" align="center" style="width:42px; height:42px; border:1px solid #2a2a2a; border-radius:12px; background:#070707;">
-                      <span style="font-size:22px; line-height:42px; font-weight:900; color:#ff6a00; letter-spacing:-2px;">A</span>
-                    </td>
-                    <td style="padding-left:12px; color:#ffffff; font-size:15px; line-height:20px; font-weight:900; letter-spacing:5px;">
-                      ANSEND
+                    <td align="center" style="font-size:11px; line-height:14px; font-weight:900; letter-spacing:6px; color:#ffffff;">
+                      <span style="color:#ff6a00;">A</span>NSEND
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
+
             <tr>
-              <td style="border:1px solid #242424; border-radius:24px; overflow:hidden; background:#070707;">
+              <td style="background:#080808; border:1px solid #242424; border-radius:28px; overflow:hidden;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse;">
                   <tr>
-                    <td style="padding:36px 34px 16px 34px; background:#070707;">
-                      <div style="width:72px; height:72px; border-radius:24px; background:#ff6a00; text-align:center; box-shadow:0 18px 48px rgba(255,106,0,.28);">
-                        <span style="display:block; color:#000000; font-size:34px; line-height:72px; font-weight:900;">✓</span>
-                      </div>
+                    <td style="padding:34px 34px 0 34px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse;">
+                        <tr>
+                          <td align="center">
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                              <tr>
+                                <td align="center" width="88" height="88" style="width:88px; height:88px; border-radius:28px; background:#111111; border:1px solid #2a2a2a;">
+                                  <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                                    <tr>
+                                      <td align="center" width="58" height="58" style="width:58px; height:58px; border-radius:20px; background:#ff6a00; color:#000000; font-size:32px; line-height:58px; font-weight:900;">
+                                        &#10003;
+                                      </td>
+                                    </tr>
+                                  </table>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
+
                   <tr>
-                    <td style="padding:0 34px 8px 34px;">
-                      <p style="margin:0 0 10px 0; color:#ff6a00; font-size:11px; line-height:16px; font-weight:900; letter-spacing:2px; text-transform:uppercase;">
-                        Confirmacao de conta
+                    <td align="center" style="padding:26px 34px 0 34px;">
+                      <p style="margin:0 0 12px 0; color:#ff6a00; font-size:11px; line-height:16px; font-weight:900; letter-spacing:2.4px; text-transform:uppercase;">
+                        Verificacao de conta
                       </p>
-                      <h1 style="margin:0; color:#ffffff; font-size:34px; line-height:38px; font-weight:900; letter-spacing:-1px;">
-                        Ative sua conta ANSEND
+                      <h1 style="margin:0; color:#ffffff; font-size:31px; line-height:37px; font-weight:900; letter-spacing:-0.8px;">
+                        Confirme seu acesso
                       </h1>
                     </td>
                   </tr>
+
                   <tr>
-                    <td style="padding:10px 34px 0 34px;">
-                      <p style="margin:0; color:#c8c8c8; font-size:16px; line-height:25px;">
-                        Clique no botao abaixo para confirmar seu e-mail e liberar seu acesso ao marketplace inteligente da musica.
+                    <td align="center" style="padding:14px 42px 0 42px;">
+                      <p style="margin:0; color:#bdbdbd; font-size:15px; line-height:24px;">
+                        Para proteger sua conta, confirme este e-mail e conclua seu cadastro na ANSEND.
                       </p>
                     </td>
                   </tr>
+
                   <tr>
-                    <td style="padding:28px 34px 8px 34px;">
-                      <a href="{{ .ConfirmationURL }}" style="display:block; width:100%; box-sizing:border-box; border-radius:14px; background:#ff6a00; color:#000000; font-size:15px; line-height:20px; font-weight:900; text-align:center; text-decoration:none; padding:16px 20px;">
-                        Confirmar minha conta
+                    <td style="padding:30px 34px 0 34px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:block; width:100%; box-sizing:border-box; border-radius:999px; background:#ffffff; color:#000000; font-size:15px; line-height:20px; font-weight:900; text-align:center; text-decoration:none; padding:16px 22px;">
+                        Confirmar e-mail
                       </a>
                     </td>
                   </tr>
+
                   <tr>
-                    <td style="padding:12px 34px 28px 34px;">
-                      <p style="margin:0; color:#8d8d8d; font-size:13px; line-height:20px;">
-                        Se o botao nao funcionar, copie e cole este link no navegador:
-                      </p>
-                      <p style="margin:8px 0 0 0; color:#dcdcdc; font-size:12px; line-height:18px; word-break:break-all;">
-                        <a href="{{ .ConfirmationURL }}" style="color:#ffffff; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                    <td align="center" style="padding:18px 42px 0 42px;">
+                      <p style="margin:0; color:#777777; font-size:12px; line-height:19px;">
+                        Este link expira por seguranca. Se voce nao criou uma conta na ANSEND, ignore este e-mail.
                       </p>
                     </td>
                   </tr>
+
                   <tr>
-                    <td style="padding:0 34px 34px 34px;">
-                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; background:#0f0f0f; border:1px solid #242424; border-radius:16px;">
+                    <td style="padding:26px 34px 32px 34px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; background:#0f0f0f; border:1px solid #252525; border-radius:18px;">
                         <tr>
-                          <td style="padding:18px 18px;">
-                            <p style="margin:0 0 6px 0; color:#ffffff; font-size:14px; line-height:20px; font-weight:800;">
-                              Por que confirmar?
+                          <td style="padding:18px 18px 16px 18px;">
+                            <p style="margin:0 0 8px 0; color:#ffffff; font-size:13px; line-height:18px; font-weight:800;">
+                              Link alternativo
                             </p>
-                            <p style="margin:0; color:#a8a8a8; font-size:13px; line-height:20px;">
-                              A confirmacao protege sua conta, suas compras, seus uploads e seus lancamentos dentro da ANSEND.
+                            <p style="margin:0; color:#8e8e8e; font-size:12px; line-height:19px;">
+                              Se o botao nao abrir, copie e cole este endereco no navegador:
+                            </p>
+                            <p style="margin:10px 0 0 0; color:#d8d8d8; font-size:12px; line-height:18px; word-break:break-all;">
+                              <a href="{{ .ConfirmationURL }}" style="color:#ffffff; text-decoration:underline;">{{ .ConfirmationURL }}</a>
                             </p>
                           </td>
                         </tr>
@@ -92,14 +112,11 @@
                 </table>
               </td>
             </tr>
+
             <tr>
-              <td style="padding:22px 6px 0 6px;">
-                <p style="margin:0; color:#777777; font-size:12px; line-height:19px; text-align:center;">
-                  Voce esta recebendo este e-mail porque criou uma conta na ANSEND.
-                  Se nao foi voce, ignore esta mensagem com seguranca.
-                </p>
-                <p style="margin:12px 0 0 0; color:#555555; font-size:11px; line-height:16px; text-align:center;">
-                  ANSEND - O marketplace inteligente da musica
+              <td align="center" style="padding:22px 24px 0 24px;">
+                <p style="margin:0; color:#666666; font-size:12px; line-height:18px;">
+                  ANSEND envia este e-mail apenas para confirmar seu acesso. Nao responda esta mensagem.
                 </p>
               </td>
             </tr>
