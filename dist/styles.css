@@ -1010,8 +1010,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 48px;
-  padding: 0 6px;
+  min-height: 92px;
+  padding: 2px 4px 0;
 }
 .sidebar-menu-toggle {
   display: none;
@@ -1035,7 +1035,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
+  width: 100%;
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -1063,6 +1064,13 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   object-fit: cover;
   border: 1.5px solid rgba(255, 106, 0, 0.4);
   box-shadow: 0 0 14px rgba(255, 106, 0, 0.3);
+}
+.brand-logo-full {
+  display: block;
+  width: min(220px, 100%);
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
 }
 
 /* User Profile Card */
@@ -22420,6 +22428,15 @@ body .brand-logo-wordmark {
 body .brand-logo-square {
   border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
   box-shadow: none !important;
+}
+
+body .brand-logo-full {
+  width: min(220px, 100%) !important;
+  height: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 body .sidebar-main-btn {
