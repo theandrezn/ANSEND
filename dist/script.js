@@ -9,6 +9,7 @@ const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
 const AUTH_CACHE_KEY = "ansend-auth-cache-v1";
 const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
+const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
 const COMMUNITY_TITLE = "Comunidade ANSEND";
@@ -2056,6 +2057,7 @@ function beatCard(item) {
     title: item.producer,
   });
   return `<article class="beat-card minimal-beat-card${homeCardClass}" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
+    ${adminDeleteButton("beat", item)}
     <div class="card-cover-wrapper">
       ${optimizedImageMarkup({ src: item.cover, alt: `Capa do beat ${item.title}`, className: "card-art-source", width: 320, height: 320, priority: Boolean(item.homeCard) })}
       ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
@@ -3073,7 +3075,9 @@ function nexoFeedCard(item, index) {
   const hasVisualMedia = isRealFeedMedia(media);
   const meta = [item.creatorRole, item.priceLabel || item.price].filter(Boolean).slice(0, 2).join(" - ");
   const typeIcon = item.type === "service" ? "briefcase-business" : item.type === "image" ? "image" : item.type === "portfolio" ? "gallery-horizontal-end" : "sparkles";
+  const adminBeatItem = isBeat ? findBeat(beatId) || { id: beatId, title: item.title, source_table: item.sourceTable || item.metadata?.sourceTable || "beats" } : null;
   return `<article class="nexo-feed-card ${hasVisualMedia ? "" : "has-system-fallback"}" data-feed-item-id="${item.id}" data-feed-type="${item.type}" data-feed-index="${index}">
+    ${adminBeatItem ? adminDeleteButton("beat", adminBeatItem) : ""}
     <div class="nexo-feed-media">
       ${hasVisualMedia ? `<img src="${htmlEscape(media)}" alt="${htmlEscape(item.title)}">` : `<div class="nexo-feed-official-fallback"><i data-lucide="radio-tower"></i><span>ANSEND</span></div>`}
       ${isBeat && item.audioUrl ? "" : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
@@ -3545,6 +3549,7 @@ function trackRow(item, i) {
   const price = item.price || "$39.95";
 
   return `<article class="track-row airbit-track-row" data-beat-id="${item.id}">
+    ${adminDeleteButton("beat", item, "admin-delete-beat-row")}
     ${coverHtml}
     <div class="airbit-info">
       <div class="airbit-title-row">
@@ -4596,6 +4601,31 @@ function dedupeById(items) {
   });
 }
 
+function isAdminUser(user = appState.authUser) {
+  return Boolean(user?.email && String(user.email).toLowerCase() === ANSEND_ADMIN_EMAIL);
+}
+
+function adminBeatSource(item = {}) {
+  const source = item.source_table || item.raw?.source_table || item.source || "";
+  if (source === "beats" || source === "catalog_items") return source;
+  if (item.raw?.kind || item.kind) return "catalog_items";
+  return "beats";
+}
+
+function adminDeleteButton(type, item = {}, extraClass = "") {
+  if (!appState.isAdmin || !isAdminUser()) return "";
+  const id = item.raw?.id || item.id;
+  if (!id || id === topBeatOfDay.id || id === "release-preview") return "";
+  const title = item.title || item.raw?.title || (type === "profile" ? "perfil" : "beat");
+  const source = type === "beat" ? adminBeatSource(item) : "";
+  const action = type === "profile" ? "admin-delete-profile" : "admin-delete-beat";
+  const sourceAttr = source ? ` data-source-table="${htmlEscape(source)}"` : "";
+  const className = type === "profile" ? "professional-card-admin-delete" : `admin-delete-button admin-delete-beat ${extraClass}`.trim();
+  return `<button type="button" class="${className}" data-action="${action}" data-id="${htmlEscape(String(id))}"${sourceAttr} aria-label="Remover ${htmlEscape(title)}" title="Remover ${type === "profile" ? "perfil" : "beat"}">
+    <i data-lucide="x"></i>
+  </button>`;
+}
+
 function marketplaceBeats() {
   return publishedCatalogItems().map(catalogItemToBeat);
 }
@@ -4636,6 +4666,10 @@ function profileToProfessional(profile = activeProfile()) {
     avatar_url: profile.avatar_url || profile.avatar || "",
     banner: profile.banner_url || profile.cover_url || profile.banner || "",
     cover_url: profile.banner_url || profile.cover_url || profile.banner || "",
+    banner_position_x: profile.banner_position_x,
+    banner_position_y: profile.banner_position_y,
+    avatar_position_x: profile.avatar_position_x,
+    avatar_position_y: profile.avatar_position_y,
     services_count: profile.services_count || 0,
     beats_count: appState.publicCatalogItems ? appState.publicCatalogItems.filter(item => item.user_id === profile.id).length : 0,
     views_count: profile.views_count || 0,
@@ -5584,11 +5618,21 @@ function clearLocalPreviewProfile() {
   localStorage.removeItem("ansendAccountAccess");
 }
 
+function clampImagePosition(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(number)));
+}
+
 function profileDisplayData(profile = activeProfile()) {
   const role = normalizeRole(profile?.account_role || "artista");
   const styleList = asArray(profile?.music_styles || profile?.genres || []).slice(0, 5);
   const displayName = profile?.display_name || profile?.artistic_name || profile?.full_name || "Perfil ANSEND";
   const username = sanitizeHandle(profile?.username || profile?.handle || "");
+  const bannerPositionX = clampImagePosition(profile?.banner_position_x);
+  const bannerPositionY = clampImagePosition(profile?.banner_position_y);
+  const avatarPositionX = clampImagePosition(profile?.avatar_position_x);
+  const avatarPositionY = clampImagePosition(profile?.avatar_position_y);
   return {
     name: displayName,
     fullName: profile?.full_name || "",
@@ -5598,6 +5642,12 @@ function profileDisplayData(profile = activeProfile()) {
     roleLabel: accountRoleLabel(role),
     avatar: profile?.avatar_url || profile?.photo_url || "",
     banner: profile?.banner_url || profile?.cover_url || "",
+    bannerPositionX,
+    bannerPositionY,
+    avatarPositionX,
+    avatarPositionY,
+    bannerPosition: `${bannerPositionX}% ${bannerPositionY}%`,
+    avatarPosition: `${avatarPositionX}% ${avatarPositionY}%`,
     headline: profile?.headline || "",
     bio: profile?.bio || "",
     styles: styleList,
@@ -5733,7 +5783,7 @@ function publicProfileRouteFromTarget(target) {
 function profileAvatarMarkup(display, className = "profile-avatar") {
   const avatar = display?.avatar || "";
   if (avatar && !avatar.includes("undefined")) {
-    return `<div class="${className}">${optimizedImageMarkup({ src: avatar, alt: `Avatar de ${display.name}`, width: 96, height: 96 })}</div>`;
+    return `<div class="${className}" style="--profile-avatar-position:${htmlEscape(display.avatarPosition || "50% 50%")}">${optimizedImageMarkup({ src: avatar, alt: `Avatar de ${display.name}`, width: 96, height: 96 })}</div>`;
   }
   return `<div class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${profileInitials(display.name)}</div>`;
 }
@@ -5754,7 +5804,7 @@ function profileSocialLinks(display) {
 
 function profileHeroBackgroundStyle(display) {
   return display?.banner
-    ? `--profile-banner: url('${htmlEscape(display.banner)}')`
+    ? `--profile-banner: url('${htmlEscape(display.banner)}'); --profile-banner-position: ${htmlEscape(display.bannerPosition || "50% 50%")}`
     : "";
 }
 
@@ -5775,7 +5825,8 @@ function profileTrackRows(items, display, isOwner) {
       const meta = [raw.genre || beat.tags?.[0], raw.bpm ? `${raw.bpm} BPM` : beat.tags?.[1]].filter(Boolean).join(" / ");
       const producer = raw.producer_name || raw.artist_name || display.name || beat.producer;
       const cover = beat.cover || raw.cover_url || "";
-      return `<article class="profile-track-row">
+      return `<article class="profile-track-row" data-beat-id="${htmlEscape(beat.id)}">
+        ${adminDeleteButton("beat", beat, "admin-delete-beat-row")}
         <span class="profile-track-index">${index + 1}</span>
         <div class="profile-track-main">
           ${cover ? `<img src="${htmlEscape(cover)}" alt="Capa de ${htmlEscape(beat.title)}">` : `<span class="profile-track-cover-fallback"><i data-lucide="music-4"></i></span>`}
@@ -5986,7 +6037,7 @@ function openProfileEditor() {
         <div class="profile-editor-columns">
           <div class="profile-editor-fields">
             <div class="profile-editor-media">
-              <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}">
+              <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)}` : ""}">
                 <button type="button" data-action="profile-image-picker-open" data-image-type="banner"><i data-lucide="image-plus"></i>Alterar banner</button>
               </div>
               <div class="profile-editor-avatar-row">
@@ -6014,7 +6065,7 @@ function openProfileEditor() {
           <aside class="profile-editor-preview" aria-label="Prévia do perfil">
             <span>Prévia</span>
             <article>
-              <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}')` : ""}"></div>
+              <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)}` : ""}"></div>
               ${profileAvatarMarkup(display, "profile-preview-avatar")}
               <div class="profile-preview-copy">
                 <strong data-profile-preview-name>${htmlEscape(display.name)}</strong>
@@ -6039,6 +6090,12 @@ function openProfileEditor() {
             <button type="button" data-action="profile-image-picker-open" data-image-type="avatar"><i data-lucide="user-round"></i><span><strong>Alterar avatar</strong><small>Imagem quadrada</small></span></button>
             <button type="button" data-action="profile-image-picker-open" data-image-type="banner"><i data-lucide="image"></i><span><strong>Alterar banner</strong><small>Imagem horizontal</small></span></button>
             <button type="button" class="is-danger" data-action="profile-image-remove" data-image-type="banner"><i data-lucide="trash-2"></i><span><strong>Remover banner</strong><small>Usar fundo minimalista</small></span></button>
+          </div>
+          <div class="profile-image-position-controls">
+            <label><span>Banner horizontal</span><input type="range" name="banner_position_x" min="0" max="100" value="${display.bannerPositionX}" data-action="profile-image-position" data-image-type="banner" data-axis="x"></label>
+            <label><span>Banner vertical</span><input type="range" name="banner_position_y" min="0" max="100" value="${display.bannerPositionY}" data-action="profile-image-position" data-image-type="banner" data-axis="y"></label>
+            <label><span>Avatar horizontal</span><input type="range" name="avatar_position_x" min="0" max="100" value="${display.avatarPositionX}" data-action="profile-image-position" data-image-type="avatar" data-axis="x"></label>
+            <label><span>Avatar vertical</span><input type="range" name="avatar_position_y" min="0" max="100" value="${display.avatarPositionY}" data-action="profile-image-position" data-image-type="avatar" data-axis="y"></label>
           </div>
         </div>
       </section>
@@ -6089,6 +6146,7 @@ function openProfileEditor() {
   </form>`);
   document.querySelector(".app-modal")?.classList.add("is-profile-editor");
   document.querySelector(".app-modal-panel")?.classList.add("is-profile-editor-panel");
+  syncProfileImagePositions(profileEditorForm());
 }
 
 function profileEditorForm() {
@@ -6111,6 +6169,24 @@ function syncProfileEditorPreview(form = profileEditorForm()) {
   if (handlePreview) handlePreview.textContent = username ? `@${username}` : "@username";
   if (rolePreview) rolePreview.textContent = role;
   if (bioPreview) bioPreview.textContent = bio;
+  syncProfileImagePositions(form);
+}
+
+function syncProfileImagePositions(form = profileEditorForm()) {
+  if (!form) return;
+  const bannerX = clampImagePosition(form.elements.banner_position_x?.value);
+  const bannerY = clampImagePosition(form.elements.banner_position_y?.value);
+  const avatarX = clampImagePosition(form.elements.avatar_position_x?.value);
+  const avatarY = clampImagePosition(form.elements.avatar_position_y?.value);
+  form.querySelectorAll(".profile-edit-banner-preview, .profile-preview-banner").forEach((banner) => {
+    banner.style.backgroundPosition = `${bannerX}% ${bannerY}%`;
+  });
+  form.querySelectorAll(".profile-edit-avatar img, .profile-preview-avatar img").forEach((image) => {
+    image.style.objectPosition = `${avatarX}% ${avatarY}%`;
+  });
+  form.querySelectorAll(".profile-edit-avatar, .profile-preview-avatar").forEach((avatar) => {
+    avatar.style.setProperty("--profile-avatar-position", `${avatarX}% ${avatarY}%`);
+  });
 }
 
 function openProfileImagePicker(type = "avatar") {
@@ -6194,6 +6270,7 @@ async function applyProfileImageFile(file, type) {
       avatar.innerHTML = `<img src="${src}" alt="Prévia da foto do perfil">`;
     });
   }
+  syncProfileImagePositions(form);
   const pickerPreview = form.querySelector("[data-image-picker-preview]");
   if (pickerPreview) pickerPreview.innerHTML = `<img src="${src}" alt="Prévia da imagem selecionada">`;
   closeProfileImagePicker();
@@ -6237,6 +6314,10 @@ async function saveProfileEdit(form) {
       avatar_path: removeAvatar ? null : (uploadedAvatar.path || current.avatar_path || null),
       banner_url: removeBanner ? null : (uploadedBanner.url || current.banner_url || current.cover_url || null),
       banner_path: removeBanner ? null : (uploadedBanner.path || current.banner_path || null),
+      banner_position_x: clampImagePosition(form.elements.banner_position_x?.value),
+      banner_position_y: clampImagePosition(form.elements.banner_position_y?.value),
+      avatar_position_x: clampImagePosition(form.elements.avatar_position_x?.value),
+      avatar_position_y: clampImagePosition(form.elements.avatar_position_y?.value),
       bio: form.elements.bio?.value.trim() || null,
       instagram_url: normalizeProfileLink("instagram", form.elements.instagram_url?.value) || null,
       youtube_url: normalizeProfileLink("youtube", form.elements.youtube_url?.value) || null,
@@ -6291,6 +6372,10 @@ async function upsertProfile(profile) {
     avatar_path: profile.avatar_path || null,
     banner_url: profile.banner_url || null,
     banner_path: profile.banner_path || null,
+    banner_position_x: clampImagePosition(profile.banner_position_x),
+    banner_position_y: clampImagePosition(profile.banner_position_y),
+    avatar_position_x: clampImagePosition(profile.avatar_position_x),
+    avatar_position_y: clampImagePosition(profile.avatar_position_y),
     website_url: profile.website_url || null,
     instagram_url: profile.instagram_url || null,
     youtube_url: profile.youtube_url || null,
@@ -6301,12 +6386,20 @@ async function upsertProfile(profile) {
   if (!Object.prototype.hasOwnProperty.call(profile, "avatar_path")) delete basePayload.avatar_path;
   if (!Object.prototype.hasOwnProperty.call(profile, "banner_url")) delete basePayload.banner_url;
   if (!Object.prototype.hasOwnProperty.call(profile, "banner_path")) delete basePayload.banner_path;
+  if (!Object.prototype.hasOwnProperty.call(profile, "banner_position_x")) delete basePayload.banner_position_x;
+  if (!Object.prototype.hasOwnProperty.call(profile, "banner_position_y")) delete basePayload.banner_position_y;
+  if (!Object.prototype.hasOwnProperty.call(profile, "avatar_position_x")) delete basePayload.avatar_position_x;
+  if (!Object.prototype.hasOwnProperty.call(profile, "avatar_position_y")) delete basePayload.avatar_position_y;
   const payload = { ...basePayload };
   const authProvider = profile.auth_provider || authProviderFromUser(appState.authUser);
   if (authProvider) payload.auth_provider = authProvider;
   if (profile.last_login_at) payload.last_login_at = profile.last_login_at;
   let { data, error } = await supabaseClient.from("profiles").upsert(payload, { onConflict: "id" }).select().single();
-  if (error && /auth_provider|last_login_at|schema cache|column/i.test(error.message || "")) {
+  if (error && /auth_provider|last_login_at|position|schema cache|column/i.test(error.message || "")) {
+    delete basePayload.banner_position_x;
+    delete basePayload.banner_position_y;
+    delete basePayload.avatar_position_x;
+    delete basePayload.avatar_position_y;
     ({ data, error } = await supabaseClient.from("profiles").upsert(basePayload, { onConflict: "id" }).select().single());
   }
   if (!error && data) appState.profile = data;
@@ -6457,7 +6550,7 @@ async function loadProfile(user) {
 
 async function loadAdminStatus() {
   appState.isAdmin = false;
-  if (!supabaseClient || !appState.authUser) return false;
+  if (!supabaseClient || !appState.authUser || !isAdminUser()) return false;
   const { data, error } = await supabaseClient.rpc("is_current_user_admin");
   if (error) {
     console.error("[ANSEND admin] admin status check failed", error);
@@ -6479,8 +6572,8 @@ async function getAdminProfiles() {
   return appState.adminProfiles;
 }
 
-async function deleteProfessionalAccount(userId) {
-  if (!supabaseClient || !appState.authUser || !appState.isAdmin) {
+async function deleteProfessionalAccount(userId, triggerButton = null) {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin || !isAdminUser()) {
     showToast("Acesso admin necessário para remover contas.", "shield-alert");
     return;
   }
@@ -6488,28 +6581,100 @@ async function deleteProfessionalAccount(userId) {
     showToast("Você não pode remover a própria conta admin por aqui.", "shield-alert");
     return;
   }
-  const targetProfile = appState.adminProfiles.find((profile) => profile.id === userId)
-    || activeProfessionalProfiles().find((profile) => profile.id === userId);
-  const label = targetProfile?.email
-    || targetProfile?.display_name
-    || targetProfile?.full_name
-    || targetProfile?.name
-    || "esta conta";
-  const confirmed = window.confirm(`Remover definitivamente ${label}? Isso apaga perfil, beats, catálogo e usuário Auth.`);
+  const confirmed = window.confirm("Tem certeza que deseja excluir este perfil? Essa ação não pode ser desfeita.");
   if (!confirmed) return;
   const routeAfterDelete = currentRoute();
-  const { data, error } = await supabaseClient.rpc("admin_delete_professional_account", { target_user_id: userId });
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.classList.add("is-loading");
+  }
+  const { error } = await supabaseClient.rpc("admin_delete_professional_account", { target_user_id: userId });
   if (error) {
     console.error("[ANSEND admin] delete failed", error);
-    showToast(error.message || "Não foi possível remover a conta.", "triangle-alert");
+    showToast(error.message?.includes("permission") ? "Você não tem permissão para executar esta ação." : "Não foi possível remover este perfil.", "triangle-alert");
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.classList.remove("is-loading");
+    }
     return;
   }
-  showToast(`Conta removida: ${data?.email || label}`, "trash-2");
+  showToast("Perfil removido com sucesso.", "trash-2");
+  appState.publicProfiles = appState.publicProfiles.filter((profile) => profile.id !== userId);
+  appState.adminProfiles = appState.adminProfiles.filter((profile) => profile.id !== userId);
+  appState.publicCatalogItems = appState.publicCatalogItems.filter((item) => item.user_id !== userId);
+  appState.ownedCatalogItems = appState.ownedCatalogItems.filter((item) => item.user_id !== userId);
   await loadPublicPlatformData();
   await getAdminProfiles();
   if (routeAfterDelete === "admin") {
     await renderAdmin();
     hydrateView();
+    return;
+  }
+  renderRoute();
+}
+
+function removeBeatFromLocalState(id) {
+  if (!id) return;
+  const idText = String(id);
+  appState.publicCatalogItems = appState.publicCatalogItems.filter((item) => String(item.id) !== idText);
+  appState.ownedCatalogItems = appState.ownedCatalogItems.filter((item) => String(item.id) !== idText);
+  appState.favorites.delete(idText);
+  appState.cart = appState.cart.filter((entry) => splitCartEntry(entry).beatId !== idText);
+  appState.recommendations.feed = (appState.recommendations.feed || []).filter((item) => String(item.id) !== idText && String(item.metadata?.beatId || "") !== idText);
+  if (appState.playing === idText) {
+    pauseTopBeat({ quiet: true });
+    closeMiniPlayer();
+    appState.playing = null;
+  }
+  persistState();
+  const savedIds = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]").filter((savedId) => String(savedId) !== idText);
+  localStorage.setItem("ansend-saved-playlist", JSON.stringify(savedIds));
+}
+
+async function deleteBeatItem(itemId, sourceTable, triggerButton = null) {
+  if (!supabaseClient || !appState.authUser || !appState.isAdmin || !isAdminUser()) {
+    showToast("Você não tem permissão para executar esta ação.", "shield-alert");
+    return;
+  }
+  if (!itemId || String(itemId) === topBeatOfDay.id) {
+    showToast("Não foi possível remover este beat.", "triangle-alert");
+    return;
+  }
+  const confirmed = window.confirm("Tem certeza que deseja excluir este beat? Essa ação removerá o beat da plataforma.");
+  if (!confirmed) return;
+
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.classList.add("is-loading");
+    triggerButton.innerHTML = `<i data-lucide="loader-circle"></i>`;
+    lucide.createIcons();
+  }
+
+  const { data, error } = await supabaseClient.rpc("admin_delete_beat", {
+    p_target_id: itemId,
+    p_target_source: sourceTable || null,
+  });
+
+  if (error) {
+    console.error("[ANSEND admin] beat delete failed", error);
+    showToast(error.message?.includes("permission") ? "Você não tem permissão para executar esta ação." : "Não foi possível remover este beat.", "triangle-alert");
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.classList.remove("is-loading");
+      triggerButton.innerHTML = `<i data-lucide="x"></i>`;
+      lucide.createIcons();
+    }
+    return;
+  }
+
+  removeBeatFromLocalState(itemId);
+  showToast("Beat removido com sucesso.", "trash-2");
+  if (data?.storage_errors?.length) {
+    console.warn("[ANSEND admin] beat deleted with storage cleanup warnings", data.storage_errors);
+  }
+  await loadCatalogItems();
+  if (currentRoute() === "detalhe" && String(location.hash.replace("#beat-", "")) === String(itemId)) {
+    location.hash = "explorar";
     return;
   }
   renderRoute();
@@ -6886,6 +7051,7 @@ function findPlaylistPack(idOrTitle) {
 function playlistDetailTrackRow(item, index) {
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
   return `<article class="playlist-track-row" data-beat-id="${item.id}">
+    ${adminDeleteButton("beat", item, "admin-delete-beat-row")}
     <span class="playlist-track-index">${index + 1}</span>
     <button class="playlist-track-main" type="button" data-action="open-beat" data-id="${item.id}">
       <img src="${item.cover}" alt="Capa de ${item.title}" onerror="this.classList.add('is-broken')">
@@ -7622,7 +7788,8 @@ function renderCart() {
   `).join("");
 
   const promotedBeatsHtml = preferredBeats(6).map(item => `
-    <div class="promoted-beat-card">
+    <div class="promoted-beat-card" data-beat-id="${htmlEscape(item.id)}">
+      ${adminDeleteButton("beat", item, "admin-delete-beat-mini")}
       <img src="${item.cover}" alt="${item.title}">
       <div class="promoted-beat-info">
         <strong>${item.title}</strong>
@@ -7959,8 +8126,9 @@ function compactStat(value) {
 
 function professionalCard(profile) {
   const bannerUrl = profile.cover_url || profile.banner;
+  const bannerPosition = `${clampImagePosition(profile.banner_position_x)}% ${clampImagePosition(profile.banner_position_y)}%`;
   const bannerStyle = bannerUrl 
-    ? `background-image: url('${htmlEscape(bannerUrl)}'); background-size: cover; background-position: center;` 
+    ? `background-image: url('${htmlEscape(bannerUrl)}'); background-size: cover; background-position: ${htmlEscape(bannerPosition)};` 
     : `background: linear-gradient(135deg, #181818 0%, #292929 50%, #101010 100%);`;
 
   const initials = profileInitials(profile.name);
@@ -8143,6 +8311,7 @@ function renderPlaylistDetail() {
 function beatDetailMiniCard(beat, context = "related") {
   const price = beat.price || "R$ 79";
   return `<article class="beat-mini-card" data-beat-id="${htmlEscape(beat.id)}">
+    ${adminDeleteButton("beat", beat, "admin-delete-beat-mini")}
     <button class="beat-mini-cover" type="button" data-action="open-beat" data-id="${htmlEscape(beat.id)}" aria-label="Abrir ${htmlEscape(beat.title)}">
       <img src="${htmlEscape(beat.cover)}" alt="Capa de ${htmlEscape(beat.title)}">
       <span><i data-lucide="play"></i></span>
@@ -8205,6 +8374,7 @@ function renderBeatDetail() {
     <main class="beat-detail-page beat-market-detail" data-beat-id="${htmlEscape(item.id)}" data-selected-license="${selectedLicense}">
       <div class="beat-detail-shell">
         <aside class="beat-sidebar-card" aria-label="Preview do beat">
+          ${adminDeleteButton("beat", item)}
           <button class="beat-sidebar-cover" type="button" data-action="play" data-id="${htmlEscape(item.id)}" aria-label="Tocar preview de ${htmlEscape(item.title)}">
             <img src="${htmlEscape(item.cover)}" alt="Capa do beat ${htmlEscape(item.title)}">
             <span><i data-lucide="play"></i></span>
@@ -8392,13 +8562,36 @@ async function currentReleaseUploadUser() {
   if (!supabaseClient) {
     throw new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
   }
-  const { data, error } = await withTimeout(
-    supabaseClient.auth.getSession(),
-    10000,
-    "Nao foi possivel validar sua sessao antes do upload."
-  );
-  if (error) throw error;
-  const sessionUser = data?.session?.user || null;
+  let sessionUser = null;
+  let sessionError = null;
+  try {
+    const { data, error } = await withTimeout(
+      supabaseClient.auth.getSession(),
+      20000,
+      "A validacao da sessao demorou demais."
+    );
+    if (error) sessionError = error;
+    sessionUser = data?.session?.user || null;
+  } catch (error) {
+    sessionError = error;
+  }
+  if (!sessionUser) {
+    try {
+      const { data, error } = await withTimeout(
+        supabaseClient.auth.getUser(),
+        20000,
+        "A validacao do usuario demorou demais."
+      );
+      if (error) sessionError = error;
+      sessionUser = data?.user || null;
+    } catch (error) {
+      sessionError = error;
+    }
+  }
+  if (!sessionUser && appState.authUser?.id) {
+    console.warn("[ANSEND release] Supabase session check was slow; trying storage upload with cached authenticated user.", sessionError);
+    sessionUser = appState.authUser;
+  }
   if (!sessionUser?.id) {
     throw new Error("Entre na sua conta para enviar arquivos e publicar.");
   }
@@ -8412,14 +8605,9 @@ async function currentReleaseUploadUser() {
 
 const releaseUploadTokens = new Map();
 const releaseLastFiles = new Map();
-const RELEASE_COVER_DRAFT_PREFIX = "ansend-release-cover-draft";
 const RELEASE_COVER_MAX_DIMENSION = 3000;
 const RELEASE_COVER_TARGET_BYTES = 3 * 1024 * 1024;
 const RELEASE_COVER_HARD_LIMIT_BYTES = 40 * 1024 * 1024;
-
-function releaseCoverDraftKey() {
-  return `${RELEASE_COVER_DRAFT_PREFIX}:${appState.authUser?.id || "guest"}`;
-}
 
 function sanitizeStorageSegment(value, fallback = "file") {
   return String(value || fallback)
@@ -8508,41 +8696,83 @@ function setPersistentCoverPreview(url, form = releaseFormElement()) {
   if (coverActions) coverActions.style.display = "block";
 }
 
+async function persistReleaseUploadDraft(patch = {}, form = releaseFormElement()) {
+  if (!supabaseClient || !appState.authUser?.id || !form) return null;
+  const payload = {
+    user_id: appState.authUser.id,
+    beat_id: form.dataset.beatId || generateUUID(),
+    ...patch,
+  };
+  form.dataset.beatId = payload.beat_id;
+  const { data, error } = await supabaseClient
+    .from("release_upload_drafts")
+    .upsert(payload, { onConflict: "user_id" })
+    .select()
+    .single();
+  if (error) {
+    console.warn("[ANSEND release] Nao foi possivel persistir rascunho de upload no Supabase.", error);
+    return null;
+  }
+  return data;
+}
+
 function persistReleaseCoverDraft(url, path, form = releaseFormElement()) {
-  if (!url || !path) return;
-  try {
-    window.localStorage.setItem(releaseCoverDraftKey(), JSON.stringify({
-      url,
-      path,
-      beatId: form?.dataset?.beatId || null,
-      savedAt: Date.now()
-    }));
-  } catch (err) {
-    console.warn("Nao foi possivel salvar o rascunho local da capa.", err);
-  }
+  if (!url || !path) return Promise.resolve(null);
+  return persistReleaseUploadDraft({ cover_url: url, cover_path: path }, form);
 }
 
-function clearReleaseCoverDraft() {
-  try {
-    window.localStorage.removeItem(releaseCoverDraftKey());
-  } catch (err) {
-    console.warn("Nao foi possivel limpar o rascunho local da capa.", err);
-  }
+async function clearReleaseCoverDraft() {
+  if (!supabaseClient || !appState.authUser?.id) return;
+  const { error } = await supabaseClient
+    .from("release_upload_drafts")
+    .update({ cover_url: null, cover_path: null })
+    .eq("user_id", appState.authUser.id);
+  if (error) console.warn("[ANSEND release] Nao foi possivel limpar capa do rascunho no Supabase.", error);
 }
 
-function restoreReleaseCoverDraft(form = releaseFormElement()) {
-  if (!form) return;
-  try {
-    const raw = window.localStorage.getItem(releaseCoverDraftKey());
-    if (!raw) return;
-    const draft = JSON.parse(raw);
-    if (!draft?.url || !draft?.path) return;
-    form.elements.cover_url.value = draft.url;
-    form.elements.cover_path.value = draft.path;
-    setPersistentCoverPreview(draft.url, form);
-  } catch (err) {
-    console.warn("Nao foi possivel restaurar o rascunho local da capa.", err);
+async function clearReleaseUploadDraft() {
+  if (!supabaseClient || !appState.authUser?.id) return;
+  const { error } = await supabaseClient
+    .from("release_upload_drafts")
+    .delete()
+    .eq("user_id", appState.authUser.id);
+  if (error) console.warn("[ANSEND release] Nao foi possivel limpar rascunho de upload no Supabase.", error);
+}
+
+async function restoreReleaseCoverDraft(form = releaseFormElement()) {
+  if (!form || !supabaseClient || !appState.authUser?.id) return;
+  const { data, error } = await supabaseClient
+    .from("release_upload_drafts")
+    .select("*")
+    .eq("user_id", appState.authUser.id)
+    .maybeSingle();
+  if (error) {
+    console.warn("[ANSEND release] Nao foi possivel restaurar rascunho de upload do Supabase.", error);
+    return;
   }
+  if (!data) return;
+  if (data.beat_id) form.dataset.beatId = data.beat_id;
+  if (data.cover_url && data.cover_path) {
+    form.elements.cover_url.value = data.cover_url;
+    form.elements.cover_path.value = data.cover_path;
+    setPersistentCoverPreview(data.cover_url, form);
+  }
+  if (data.audio_url && data.audio_path) {
+    form.elements.audio_url.value = data.audio_url;
+    form.elements.audio_path.value = data.audio_path;
+    const audioPreview = form.querySelector(".release-audio-preview");
+    const player = audioPreview?.querySelector("audio");
+    if (player) player.src = data.audio_url;
+    if (audioPreview) audioPreview.style.display = "flex";
+    form.querySelector(".release-audio-drop")?.classList.add("has-file");
+  }
+  if (data.stems_url && data.stems_path) {
+    form.elements.stems_url.value = data.stems_url;
+    form.elements.stems_path.value = data.stems_path;
+    form.querySelector(".stems-preview")?.style.setProperty("display", "block");
+    form.querySelector(".release-stems-drop")?.classList.add("has-file");
+  }
+  syncReleaseForm(form);
 }
 
 function setReleaseUploadError(dropzone, message = "", options = {}) {
@@ -9059,7 +9289,7 @@ async function handleReleaseFile(file, type) {
       form.elements.cover_url.value = result.url;
       form.elements.cover_path.value = result.path;
       setPersistentCoverPreview(result.url, form);
-      persistReleaseCoverDraft(result.url, result.path, form);
+      await persistReleaseCoverDraft(result.url, result.path, form);
       setReleaseUploadSuccess(dropzone, "Capa enviada com sucesso.");
       showToast("Capa enviada com sucesso!", "image");
     } else if (type === "audio") {
@@ -9090,6 +9320,7 @@ async function handleReleaseFile(file, type) {
       }
       if (audioPreview) audioPreview.style.display = "flex";
       dropzone?.classList.add("has-file");
+      await persistReleaseUploadDraft({ audio_url: result.url, audio_path: result.path }, form);
       showToast("Audio enviado com sucesso!", "music");
     } else if (type === "stems") {
       form.elements.stems_url.value = result.url;
@@ -9099,6 +9330,7 @@ async function handleReleaseFile(file, type) {
       if (nameNode) nameNode.textContent = file.name;
       if (stemsPreview) stemsPreview.style.display = "block";
       dropzone?.classList.add("has-file");
+      await persistReleaseUploadDraft({ stems_url: result.url, stems_path: result.path }, form);
       showToast("ZIP de Stems enviado com sucesso!", "archive");
     }
     
@@ -9313,6 +9545,7 @@ function setupMusicUploadEventListeners() {
         }
       }
       form.querySelector(".release-audio-drop")?.classList.remove("has-file");
+      void persistReleaseUploadDraft({ audio_url: null, audio_path: null }, form);
       syncReleaseForm(form);
     });
   }
@@ -9324,6 +9557,7 @@ function setupMusicUploadEventListeners() {
       form.elements.stems_path.value = "";
       form.querySelector(".stems-preview").style.display = "none";
       form.querySelector(".release-stems-drop")?.classList.remove("has-file");
+      void persistReleaseUploadDraft({ stems_url: null, stems_path: null }, form);
     });
   }
   
@@ -9438,7 +9672,7 @@ async function saveBeatRelease(status = "published") {
   syncCatalogCompatibilityState();
   
   showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
-  if (status === "published") clearReleaseCoverDraft();
+  if (status === "published") void clearReleaseUploadDraft();
 
   if (savedCatalogItem) {
     if (status === "published") {
@@ -9657,7 +9891,7 @@ function renderMusicUpload() {
 
   hydrateReleaseDetailsStep(releaseFormElement(), releaseProducerName, genreOptions, keyOptions);
   setupMusicUploadEventListeners();
-  restoreReleaseCoverDraft();
+  void restoreReleaseCoverDraft();
   syncReleaseForm();
   applyLocaleTextOverrides(appView);
   lucide.createIcons();
@@ -10214,7 +10448,8 @@ function renderRoute() {
 const TOASTS_ENABLED = false;
 
 function showToast(message, icon = "check-circle-2") {
-  if (!TOASTS_ENABLED) {
+  const adminFeedback = /remov|permiss|excluir|executar esta ação/i.test(String(message || ""));
+  if (!TOASTS_ENABLED && !adminFeedback) {
     console.debug("[ANSEND toast silenced]", icon, translateToastText(message));
     return;
   }
@@ -10523,6 +10758,10 @@ function openMorePlayerMenu() {
   const rect = trigger?.getBoundingClientRect();
   const right = rect ? Math.max(12, window.innerWidth - rect.right - 8) : 128;
   const bottom = rect ? Math.max(88, window.innerHeight - rect.top + 8) : 96;
+  const current = playerActionBeat();
+  const adminDelete = appState.isAdmin && isAdminUser() && current?.id !== topBeatOfDay.id
+    ? `<button type="button" role="menuitem" data-action="admin-delete-beat" data-id="${htmlEscape(String(current.id))}" data-source-table="${htmlEscape(adminBeatSource(current))}">Remover beat</button><hr>`
+    : "";
   document.body.insertAdjacentHTML("beforeend", `<div class="player-more-dropdown" role="menu" style="right:${right}px; bottom:${bottom}px">
     <button type="button" role="menuitem" data-action="repost-current">Repostar</button>
     <button type="button" role="menuitem" data-action="comments-current">Comentarios</button>
@@ -10532,6 +10771,7 @@ function openMorePlayerMenu() {
     <button type="button" role="menuitem" data-action="add-playlist-current">Adicionar a playlist</button>
     <button type="button" role="menuitem" data-action="shuffle-current">${appState.player.shuffle ? "Desativar aleatorio" : "Ativar aleatorio"}</button>
     <hr>
+    ${adminDelete}
     <button type="button" role="menuitem" data-action="go-current-track">Ir para a musica</button>
     <button type="button" role="menuitem" data-action="go-current-artist">Ir para o artista</button>
   </div>`);
@@ -11607,7 +11847,12 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "admin-delete-profile") {
-    deleteProfessionalAccount(target.dataset.userId);
+    deleteProfessionalAccount(target.dataset.userId, target);
+    return;
+  }
+  if (action === "admin-delete-beat") {
+    if (isPlayerDropdownAction) closePlayerMoreMenu();
+    deleteBeatItem(target.dataset.id || target.closest("[data-beat-id]")?.dataset.beatId, target.dataset.sourceTable, target);
     return;
   }
   if (action === "ai-chip") {

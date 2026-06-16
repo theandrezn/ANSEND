@@ -3657,6 +3657,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+  object-position: var(--profile-avatar-position, center);
   background: #121212;
 }
 
@@ -21877,7 +21878,7 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.74);
+  background: rgba(220,38,38,0.96);
   color: #ffffff;
   display: grid;
   place-items: center;
@@ -21889,7 +21890,7 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 }
 
 .professional-card-admin-delete:hover:not(:disabled) {
-  background: rgba(255,74,74,0.96);
+  background: rgba(239,68,68,1);
   border-color: rgba(255,255,255,0.28);
   color: #ffffff;
   transform: scale(1.04);
@@ -21903,6 +21904,82 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 .professional-card-admin-delete svg {
   width: 18px;
   height: 18px;
+}
+
+.beat-card,
+.track-row,
+.playlist-track-row,
+.profile-track-row,
+.beat-mini-card,
+.promoted-beat-card,
+.nexo-feed-card,
+.beat-sidebar-card {
+  position: relative;
+}
+
+.admin-delete-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(220,38,38,0.96);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 180ms ease, background 180ms ease, opacity 180ms ease;
+}
+
+.admin-delete-button:hover:not(:disabled) {
+  background: rgba(239,68,68,1);
+  transform: scale(1.05);
+}
+
+.admin-delete-button:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.admin-delete-button svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.7;
+}
+
+.admin-delete-button.is-loading svg {
+  animation: adminDeleteSpin 780ms linear infinite;
+}
+
+.admin-delete-beat-row {
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.admin-delete-beat-mini {
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+}
+
+@keyframes adminDeleteSpin {
+  to { transform: rotate(360deg); }
 }
 
 .professional-card-avatar-container {
