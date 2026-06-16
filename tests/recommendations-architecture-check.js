@@ -26,9 +26,9 @@ const checks = [
   ["frontend track rpc", /supabaseClient\.rpc\("track_user_event"/i, script],
   ["frontend recommendation rpc", /get_recommended_professionals/i, script],
   ["feed recommendation merge", /applyFeedRecommendations/i, script],
-  ["professional recommendation reason UI", /professional-card-reason|recommendation-reason/i, script],
+  ["professional recommendations merge remaining profiles", /const remaining = activeProfessionalProfiles\(\)/i, script],
   ["NEXO intent extraction", /extractNexoIntent/i, script],
-  ["recommendation styles", /Personalized recommendations/i, styles],
+  ["professional recommendation score UI", /match-score|match-professional-card/i, styles],
 ];
 
 const failures = checks.filter(([, pattern, content]) => !pattern.test(content));

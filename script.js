@@ -2388,7 +2388,14 @@ function getRecommendedPlaylists(profile = getMusicProfile()) {
 
 function getRecommendedProfessionals(profile = getMusicProfile()) {
   if (appState.recommendations?.professionals?.length) {
-    return appState.recommendations.professionals.slice(0, 6);
+    const recommended = appState.recommendations.professionals;
+    const recommendedIds = new Set(recommended.map((item) => String(item.id)));
+    const baseProfile = profile || createDefaultMusicProfile();
+    const remaining = activeProfessionalProfiles()
+      .filter((item) => !recommendedIds.has(String(item.id)))
+      .map((item) => withMatch(baseProfile, professionalMatchCandidate(item)))
+      .sort((a, b) => b.match.score - a.match.score);
+    return [...recommended, ...remaining].slice(0, 6);
   }
   const baseProfile = profile || createDefaultMusicProfile();
   return activeProfessionalProfiles()
@@ -3380,7 +3387,6 @@ function professionalMatchCard(profile) {
       <span>${htmlEscape(profile.name)}</span>${verifiedMarkup}
     </button>
     <small>${htmlEscape(matchLabel)}</small>
-    ${profile.recommendationReason ? `<p class="recommendation-reason">${htmlEscape(profile.recommendationReason)}</p>` : ""}
   </article>`;
 }
 
@@ -5835,9 +5841,6 @@ function renderProfileNotFound(slug) {
 function renderSpotifyProfile({ profile, isOwner = false, professional = null } = {}) {
   const safeProfile = profile || activeProfile() || {};
   const display = profileDisplayData(safeProfile);
-  const recommendationReason = !isOwner
-    ? (safeProfile.recommendationReason || (appState.recommendations?.professionals || []).find((item) => String(item.id) === String(safeProfile.id))?.recommendationReason)
-    : "";
   const catalogItems = profileCatalogFor(safeProfile, isOwner);
   const publishedCount = catalogItems.filter((item) => item.status === "published" || item.source !== "catalog").length;
   const actionButtons = isOwner
@@ -5848,7 +5851,7 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
        <button type="button" class="profile-action" data-action="professional-contact" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
   const linksMarkup = profileSocialLinks(display);
-  const aboutMarkup = display.bio || linksMarkup || recommendationReason;
+  const aboutMarkup = display.bio || linksMarkup;
   const heroClass = display.banner ? "has-banner" : "has-fallback";
   const tabs = [
     ["profileRecent", "Mais recentes"],
@@ -5904,7 +5907,6 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
       </div>
 
       ${aboutMarkup ? `<aside class="profile-about-panel">
-        ${recommendationReason ? `<section class="profile-recommendation-reason"><h2>Por que recomendamos</h2><p>${htmlEscape(recommendationReason)}</p></section>` : ""}
         ${display.bio ? `<section id="profileAbout"><h2>Sobre</h2><p>${htmlEscape(display.bio)}</p></section>` : ""}
         ${linksMarkup ? `<section id="profileLinks"><h2>Links</h2><div class="profile-links">${linksMarkup}</div></section>` : ""}
       </aside>` : ""}
@@ -8001,8 +8003,6 @@ function professionalCard(profile) {
     <div class="professional-card-tags">
       ${profile.tags && profile.tags.length ? profile.tags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("") : `<span class="professional-card-tag-fallback">${htmlEscape(profile.role)}</span>`}
     </div>
-    ${profile.recommendationReason ? `<p class="professional-card-reason"><i data-lucide="sparkles"></i>${htmlEscape(profile.recommendationReason)}</p>` : ""}
-    
     <!-- Statistics Block -->
     <div class="professional-card-stats">
       <div class="professional-card-stat-item">
