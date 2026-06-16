@@ -2942,10 +2942,11 @@ function trackRow(item, i) {
     username: item.owner_username || item.profile_username || item.raw?.profile_username || item.raw?.username || item.raw?.owner_username || "",
     title: item.producer,
   });
-  const coverHtml = `<div class="airbit-cover" data-action="play" data-id="${item.id}">
-    <img src="${item.cover}" alt="Mini capa ${item.title}">
+  const coverHtml = `<button class="airbit-cover" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}">
+    <div class="airbit-cover-placeholder"><i data-lucide="music"></i></div>
+    <img src="${item.cover}" alt="Mini capa ${item.title}" onerror="this.style.display='none';">
     <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
-  </div>`;
+  </button>`;
 
   const verifiedBadge = `<span class="airbit-verified"><i data-lucide="crown"></i></span>`;
   const tagsHtml = item.tags.slice(0, 3).map(tag => `<span class="airbit-tag-chip">#${tag}</span>`).join("");
@@ -2955,7 +2956,7 @@ function trackRow(item, i) {
     ${coverHtml}
     <div class="airbit-info">
       <div class="airbit-title-row">
-        <strong class="airbit-track-title" data-action="play" data-id="${item.id}">${item.title}</strong>
+        <button class="airbit-track-title" type="button" data-action="play" data-id="${item.id}">${item.title}</button>
       </div>
       <div class="airbit-meta-row">
         <button class="airbit-producer" type="button" data-action="producer" ${producerAttrs}>${item.producer}</button>
@@ -3978,7 +3979,7 @@ function catalogItemToBeat(item) {
     owner_username: ownerProfile?.username || ownerProfile?.handle || item.profile_username || item.username || item.owner_username || "",
     title: item.title || "Sem titulo",
     producer: producerName,
-    cover: item.cover_url || "assets/ansend-logo-square.png",
+    cover: item.cover_url || item.coverUrl || item.artworkUrl || item.image || item.thumbnail || item.cover || "assets/ansend-logo-square.png",
     audio: item.audio_url || "",
     audio_url: item.audio_url || "",
     audio_path: item.audio_path || "",
@@ -9436,7 +9437,14 @@ function setTopBeatPlaying(isPlaying) {
   document.querySelectorAll('[data-action="play"], [data-action="play-catalog"]').forEach((button) => {
     const id = button.dataset.id || button.dataset.feedItemId;
     const isThisPlaying = id && String(id) === String(appState.playing) && isPlaying;
-    button.innerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
+    
+    // Procura por um ícone dentro do botão
+    const icon = button.querySelector('i[data-lucide], svg');
+    if (icon) {
+      icon.outerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
+    } else if (button.classList.contains("play-over") || button.classList.contains("profile-play-mini")) {
+      button.innerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
+    }
   });
 
   syncMiniPlayerState();
