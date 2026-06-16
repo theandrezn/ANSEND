@@ -1302,6 +1302,11 @@ const appState = {
     error: "",
     detailId: "",
     lastLoadedAt: 0,
+    activeRequestId: 0,
+    cache: {},
+    railLoading: false,
+    railError: "",
+    routeStartedAt: 0,
   },
   isAdmin: false,
   adminProfiles: [],
@@ -5093,6 +5098,61 @@ const hiringDeadlines = [["hoje", "Hoje"], ["24h", "24h"], ["48h", "48h"], ["est
 const hiringWorkModes = { remote: "Remoto", onsite: "Presencial", hybrid: "Hibrido" };
 const hiringStatusLabels = { open: "Aberta", negotiating: "Em negociacao", hired: "Contratada", completed: "Finalizada", cancelled: "Cancelada" };
 const hiringActionTables = { like: "hiring_likes", save: "hiring_saves", repost: "hiring_reposts" };
+const HIRING_CACHE_TTL = 45000;
+const HIRING_POST_LIMIT = 24;
+const HIRING_POST_SELECT = "id,user_id,title,description,category,budget_amount,budget_type,currency,deadline_type,work_mode,status,visibility,reference_links,attachments,created_at,updated_at";
+const HIRING_PROFILE_SELECT = "id,display_name,username,full_name,artistic_name,account_role,bio,avatar_url,banner_url,banner_position_x,banner_position_y,avatar_position_x,avatar_position_y,banner_scale,avatar_scale,music_styles,is_public,updated_at,created_at";
+
+function perfEnabled() {
+  try {
+    return location.hostname === "localhost" || location.hostname === "127.0.0.1" || localStorage.getItem("ansendPerf") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function perfStart(label) {
+  if (!perfEnabled()) return () => {};
+  const mark = `ansend:${label}:${Math.random().toString(36).slice(2)}`;
+  performance.mark(mark);
+  return () => {
+    const measure = `${mark}:done`;
+    performance.measure(measure, mark);
+    const entry = performance.getEntriesByName(measure).pop();
+    console.info(`[PERF] ${label}: ${Math.round(entry?.duration || 0)}ms`);
+    performance.clearMarks(mark);
+    performance.clearMeasures(measure);
+  };
+}
+
+function hiringCacheKey(detailId = hiringDetailIdFromHash()) {
+  const filters = appState.hiring.filters || {};
+  return [
+    "community",
+    detailId ? `detail:${detailId}` : `tab:${appState.hiring.activeTab}`,
+    `category:${filters.category || "todos"}`,
+    `deadline:${filters.deadline || "todos"}`,
+    `status:${filters.status || "todos"}`,
+    `work:${filters.workMode || "todos"}`,
+    `budget:${filters.budget || ""}`,
+    `user:${appState.authUser?.id || "anon"}`,
+  ].join("|");
+}
+
+function readHiringCache(key = hiringCacheKey()) {
+  const entry = appState.hiring.cache?.[key];
+  if (!entry) return null;
+  return Date.now() - entry.updatedAt < HIRING_CACHE_TTL ? entry : null;
+}
+
+function writeHiringCache(key, data) {
+  appState.hiring.cache[key] = { ...data, updatedAt: Date.now() };
+}
+
+function invalidateHiringCache() {
+  appState.hiring.cache = {};
+  appState.hiring.lastLoadedAt = 0;
+}
 
 function hiringRequireAuth() {
   if (hasAccountAccess()) return true;
@@ -5159,100 +5219,219 @@ function hiringPostUrl(postId) {
   return `${location.origin}${location.pathname}#${COMMUNITY_ROUTE}-${encodeURIComponent(postId)}`;
 }
 
-async function loadHiringPosts({ force = false } = {}) {
+function mergePublicProfiles(profiles = []) {
+  if (!Array.isArray(profiles) || !profiles.length) return;
+  const byId = new Map(appState.publicProfiles.map((profile) => [String(profile.id), profile]));
+  profiles.forEach((profile) => {
+    if (profile?.id) byId.set(String(profile.id), { ...(byId.get(String(profile.id)) || {}), ...profile });
+  });
+  appState.publicProfiles = [...byId.values()];
+}
+
+async function getCommunityProfilesForIds(userIds = []) {
+  const ids = [...new Set(userIds.filter(Boolean).map(String))].filter((id) => !profileForUserId(id));
+  if (!supabaseClient || !ids.length) return [];
+  const stop = perfStart("Community profiles query");
+  const { data, error } = await withTimeout(
+    supabaseClient.from("public_profiles").select(HIRING_PROFILE_SELECT).in("id", ids).limit(ids.length),
+    1800,
+    "A Comunidade ANSEND demorou para carregar perfis."
+  );
+  stop();
+  if (error) throw error;
+  mergePublicProfiles(data || []);
+  return data || [];
+}
+
+async function getCommunityRecommendedProfiles({ limit = 4 } = {}) {
+  if (!supabaseClient) return [];
+  const stop = perfStart("Recommended professionals query");
+  const { data, error } = await withTimeout(
+    supabaseClient
+      .from("public_profiles")
+      .select(HIRING_PROFILE_SELECT)
+      .eq("is_public", true)
+      .order("updated_at", { ascending: false })
+      .limit(limit),
+    1800,
+    "A Comunidade ANSEND demorou para carregar profissionais."
+  );
+  stop();
+  if (error) throw error;
+  mergePublicProfiles(data || []);
+  return data || [];
+}
+
+async function getFollowingIdsForCommunity() {
+  if (!supabaseClient || !appState.authUser?.id) return [];
+  const stop = perfStart("Community following query");
+  const { data, error } = await withTimeout(
+    supabaseClient.from("user_follows").select("following_id").eq("follower_id", appState.authUser.id).limit(200),
+    1500,
+    "A Comunidade ANSEND demorou para carregar quem voce segue."
+  );
+  stop();
+  if (error) throw error;
+  return (data || []).map((row) => row.following_id).filter(Boolean);
+}
+
+async function queryHiringPosts(detailId = hiringDetailIdFromHash()) {
+  const stop = perfStart("Community posts query");
+  let query = supabaseClient
+    .from("hiring_posts")
+    .select(HIRING_POST_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(detailId ? 1 : HIRING_POST_LIMIT);
+
+  if (detailId) {
+    query = query.eq("id", detailId);
+  } else if (appState.hiring.activeTab === "mine") {
+    if (!appState.authUser?.id) return [];
+    query = query.eq("user_id", appState.authUser.id);
+  } else if (appState.hiring.activeTab === "following") {
+    const followingIds = await getFollowingIdsForCommunity();
+    if (!followingIds.length) return [];
+    query = query.eq("visibility", "public").in("user_id", followingIds);
+  } else {
+    query = query.eq("visibility", "public");
+  }
+
+  const filters = appState.hiring.filters || {};
+  if (!detailId && filters.category && filters.category !== "todos") query = query.eq("category", filters.category);
+  if (!detailId && filters.deadline && filters.deadline !== "todos") query = query.eq("deadline_type", filters.deadline);
+  if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
+  if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
+
+  const { data, error } = await withTimeout(query, 2200, "A Comunidade ANSEND demorou para responder.");
+  stop();
+  if (error) throw error;
+  let posts = data || [];
+  if (!detailId && filters.budget) {
+    const max = Number(filters.budget);
+    if (Number.isFinite(max) && max > 0) posts = posts.filter((post) => !post.budget_amount || Number(post.budget_amount) <= max);
+  }
+  return posts;
+}
+
+async function loadHiringPosts({ force = false, render = false } = {}) {
+  const detailId = hiringDetailIdFromHash();
+  const key = hiringCacheKey(detailId);
+  const cached = readHiringCache(key);
   if (!supabaseClient) {
     appState.hiring.posts = [];
     appState.hiring.error = "";
     appState.hiring.loading = false;
     appState.hiring.lastLoadedAt = Date.now();
+    if (render) updateHiringBlocks();
     return [];
   }
-  const detailId = hiringDetailIdFromHash();
-  const fresh = Date.now() - Number(appState.hiring.lastLoadedAt || 0) < 12000;
-  if (!force && !detailId && fresh && appState.hiring.posts.length) return appState.hiring.posts;
+  if (!force && cached) {
+    appState.hiring.posts = cached.posts.map((post) => ({ ...post }));
+    appState.hiring.comments = { ...cached.comments };
+    appState.hiring.proposals = [...cached.proposals];
+    appState.hiring.error = "";
+    appState.hiring.loading = false;
+    appState.hiring.lastLoadedAt = cached.updatedAt;
+    if (render) updateHiringBlocks();
+    if (Date.now() - cached.updatedAt < 12000) return appState.hiring.posts;
+  }
+
+  const requestId = ++appState.hiring.activeRequestId;
   appState.hiring.loading = true;
   appState.hiring.error = "";
+  if (render) updateHiringBlocks();
+
   try {
-    await withTimeout(loadPublicPlatformData(), 4500, "A Comunidade ANSEND demorou para carregar os perfis.");
-    let query = supabaseClient.from("hiring_posts").select("*").order("created_at", { ascending: false }).limit(80);
-    if (detailId) {
-      query = query.eq("id", detailId).limit(1);
-    } else if (appState.hiring.activeTab === "mine") {
-      if (!appState.authUser) {
-        appState.hiring.posts = [];
-        return [];
-      }
-      query = query.eq("user_id", appState.authUser.id);
-    } else {
-      query = query.eq("visibility", "public");
-    }
-    const filters = appState.hiring.filters || {};
-    if (!detailId && filters.category && filters.category !== "todos") query = query.eq("category", filters.category);
-    if (!detailId && filters.deadline && filters.deadline !== "todos") query = query.eq("deadline_type", filters.deadline);
-    if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
-    if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
-    const { data, error } = await withTimeout(query, 6500, "A Comunidade ANSEND demorou para responder.");
-    if (error) throw error;
-    let posts = data || [];
-    if (!detailId && appState.hiring.activeTab === "following") posts = [];
-    if (!detailId && filters.budget) {
-      const max = Number(filters.budget);
-      if (Number.isFinite(max) && max > 0) posts = posts.filter((post) => !post.budget_amount || Number(post.budget_amount) <= max);
-    }
+    const posts = await queryHiringPosts(detailId);
+    if (requestId !== appState.hiring.activeRequestId) return appState.hiring.posts;
     appState.hiring.posts = posts.map((post) => ({ ...post, metrics: {}, viewer: {} }));
     appState.hiring.detailId = detailId;
+
+    await Promise.allSettled([
+      getCommunityProfilesForIds(appState.hiring.posts.map((post) => post.user_id)),
+      getCommunityRecommendedProfiles({ limit: 4 }).catch((error) => {
+        appState.hiring.railError = error.message || "Nao foi possivel carregar profissionais.";
+        return [];
+      }),
+      loadHiringEngagement(appState.hiring.posts),
+    ]);
+
+    if (requestId !== appState.hiring.activeRequestId) return appState.hiring.posts;
     appState.hiring.lastLoadedAt = Date.now();
-    await loadHiringEngagement(appState.hiring.posts);
+    appState.hiring.error = "";
+    writeHiringCache(key, {
+      posts: appState.hiring.posts.map((post) => ({ ...post })),
+      comments: { ...appState.hiring.comments },
+      proposals: [...appState.hiring.proposals],
+    });
     return appState.hiring.posts;
   } catch (error) {
     console.error("[ANSEND hiring] load failed", error);
-    appState.hiring.error = error.message || "Nao foi possivel carregar a Comunidade ANSEND.";
-    appState.hiring.posts = [];
-    return [];
+    appState.hiring.error = error.message || "Nao foi possivel carregar publicacoes.";
+    if (!cached) appState.hiring.posts = [];
+    return appState.hiring.posts;
   } finally {
-    appState.hiring.loading = false;
+    if (requestId === appState.hiring.activeRequestId) {
+      appState.hiring.loading = false;
+      if (render) updateHiringBlocks();
+      if (perfEnabled() && appState.hiring.routeStartedAt) {
+        console.info(`[PERF] Community fully interactive: ${Math.round(performance.now() - appState.hiring.routeStartedAt)}ms`);
+      }
+    }
   }
 }
 
 async function loadHiringEngagement(posts = appState.hiring.posts) {
   const ids = posts.map((post) => post.id).filter(Boolean);
   if (!supabaseClient || !ids.length) return;
-  const [likes, saves, reposts, interests, comments, proposals] = await withTimeout(Promise.all([
+  const stop = perfStart("Community engagement queries");
+  const results = await withTimeout(Promise.allSettled([
     supabaseClient.from("hiring_likes").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_saves").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_reposts").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
-    supabaseClient.from("hiring_comments").select("*").in("post_id", ids).order("created_at", { ascending: true }),
-    supabaseClient.from("hiring_proposals").select("*").in("post_id", ids).order("created_at", { ascending: false }),
-  ]), 5500, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
+    supabaseClient.from("hiring_comments").select("id,post_id,user_id,parent_id,content,created_at").in("post_id", ids).order("created_at", { ascending: true }),
+    supabaseClient.from("hiring_proposals").select("id,post_id,sender_id,receiver_id,message,proposed_amount,delivery_deadline,portfolio_links,status,created_at").in("post_id", ids).order("created_at", { ascending: false }),
+  ]), 2200, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
     console.warn("[ANSEND community] engagement fallback", error?.message || error);
-    return [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    return [];
   });
-  const rowsFor = (result) => result.error ? [] : (result.data || []);
+  stop();
+  const safe = (index) => {
+    const result = results[index];
+    if (result?.status !== "fulfilled" || result.value?.error) return [];
+    return result.value.data || [];
+  };
+  const likes = safe(0);
+  const saves = safe(1);
+  const reposts = safe(2);
+  const interests = safe(3);
+  const comments = safe(4);
+  const proposals = safe(5);
   const groupedComments = {};
-  rowsFor(comments).forEach((comment) => {
+  comments.forEach((comment) => {
     groupedComments[comment.post_id] = groupedComments[comment.post_id] || [];
     groupedComments[comment.post_id].push(comment);
   });
   appState.hiring.comments = groupedComments;
-  appState.hiring.proposals = rowsFor(proposals);
+  appState.hiring.proposals = proposals;
   const currentUserId = appState.authUser?.id || "";
   posts.forEach((post) => {
     const postRows = (rows) => rows.filter((row) => row.post_id === post.id);
     post.metrics = {
-      likes: postRows(rowsFor(likes)).length,
-      saves: postRows(rowsFor(saves)).length,
-      reposts: postRows(rowsFor(reposts)).length,
-      interests: postRows(rowsFor(interests)).length,
+      likes: postRows(likes).length,
+      saves: postRows(saves).length,
+      reposts: postRows(reposts).length,
+      interests: postRows(interests).length,
       comments: groupedComments[post.id]?.length || 0,
-      proposals: postRows(rowsFor(proposals)).length,
+      proposals: postRows(proposals).length,
     };
     post.viewer = {
-      liked: postRows(rowsFor(likes)).some((row) => row.user_id === currentUserId),
-      saved: postRows(rowsFor(saves)).some((row) => row.user_id === currentUserId),
-      reposted: postRows(rowsFor(reposts)).some((row) => row.user_id === currentUserId),
-      interested: postRows(rowsFor(interests)).some((row) => row.user_id === currentUserId),
-      proposed: postRows(rowsFor(proposals)).some((row) => row.sender_id === currentUserId),
+      liked: postRows(likes).some((row) => row.user_id === currentUserId),
+      saved: postRows(saves).some((row) => row.user_id === currentUserId),
+      reposted: postRows(reposts).some((row) => row.user_id === currentUserId),
+      interested: postRows(interests).some((row) => row.user_id === currentUserId),
+      proposed: postRows(proposals).some((row) => row.sender_id === currentUserId),
     };
   });
 }
@@ -5399,7 +5578,11 @@ function hiringRightRailMarkup() {
         <div><strong>${htmlEscape(profile.name)}</strong><small>@${htmlEscape(profile.username || sanitizeHandle(profile.name))} · ${htmlEscape(profile.role)}</small></div>
         <button type="button" data-action="producer" ${profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name })}>Ver</button>
       </article>`).join("")
-    : `<p class="hiring-rail-muted">Complete perfis publicos para aparecerem aqui.</p>`;
+    : appState.hiring.loading
+      ? `<div class="hiring-rail-skeleton"><span></span><span></span><span></span></div>`
+      : appState.hiring.railError
+        ? `<p class="hiring-rail-muted">Nao foi possivel carregar profissionais.</p>`
+        : `<p class="hiring-rail-muted">Complete perfis publicos para aparecerem aqui.</p>`;
   return `<aside class="hiring-right-rail" aria-label="Widgets da Comunidade ANSEND">
     <section>
       <h2>Complete seu perfil</h2>
@@ -5425,20 +5608,47 @@ function hiringRightRailMarkup() {
   </aside>`;
 }
 
-async function renderHiringPage(options = {}) {
+function hiringFeedMarkup() {
   const detailId = hiringDetailIdFromHash();
-  await loadHiringPosts({ force: Boolean(options.force || detailId) });
-  const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas publicacoes"]];
   const isFollowing = appState.hiring.activeTab === "following" && !detailId;
-  const postsMarkup = appState.hiring.loading
-    ? `<div class="hiring-skeleton"><span></span><span></span><span></span></div>`
+  return appState.hiring.loading && !appState.hiring.posts.length
+    ? `<div class="hiring-skeleton" aria-label="Carregando publicacoes"><span></span><span></span><span></span><span></span><span></span></div>`
     : appState.hiring.error
-      ? `<section class="hiring-empty is-error"><i data-lucide="triangle-alert"></i><h2>Nao foi possivel carregar</h2><p>${htmlEscape(appState.hiring.error)}</p><button type="button" data-action="hiring-refresh">Tentar novamente</button></section>`
+      ? `<section class="hiring-empty is-error"><i data-lucide="triangle-alert"></i><h2>Nao foi possivel carregar publicacoes</h2><p>${htmlEscape(appState.hiring.error)}</p><button type="button" data-action="hiring-refresh">Tentar novamente</button></section>`
       : isFollowing
         ? hiringEmptyMarkup("Voce ainda nao segue conversas da comunidade.", "Quando houver um sistema de conexoes ativo, esta aba mostrara somente publicacoes de quem voce segue.")
         : appState.hiring.posts.length
           ? appState.hiring.posts.map((post) => hiringPostCardMarkup(post, { detail: Boolean(detailId) })).join("")
           : hiringEmptyMarkup();
+}
+
+function updateHiringBlocks() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  const feed = document.querySelector(".hiring-feed");
+  if (feed) feed.innerHTML = hiringFeedMarkup();
+  const rail = document.querySelector(".hiring-right-rail");
+  if (rail) rail.outerHTML = hiringRightRailMarkup();
+  hydrateView();
+}
+
+async function renderHiringPage(options = {}) {
+  const stop = perfStart("Community route mounted");
+  appState.hiring.routeStartedAt = performance.now();
+  const detailId = hiringDetailIdFromHash();
+  const key = hiringCacheKey(detailId);
+  const cached = readHiringCache(key);
+  if (cached && !options.force) {
+    appState.hiring.posts = cached.posts.map((post) => ({ ...post }));
+    appState.hiring.comments = { ...cached.comments };
+    appState.hiring.proposals = [...cached.proposals];
+    appState.hiring.error = "";
+    appState.hiring.loading = false;
+  } else if (!appState.hiring.posts.length || options.force || detailId) {
+    appState.hiring.loading = true;
+    appState.hiring.error = "";
+  }
+  const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas publicacoes"]];
+  const postsMarkup = hiringFeedMarkup();
   appView.innerHTML = `<main class="hiring-page hiring-native-layout" aria-labelledby="hiringTitlePage">
     <section class="hiring-feed-shell">
       <header class="hiring-topbar">
@@ -5453,6 +5663,8 @@ async function renderHiringPage(options = {}) {
   </main>`;
   PageTransition(appView, COMMUNITY_ROUTE);
   hydrateView();
+  stop();
+  loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
 }
 
 async function submitHiringPost(form) {
@@ -5483,6 +5695,7 @@ async function submitHiringPost(form) {
     showToast(error.message || "Nao foi possivel publicar.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   form.reset();
   appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
   await loadHiringEngagement(appState.hiring.posts);
@@ -5505,6 +5718,7 @@ async function toggleHiringAction(kind, postId) {
     showToast(result.error.message || "Acao nao concluida.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   post.viewer[viewerKey] = !isActive;
   post.metrics[metricKey] = Math.max(0, Number(post.metrics[metricKey] || 0) + (isActive ? -1 : 1));
   renderHiringPage({ force: false });
@@ -5519,6 +5733,7 @@ async function sendHiringInterest(postId) {
     showToast(error.message || "Nao foi possivel enviar interesse.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   post.viewer.interested = true;
   post.metrics.interests = Math.max(1, Number(post.metrics.interests || 0) + 1);
   showToast("Interesse enviado", "hand");
@@ -5557,6 +5772,7 @@ async function submitHiringProposal(form) {
     showToast(error.message || "Nao foi possivel enviar proposta.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   appState.hiring.proposals.unshift(data);
   post.viewer.proposed = true;
   post.metrics.proposals = Number(post.metrics.proposals || 0) + 1;
@@ -5575,6 +5791,7 @@ async function submitHiringComment(form) {
     showToast(error.message || "Nao foi possivel comentar.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   appState.hiring.comments[postId] = [...(appState.hiring.comments[postId] || []), data];
   const post = appState.hiring.posts.find((item) => item.id === postId);
   if (post) post.metrics.comments = Number(post.metrics.comments || 0) + 1;
@@ -5589,6 +5806,7 @@ async function deleteHiringComment(commentId) {
     showToast(error.message || "Nao foi possivel apagar comentario.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   Object.keys(appState.hiring.comments).forEach((postId) => {
     appState.hiring.comments[postId] = appState.hiring.comments[postId].filter((comment) => comment.id !== commentId);
   });
@@ -5602,6 +5820,7 @@ async function updateHiringStatus(postId, status) {
     showToast(error.message || "Nao foi possivel alterar status.", "triangle-alert");
     return;
   }
+  invalidateHiringCache();
   appState.hiring.posts = appState.hiring.posts.map((post) => post.id === postId ? { ...post, ...data } : post);
   showToast("Status atualizado", "badge-check");
   renderHiringPage({ force: false });
@@ -7597,6 +7816,7 @@ async function initAuth() {
   }
   const previousUserId = appState.authUser?.id || null;
   appState.authLoading = true;
+  const stopAuthPerf = perfStart("Auth session loaded");
   const sessionPromise = supabaseClient.auth.getSession();
   try {
     const sessionResult = await withAuthTimeout(sessionPromise, "getSession");
@@ -7639,6 +7859,7 @@ async function initAuth() {
     appState.authReady = true;
     appState.authLoading = false;
     syncAccountUi();
+    stopAuthPerf();
   }
   if (appState.authUser && shouldRedirectAfterOAuth) {
     clearOAuthRedirectIntent();
@@ -11514,6 +11735,7 @@ function syncPrimaryNavbarVisibility(route) {
 }
 
 function renderRoute() {
+  const stopShellPerf = perfStart("App shell route render");
   const route = currentRoute();
   lastRoute = route;
   const institutionalFooter = document.querySelector(".footer");
@@ -11557,7 +11779,6 @@ function renderRoute() {
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === COMMUNITY_ROUTE) {
-    appView.innerHTML = `<main class="hiring-page"><section class="hiring-feed-shell"><div class="hiring-skeleton"><span></span><span></span><span></span></div></section></main>`;
     renderHiringPage();
   }
   if (route === "perfil") renderProfile();
@@ -11580,6 +11801,7 @@ function renderRoute() {
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
   PageTransition(appView, route);
   hydrateView();
+  stopShellPerf();
 }
 
 const TOASTS_ENABLED = false;

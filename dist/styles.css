@@ -24571,6 +24571,19 @@ body[data-route="contratacoes"] #appView.app-view {
   animation: hiringPulse 1.3s ease-in-out infinite;
 }
 
+.hiring-rail-skeleton {
+  display: grid;
+  gap: 10px;
+}
+
+.hiring-rail-skeleton span {
+  display: block;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #101214, #202327, #101214);
+  animation: hiringPulse 1.3s ease-in-out infinite;
+}
+
 .hiring-back {
   display: inline-flex;
   align-items: center;
