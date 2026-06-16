@@ -2771,9 +2771,10 @@ async function generateContentEmbedding(targetType, targetId, item) {
   const textContent = contentEmbeddingText(targetType, item);
   if (!textContent.trim()) return;
   try {
+    const headers = await recommendationAuthHeaders();
     await fetch("/api/recommendations/embed-content", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ targetType, targetId, textContent }),
     });
   } catch (error) {
