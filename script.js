@@ -1307,6 +1307,13 @@ const appState = {
     railLoading: false,
     railError: "",
     routeStartedAt: 0,
+    promotedAd: {
+      item: null,
+      loading: false,
+      error: "",
+      activeRequestId: 0,
+      trackedImpressionId: "",
+    },
   },
   isAdmin: false,
   adminProfiles: [],
@@ -5219,6 +5226,10 @@ function hiringPostUrl(postId) {
   return `${location.origin}${location.pathname}#${COMMUNITY_ROUTE}-${encodeURIComponent(postId)}`;
 }
 
+function communityBeatUrl(beatId) {
+  return `${location.origin}${location.pathname}#beat-${encodeURIComponent(beatId)}`;
+}
+
 function mergePublicProfiles(profiles = []) {
   if (!Array.isArray(profiles) || !profiles.length) return;
   const byId = new Map(appState.publicProfiles.map((profile) => [String(profile.id), profile]));
@@ -5502,6 +5513,140 @@ function hiringEmptyMarkup(title = "Nenhuma publicacao ainda.", text = "Seja o p
   return `<section class="hiring-empty"><i data-lucide="messages-square"></i><h2>${htmlEscape(title)}</h2><p>${htmlEscape(text)}</p><button type="button" data-action="hiring-focus-composer">Criar publicacao</button></section>`;
 }
 
+function normalizePromotedBeatAd(row = {}) {
+  const targetUrl = row.target_url || (row.beat_id ? communityBeatUrl(row.beat_id) : "#catalogo");
+  const priceLabel = row.price_label || (Number(row.price || 0)
+    ? Number(row.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+        style: "currency",
+        currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+      })
+    : "");
+  return {
+    id: row.id || "",
+    beatId: row.beat_id || "",
+    title: row.title || "Beat impulsionado",
+    artist: row.artist_name || row.producer_name || "Produtor ANSEND",
+    cover: row.cover_url || row.youtube_thumbnail_url || "assets/ansend-logo-square.png",
+    priceLabel,
+    tag: row.tagline || row.genre || "Beat em destaque",
+    targetUrl,
+    impressions: Number(row.impressions || 0),
+    clicks: Number(row.clicks || 0),
+  };
+}
+
+function communityAdPlaceholderMarkup({ loading = false } = {}) {
+  return `<article class="community-ad-card is-placeholder ${loading ? "is-loading" : ""}" aria-label="Espaco de anuncio da Comunidade ANSEND">
+    <div class="community-ad-kicker"><span>Anuncio</span><small>ANSEND Ads</small></div>
+    <div class="community-ad-placeholder-art" aria-hidden="true">
+      <i data-lucide="audio-lines"></i>
+      <span></span>
+      <span></span>
+    </div>
+    <div class="community-ad-copy">
+      <strong>${loading ? "Carregando destaque" : "Anuncie seu beat aqui"}</strong>
+      <p>${loading ? "Buscando campanhas ativas da comunidade." : "Impulsione seu beat para aparecer na Comunidade ANSEND."}</p>
+    </div>
+    <a class="community-ad-cta" href="#ofertas" data-route="ofertas">Criar anuncio</a>
+  </article>`;
+}
+
+function communityAdMarkup() {
+  const adState = appState.hiring.promotedAd;
+  if (adState.loading && !adState.item) return communityAdPlaceholderMarkup({ loading: true });
+  const ad = adState.item;
+  if (!ad) return communityAdPlaceholderMarkup();
+  return `<article class="community-ad-card" data-promoted-ad-id="${htmlEscape(ad.id)}" aria-label="Beat impulsionado: ${htmlEscape(ad.title)}">
+    <div class="community-ad-kicker"><span>Anuncio</span><small>Impulsionado</small></div>
+    <a class="community-ad-cover" href="${htmlEscape(ad.targetUrl)}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
+      ${optimizedImageMarkup({ src: ad.cover, alt: `Capa de ${ad.title}`, width: 260, height: 320 })}
+    </a>
+    <div class="community-ad-copy">
+      <span>${htmlEscape(ad.tag)}</span>
+      <strong>${htmlEscape(ad.title)}</strong>
+      <p>${htmlEscape(ad.artist)}</p>
+      ${ad.priceLabel ? `<em>${htmlEscape(ad.priceLabel)}</em>` : ""}
+    </div>
+    <a class="community-ad-cta" href="${htmlEscape(ad.targetUrl)}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}">Ver beat</a>
+  </article>`;
+}
+
+function communityAdRailMarkup() {
+  return `<aside class="community-ad-rail" aria-label="Anuncios pagos da Comunidade ANSEND">
+    ${communityAdMarkup()}
+  </aside>`;
+}
+
+function updateCommunityAdRail() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  const rail = document.querySelector(".community-ad-rail");
+  if (rail) rail.innerHTML = communityAdMarkup();
+  hydrateView();
+}
+
+function validPromotedBeatWindow(row = {}) {
+  const now = Date.now();
+  const startsAt = row.starts_at ? Date.parse(row.starts_at) : null;
+  const endsAt = row.ends_at ? Date.parse(row.ends_at) : null;
+  return (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
+}
+
+async function loadCommunityPromotedAd({ render = false } = {}) {
+  const adState = appState.hiring.promotedAd;
+  if (!supabaseClient) {
+    adState.item = null;
+    adState.loading = false;
+    adState.error = "";
+    if (render) updateCommunityAdRail();
+    return null;
+  }
+  const requestId = ++adState.activeRequestId;
+  adState.loading = true;
+  adState.error = "";
+  if (render) updateCommunityAdRail();
+  try {
+    const query = supabaseClient
+      .from("promoted_beats")
+      .select("id,beat_id,user_id,title,artist_name,producer_name,cover_url,youtube_thumbnail_url,target_url,price,price_label,tagline,genre,status,starts_at,ends_at,impressions,clicks,created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    const { data, error } = await withTimeout(query, 1600, "A area de anuncios demorou para responder.");
+    if (requestId !== adState.activeRequestId) return adState.item;
+    if (error) throw error;
+    const active = (data || []).filter(validPromotedBeatWindow);
+    adState.item = active.length ? normalizePromotedBeatAd(active[Math.floor(Math.random() * active.length)]) : null;
+    adState.error = "";
+    if (adState.item?.id && adState.trackedImpressionId !== adState.item.id) {
+      adState.trackedImpressionId = adState.item.id;
+      trackCommunityAdEvent("impression", adState.item.id);
+    }
+    return adState.item;
+  } catch (error) {
+    console.warn("[ANSEND community ads] fallback", error?.message || error);
+    if (requestId === adState.activeRequestId) {
+      adState.item = null;
+      adState.error = error?.message || "Nao foi possivel carregar anuncios.";
+    }
+    return null;
+  } finally {
+    if (requestId === adState.activeRequestId) {
+      adState.loading = false;
+      if (render) updateCommunityAdRail();
+    }
+  }
+}
+
+async function trackCommunityAdEvent(kind, adId) {
+  if (!supabaseClient || !adId) return;
+  const rpcName = kind === "click" ? "increment_promoted_beat_click" : "increment_promoted_beat_impression";
+  try {
+    await supabaseClient.rpc(rpcName, { p_ad_id: adId });
+  } catch (error) {
+    console.warn("[ANSEND community ads] tracking skipped", error?.message || error);
+  }
+}
+
 function hiringCommentMarkup(comment) {
   const author = hiringAuthorDisplay(comment.user_id);
   return `<article class="hiring-comment" data-comment-id="${htmlEscape(comment.id)}">
@@ -5626,6 +5771,7 @@ function updateHiringBlocks() {
   if (currentRoute() !== COMMUNITY_ROUTE) return;
   const feed = document.querySelector(".hiring-feed");
   if (feed) feed.innerHTML = hiringFeedMarkup();
+  updateCommunityAdRail();
   const rail = document.querySelector(".hiring-right-rail");
   if (rail) rail.outerHTML = hiringRightRailMarkup();
   hydrateView();
@@ -5650,6 +5796,7 @@ async function renderHiringPage(options = {}) {
   const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas publicacoes"]];
   const postsMarkup = hiringFeedMarkup();
   appView.innerHTML = `<main class="hiring-page hiring-native-layout" aria-labelledby="hiringTitlePage">
+    ${communityAdRailMarkup()}
     <section class="hiring-feed-shell">
       <header class="hiring-topbar">
         <div><h1 id="hiringTitlePage">${COMMUNITY_TITLE}</h1><p>${COMMUNITY_SUBTITLE}</p></div>
@@ -5663,6 +5810,7 @@ async function renderHiringPage(options = {}) {
   </main>`;
   hydrateView();
   stop();
+  loadCommunityPromotedAd({ render: true });
   loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
 }
 
@@ -12922,6 +13070,13 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const communityAdLink = event.target.closest("[data-action='community-ad-open']");
+  if (communityAdLink) {
+    const adId = communityAdLink.dataset.adId || communityAdLink.closest("[data-promoted-ad-id]")?.dataset.promotedAdId || "";
+    trackCommunityAdEvent("click", adId);
+    return;
+  }
+
   const chatSuggestion = event.target.closest("[data-action='nexo-chat-suggestion']");
   if (chatSuggestion) {
     event.preventDefault();
