@@ -25059,3 +25059,41 @@ body[data-route="comunidade"] .section-transition__content {
     display: flex !important;
   }
 }
+/* Personalized recommendations */
+.recommendation-reason,
+.professional-card-reason,
+.profile-recommendation-reason p {
+  color: rgba(245, 245, 245, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.recommendation-reason {
+  margin: 2px 0 0;
+  max-width: 16rem;
+}
+
+.professional-card-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-height: 38px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.professional-card-reason i {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: #ff8a1f;
+  margin-top: 2px;
+}
+
+.profile-recommendation-reason {
+  border: 1px solid rgba(255, 138, 31, 0.18);
+  background: rgba(255, 138, 31, 0.06);
+}
