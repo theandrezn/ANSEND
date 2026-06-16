@@ -49,6 +49,269 @@ Se nao houver dados reais de marketplace disponiveis, sugira apenas categorias d
 Seja objetivo, estrategico, profissional, util e escreva em portugues brasileiro.`;
 }
 
+function supabaseServiceConfig(env) {
+  const url = env.SUPABASE_URL || env.ANSEND_SUPABASE_URL || "";
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || "";
+  const publishableKey = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || "";
+  return { url: String(url).replace(/\/$/, ""), serviceKey, publishableKey };
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function cleanRecommendationText(value, max = 6000) {
+  return String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+function cleanStringList(value, maxItems = 10) {
+  return Array.isArray(value)
+    ? value.map((item) => cleanRecommendationText(item, 80)).filter(Boolean).slice(0, maxItems)
+    : [];
+}
+
+async function createEmbedding(text, env) {
+  if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY nao configurada.");
+  const response = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "text-embedding-3-small",
+      input: cleanRecommendationText(text, 8000),
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(safeOpenAiError(data));
+  const embedding = data?.data?.[0]?.embedding;
+  if (!Array.isArray(embedding) || embedding.length !== 1536) {
+    throw new Error("Embedding invalido retornado pela OpenAI.");
+  }
+  return embedding;
+}
+
+async function supabaseRest(env, path, init = {}) {
+  const { url, serviceKey } = supabaseServiceConfig(env);
+  if (!url || !serviceKey) {
+    return { configured: false, data: null, error: "SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nao configurados." };
+  }
+  const response = await fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation,resolution=merge-duplicates",
+      ...(init.headers || {}),
+    },
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    return { configured: true, data: null, error: data?.message || data?.hint || text || "Erro Supabase." };
+  }
+  return { configured: true, data, error: null };
+}
+
+async function supabaseRpc(env, fn, payload, authHeader = "") {
+  const { url, serviceKey, publishableKey } = supabaseServiceConfig(env);
+  const key = serviceKey || publishableKey;
+  if (!url || !key) {
+    return { configured: false, data: null, error: "SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY nao configurados." };
+  }
+  const response = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: authHeader || `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    return { configured: true, data: null, error: data?.message || data?.hint || text || "Erro Supabase." };
+  }
+  return { configured: true, data, error: null };
+}
+
+async function handleEmbedContent(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 });
+  }
+
+  const targetType = cleanRecommendationText(payload?.targetType, 40);
+  const targetId = cleanRecommendationText(payload?.targetId, 80);
+  const textContent = cleanRecommendationText(payload?.textContent, 8000);
+  if (!["post", "beat", "professional", "service", "user_interest"].includes(targetType) || !isUuid(targetId) || textContent.length < 8) {
+    return jsonResponse({ success: false, error: "Conteudo insuficiente para gerar embedding." }, { status: 400 });
+  }
+
+  try {
+    const embedding = await createEmbedding(textContent, env);
+    const write = await supabaseRest(env, "content_embeddings?on_conflict=target_type,target_id", {
+      method: "POST",
+      body: JSON.stringify([{
+        target_type: targetType,
+        target_id: targetId,
+        text_content: textContent,
+        embedding: `[${embedding.join(",")}]`,
+        updated_at: new Date().toISOString(),
+      }]),
+    });
+    if (write.error && !write.configured && request.headers.get("Authorization")) {
+      const rpcWrite = await supabaseRpc(env, "upsert_content_embedding", {
+        p_target_type: targetType,
+        p_target_id: targetId,
+        p_text_content: textContent,
+        p_embedding: `[${embedding.join(",")}]`,
+      }, request.headers.get("Authorization") || "");
+      if (rpcWrite.error) {
+        return jsonResponse({ success: false, configured: rpcWrite.configured, error: rpcWrite.error }, { status: rpcWrite.configured ? 502 : 200 });
+      }
+      return jsonResponse({ success: true, configured: true });
+    }
+    if (write.error) {
+      return jsonResponse({ success: false, configured: write.configured, error: write.error }, { status: write.configured ? 502 : 200 });
+    }
+    return jsonResponse({ success: true, configured: true });
+  } catch (error) {
+    return jsonResponse({ success: false, error: error?.message || "Falha ao gerar embedding." }, { status: 502 });
+  }
+}
+
+function buildInterestSummary(payload = {}) {
+  const genres = cleanStringList(payload.genres, 8);
+  const roles = cleanStringList(payload.rolesInterested, 8);
+  const tags = cleanStringList(payload.intentTags, 12);
+  const recentEvents = Array.isArray(payload.recentEvents) ? payload.recentEvents.slice(-20) : [];
+  return cleanRecommendationText([
+    payload.summary,
+    genres.length ? `Generos de interesse: ${genres.join(", ")}.` : "",
+    roles.length ? `Profissionais buscados: ${roles.join(", ")}.` : "",
+    tags.length ? `Tags de intencao: ${tags.join(", ")}.` : "",
+    recentEvents.length ? `Eventos recentes: ${recentEvents.map((event) => `${event.eventType || event.event_type || "evento"} em ${event.targetType || event.target_type || "conteudo"}`).join("; ")}.` : "",
+  ].filter(Boolean).join(" "), 5000);
+}
+
+async function handleUpdateInterest(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 });
+  }
+
+  const summary = buildInterestSummary(payload);
+  if (!summary) return jsonResponse({ success: false, error: "Resumo de interesse vazio." }, { status: 400 });
+
+  try {
+    const embedding = await createEmbedding(summary, env);
+    const write = await supabaseRpc(env, "update_user_interest_profile", {
+      p_summary: summary,
+      p_embedding: `[${embedding.join(",")}]`,
+      p_genres: cleanStringList(payload.genres, 8),
+      p_roles_interested: cleanStringList(payload.rolesInterested, 8),
+      p_budget_min: Number.isFinite(Number(payload.budgetMin)) ? Number(payload.budgetMin) : null,
+      p_budget_max: Number.isFinite(Number(payload.budgetMax)) ? Number(payload.budgetMax) : null,
+      p_intent_tags: cleanStringList(payload.intentTags, 12),
+    }, request.headers.get("Authorization") || "");
+    if (write.error) {
+      return jsonResponse({ success: false, configured: write.configured, summary, error: write.error }, { status: write.configured ? 502 : 200 });
+    }
+    return jsonResponse({ success: true, configured: true, summary });
+  } catch (error) {
+    return jsonResponse({ success: false, summary, error: error?.message || "Falha ao atualizar interesse." }, { status: 502 });
+  }
+}
+
+function nexoIntentSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["intent", "needed_role", "genre", "style_reference", "urgency", "budget_max", "intent_tags"],
+    properties: {
+      intent: { type: "string" },
+      needed_role: { type: "string" },
+      genre: { type: "array", items: { type: "string" }, maxItems: 6 },
+      style_reference: { type: "array", items: { type: "string" }, maxItems: 8 },
+      urgency: { type: "string" },
+      budget_max: { type: ["number", "null"] },
+      intent_tags: { type: "array", items: { type: "string" }, maxItems: 10 },
+    },
+  };
+}
+
+async function handleNexoIntent(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 });
+  }
+  const message = cleanRecommendationText(payload?.message, 1800);
+  if (!message) return jsonResponse({ success: false, error: "Mensagem vazia." }, { status: 400 });
+  if (!env.OPENAI_API_KEY) return jsonResponse({ success: false, error: "OPENAI_API_KEY nao configurada." }, { status: 500 });
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: env.NEXO_INTENT_MODEL || "gpt-5-mini",
+        reasoning: { effort: "low" },
+        max_output_tokens: 700,
+        input: [
+          { role: "developer", content: "Extraia intencao musical estruturada para recomendacoes da ANSEND. Responda apenas no schema." },
+          { role: "user", content: message },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "nexo_intent",
+            strict: true,
+            schema: nexoIntentSchema(),
+          },
+        },
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(safeOpenAiError(data));
+    const output = extractOutputText(data);
+    const intent = JSON.parse(output);
+    return jsonResponse({ success: true, intent });
+  } catch (error) {
+    return jsonResponse({ success: false, error: error?.message || "Falha ao extrair intencao." }, { status: 502 });
+  }
+}
+
 function cleanChatMessage(message) {
   const role = message?.role === "assistant" ? "assistant" : message?.role === "user" ? "user" : null;
   const content = String(message?.content || "")
@@ -280,6 +543,18 @@ export default {
 
     if (url.pathname === "/api/nexo/chat") {
       return handleNexoChat(request, env);
+    }
+
+    if (url.pathname === "/api/recommendations/embed-content") {
+      return handleEmbedContent(request, env);
+    }
+
+    if (url.pathname === "/api/recommendations/update-interest") {
+      return handleUpdateInterest(request, env);
+    }
+
+    if (url.pathname === "/api/recommendations/nexo-intent") {
+      return handleNexoIntent(request, env);
     }
 
     if (url.pathname === "/api/geo") {

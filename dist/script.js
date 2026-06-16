@@ -1308,6 +1308,9 @@ const appState = {
   nexoChatMessages: [],
   nexoChatLoading: false,
   nexoChatError: "",
+  recommendations: { professionals: [], feed: [], updatedAt: 0 },
+  recommendationsLoading: false,
+  recommendationImpressions: new Set(),
   authUser: initialAuthCache?.user || null,
   authSession: undefined,
   authLoading: Boolean(supabaseClient),
@@ -2132,6 +2135,10 @@ const smartCombos = [
 const MUSIC_PROFILE_KEY = "ansend_user_music_profile";
 const MUSIC_ONBOARDING_KEY = "ansend_onboarding_completed";
 const MUSIC_RECS_KEY = "ansend_last_recommendations";
+const RECOMMENDATION_CACHE_KEY = "ansend_recommendation_cache_v1";
+const RECOMMENDATION_CACHE_TTL_MS = 4 * 60 * 1000;
+const RECOMMENDATION_EVENTS_BUFFER_KEY = "ansend_recommendation_events_buffer";
+const RECOMMENDATION_EMBEDDING_SYNC_KEY = "ansend_embedding_sync_v1";
 const FIRST_ACCOUNT_QUIZ_PREFIX = "ansend_first_account_quiz_completed:";
 const PENDING_ACCOUNT_QUIZ_KEY = "ansend_pending_account_quiz";
 
@@ -2219,6 +2226,7 @@ function saveMusicProfile(profile) {
   localStorage.setItem(MUSIC_PROFILE_KEY, JSON.stringify(normalized));
   localStorage.setItem(MUSIC_ONBOARDING_KEY, "true");
   localStorage.setItem(MUSIC_RECS_KEY, JSON.stringify(buildNexoRecommendations(normalized, false)));
+  scheduleRecommendationProfileUpdate({ genres: normalized.genres, intentTags: [normalized.objective, normalized.stage, ...asArray(normalized.vibes)].filter(Boolean) });
   return normalized;
 }
 
@@ -2379,11 +2387,126 @@ function getRecommendedPlaylists(profile = getMusicProfile()) {
 }
 
 function getRecommendedProfessionals(profile = getMusicProfile()) {
+  if (appState.recommendations?.professionals?.length) {
+    const recommended = appState.recommendations.professionals;
+    const recommendedIds = new Set(recommended.map((item) => String(item.id)));
+    const baseProfile = profile || createDefaultMusicProfile();
+    const remaining = activeProfessionalProfiles()
+      .filter((item) => !recommendedIds.has(String(item.id)))
+      .map((item) => withMatch(baseProfile, professionalMatchCandidate(item)))
+      .sort((a, b) => b.match.score - a.match.score);
+    return [...recommended, ...remaining].slice(0, 6);
+  }
   const baseProfile = profile || createDefaultMusicProfile();
   return activeProfessionalProfiles()
     .map((item) => withMatch(baseProfile, professionalMatchCandidate(item)))
     .sort((a, b) => b.match.score - a.match.score)
     .slice(0, 6);
+}
+
+function applyProfessionalRecommendations(rows = []) {
+  const byId = new Map(activeProfessionalProfiles().map((profile) => [String(profile.id), profile]));
+  return rows
+    .map((row) => {
+      const source = row.professional || {};
+      const base = byId.get(String(row.target_id || source.id)) || profileToProfessional(source);
+      if (!base) return null;
+      const score = Math.max(1, Math.min(99, Math.round(Number(row.score || 0))));
+      return {
+        ...base,
+        recommendationReason: row.reason || "Recomendado com base no seu comportamento na ANSEND.",
+        match: {
+          score,
+          label: score >= 82 ? "Match alto" : score >= 62 ? "Bom match" : "Match inicial",
+          reasons: [row.reason || "perfil com fit para seu momento musical"],
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
+function applyFeedRecommendations(rows = []) {
+  const byTarget = new Map();
+  getNexoFeedItems().forEach((item) => {
+    const target = recommendationTargetFromFeedItem(item);
+    if (target.targetId) byTarget.set(`${target.targetType}:${target.targetId}`, item);
+  });
+  return rows
+    .map((row) => {
+      const item = byTarget.get(`${row.target_type}:${row.target_id}`);
+      if (!item) return null;
+      return {
+        ...item,
+        feedMatch: {
+          score: Math.max(1, Math.min(100, Math.round(Number(row.score || 0)))),
+          reasons: [row.reason || "recomendado pelo seu comportamento"],
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
+async function loadPersonalizedRecommendations({ force = false } = {}) {
+  if (!supabaseClient || !appState.authUser || appState.recommendationsLoading) return appState.recommendations;
+  const cached = !force ? getRecommendationCache() : null;
+  if (cached) {
+    appState.recommendations = {
+      professionals: cached.professionals || [],
+      feed: cached.feed || [],
+      updatedAt: cached.savedAt || Date.now(),
+    };
+    return appState.recommendations;
+  }
+  appState.recommendationsLoading = true;
+  try {
+    const [professionalsResult, feedResult] = await Promise.all([
+      supabaseClient.rpc("get_recommended_professionals", { p_user_id: appState.authUser.id, p_limit: 12 }),
+      supabaseClient.rpc("get_recommended_feed", { p_user_id: appState.authUser.id, p_limit: 40 }),
+    ]);
+    if (professionalsResult.error) throw professionalsResult.error;
+    const recommendations = {
+      professionals: applyProfessionalRecommendations(professionalsResult.data || []),
+      feed: feedResult.error ? [] : applyFeedRecommendations(feedResult.data || []),
+      updatedAt: Date.now(),
+    };
+    appState.recommendations = recommendations;
+    setRecommendationCache(recommendations);
+    return recommendations;
+  } catch (error) {
+    console.warn("[ANSEND recommendations] personalized load skipped", error?.message || error);
+    return appState.recommendations;
+  } finally {
+    appState.recommendationsLoading = false;
+  }
+}
+
+async function recordRecommendationImpression(targetType, targetId, score = 0, reason = "") {
+  if (!supabaseClient || !appState.authUser || !isUuid(targetId)) return;
+  const key = `${targetType}:${targetId}:${Math.round(Number(score || 0))}`;
+  if (appState.recommendationImpressions.has(key)) return;
+  appState.recommendationImpressions.add(key);
+  try {
+    await supabaseClient.from("recommendation_impressions").insert({
+      user_id: appState.authUser.id,
+      target_type: targetType,
+      target_id: targetId,
+      score: Number(score || 0),
+      reason: String(reason || "").slice(0, 300),
+    });
+  } catch (error) {
+    console.warn("[ANSEND recommendations] impression skipped", error?.message || error);
+  }
+}
+
+function recordVisibleRecommendationImpressions(items = [], targetType = "professional") {
+  items.slice(0, 12).forEach((item) => {
+    recordRecommendationImpression(
+      targetType,
+      item.id || item.sourceId,
+      item.match?.score || item.feedMatch?.score || 0,
+      item.recommendationReason || item.feedMatch?.reasons?.[0] || ""
+    );
+  });
 }
 
 function getRecommendedServices(profile = getMusicProfile()) {
@@ -2458,6 +2581,233 @@ function readFeedObject(key) {
   } catch {
     return {};
   }
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function recommendationUserKey() {
+  return appState.authUser?.id || appState.profile?.id || "local-preview";
+}
+
+function readRecommendationCache() {
+  const cache = safeReadJson(RECOMMENDATION_CACHE_KEY, {});
+  return cache && typeof cache === "object" ? cache : {};
+}
+
+function getRecommendationCache(userKey = recommendationUserKey()) {
+  const entry = readRecommendationCache()[userKey];
+  if (!entry || Date.now() - Number(entry.savedAt || 0) > RECOMMENDATION_CACHE_TTL_MS) return null;
+  return entry;
+}
+
+function setRecommendationCache(value, userKey = recommendationUserKey()) {
+  const cache = readRecommendationCache();
+  cache[userKey] = { ...value, savedAt: Date.now() };
+  localStorage.setItem(RECOMMENDATION_CACHE_KEY, JSON.stringify(cache));
+}
+
+function readRecommendationEventBuffer() {
+  return readFeedList(RECOMMENDATION_EVENTS_BUFFER_KEY);
+}
+
+function pushRecommendationEventBuffer(event) {
+  const events = readRecommendationEventBuffer();
+  events.push(event);
+  localStorage.setItem(RECOMMENDATION_EVENTS_BUFFER_KEY, JSON.stringify(events.slice(-80)));
+}
+
+function recommendationAuthHeaders() {
+  return supabaseClient?.auth?.getSession?.()
+    .then(({ data }) => data?.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {})
+    .catch(() => ({}));
+}
+
+function recommendationTargetFromFeedItem(item) {
+  if (!item) return { targetType: "", targetId: "" };
+  const sourceType = item.sourceType || item.type || "";
+  const normalizedType = sourceType === "hiring_posts" || item.type === "post" ? "post"
+    : item.type === "service" ? "service"
+      : item.type === "portfolio" ? "professional"
+        : "beat";
+  return { targetType: normalizedType, targetId: item.sourceId || item.metadata?.beatId || item.id };
+}
+
+function eventTypeForRecommendation(eventType) {
+  const map = {
+    impression: "view",
+    view_50: "view",
+    view_75: "view",
+    view_complete: "view",
+    click_cta: "click",
+    open_profile: "click",
+    add_to_plan: "click",
+    purchase_intent: "buy",
+    not_interested: "skip",
+    skip_fast: "skip",
+    view_similar: "click",
+  };
+  return map[eventType] || eventType;
+}
+
+async function trackUserEvent(eventType, targetType, targetId, metadata = {}) {
+  if (!supabaseClient || !appState.authUser || !isUuid(targetId)) return;
+  const normalizedEvent = eventTypeForRecommendation(eventType);
+  const durationSeconds = Number(metadata.durationSeconds || metadata.watchTimeMs / 1000 || 0) || null;
+  const payload = {
+    eventType: normalizedEvent,
+    targetType,
+    targetId,
+    durationSeconds,
+    metadata: {
+      ...metadata,
+      route: currentRoute(),
+      source: metadata.source || "ansend-web",
+      capturedAt: new Date().toISOString(),
+    },
+  };
+  pushRecommendationEventBuffer(payload);
+  try {
+    const { error } = await supabaseClient.rpc("track_user_event", {
+      p_event_type: normalizedEvent,
+      p_target_type: targetType,
+      p_target_id: targetId,
+      p_duration_seconds: durationSeconds,
+      p_metadata: payload.metadata,
+    });
+    if (error) throw error;
+    scheduleRecommendationProfileUpdate();
+  } catch (error) {
+    console.warn("[ANSEND recommendations] track event skipped", error?.message || error);
+  }
+}
+
+let recommendationProfileUpdateTimer = null;
+
+function recommendationInterestPayload(extra = {}) {
+  const musicProfile = getMusicProfile() || createDefaultMusicProfile();
+  const profile = appState.profile || {};
+  const recentEvents = readRecommendationEventBuffer().slice(-24);
+  const genres = [...new Set([
+    ...asArray(musicProfile.genres),
+    ...asArray(profile.music_styles),
+    ...asArray(extra.genres),
+  ].filter(Boolean))].slice(0, 8);
+  const rolesInterested = [...new Set([
+    musicProfile.userType,
+    profile.account_role,
+    ...asArray(extra.rolesInterested),
+  ].filter(Boolean))].slice(0, 8);
+  const intentTags = [...new Set([
+    musicProfile.objective,
+    musicProfile.stage,
+    ...asArray(musicProfile.vibes),
+    ...asArray(extra.intentTags),
+  ].filter(Boolean))].slice(0, 12);
+  const summary = [
+    `Usuario ANSEND: ${profile.display_name || profile.artistic_name || profile.full_name || appState.authUser?.email || "sem nome"}.`,
+    genres.length ? `Generos: ${genres.join(", ")}.` : "",
+    rolesInterested.length ? `Interesse em perfis: ${rolesInterested.join(", ")}.` : "",
+    musicProfile.objective ? `Objetivo: ${musicProfile.objective}.` : "",
+    musicProfile.references ? `Referencias: ${musicProfile.references}.` : "",
+    extra.summary || "",
+  ].filter(Boolean).join(" ");
+  return {
+    summary,
+    genres,
+    rolesInterested,
+    budgetMin: extra.budgetMin || null,
+    budgetMax: extra.budgetMax || null,
+    intentTags,
+    recentEvents,
+  };
+}
+
+async function updateRecommendationInterestProfile(extra = {}) {
+  if (!appState.authUser) return;
+  try {
+    const headers = await recommendationAuthHeaders();
+    await fetch("/api/recommendations/update-interest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(recommendationInterestPayload(extra)),
+    });
+  } catch (error) {
+    console.warn("[ANSEND recommendations] interest update skipped", error?.message || error);
+  }
+}
+
+function scheduleRecommendationProfileUpdate(extra = {}) {
+  if (!appState.authUser) return;
+  clearTimeout(recommendationProfileUpdateTimer);
+  recommendationProfileUpdateTimer = setTimeout(() => updateRecommendationInterestProfile(extra), 1800);
+}
+
+function contentEmbeddingText(targetType, item = {}) {
+  if (targetType === "professional") {
+    return [
+      `Profissional: ${item.display_name || item.artistic_name || item.full_name || item.name || "ANSEND"}.`,
+      `Tipo: ${accountRoleLabel(item.account_role || item.role || "artista")}.`,
+      `Generos: ${asArray(item.music_styles || item.tags).join(", ")}.`,
+      `Descricao: ${item.bio || item.specialty || ""}.`,
+      `Links: ${[item.website_url, item.instagram_url, item.youtube_url, item.spotify_url].filter(Boolean).join(", ")}.`,
+    ].join(" ");
+  }
+  if (targetType === "post") {
+    return [
+      `Post: ${item.title || "Oportunidade ANSEND"}.`,
+      `Categoria: ${item.category || ""}.`,
+      `Descricao: ${item.description || ""}.`,
+      `Orcamento: ${item.budget_amount || ""} ${item.currency || ""}.`,
+      `Prazo: ${item.deadline_type || ""}.`,
+    ].join(" ");
+  }
+  return [
+    `Beat ou musica: ${item.title || "Sem titulo"}.`,
+    `Produtor: ${item.producer_name || item.artist_name || item.producer || ""}.`,
+    `Genero: ${item.genre || asArray(item.tags)[0] || ""}.`,
+    `BPM: ${item.bpm || ""}.`,
+    `Descricao: ${item.description || ""}.`,
+    `Tags: ${asArray(item.tags).join(", ")}.`,
+  ].join(" ");
+}
+
+async function generateContentEmbedding(targetType, targetId, item) {
+  if (!isUuid(targetId)) return;
+  const textContent = contentEmbeddingText(targetType, item);
+  if (!textContent.trim()) return;
+  try {
+    const headers = await recommendationAuthHeaders();
+    await fetch("/api/recommendations/embed-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ targetType, targetId, textContent }),
+    });
+  } catch (error) {
+    console.warn("[ANSEND recommendations] embedding skipped", error?.message || error);
+  }
+}
+
+function scheduleContentEmbeddingSync(items = []) {
+  const syncState = safeReadJson(RECOMMENDATION_EMBEDDING_SYNC_KEY, {});
+  const pending = items
+    .filter((entry) => isUuid(entry.targetId))
+    .filter((entry) => {
+      const version = String(entry.updatedAt || entry.createdAt || "");
+      const key = `${entry.targetType}:${entry.targetId}`;
+      return version && syncState[key] !== version;
+    })
+    .slice(0, 12);
+  if (!pending.length) return;
+  setTimeout(async () => {
+    const latest = safeReadJson(RECOMMENDATION_EMBEDDING_SYNC_KEY, {});
+    for (const entry of pending) {
+      await generateContentEmbedding(entry.targetType, entry.targetId, entry.item);
+      latest[`${entry.targetType}:${entry.targetId}`] = String(entry.updatedAt || entry.createdAt || new Date().toISOString());
+    }
+    localStorage.setItem(RECOMMENDATION_EMBEDDING_SYNC_KEY, JSON.stringify(latest));
+  }, 1600);
 }
 
 function writeFeedItems(items) {
@@ -2632,6 +2982,14 @@ function writeNexoFeedEvent(itemId, eventType, meta = {}) {
   history[itemId] = current;
   localStorage.setItem(NEXO_FEED_HISTORY_KEY, JSON.stringify(history));
   updateNexoTasteFromEvent(item, eventType);
+  const target = recommendationTargetFromFeedItem(item);
+  trackUserEvent(eventType, target.targetType, target.targetId, {
+    source: "nexo-feed",
+    feedItemId: itemId,
+    watchTimeMs: watchTime,
+    durationSeconds: Math.round(watchTime / 1000),
+    completionRate: event.completionRate,
+  });
 }
 
 function updateNexoTasteFromEvent(item, eventType) {
@@ -2690,6 +3048,11 @@ function calculateNexoFeedScore(item, profile = getMusicProfile()) {
 }
 
 function getRankedNexoFeed(limit = 14) {
+  if (appState.recommendations?.feed?.length) {
+    const hidden = new Set(readFeedList(NEXO_FEED_NOT_INTERESTED_KEY));
+    const personalized = appState.recommendations.feed.filter((item) => !hidden.has(item.id));
+    if (personalized.length) return personalized.slice(0, limit);
+  }
   const profile = getMusicProfile() || createDefaultMusicProfile();
   const hidden = new Set(readFeedList(NEXO_FEED_NOT_INTERESTED_KEY));
   const pool = getNexoFeedItems()
@@ -2772,6 +3135,10 @@ function renderNexoFeed() {
       <button type="button" data-action="nexo-feed-next" aria-label="Descer no feed"><i data-lucide="chevron-down"></i></button>
     </div>` : ""}
   </section>`;
+  items.slice(0, 12).forEach((item) => {
+    const target = recommendationTargetFromFeedItem(item);
+    recordRecommendationImpression(target.targetType, target.targetId, item.feedMatch?.score || 0, item.feedMatch?.reasons?.[0] || "");
+  });
 }
 
 function nexoFeedPlaybackSvg(mode = "play") {
@@ -3105,13 +3472,13 @@ function renderHomeDashboard() {
   if (hasProfile) {
     setText("featuredPreviewTitle", `<i data-lucide="audio-lines"></i>Beats preferidos pela NEXO`, `Mapeados por estilo, fase e objetivo: ${musicProfileSummary(profile)}`);
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStepShort")}`, profile.objective || "NEXO");
-    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Profissionais e servicos com maior match para voce" : "Professionals and services with the strongest fit for you");
+    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>Recomendado para vocÃª`, appLocale.current === "pt-BR" ? "Profissionais e servicos com maior match para voce" : "Professionals and services with the strongest fit for you");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes montados para sua fase atual" : "Packages shaped for your current stage");
     setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
   } else {
     setText("featuredPreviewTitle", `<i data-lucide="flame"></i>${t("section.catalogs")}`, t("section.catalogsSubtitle"));
     setText("quickActionsTitle", `<i data-lucide="zap"></i>${t("section.nextStep")}`, appLocale.current === "pt-BR" ? "Responda o quiz e desbloqueie recomendacoes reais" : "Answer the quiz and unlock real recommendations");
-    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>${t("section.recommended")}`, appLocale.current === "pt-BR" ? "Seis sugestoes principais para resolver seu lancamento agora" : "Six top suggestions to move your release forward");
+    setText("nexoRecommendationsTitle", `<i data-lucide="sparkles"></i>Recomendado para vocÃª`, appLocale.current === "pt-BR" ? "Seis sugestoes principais para resolver seu lancamento agora" : "Six top suggestions to move your release forward");
     setText("categoryTitle", `<i data-lucide="layout-grid"></i>${t("section.categories")}`, appLocale.current === "pt-BR" ? "Os gêneros musicais em destaque na ANSEND." : "Featured music genres on ANSEND.");
     setText("smartCombosTitle", `<i data-lucide="boxes"></i>${t("section.combos")}`, appLocale.current === "pt-BR" ? "Pacotes inteligentes para sair da ideia ate a divulgacao." : "Smart packages from idea to promotion.");
     setText("featuredProfessionalsTitle", `<i data-lucide="badge-check"></i>Profissionais recomendados`, appLocale.current === "pt-BR" ? "Perfis verificados com fit para seu projeto" : "Verified profiles that fit your project");
@@ -3134,6 +3501,7 @@ function renderHomeDashboard() {
       ? items.map((item) => professionalMatchCard(item.match ? item : { ...item, match: { score: 100, reasons: ["Perfil cadastrado"] } })).join("")
       : emptyState("users-round", "Nenhum profissional cadastrado", "Crie sua conta profissional para aparecer nesta área.", "vendedor");
   }
+  if (professionals) recordVisibleRecommendationImpressions((hasProfile ? recs.professionals : realProfessionals), "professional");
   if (professionals?.querySelector(".empty-state")) {
     professionals.innerHTML = `<section class="recommended-professionals-empty">Nenhum profissional recomendado ainda.</section>`;
   }
@@ -4297,6 +4665,11 @@ async function loadPublicPlatformData() {
     ...beats.map((item) => ({ ...item, source_table: "beats" })),
   ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   syncCatalogCompatibilityState();
+  scheduleContentEmbeddingSync([
+    ...profiles.map((item) => ({ targetType: "professional", targetId: item.id, item, updatedAt: item.updated_at, createdAt: item.created_at })),
+    ...appState.publicCatalogItems.map((item) => ({ targetType: "beat", targetId: item.id, item, updatedAt: item.updated_at, createdAt: item.created_at })),
+  ]);
+  await loadPersonalizedRecommendations();
 }
 
 async function loadOwnedCatalogItems() {
@@ -5447,8 +5820,10 @@ function resolvePublicProfile(slug) {
     ].filter(Boolean).map(sanitizeHandle);
     return cleanSlug && candidates.includes(cleanSlug);
   };
-  if (current && matches(current)) return current;
-  return appState.publicProfiles.find(matches) || null;
+  const found = current && matches(current) ? current : appState.publicProfiles.find(matches) || null;
+  if (!found) return null;
+  const recommendation = (appState.recommendations?.professionals || []).find((item) => String(item.id) === String(found.id));
+  return recommendation ? { ...found, recommendationReason: recommendation.recommendationReason } : found;
 }
 
 function renderProfileNotFound(slug) {
@@ -5550,6 +5925,7 @@ function renderPublicProfile() {
     renderProfileNotFound(slug);
     return;
   }
+  trackUserEvent("view", "professional", profile.id, { source: "public-profile" });
   renderSpotifyProfile({ profile, isOwner: false });
 }
 
@@ -7512,6 +7888,32 @@ async function callNexoChatApi(messages) {
   return data.message;
 }
 
+async function extractNexoIntent(message) {
+  if (!appState.authUser || !message) return null;
+  try {
+    const response = await fetch("/api/recommendations/nexo-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.success || !data.intent) return null;
+    const intent = data.intent;
+    trackUserEvent("nexo_intent", "user_interest", appState.authUser.id, { source: "nexo-chat", intent });
+    scheduleRecommendationProfileUpdate({
+      summary: JSON.stringify(intent),
+      genres: intent.genre || [],
+      rolesInterested: [intent.needed_role].filter(Boolean),
+      budgetMax: intent.budget_max || null,
+      intentTags: [...asArray(intent.intent_tags), intent.intent, intent.urgency].filter(Boolean),
+    });
+    return intent;
+  } catch (error) {
+    console.warn("[ANSEND recommendations] NEXO intent skipped", error?.message || error);
+    return null;
+  }
+}
+
 async function sendNexoChatMessage(rawMessage) {
   const content = String(rawMessage || "").trim();
   if (!content || appState.nexoChatLoading) return;
@@ -7523,6 +7925,7 @@ async function sendNexoChatMessage(rawMessage) {
   hydrateView();
 
   try {
+    extractNexoIntent(content);
     const answer = await callNexoChatApi(messages);
     messages.push({
       id: nexoChatId("assistant"),
@@ -7600,7 +8003,6 @@ function professionalCard(profile) {
     <div class="professional-card-tags">
       ${profile.tags && profile.tags.length ? profile.tags.map((tag) => `<span>${htmlEscape(tag)}</span>`).join("") : `<span class="professional-card-tag-fallback">${htmlEscape(profile.role)}</span>`}
     </div>
-    
     <!-- Statistics Block -->
     <div class="professional-card-stats">
       <div class="professional-card-stat-item">
@@ -7648,7 +8050,11 @@ function professionalCategorySummary(category) {
 function renderProducers() {
   appState.professionalCategory = appState.professionalCategory || "todos";
   const selectedCategory = appState.professionalCategory;
-  const profiles = activeProfessionalProfiles();
+  const recommendedIds = new Set((appState.recommendations?.professionals || []).map((profile) => String(profile.id)));
+  const profiles = [
+    ...(appState.recommendations?.professionals || []),
+    ...activeProfessionalProfiles().filter((profile) => !recommendedIds.has(String(profile.id))),
+  ];
   const visibleProfiles = selectedCategory === "todos"
     ? profiles
     : profiles.filter((profile) => profile.category === selectedCategory);
@@ -7671,6 +8077,7 @@ function renderProducers() {
         ${visibleProfiles.map(professionalCard).join("")}
       </div>
     </section>`;
+  recordVisibleRecommendationImpressions(visibleProfiles, "professional");
 }
 
 function renderPlaylistDetail() {
@@ -7757,6 +8164,7 @@ function licenseTermsMarkup(plan) {
 function renderBeatDetail() {
   const hashId = location.hash.replace("#beat-", "");
   const item = findBeat(hashId);
+  trackUserEvent("view", "beat", item?.raw?.id || item?.id || hashId, { source: "beat-detail" });
   const ownerProfile = profileForUserId(item.user_id || item.raw?.user_id);
   const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
   const producerName = String(item.producer || "ANSEND").replace(/^prod\.\s*/i, "");
@@ -10422,12 +10830,16 @@ window.addEventListener("load", () => {
 }, { once: true });
 
 function handleFavorite(id) {
+  const item = findBeat(id);
+  const rawId = item?.raw?.id || item?.id || id;
   if (appState.favorites.has(id)) {
     appState.favorites.delete(id);
     showToast("Removido dos favoritos", "heart");
+    trackUserEvent("skip", "beat", rawId, { source: "favorite-toggle" });
   } else {
     appState.favorites.add(id);
     showToast("Adicionado aos favoritos", "heart");
+    trackUserEvent("save", "beat", rawId, { source: "favorite-toggle" });
   }
   persistState();
   if (currentRoute() === "favoritos") renderRoute();
@@ -10439,6 +10851,8 @@ function handleFavorite(id) {
 }
 
 function handleBuy(id, selectedPlan = "premium") {
+  const item = findBeat(id);
+  trackUserEvent("buy", "beat", item?.raw?.id || item?.id || id, { source: "buy-button", selectedPlan });
   addToCart(id, selectedPlan);
   location.hash = "carrinho";
 }
@@ -10817,6 +11231,7 @@ document.addEventListener("focusin", (event) => {
 document.querySelector(".search")?.addEventListener("submit", (event) => {
   event.preventDefault();
   appState.query = document.querySelector("#search").value;
+  trackUserEvent("search", "user_interest", appState.authUser?.id, { source: "global-search", query: appState.query });
   location.hash = "explorar";
   if (currentRoute() === "explorar") renderRoute();
 });
@@ -11215,6 +11630,8 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "professional-contact") {
+    const profileId = target.dataset.profileId || target.closest(".professional-card")?.dataset.id || resolveProfileReference({ title: target.dataset.title })?.id || "";
+    trackUserEvent("hire", "professional", profileId, { source: "professional-contact", title: target.dataset.title || "" });
     openProfessionalContract(target.dataset.title);
     return;
   }
@@ -11676,12 +12093,16 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "producer") {
+    const profileId = target.dataset.profileId || resolveProfileReference({ username: target.dataset.profileUsername, title: target.dataset.title })?.id || "";
+    trackUserEvent("click", "professional", profileId, { source: "producer-open", title: target.dataset.title || "" });
     const route = publicProfileRouteFromTarget(target);
     if (route) location.hash = route;
     return;
   }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
   if (action === "follow-producer") {
+    const profileId = target.dataset.profileId || target.closest(".profile-page")?.querySelector(".profile-action[data-action='professional-contact']")?.dataset.profileId || "";
+    trackUserEvent("follow", "professional", profileId || resolvePublicProfile(location.hash.replace("#perfil-", ""))?.id || "", { source: "follow-producer" });
     target.classList.toggle("is-following");
     if (target.closest(".professional-card")) {
       target.setAttribute("aria-pressed", target.classList.contains("is-following") ? "true" : "false");
