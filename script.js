@@ -1312,6 +1312,8 @@ const appState = {
   recommendations: { professionals: [], feed: [], updatedAt: 0 },
   recommendationsLoading: false,
   recommendationImpressions: new Set(),
+  releaseMode: "",
+  catalogImport: null,
   authUser: initialAuthCache?.user || null,
   authSession: undefined,
   authLoading: Boolean(supabaseClient),
@@ -4580,10 +4582,18 @@ function catalogItemToBeat(item) {
     owner_username: ownerProfile?.username || ownerProfile?.handle || item.profile_username || item.username || item.owner_username || "",
     title: item.title || "Sem titulo",
     producer: producerName,
-    cover: item.cover_url || item.coverUrl || item.artworkUrl || item.image || item.thumbnail || item.cover || "assets/ansend-logo-square.png",
+    cover: item.cover_url || item.youtube_thumbnail_url || item.coverUrl || item.artworkUrl || item.image || item.thumbnail || item.cover || "assets/ansend-logo-square.png",
     audio: item.audio_url || "",
     audio_url: item.audio_url || "",
     audio_path: item.audio_path || "",
+    source_type: item.source_type || (item.youtube_video_id ? "youtube" : "upload"),
+    youtube_url: item.youtube_url || "",
+    youtube_video_id: item.youtube_video_id || "",
+    youtube_embed_url: item.youtube_embed_url || "",
+    youtube_thumbnail_url: item.youtube_thumbnail_url || "",
+    youtube_title: item.youtube_title || "",
+    youtube_channel_title: item.youtube_channel_title || "",
+    catalog_batch_id: item.catalog_batch_id || null,
     tags,
     price,
     badge: item.status === "published" ? "" : "Rascunho",
@@ -4599,6 +4609,54 @@ function dedupeById(items) {
     seen.add(item.id);
     return true;
   });
+}
+
+function extractYouTubeVideoId(input = "") {
+  const raw = String(input || "").trim();
+  if (!raw || /<|>|iframe|script|javascript:/i.test(raw)) return null;
+  let url;
+  try {
+    url = new URL(raw);
+  } catch (_error) {
+    return null;
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  const allowedHosts = new Set(["youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "youtube-nocookie.com"]);
+  if (!allowedHosts.has(host)) return null;
+  if (host === "youtu.be") return sanitizeYouTubeId(url.pathname.slice(1).split("/")[0]);
+  if (url.pathname.startsWith("/watch")) return sanitizeYouTubeId(url.searchParams.get("v"));
+  if (url.pathname.startsWith("/shorts/")) return sanitizeYouTubeId(url.pathname.split("/")[2]);
+  if (url.pathname.startsWith("/embed/")) return sanitizeYouTubeId(url.pathname.split("/")[2]);
+  return null;
+}
+
+function sanitizeYouTubeId(value = "") {
+  const id = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+}
+
+function youtubeMetadataFromUrl(url = "") {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return null;
+  return {
+    youtube_url: `https://www.youtube.com/watch?v=${videoId}`,
+    youtube_video_id: videoId,
+    youtube_embed_url: `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`,
+    youtube_thumbnail_url: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+  };
+}
+
+function titleFromFileName(name = "") {
+  return String(name || "Beat ANSEND")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase()) || "Beat ANSEND";
+}
+
+function isYoutubeBeat(item = {}) {
+  return (item.source_type || item.raw?.source_type) === "youtube" || Boolean(item.youtube_video_id || item.raw?.youtube_video_id);
 }
 
 function isAdminUser(user = appState.authUser) {
@@ -4836,6 +4894,28 @@ async function publishBeat(payload) {
     .single();
   if (error && hasMissingColumnError(error, "is_public")) {
     const { is_public, ...legacyPayload } = publicPayload;
+    ({ data, error } = await supabaseClient
+      .from("beats")
+      .upsert(legacyPayload)
+      .select()
+      .single());
+  }
+  if (error && /source_type|catalog_batch_id|import_source|import_status|original_file_name|sort_order|youtube_|schema cache|column/i.test(error.message || "")) {
+    const {
+      source_type,
+      catalog_batch_id,
+      import_source,
+      import_status,
+      original_file_name,
+      sort_order,
+      youtube_url,
+      youtube_video_id,
+      youtube_embed_url,
+      youtube_thumbnail_url,
+      youtube_title,
+      youtube_channel_title,
+      ...legacyPayload
+    } = publicPayload;
     ({ data, error } = await supabaseClient
       .from("beats")
       .upsert(legacyPayload)
@@ -8358,6 +8438,18 @@ function renderBeatDetail() {
   const likes = Number(item.raw?.likes_count || (appState.favorites.has(item.id) ? 1 : 0) || 11).toLocaleString("pt-BR");
   const tags = [...new Set([genre, ...(item.tags || [])])].filter(Boolean).slice(0, 5);
   const description = item.raw?.description || "Preview profissional pronto para licenciamento na ANSEND.";
+  const youtubeBeat = isYoutubeBeat(item);
+  const youtubeEmbed = youtubeBeat
+    ? (item.youtube_embed_url || item.raw?.youtube_embed_url || youtubeMetadataFromUrl(item.youtube_url || item.raw?.youtube_url || item.youtube_video_id || item.raw?.youtube_video_id)?.youtube_embed_url || "")
+    : "";
+  const sidebarMedia = youtubeEmbed
+    ? `<div class="beat-sidebar-youtube">
+        <iframe src="${htmlEscape(youtubeEmbed)}" title="Player incorporado de ${htmlEscape(item.title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>`
+    : `<button class="beat-sidebar-cover" type="button" data-action="play" data-id="${htmlEscape(item.id)}" aria-label="Tocar preview de ${htmlEscape(item.title)}">
+        <img src="${htmlEscape(item.cover)}" alt="Capa do beat ${htmlEscape(item.title)}">
+        <span><i data-lucide="play"></i></span>
+      </button>`;
   const licenseCards = Object.entries(licensePlans).map(([keyId, plan]) => `<button class="beat-license-card ${keyId === selectedLicense ? "is-selected" : ""}" type="button" data-action="select-beat-license" data-license="${keyId}" data-price="${htmlEscape(plan.price)}" aria-pressed="${keyId === selectedLicense ? "true" : "false"}">
     <span>${htmlEscape(plan.label)}</span>
     <strong>${htmlEscape(plan.price)}</strong>
@@ -8375,10 +8467,7 @@ function renderBeatDetail() {
       <div class="beat-detail-shell">
         <aside class="beat-sidebar-card" aria-label="Preview do beat">
           ${adminDeleteButton("beat", item)}
-          <button class="beat-sidebar-cover" type="button" data-action="play" data-id="${htmlEscape(item.id)}" aria-label="Tocar preview de ${htmlEscape(item.title)}">
-            <img src="${htmlEscape(item.cover)}" alt="Capa do beat ${htmlEscape(item.title)}">
-            <span><i data-lucide="play"></i></span>
-          </button>
+          ${sidebarMedia}
           <h1>${htmlEscape(item.title)}</h1>
           <button class="beat-sidebar-producer" type="button" data-action="producer" ${profileTargetAttrs({ id: item.user_id || item.raw?.user_id || "", username: item.owner_username || item.raw?.profile_username || "", title: producerName })}>
             ${htmlEscape(producerName)}
@@ -9769,7 +9858,521 @@ function hydrateReleaseDetailsStep(form, producerName, genreOptions, keyOptions)
   `;
 }
 
-function renderMusicUpload() {
+function renderReleaseModeSelector() {
+  appView.innerHTML = `${pageIntro("cadastrar")}<section class="release-mode-selector">
+    <header>
+      <span>ANSEND RELEASE</span>
+      <h2>Como voce quer publicar?</h2>
+      <p>Escolha entre upload proprio, incorporacao segura do YouTube ou importacao em lote para catalogos completos.</p>
+    </header>
+    <div class="release-mode-grid">
+      <button type="button" data-action="release-mode-choice" data-mode="upload">
+        <i data-lucide="upload-cloud"></i>
+        <strong>Beat individual - Upload</strong>
+        <small>Envie capa e arquivo de audio pelo Supabase Storage.</small>
+      </button>
+      <button type="button" data-action="release-mode-choice" data-mode="youtube">
+        <i data-lucide="youtube"></i>
+        <strong>Beat individual - YouTube</strong>
+        <small>Incorpore o player oficial sem oferecer saida para o YouTube.</small>
+      </button>
+      <button type="button" data-action="release-mode-choice" data-mode="catalog">
+        <i data-lucide="library-big"></i>
+        <strong>Importar Catalogo</strong>
+        <small>Suba varios arquivos ou cole varios links para publicar em lote.</small>
+      </button>
+    </div>
+  </section>`;
+  lucide.createIcons();
+}
+
+function renderYouTubeBeatUpload() {
+  const display = profileDisplayData(activeProfile());
+  appView.innerHTML = `${pageIntro("cadastrar", `<button type="button" class="release-back-inline" data-action="release-mode-choice" data-mode="selector"><i data-lucide="chevron-left"></i>Trocar modo</button>`)}
+  <section class="youtube-release-page">
+    <form class="youtube-release-form" data-youtube-release-form>
+      <header>
+        <span>Beat individual - YouTube</span>
+        <h2>Publicar beat por link incorporado</h2>
+        <p>Salve apenas metadados seguros e use o player oficial incorporado da ANSEND, sem baixar audio e sem salvar iframe bruto.</p>
+      </header>
+      <label class="release-field release-wide"><span class="release-label">Link do YouTube *</span><input name="youtube_url" type="url" placeholder="https://youtu.be/xxxxxxxxxxx" required></label>
+      <div class="youtube-release-preview" data-youtube-preview>
+        <i data-lucide="youtube"></i>
+        <span>Cole um link valido para gerar a previa.</span>
+      </div>
+      <div class="release-form-grid">
+        <label class="release-field release-wide"><span class="release-label">Nome do beat *</span><input name="title" type="text" placeholder="Nome do beat" required></label>
+        <label class="release-field"><span class="release-label">Produtor</span><input name="producer_name" value="${htmlEscape(display.name || "ANSEND")}" required></label>
+        <label class="release-field"><span class="release-label">Genero *</span><input name="genre" value="Trap" required></label>
+        <label class="release-field"><span class="release-label">BPM</span><input name="bpm" type="number" min="40" max="240" placeholder="140"></label>
+        <label class="release-field"><span class="release-label">Tom / Key</span><input name="musical_key" placeholder="C Minor"></label>
+        <label class="release-field"><span class="release-label">Preco (R$)</span><input name="price" type="number" min="0" step="0.01" value="99.90"></label>
+        <label class="release-field"><span class="release-label">Licenca</span><select name="license_type"><option value="basic">Basic</option><option value="premium" selected>Premium</option><option value="exclusive">Exclusive</option><option value="free">Free</option></select></label>
+        <label class="release-field release-wide"><span class="release-label">Tags</span><input name="tags" placeholder="trap, dark, melodic"></label>
+        <label class="release-field release-wide"><span class="release-label">Descricao curta</span><textarea name="description" rows="3" placeholder="Descreva o beat."></textarea></label>
+      </div>
+      <label class="release-rights-check"><input type="checkbox" name="rights_confirmed" required> Confirmo que sou dono ou tenho autorizacao para divulgar este beat na ANSEND.</label>
+      <footer>
+        <button type="button" data-action="release-mode-choice" data-mode="selector">Voltar</button>
+        <button type="submit" class="is-primary"><i data-lucide="cloud-check"></i>Publicar beat</button>
+      </footer>
+    </form>
+  </section>`;
+  lucide.createIcons();
+}
+
+async function saveYouTubeBeat(form) {
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Entre na sua conta para publicar.", "shield-alert");
+    return;
+  }
+  const meta = youtubeMetadataFromUrl(form.elements.youtube_url?.value);
+  if (!meta) {
+    showToast("Link do YouTube invalido.", "triangle-alert");
+    return;
+  }
+  if (!form.elements.rights_confirmed?.checked) {
+    showToast("Confirme que voce tem autorizacao para divulgar este beat.", "shield-alert");
+    return;
+  }
+  const duplicate = await findYouTubeDuplicate(meta.youtube_video_id);
+  if (duplicate) {
+    showToast("Este beat parece ja existir no seu catalogo.", "triangle-alert");
+    return;
+  }
+  const tags = String(form.elements.tags?.value || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+  const payload = {
+    id: generateUUID(),
+    title: form.elements.title?.value.trim() || `YouTube ${meta.youtube_video_id}`,
+    producer_name: form.elements.producer_name?.value.trim() || activeProfile()?.display_name || "ANSEND",
+    genre: form.elements.genre?.value.trim() || "Beat",
+    bpm: form.elements.bpm?.value ? Number(form.elements.bpm.value) : null,
+    musical_key: form.elements.musical_key?.value.trim() || null,
+    tags,
+    description: form.elements.description?.value.trim() || null,
+    license_type: form.elements.license_type?.value || "premium",
+    price: form.elements.price?.value ? Number(form.elements.price.value) : 0,
+    status: "published",
+    published_at: new Date().toISOString(),
+    source_type: "youtube",
+    import_source: "youtube_single",
+    import_status: "published",
+    cover_url: meta.youtube_thumbnail_url,
+    ...meta,
+  };
+  const { data, error } = await publishBeat(payload);
+  if (error) {
+    console.error("[ANSEND YouTube release] save failed", error);
+    showToast(error.message || "Nao foi possivel publicar o beat.", "triangle-alert");
+    return;
+  }
+  data.source_table = "beats";
+  appState.publicCatalogItems = dedupeById([data, ...appState.publicCatalogItems.filter((item) => item.id !== data.id)]);
+  appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems.filter((item) => item.id !== data.id)]);
+  showToast("Beat publicado com YouTube.", "youtube");
+  await loadCatalogItems();
+  location.hash = `beat-${data.id}`;
+}
+
+async function findYouTubeDuplicate(videoId) {
+  if (!supabaseClient || !appState.authUser || !videoId) return null;
+  const { data, error } = await supabaseClient
+    .from("beats")
+    .select("id,title")
+    .eq("user_id", appState.authUser.id)
+    .eq("youtube_video_id", videoId)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn("[ANSEND import] duplicate check failed", error);
+    return null;
+  }
+  return data || null;
+}
+
+function defaultCatalogImportState() {
+  return {
+    mode: "multi_upload",
+    items: [],
+    authorized: false,
+    isPublishing: false,
+    bulk: { genre: "", price: "", license_type: "premium", tags: "", description: "" },
+  };
+}
+
+function ensureCatalogImportState() {
+  if (!appState.catalogImport) appState.catalogImport = defaultCatalogImportState();
+  return appState.catalogImport;
+}
+
+function catalogStatusLabel(status) {
+  return {
+    pending: "Pendente",
+    valid: "Valido",
+    invalid: "Invalido",
+    uploading: "Enviando",
+    publishing: "Publicando",
+    published: "Publicado",
+    duplicate: "Duplicado",
+    failed: "Falhou",
+  }[status] || "Pendente";
+}
+
+function catalogImportItemMarkup(item, index) {
+  const cover = item.cover_url || item.youtube_thumbnail_url || "assets/ansend-logo-square.png";
+  const status = item.status || "pending";
+  const disabled = ["uploading", "publishing", "published"].includes(status) ? "disabled" : "";
+  return `<article class="catalog-import-item ${status === "invalid" || status === "failed" || status === "duplicate" ? "has-error" : ""}" data-catalog-item-id="${htmlEscape(item.id)}">
+    <div class="catalog-import-cover">
+      <img src="${htmlEscape(cover)}" alt="Capa de ${htmlEscape(item.title || "beat")}">
+      <span>${index + 1}</span>
+    </div>
+    <div class="catalog-import-fields">
+      <div class="catalog-import-head">
+        <strong>${htmlEscape(item.source_type === "youtube" ? "YouTube incorporado" : "Arquivo de audio")}</strong>
+        <small class="catalog-import-status is-${htmlEscape(status)}">${catalogStatusLabel(status)}</small>
+      </div>
+      <div class="catalog-import-grid">
+        <label>Titulo<input data-action="catalog-item-field" data-field="title" value="${htmlEscape(item.title || "")}" ${disabled}></label>
+        <label>Genero<input data-action="catalog-item-field" data-field="genre" value="${htmlEscape(item.genre || "")}" ${disabled}></label>
+        <label>BPM<input type="number" min="40" max="240" data-action="catalog-item-field" data-field="bpm" value="${htmlEscape(item.bpm || "")}" ${disabled}></label>
+        <label>Key<input data-action="catalog-item-field" data-field="musical_key" value="${htmlEscape(item.musical_key || "")}" ${disabled}></label>
+        <label>Preco<input type="number" min="0" step="0.01" data-action="catalog-item-field" data-field="price" value="${htmlEscape(item.price ?? "99.90")}" ${disabled}></label>
+        <label>Licenca<select data-action="catalog-item-field" data-field="license_type" ${disabled}>
+          ${["basic", "premium", "exclusive", "free"].map((value) => `<option value="${value}" ${String(item.license_type || "premium") === value ? "selected" : ""}>${value}</option>`).join("")}
+        </select></label>
+        <label class="is-wide">Tags<input data-action="catalog-item-field" data-field="tags" value="${htmlEscape(Array.isArray(item.tags) ? item.tags.join(", ") : item.tags || "")}" ${disabled}></label>
+        <label class="is-wide">Descricao<textarea rows="2" data-action="catalog-item-field" data-field="description" ${disabled}>${htmlEscape(item.description || "")}</textarea></label>
+      </div>
+      ${item.source_label ? `<p class="catalog-import-source">${htmlEscape(item.source_label)}</p>` : ""}
+      ${item.error ? `<p class="catalog-import-error">${htmlEscape(item.error)}</p>` : ""}
+    </div>
+    <button type="button" class="catalog-import-remove" data-action="catalog-remove-item" ${disabled} aria-label="Remover item"><i data-lucide="x"></i></button>
+  </article>`;
+}
+
+function renderCatalogImportPage() {
+  const state = ensureCatalogImportState();
+  const validCount = state.items.filter((item) => item.status !== "invalid" && item.status !== "duplicate" && item.status !== "failed").length;
+  const invalidCount = state.items.length - validCount;
+  appView.innerHTML = `${pageIntro("cadastrar", `<button type="button" class="release-back-inline" data-action="release-mode-choice" data-mode="selector"><i data-lucide="chevron-left"></i>Trocar modo</button>`)}
+  <section class="catalog-import-page">
+    <header class="catalog-import-hero">
+      <span>Subir Catalogo de Beats</span>
+      <h2>Importar Catalogo</h2>
+      <p>Publique varios beats por upload de arquivos ou varios links do YouTube incorporados com seguranca.</p>
+    </header>
+    <nav class="catalog-import-mode-tabs" aria-label="Modo de importacao">
+      <button type="button" class="${state.mode === "multi_upload" ? "is-active" : ""}" data-action="catalog-mode" data-mode="multi_upload"><i data-lucide="files"></i>Enviar arquivos</button>
+      <button type="button" class="${state.mode === "youtube_links" ? "is-active" : ""}" data-action="catalog-mode" data-mode="youtube_links"><i data-lucide="youtube"></i>Links do YouTube</button>
+    </nav>
+    ${state.mode === "multi_upload" ? `
+      <label class="catalog-import-dropzone">
+        <input type="file" multiple accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3,audio/mp4,audio/aac,audio/ogg" data-action="catalog-file-input">
+        <i data-lucide="upload-cloud"></i>
+        <strong>Selecione varios arquivos de audio</strong>
+        <small>MP3, WAV, FLAC, M4A, AAC ou OGG. Os arquivos vao para o Supabase Storage.</small>
+      </label>` : `
+      <div class="catalog-import-youtube-box">
+        <label>Links do YouTube<textarea rows="7" data-catalog-youtube-links placeholder="Cole um link por linha. Ex: https://youtu.be/xxxxxxxxxxx"></textarea></label>
+        <button type="button" data-action="catalog-analyze-youtube"><i data-lucide="scan-line"></i>Analisar links</button>
+      </div>`}
+    <section class="catalog-import-bulk-panel">
+      <header><strong>Edicao em lote</strong><small>${state.items.length} itens · ${validCount} validos${invalidCount ? ` · ${invalidCount} com erro` : ""}</small></header>
+      <div>
+        <label>Genero<input data-action="catalog-bulk-field" data-field="genre" value="${htmlEscape(state.bulk.genre)}"></label>
+        <label>Preco<input type="number" min="0" step="0.01" data-action="catalog-bulk-field" data-field="price" value="${htmlEscape(state.bulk.price)}"></label>
+        <label>Licenca<select data-action="catalog-bulk-field" data-field="license_type">
+          ${["basic", "premium", "exclusive", "free"].map((value) => `<option value="${value}" ${state.bulk.license_type === value ? "selected" : ""}>${value}</option>`).join("")}
+        </select></label>
+        <label>Tags<input data-action="catalog-bulk-field" data-field="tags" value="${htmlEscape(state.bulk.tags)}"></label>
+      </div>
+      <footer>
+        <button type="button" data-action="catalog-apply-bulk"><i data-lucide="wand-sparkles"></i>Aplicar nos validos</button>
+        <button type="button" data-action="catalog-remove-invalid"><i data-lucide="circle-x"></i>Remover invalidos</button>
+      </footer>
+    </section>
+    <label class="release-rights-check catalog-rights"><input type="checkbox" data-action="catalog-rights" ${state.authorized ? "checked" : ""}> Confirmo que tenho direitos ou autorizacao para publicar todos os beats importados.</label>
+    <div class="catalog-import-list">
+      ${state.items.length ? state.items.map(catalogImportItemMarkup).join("") : `<div class="catalog-import-empty"><i data-lucide="library-big"></i><strong>Nenhum item analisado ainda</strong><p>Adicione arquivos ou links para revisar antes de publicar.</p></div>`}
+    </div>
+    <footer class="catalog-import-actions">
+      <button type="button" data-action="catalog-reset" ${state.isPublishing ? "disabled" : ""}>Limpar</button>
+      <button type="button" class="is-primary" data-action="catalog-publish" ${state.isPublishing || !validCount ? "disabled" : ""}><i data-lucide="${state.isPublishing ? "loader-circle" : "cloud-check"}"></i>${state.isPublishing ? "Publicando..." : "Publicar catalogo"}</button>
+    </footer>
+  </section>`;
+  lucide.createIcons();
+}
+
+function addCatalogFiles(files) {
+  const state = ensureCatalogImportState();
+  const incoming = [...(files || [])];
+  const accepted = incoming.map((file, index) => {
+    const ext = String(file.name || "").split(".").pop()?.toLowerCase() || "";
+    const valid = /^(audio\/|video\/mp4)/i.test(file.type || "") || ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(ext);
+    const duplicate = state.items.some((item) => item.source_type === "upload" && item.original_file_name === file.name);
+    return {
+      id: generateUUID(),
+      source_type: "upload",
+      file,
+      title: titleFromFileName(file.name),
+      genre: state.bulk.genre || "Beat",
+      bpm: "",
+      musical_key: "",
+      price: state.bulk.price || "99.90",
+      license_type: state.bulk.license_type || "premium",
+      tags: state.bulk.tags || "",
+      description: state.bulk.description || "",
+      original_file_name: file.name,
+      source_label: file.name,
+      sort_order: state.items.length + index,
+      status: valid && !duplicate ? "valid" : duplicate ? "duplicate" : "invalid",
+      error: valid ? (duplicate ? "Arquivo ja adicionado nesta importacao." : "") : "Formato de audio nao permitido.",
+    };
+  });
+  state.items.push(...accepted);
+  renderCatalogImportPage();
+}
+
+function analyzeCatalogYoutubeLinks(text) {
+  const state = ensureCatalogImportState();
+  const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const existing = new Set(state.items.map((item) => item.youtube_video_id).filter(Boolean));
+  const items = lines.map((line, index) => {
+    const meta = youtubeMetadataFromUrl(line);
+    const duplicate = meta?.youtube_video_id && existing.has(meta.youtube_video_id);
+    if (meta?.youtube_video_id) existing.add(meta.youtube_video_id);
+    return {
+      id: generateUUID(),
+      source_type: "youtube",
+      title: meta ? `YouTube Beat ${meta.youtube_video_id}` : "Link invalido",
+      genre: state.bulk.genre || "Beat",
+      bpm: "",
+      musical_key: "",
+      price: state.bulk.price || "99.90",
+      license_type: state.bulk.license_type || "premium",
+      tags: state.bulk.tags || "",
+      description: state.bulk.description || "",
+      sort_order: state.items.length + index,
+      source_label: line,
+      status: meta && !duplicate ? "valid" : duplicate ? "duplicate" : "invalid",
+      error: meta ? (duplicate ? "Link duplicado nesta importacao." : "") : "Link do YouTube invalido ou inseguro.",
+      ...(meta || {}),
+    };
+  });
+  state.items.push(...items);
+  renderCatalogImportPage();
+}
+
+function updateCatalogImportItem(itemId, field, value) {
+  const state = ensureCatalogImportState();
+  const item = state.items.find((entry) => entry.id === itemId);
+  if (!item) return;
+  item[field] = field === "tags" ? value : value;
+}
+
+function applyCatalogBulk() {
+  const state = ensureCatalogImportState();
+  state.items.forEach((item) => {
+    if (["invalid", "duplicate", "failed", "published"].includes(item.status)) return;
+    Object.entries(state.bulk).forEach(([field, value]) => {
+      if (value !== "") item[field] = value;
+    });
+  });
+  renderCatalogImportPage();
+}
+
+async function findUploadDuplicate(fileName) {
+  if (!supabaseClient || !appState.authUser || !fileName) return null;
+  const { data, error } = await supabaseClient
+    .from("beats")
+    .select("id,title")
+    .eq("user_id", appState.authUser.id)
+    .eq("original_file_name", fileName)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.warn("[ANSEND import] file duplicate check failed", error);
+    return null;
+  }
+  return data || null;
+}
+
+async function uploadCatalogAudioFile(item, batchId, progressCallback) {
+  const uploadUser = await currentReleaseUploadUser();
+  const file = item.file;
+  const extension = String(file.name || "").split(".").pop()?.toLowerCase() || "mp3";
+  if (!(/^(audio\/|video\/mp4)/i.test(file.type || "") || ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension))) {
+    throw new Error("Arquivo de audio invalido.");
+  }
+  const safeExt = extension.replace(/[^a-z0-9]/g, "") || "mp3";
+  const base = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), "audio");
+  const path = `${uploadUser.id}/audio/${batchId}/audio-${base}-${Date.now()}-${generateUUID().slice(0, 8)}.${safeExt}`;
+  progressCallback?.(30);
+  const { error } = await withTimeout(
+    supabaseClient.storage.from("beat-audio").upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type || undefined,
+      upsert: false,
+    }),
+    90000,
+    "O upload do audio demorou demais."
+  );
+  if (error) throw error;
+  const { data } = supabaseClient.storage.from("beat-audio").getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error("Storage nao retornou URL publica.");
+  progressCallback?.(100);
+  return { url: data.publicUrl, path, size: file.size };
+}
+
+async function runWithConcurrency(items, limit, worker) {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+}
+
+async function createCatalogImportBatch(state, totalItems) {
+  const fallback = { id: generateUUID(), status: "processing", fallback: true };
+  if (!supabaseClient || !appState.authUser) return fallback;
+  const { data, error } = await supabaseClient
+    .from("catalog_import_batches")
+    .insert({
+      user_id: appState.authUser.id,
+      title: `Catalogo ${new Date().toLocaleDateString("pt-BR")}`,
+      source_mode: state.mode,
+      total_items: totalItems,
+      valid_items: totalItems,
+      status: "processing",
+    })
+    .select()
+    .single();
+  if (error) {
+    console.warn("[ANSEND import] batch table unavailable, continuing without batch row.", error);
+    return fallback;
+  }
+  return data;
+}
+
+function catalogItemPayload(item, batch, extra = {}) {
+  const tags = Array.isArray(item.tags) ? item.tags : String(item.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+  const now = new Date().toISOString();
+  return {
+    id: generateUUID(),
+    title: String(item.title || "Beat sem titulo").trim(),
+    producer_name: activeProfile()?.artistic_name || activeProfile()?.full_name || appState.authUser?.email?.split("@")[0] || "ANSEND",
+    genre: String(item.genre || "Beat").trim(),
+    bpm: item.bpm ? Number(item.bpm) : null,
+    musical_key: item.musical_key || null,
+    tags,
+    description: item.description || null,
+    license_type: item.license_type || "premium",
+    price: item.price !== "" ? Number(item.price || 0) : 0,
+    status: "published",
+    published_at: now,
+    source_type: item.source_type,
+    catalog_batch_id: batch?.fallback ? null : batch?.id || null,
+    import_source: item.source_type === "youtube" ? "youtube_links" : "multi_upload",
+    import_status: "published",
+    original_file_name: item.original_file_name || null,
+    sort_order: item.sort_order || 0,
+    cover_url: item.cover_url || item.youtube_thumbnail_url || "assets/ansend-logo-square.png",
+    ...extra,
+  };
+}
+
+async function publishCatalogImport() {
+  const state = ensureCatalogImportState();
+  if (!supabaseClient || !appState.authUser) {
+    showToast("Entre na sua conta para publicar.", "shield-alert");
+    return;
+  }
+  if (!state.authorized) {
+    showToast("Confirme que voce tem direitos sobre os beats.", "shield-alert");
+    return;
+  }
+  const publishable = state.items.filter((item) => !["invalid", "duplicate", "failed", "published"].includes(item.status));
+  if (!publishable.length) {
+    showToast("Nao ha itens validos para publicar.", "triangle-alert");
+    return;
+  }
+  state.isPublishing = true;
+  renderCatalogImportPage();
+  const batch = await createCatalogImportBatch(state, publishable.length);
+  let published = 0;
+  let failed = 0;
+
+  await runWithConcurrency(publishable, 3, async (item) => {
+    try {
+      item.status = item.source_type === "upload" ? "uploading" : "publishing";
+      renderCatalogImportPage();
+      if (item.source_type === "youtube") {
+        const duplicate = await findYouTubeDuplicate(item.youtube_video_id);
+        if (duplicate) throw new Error("Este link ja existe no seu catalogo.");
+        const payload = catalogItemPayload(item, batch, {
+          youtube_url: item.youtube_url,
+          youtube_video_id: item.youtube_video_id,
+          youtube_embed_url: item.youtube_embed_url,
+          youtube_thumbnail_url: item.youtube_thumbnail_url,
+          youtube_title: item.youtube_title || item.title,
+          youtube_channel_title: item.youtube_channel_title || null,
+        });
+        item.status = "publishing";
+        const { data, error } = await publishBeat(payload);
+        if (error) throw error;
+        data.source_table = "beats";
+        appState.publicCatalogItems = dedupeById([data, ...appState.publicCatalogItems]);
+        appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems]);
+      } else {
+        const duplicate = await findUploadDuplicate(item.original_file_name);
+        if (duplicate) throw new Error("Arquivo ja publicado no seu catalogo.");
+        const uploaded = await uploadCatalogAudioFile(item, batch.id);
+        const payload = catalogItemPayload(item, batch, {
+          audio_url: uploaded.url,
+          audio_path: uploaded.path,
+          file_size: uploaded.size,
+        });
+        item.status = "publishing";
+        const { data, error } = await publishBeat(payload);
+        if (error) throw error;
+        data.source_table = "beats";
+        appState.publicCatalogItems = dedupeById([data, ...appState.publicCatalogItems]);
+        appState.ownedCatalogItems = dedupeById([data, ...appState.ownedCatalogItems]);
+      }
+      item.status = "published";
+      item.error = "";
+      published += 1;
+    } catch (error) {
+      item.status = "failed";
+      item.error = error.message || "Nao foi possivel publicar este item.";
+      failed += 1;
+      console.error("[ANSEND import] item failed", error);
+    }
+  });
+
+  if (!batch?.fallback) {
+    await supabaseClient
+      .from("catalog_import_batches")
+      .update({
+        status: failed && published ? "partial" : failed ? "failed" : "completed",
+        published_items: published,
+        failed_items: failed,
+      })
+      .eq("id", batch.id);
+  }
+  state.isPublishing = false;
+  syncCatalogCompatibilityState();
+  await loadCatalogItems();
+  renderCatalogImportPage();
+  showToast(failed ? `Catalogo publicado parcialmente: ${published} ok, ${failed} falharam.` : "Catalogo publicado com sucesso.", failed ? "triangle-alert" : "cloud-check");
+}
+
+function renderMusicUpload(mode = appState.releaseMode || "selector") {
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
@@ -9783,6 +10386,19 @@ function renderMusicUpload() {
       </section>`;
     applyLocaleTextOverrides(appView);
     lucide.createIcons();
+    return;
+  }
+  if (mode === "selector") {
+    appState.releaseMode = "";
+    renderReleaseModeSelector();
+    return;
+  }
+  if (mode === "youtube") {
+    renderYouTubeBeatUpload();
+    return;
+  }
+  if (mode === "catalog") {
+    renderCatalogImportPage();
     return;
   }
   const profile = activeProfile();
@@ -10975,6 +11591,14 @@ function setTopBeatPlaying(isPlaying) {
 
 async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) {
   if (!item) return false;
+  if (isYoutubeBeat(item)) {
+    appState.playing = item.id;
+    updateMiniPlayer(item);
+    setTopBeatPlaying(false);
+    if (!quiet) showToast("Abrindo player incorporado do YouTube.", "youtube");
+    if (location.hash !== `#beat-${item.id}`) location.hash = `beat-${item.id}`;
+    return true;
+  }
   const audio = topBeatAudio();
   if (!audio) return false;
 
@@ -11624,6 +12248,58 @@ document.addEventListener("click", (event) => {
   if (!target) return;
   const action = target.dataset.action;
   const isPlayerDropdownAction = Boolean(target.closest(".player-more-dropdown"));
+  if (action === "release-mode-choice") {
+    event.preventDefault();
+    const mode = target.dataset.mode || "selector";
+    appState.releaseMode = mode === "selector" ? "" : mode;
+    if (mode !== "catalog") appState.catalogImport = null;
+    renderMusicUpload(mode);
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-mode") {
+    const state = ensureCatalogImportState();
+    state.mode = target.dataset.mode || "multi_upload";
+    renderCatalogImportPage();
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-analyze-youtube") {
+    const box = target.closest(".catalog-import-youtube-box");
+    analyzeCatalogYoutubeLinks(box?.querySelector("[data-catalog-youtube-links]")?.value || "");
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-apply-bulk") {
+    applyCatalogBulk();
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-remove-invalid") {
+    const state = ensureCatalogImportState();
+    state.items = state.items.filter((item) => !["invalid", "duplicate", "failed"].includes(item.status));
+    renderCatalogImportPage();
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-remove-item") {
+    const itemId = target.closest("[data-catalog-item-id]")?.dataset.catalogItemId;
+    const state = ensureCatalogImportState();
+    state.items = state.items.filter((item) => item.id !== itemId);
+    renderCatalogImportPage();
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-reset") {
+    appState.catalogImport = defaultCatalogImportState();
+    renderCatalogImportPage();
+    hydrateView();
+    return;
+  }
+  if (action === "catalog-publish") {
+    publishCatalogImport();
+    return;
+  }
   if (action?.startsWith("hiring-")) {
     const postId = target.dataset.postId || target.closest("[data-post-id]")?.dataset.postId || "";
     if (action === "hiring-tab") {
@@ -12442,6 +13118,28 @@ document.addEventListener("change", (event) => {
     handleReleaseFileInput(releaseFileInput);
     return;
   }
+  const catalogFileInput = event.target.closest('[data-action="catalog-file-input"]');
+  if (catalogFileInput) {
+    addCatalogFiles(catalogFileInput.files);
+    catalogFileInput.value = "";
+    hydrateView();
+    return;
+  }
+  const catalogRights = event.target.closest('[data-action="catalog-rights"]');
+  if (catalogRights) {
+    ensureCatalogImportState().authorized = catalogRights.checked;
+    return;
+  }
+  const catalogItemSelect = event.target.closest('[data-action="catalog-item-field"]');
+  if (catalogItemSelect) {
+    updateCatalogImportItem(catalogItemSelect.closest("[data-catalog-item-id]")?.dataset.catalogItemId, catalogItemSelect.dataset.field, catalogItemSelect.value);
+    return;
+  }
+  const catalogBulkSelect = event.target.closest('[data-action="catalog-bulk-field"]');
+  if (catalogBulkSelect) {
+    ensureCatalogImportState().bulk[catalogBulkSelect.dataset.field] = catalogBulkSelect.value;
+    return;
+  }
   const checkoutPlan = event.target.closest('.checkout-plan input[name="license"]');
   if (checkoutPlan) {
     document.querySelectorAll(".checkout-plan").forEach((plan) => plan.classList.toggle("is-selected", plan.contains(checkoutPlan)));
@@ -12460,6 +13158,12 @@ document.addEventListener("dragover", (event) => {
     return;
   }
   const dropzone = event.target.closest(".release-dropzone");
+  const catalogDropzone = event.target.closest(".catalog-import-dropzone");
+  if (catalogDropzone) {
+    event.preventDefault();
+    catalogDropzone.classList.add("is-dragging");
+    return;
+  }
   if (!dropzone) return;
   event.preventDefault();
   dropzone.classList.add("is-dragging");
@@ -12472,6 +13176,11 @@ document.addEventListener("dragleave", (event) => {
     return;
   }
   const dropzone = event.target.closest(".release-dropzone");
+  const catalogDropzone = event.target.closest(".catalog-import-dropzone");
+  if (catalogDropzone && !catalogDropzone.contains(event.relatedTarget)) {
+    catalogDropzone.classList.remove("is-dragging");
+    return;
+  }
   if (!dropzone || dropzone.contains(event.relatedTarget)) return;
   dropzone.classList.remove("is-dragging");
 });
@@ -12486,6 +13195,14 @@ document.addEventListener("drop", (event) => {
     return;
   }
   const dropzone = event.target.closest(".release-dropzone");
+  const catalogDropzone = event.target.closest(".catalog-import-dropzone");
+  if (catalogDropzone) {
+    event.preventDefault();
+    catalogDropzone.classList.remove("is-dragging");
+    addCatalogFiles(event.dataTransfer?.files);
+    hydrateView();
+    return;
+  }
   if (!dropzone) return;
   event.preventDefault();
   dropzone.classList.remove("is-dragging");
@@ -12520,6 +13237,31 @@ document.addEventListener("input", (event) => {
   }
   if (input.closest(".release-upload-form")) {
     syncReleaseForm(input.closest(".release-upload-form"));
+  }
+  const youtubeForm = input.closest?.("[data-youtube-release-form]");
+  if (youtubeForm && input.name === "youtube_url") {
+    const preview = youtubeForm.querySelector("[data-youtube-preview]");
+    const meta = youtubeMetadataFromUrl(input.value);
+    if (preview && meta) {
+      preview.classList.add("has-preview");
+      preview.innerHTML = `<img src="${htmlEscape(meta.youtube_thumbnail_url)}" alt="Preview do YouTube"><div><strong>ID ${htmlEscape(meta.youtube_video_id)}</strong><span>Player incorporado seguro via youtube-nocookie</span></div>`;
+      if (!youtubeForm.elements.title.value) youtubeForm.elements.title.value = `YouTube Beat ${meta.youtube_video_id}`;
+    } else if (preview) {
+      preview.classList.remove("has-preview");
+      preview.innerHTML = `<i data-lucide="youtube"></i><span>Cole um link valido para gerar a previa.</span>`;
+      lucide.createIcons();
+    }
+    return;
+  }
+  const catalogField = input.closest?.('[data-action="catalog-item-field"]');
+  if (catalogField) {
+    updateCatalogImportItem(catalogField.closest("[data-catalog-item-id]")?.dataset.catalogItemId, catalogField.dataset.field, catalogField.value);
+    return;
+  }
+  const catalogBulk = input.closest?.('[data-action="catalog-bulk-field"]');
+  if (catalogBulk) {
+    ensureCatalogImportState().bulk[catalogBulk.dataset.field] = catalogBulk.value;
+    return;
   }
   const action = input?.dataset?.action;
   if (!["player-speed", "player-pitch", "player-volume"].includes(action)) return;
@@ -12568,6 +13310,28 @@ document.addEventListener("submit", async (event) => {
   if (releaseUploadForm) {
     event.preventDefault();
     syncReleaseForm(releaseUploadForm);
+    return;
+  }
+  const youtubeReleaseForm = event.target.closest("[data-youtube-release-form]");
+  if (youtubeReleaseForm) {
+    event.preventDefault();
+    const button = youtubeReleaseForm.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.dataset.loading = "true";
+      button.innerHTML = `<i data-lucide="loader-circle"></i>Publicando...`;
+      lucide.createIcons();
+    }
+    try {
+      await saveYouTubeBeat(youtubeReleaseForm);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.dataset.loading = "false";
+        button.innerHTML = `<i data-lucide="cloud-check"></i>Publicar beat`;
+        lucide.createIcons();
+      }
+    }
     return;
   }
   const profileEditForm = event.target.closest(".profile-edit-form");
