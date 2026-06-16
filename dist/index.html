@@ -8,6 +8,9 @@
     <meta name="description" content="ANSEND - O Marketplace Inteligente da música, com NEXO IA, beats, serviços e profissionais." />
     <link rel="icon" type="image/png" href="assets/ansend-logo-square.png" />
     <link rel="apple-touch-icon" href="assets/ansend-logo-square.png" />
+    <link rel="preload" as="image" href="assets/ansend-logo-square.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="assets/ansend-logo-sidebar.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="assets/top-beat-psiiiko-cover.jpg" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -34,14 +37,14 @@
           <i data-lucide="menu"></i>
         </button>
         <a class="brand" href="#feed" data-route="feed" aria-label="ANSEND início">
-          <img class="brand-logo-square" src="assets/ansend-logo-square.png" alt="ANSEND" />
-          <img class="brand-logo-wordmark" src="assets/ansend-logo-sidebar.png" alt="ANSEND" />
+          <img class="brand-logo-square app-optimized-image" src="assets/ansend-logo-square.png" alt="ANSEND" width="32" height="32" decoding="async" loading="eager" fetchpriority="high" data-fallback-src="assets/ansend-logo-square.png" />
+          <img class="brand-logo-wordmark app-optimized-image" src="assets/ansend-logo-sidebar.png" alt="ANSEND" width="118" height="32" decoding="async" loading="eager" fetchpriority="high" data-fallback-src="assets/ansend-logo-sidebar.png" />
         </a>
       </div>
 
       <!-- Card de perfil do usuário -->
       <a class="sidebar-profile-card" href="#perfil" data-route="perfil" aria-label="Acessar perfil">
-        <img class="sidebar-profile-avatar" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80" alt="Avatar do perfil" />
+        <img class="sidebar-profile-avatar app-optimized-image" src="assets/ansend-logo-square.png" alt="Avatar do perfil" width="36" height="36" decoding="async" loading="eager" fetchpriority="high" data-fallback-src="assets/ansend-logo-square.png" />
         <div class="sidebar-profile-info">
           <span class="sidebar-profile-name">Perfil ANSEND</span>
           <span class="sidebar-profile-tagline">Meu perfil</span>
@@ -96,9 +99,9 @@
             <span>Profissionais</span>
             <span class="active-indicator"></span>
           </a>
-          <a class="sidebar-nav-item" data-route="contratacoes" href="#contratacoes">
+          <a class="sidebar-nav-item" data-route="comunidade" href="#comunidade">
             <i data-lucide="briefcase-business"></i>
-            <span>Contratações</span>
+            <span>Comunidade ANSEND</span>
             <span class="active-indicator"></span>
           </a>
           <a class="sidebar-nav-item" data-route="compras" href="#compras">
@@ -282,7 +285,7 @@
           <div class="ai-hero-layout">
             <div class="an-hero-copy">
               <div class="an-hero-brand">
-                <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+                <img class="app-optimized-image" src="assets/ansend-logo-horizontal.png" alt="ANSEND" width="180" height="44" decoding="async" loading="eager" fetchpriority="high" data-fallback-src="assets/ansend-logo-sidebar.png" />
               </div>
 
               <div class="an-kicker">
@@ -328,7 +331,7 @@
             <div class="an-hero-art top-beat-showcase">
               <article class="top-beat-card" aria-label="Beat top 1 do dia">
                 <div class="top-beat-cover">
-                  <img src="assets/top-beat-psiiiko-cover.jpg" alt="Capa do beat PSIIIKO" />
+                  <img class="app-optimized-image" src="assets/top-beat-psiiiko-cover.jpg" alt="Capa do beat PSIIIKO" width="420" height="420" decoding="async" loading="eager" fetchpriority="high" data-fallback-src="assets/ansend-logo-square.png" />
                   <button class="top-beat-play" type="button" data-action="hero-beat-play" aria-label="Tocar beat top 1 do dia">
                     <i data-lucide="play"></i>
                   </button>
@@ -412,7 +415,7 @@
 
             <footer class="footer cinematic-footer home-minimal-footer">
               <div class="footer-center-content">
-                <img src="assets/ansend-logo-horizontal.png" alt="ANSEND" />
+                <img class="app-optimized-image" src="assets/ansend-logo-horizontal.png" alt="ANSEND" width="180" height="44" decoding="async" loading="lazy" data-fallback-src="assets/ansend-logo-sidebar.png" />
                 <p>Marketplace musical para descobrir beats, contratar profissionais e acompanhar novos lancamentos.</p>
               </div>
               <div class="footer-bottom-bar">
@@ -439,7 +442,7 @@
         <span class="mini-duration">2:45</span>
       </div>
       <div class="mini-track">
-        <img src="assets/catalog-cover-07.webp" alt="" />
+        <img class="app-optimized-image" src="assets/catalog-cover-07.webp" alt="" width="42" height="42" decoding="async" loading="lazy" data-fallback-src="assets/ansend-logo-square.png" />
         <div><strong>Neon Alley</strong><span>prod. Viana · 98 BPM</span></div>
       </div>
       <div class="mini-controls" aria-label="Controles do player">

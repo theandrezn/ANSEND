@@ -24955,3 +24955,107 @@ body[data-route="contratacoes"] .section-transition__content {
     grid-template-columns: 1fr;
   }
 }
+
+/* Optimized image baseline: stable boxes, dark fallback and no broken icon flash. */
+.app-optimized-image,
+img[data-fallback-src] {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .075), rgba(255, 255, 255, .035)),
+    #111;
+  background-size: 220% 100%;
+  animation: ansendImageShimmer 1.15s ease-in-out infinite;
+  color: transparent;
+}
+
+.app-optimized-image.is-loaded,
+img[data-fallback-src].is-loaded {
+  animation: none;
+  background: #111;
+}
+
+.app-optimized-image.is-broken,
+img[data-fallback-src].is-broken {
+  object-fit: contain !important;
+  padding: 12%;
+  background: #0f0f0f;
+}
+
+.sidebar-profile-avatar {
+  aspect-ratio: 1 / 1;
+  background: #181818;
+}
+
+.card-cover-wrapper,
+.airbit-cover,
+.top-beat-cover {
+  contain: layout paint;
+}
+
+@keyframes ansendImageShimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-optimized-image,
+  img[data-fallback-src] {
+    animation: none !important;
+  }
+}
+
+/* Comunidade ANSEND is the renamed native shell for the former Contratacoes route. */
+body[data-route="comunidade"] {
+  --sidebar-width: 260px;
+  overflow-x: hidden;
+}
+
+body[data-route="comunidade"] .page,
+body[data-route="comunidade"] #appView.app-view {
+  width: calc(100% - var(--sidebar-width)) !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  margin: 0 0 0 var(--sidebar-width) !important;
+  padding: 0 !important;
+  left: auto !important;
+  background: #000 !important;
+}
+
+body[data-route="comunidade"] > .sidebar {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+body[data-route="comunidade"] .section-transition,
+body[data-route="comunidade"] .section-transition__content {
+  width: 100%;
+  min-height: 100dvh;
+}
+
+@media (max-width: 720px) {
+  body[data-route="comunidade"] {
+    --sidebar-width: 260px;
+  }
+
+  body[data-route="comunidade"] .page,
+  body[data-route="comunidade"] #appView.app-view {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  body[data-route="comunidade"] > .sidebar {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateX(-100%) !important;
+  }
+
+  body[data-route="comunidade"].menu-open > .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body[data-route="comunidade"] .topbar {
+    display: flex !important;
+  }
+}

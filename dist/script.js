@@ -7,6 +7,11 @@ const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
+const COMMUNITY_ROUTE = "comunidade";
+const COMMUNITY_LEGACY_ROUTE = "contratacoes";
+const COMMUNITY_TITLE = "Comunidade ANSEND";
+const COMMUNITY_SUBTITLE = "Publique duvidas, pedidos, oportunidades e conversas com profissionais da musica.";
+const IMAGE_FALLBACK_SRC = "assets/ansend-logo-square.png";
 const GOOGLE_ICON_MARKUP = `<svg class="google-brand-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
   <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.29h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.89c2.27-2.09 3.53-5.17 3.53-8.64z"/>
   <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.89-3c-1.08.72-2.46 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.96H1.25v3.1C3.23 21.3 7.29 24 12 24z"/>
@@ -59,6 +64,7 @@ const i18n = {
     "nav.library": "Biblioteca",
     "nav.upload": "Lançar música",
     "nav.professionals": "Profissionais",
+    "nav.community": "Comunidade ANSEND",
     "nav.profile": "Meu perfil",
     "nav.settings": "Configurações",
     "sellerMini.title": "Venda seus serviços",
@@ -160,6 +166,7 @@ const i18n = {
     "nav.library": "Library",
     "nav.upload": "Release music",
     "nav.professionals": "Professionals",
+    "nav.community": "ANSEND Community",
     "nav.profile": "My profile",
     "nav.settings": "Settings",
     "sellerMini.title": "Sell services",
@@ -428,6 +435,7 @@ function applyTranslations(root = document) {
     musicas: "nav.myMusic",
     cadastrar: "nav.upload",
     produtores: "nav.professionals",
+    comunidade: "nav.community",
     perfil: "nav.profile",
     configuracoes: "nav.settings",
   };
@@ -1421,7 +1429,7 @@ function professionalAvatarMarkup(profile, className = "") {
   const name = profile?.name || profile?.display_name || profile?.artistic_name || profile?.full_name || "ANSEND";
   const safeClass = htmlEscape(className || "");
   const initials = htmlEscape(profileInitials(name));
-  if (source) return `<img class="${safeClass}" src="${htmlEscape(source)}" alt="Avatar de ${htmlEscape(name)}" onerror="this.outerHTML='&lt;span class=&quot;professional-avatar-fallback ${safeClass}&quot; aria-label=&quot;Avatar do profissional&quot;&gt;${initials}&lt;/span&gt;'">`;
+  if (source) return optimizedImageMarkup({ src: source, alt: `Avatar de ${name}`, className: safeClass, width: 64, height: 64 });
   return `<span class="professional-avatar-fallback ${safeClass}" aria-label="Avatar de ${htmlEscape(name)}">${initials}</span>`;
 }
 
@@ -1540,6 +1548,49 @@ function htmlEscape(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function optimizedImageMarkup({
+  src,
+  alt = "",
+  className = "",
+  width,
+  height,
+  priority = false,
+  fallbackSrc = IMAGE_FALLBACK_SRC,
+  sizes = "",
+} = {}) {
+  const safeSrc = htmlEscape(src || fallbackSrc || IMAGE_FALLBACK_SRC);
+  const safeFallback = htmlEscape(fallbackSrc || IMAGE_FALLBACK_SRC);
+  const attrs = [
+    `src="${safeSrc}"`,
+    `alt="${htmlEscape(alt)}"`,
+    className ? `class="${htmlEscape(className)} app-optimized-image"` : `class="app-optimized-image"`,
+    width ? `width="${Number(width)}"` : "",
+    height ? `height="${Number(height)}"` : "",
+    width && height ? `style="aspect-ratio:${Number(width)} / ${Number(height)};"` : "",
+    sizes ? `sizes="${htmlEscape(sizes)}"` : "",
+    `decoding="async"`,
+    `loading="${priority ? "eager" : "lazy"}"`,
+    priority ? `fetchpriority="high"` : `fetchpriority="low"`,
+    `data-fallback-src="${safeFallback}"`,
+  ].filter(Boolean).join(" ");
+  return `<img ${attrs}>`;
+}
+
+function setupOptimizedImages(root = document) {
+  root.querySelectorAll("img.app-optimized-image, img[data-fallback-src]").forEach((image) => {
+    const markLoaded = () => image.classList.add("is-loaded");
+    const fallback = image.dataset.fallbackSrc || IMAGE_FALLBACK_SRC;
+    image.addEventListener("load", markLoaded, { once: true });
+    image.addEventListener("error", () => {
+      if (fallback && image.src !== new URL(fallback, location.href).href) {
+        image.src = fallback;
+      }
+      image.classList.add("is-broken");
+    }, { once: true });
+    if (image.complete && image.naturalWidth > 0) markLoaded();
+  });
 }
 
 function safeReadJson(key, fallback = null) {
@@ -1940,7 +1991,7 @@ function playlistCard(input) {
   return `<article class="playlist-card minimal-playlist-card" data-playlist="${title}" data-playlist-id="${playlistId}">
     <button class="playlist-action" type="button" data-action="playlist" data-title="${title}" data-playlist-id="${playlistId}" aria-label="Abrir ${title}">
       <div class="card-cover-wrapper">
-        <img class="card-art-source" src="${cover}" alt="Capa ${title}">
+        ${optimizedImageMarkup({ src: cover, alt: `Capa ${title}`, className: "card-art-source", width: 320, height: 320, priority: Boolean(data.homeCard) })}
         <span class="card-orb"><i data-lucide="list-music"></i></span>
       </div>
       <div class="card-info">
@@ -1964,7 +2015,7 @@ function beatCard(item) {
   });
   return `<article class="beat-card minimal-beat-card${homeCardClass}" data-beat-id="${item.id}" tabindex="0" role="link" aria-label="Ver detalhes de ${item.title}">
     <div class="card-cover-wrapper">
-      <img class="card-art-source" src="${item.cover}" alt="Capa do beat ${item.title}">
+      ${optimizedImageMarkup({ src: item.cover, alt: `Capa do beat ${item.title}`, className: "card-art-source", width: 320, height: 320, priority: Boolean(item.homeCard) })}
       ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
       <button class="fav-over${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
       <button class="play-over" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
@@ -1990,7 +2041,7 @@ function beatCard(item) {
 }
 
 function avatarCard(name, i) {
-  return `<article class="avatar-card"><button type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}"><img src="${img(avatarImages[i % avatarImages.length])}" alt="Avatar de ${name}"><h3>${name}<i data-lucide="badge-check"></i></h3><p>${420 + i * 137} vendas</p></button></article>`;
+  return `<article class="avatar-card"><button type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">${optimizedImageMarkup({ src: img(avatarImages[i % avatarImages.length]), alt: `Avatar de ${name}`, width: 120, height: 120 })}<h3>${name}<i data-lucide="badge-check"></i></h3><p>${420 + i * 137} vendas</p></button></article>`;
 }
 
 const quickActions = [
@@ -2924,7 +2975,7 @@ function professionalMatchCard(profile) {
   const profileAttrs = profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name });
   return `<article class="recommended-professional-item match-professional-card">
     <button class="recommended-professional-avatar" type="button" data-action="producer" ${profileAttrs} aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
-      <img src="${professionalImage(profile)}" alt="Avatar de ${htmlEscape(profile.name)}">
+      ${optimizedImageMarkup({ src: professionalImage(profile), alt: `Avatar de ${profile.name}`, width: 72, height: 72 })}
     </button>
     <button class="recommended-professional-name" type="button" data-action="producer" ${profileAttrs}>
       <span>${htmlEscape(profile.name)}</span>${verifiedMarkup}
@@ -2962,7 +3013,7 @@ function musicProfilePanel(profile = getMusicProfile()) {
 function featuredProfessionalCard(name, index) {
   const categories = ["Beatmaker", "Designer", "Produtor", "Curador", "Marketing"];
   return `<article class="featured-professional-card">
-    <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
+    ${optimizedImageMarkup({ src: img(avatarImages[index % avatarImages.length]), alt: `Avatar de ${name}`, width: 56, height: 56 })}
     <div>
       <strong>${name}${cleanVerifiedBadge()}</strong>
       <span>${categories[index % categories.length]} · ${(4.7 + (index % 3) / 10).toFixed(1)}</span>
@@ -2975,7 +3026,7 @@ function topProducerNameCard(name, index) {
   const followerCounts = ["2.1K", "3.3K", "444", "2K", "2.5K", "612", "335", "1.8K"];
   return `<article class="top-producer-card">
     <button class="top-producer-avatar" type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">
-      <img src="${img(avatarImages[index % avatarImages.length])}" alt="Avatar de ${name}">
+      ${optimizedImageMarkup({ src: img(avatarImages[index % avatarImages.length]), alt: `Avatar de ${name}`, width: 88, height: 88 })}
     </button>
     <strong>${name}${cleanVerifiedBadge()}</strong>
     <span>${followerCounts[index % followerCounts.length]} Followers</span>
@@ -3078,7 +3129,7 @@ function trackRow(item, i) {
   });
   const coverHtml = `<button class="airbit-cover" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}">
     <div class="airbit-cover-placeholder"><i data-lucide="music"></i></div>
-    <img src="${item.cover}" alt="Mini capa ${item.title}" onerror="this.style.display='none';">
+    ${optimizedImageMarkup({ src: item.cover, alt: `Mini capa ${item.title}`, width: 64, height: 64 })}
     <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
   </button>`;
 
@@ -3131,7 +3182,8 @@ function currentRouteFromHash() {
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
   if (route.startsWith("perfil-")) return "perfil-publico";
-  if (route.startsWith("contratacoes-")) return "contratacoes";
+  if (route === COMMUNITY_LEGACY_ROUTE || route === COMMUNITY_ROUTE) return COMMUNITY_ROUTE;
+  if (route.startsWith(`${COMMUNITY_LEGACY_ROUTE}-`) || route.startsWith(`${COMMUNITY_ROUTE}-`)) return COMMUNITY_ROUTE;
   const knownRoutes = new Set([
     "feed",
     "nexo-feed",
@@ -3141,7 +3193,7 @@ function currentRouteFromHash() {
     "biblioteca",
     "ia",
     "produtores",
-    "contratacoes",
+    COMMUNITY_ROUTE,
     "perfil",
     "cadastrar",
     "configuracoes",
@@ -3582,6 +3634,7 @@ routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais
 routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços contratados."];
 routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
+routeTitles.comunidade = [COMMUNITY_TITLE, COMMUNITY_SUBTITLE];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
 routeTitles["confirmar-email"] = ["Confirme seu e-mail", "Abra o link enviado para ativar sua conta ANSEND."];
@@ -4348,16 +4401,14 @@ async function publishBeat(payload) {
 
 const hiringCategories = [
   ["todos", "Todos"],
-  ["beatmaker", "Beatmaker"],
-  ["produtor_musical", "Produtor Musical"],
-  ["mixagem", "Mixagem"],
-  ["masterizacao", "Masterizacao"],
-  ["designer_de_capa", "Designer"],
-  ["videomaker", "Videomaker"],
-  ["marketing_musical", "Marketing Musical"],
-  ["compositor", "Compositor"],
-  ["vocalista", "Vocalista"],
-  ["curador", "Curador"],
+  ["duvidas", "Duvidas"],
+  ["contratacoes", "Pedidos profissionais"],
+  ["oportunidades", "Oportunidades"],
+  ["beats", "Beats"],
+  ["mix_master", "Mix/Master"],
+  ["divulgacao", "Divulgacao"],
+  ["design", "Design"],
+  ["networking", "Networking"],
   ["outro", "Outro"],
 ];
 const hiringDeadlines = [["hoje", "Hoje"], ["24h", "24h"], ["48h", "48h"], ["esta_semana", "Esta semana"], ["sem_urgencia", "Sem urgencia"], ["data_personalizada", "Data personalizada"]];
@@ -4367,7 +4418,7 @@ const hiringActionTables = { like: "hiring_likes", save: "hiring_saves", repost:
 
 function hiringRequireAuth() {
   if (hasAccountAccess()) return true;
-  showToast("Entre para interagir com contratacoes.", "log-in");
+  showToast("Entre para interagir com a Comunidade ANSEND.", "log-in");
   location.hash = "vendedor";
   return false;
 }
@@ -4415,24 +4466,27 @@ function hiringAuthorDisplay(userId) {
 }
 
 function hiringAvatar(display, className = "hiring-avatar") {
-  if (display.avatar) return `<span class="${className}"><img src="${htmlEscape(display.avatar)}" alt="Avatar de ${htmlEscape(display.name)}"></span>`;
+  if (display.avatar) return `<span class="${className}">${optimizedImageMarkup({ src: display.avatar, alt: `Avatar de ${display.name}`, width: 48, height: 48 })}</span>`;
   return `<span class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${htmlEscape(profileInitials(display.name))}</span>`;
 }
 
 function hiringDetailIdFromHash() {
   const raw = String(location.hash || "").replace(/^#/, "");
-  if (raw.startsWith("contratacoes-")) return safeDecode(raw.replace(/^contratacoes-/, ""));
+  if (raw.startsWith(`${COMMUNITY_LEGACY_ROUTE}-`)) return safeDecode(raw.replace(new RegExp(`^${COMMUNITY_LEGACY_ROUTE}-`), ""));
+  if (raw.startsWith(`${COMMUNITY_ROUTE}-`)) return safeDecode(raw.replace(new RegExp(`^${COMMUNITY_ROUTE}-`), ""));
   return new URLSearchParams(raw.split("?")[1] || "").get("id") || "";
 }
 
 function hiringPostUrl(postId) {
-  return `${location.origin}${location.pathname}#contratacoes-${encodeURIComponent(postId)}`;
+  return `${location.origin}${location.pathname}#${COMMUNITY_ROUTE}-${encodeURIComponent(postId)}`;
 }
 
 async function loadHiringPosts({ force = false } = {}) {
   if (!supabaseClient) {
     appState.hiring.posts = [];
-    appState.hiring.error = "Supabase nao esta configurado neste ambiente.";
+    appState.hiring.error = "";
+    appState.hiring.loading = false;
+    appState.hiring.lastLoadedAt = Date.now();
     return [];
   }
   const detailId = hiringDetailIdFromHash();
@@ -4441,7 +4495,7 @@ async function loadHiringPosts({ force = false } = {}) {
   appState.hiring.loading = true;
   appState.hiring.error = "";
   try {
-    await loadPublicPlatformData();
+    await withTimeout(loadPublicPlatformData(), 4500, "A Comunidade ANSEND demorou para carregar os perfis.");
     let query = supabaseClient.from("hiring_posts").select("*").order("created_at", { ascending: false }).limit(80);
     if (detailId) {
       query = query.eq("id", detailId).limit(1);
@@ -4459,7 +4513,7 @@ async function loadHiringPosts({ force = false } = {}) {
     if (!detailId && filters.deadline && filters.deadline !== "todos") query = query.eq("deadline_type", filters.deadline);
     if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
     if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query, 6500, "A Comunidade ANSEND demorou para responder.");
     if (error) throw error;
     let posts = data || [];
     if (!detailId && appState.hiring.activeTab === "following") posts = [];
@@ -4474,7 +4528,7 @@ async function loadHiringPosts({ force = false } = {}) {
     return appState.hiring.posts;
   } catch (error) {
     console.error("[ANSEND hiring] load failed", error);
-    appState.hiring.error = error.message || "Nao foi possivel carregar contratacoes.";
+    appState.hiring.error = error.message || "Nao foi possivel carregar a Comunidade ANSEND.";
     appState.hiring.posts = [];
     return [];
   } finally {
@@ -4485,14 +4539,17 @@ async function loadHiringPosts({ force = false } = {}) {
 async function loadHiringEngagement(posts = appState.hiring.posts) {
   const ids = posts.map((post) => post.id).filter(Boolean);
   if (!supabaseClient || !ids.length) return;
-  const [likes, saves, reposts, interests, comments, proposals] = await Promise.all([
+  const [likes, saves, reposts, interests, comments, proposals] = await withTimeout(Promise.all([
     supabaseClient.from("hiring_likes").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_saves").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_reposts").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_comments").select("*").in("post_id", ids).order("created_at", { ascending: true }),
     supabaseClient.from("hiring_proposals").select("*").in("post_id", ids).order("created_at", { ascending: false }),
-  ]);
+  ]), 5500, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
+    console.warn("[ANSEND community] engagement fallback", error?.message || error);
+    return [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  });
   const rowsFor = (result) => result.error ? [] : (result.data || []);
   const groupedComments = {};
   rowsFor(comments).forEach((comment) => {
@@ -4539,7 +4596,7 @@ function hiringComposerMarkup() {
         <label class="is-wide">Referencias<input name="references" type="text" placeholder="YouTube, Spotify, BeatStars, SoundCloud ou texto livre"></label>
         <label class="hiring-negotiable"><input name="budget_type" type="checkbox" value="negotiable"> A combinar</label>
       </div>
-      <div class="hiring-composer-tools" aria-label="Opcoes da contratacao">
+      <div class="hiring-composer-tools" aria-label="Opcoes da publicacao">
         <button type="button" data-action="hiring-expand-composer" title="Categoria e detalhes"><i data-lucide="tags"></i><span>Categoria</span></button>
         <button type="button" data-action="hiring-expand-composer" title="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
         <button type="button" data-action="hiring-expand-composer" title="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
@@ -4556,11 +4613,13 @@ function hiringFiltersMarkup() {
   const filters = appState.hiring.filters;
   const chips = [
     ["todos", "Todos", { category: "todos", deadline: "todos", status: "todos", workMode: "todos", budget: "" }],
-    ["beatmaker", "Beatmaker", { category: "beatmaker" }],
-    ["designer", "Designer", { category: "designer_de_capa" }],
-    ["produtor", "Produtor", { category: "produtor_musical" }],
-    ["mixmaster", "Mix/Master", { category: "mixagem" }],
-    ["marketing", "Marketing", { category: "marketing_musical" }],
+    ["duvidas", "Duvidas", { category: "duvidas" }],
+    ["contratacoes", "Pedidos profissionais", { category: "contratacoes" }],
+    ["oportunidades", "Oportunidades", { category: "oportunidades" }],
+    ["beats", "Beats", { category: "beats" }],
+    ["mixmaster", "Mix/Master", { category: "mix_master" }],
+    ["design", "Design", { category: "design" }],
+    ["networking", "Networking", { category: "networking" }],
     ["urgente", "Urgente", { deadline: "hoje" }],
     ["remoto", "Remoto", { workMode: "remote" }],
     ["ate300", "Ate R$300", { budget: "300" }],
@@ -4573,7 +4632,7 @@ function hiringFiltersMarkup() {
     }).join("")}
     <button type="button" data-action="hiring-toggle-filters"><i data-lucide="sliders-horizontal"></i>Filtros</button>
   </section>
-  <section class="hiring-filters" aria-label="Filtros de contratacoes" hidden>
+  <section class="hiring-filters" aria-label="Filtros da comunidade" hidden>
     <label>Categoria<select data-action="hiring-filter" data-filter="category">${hiringCategories.map(([id, label]) => `<option value="${id}" ${filters.category === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
     <label>Orcamento<input data-action="hiring-filter" data-filter="budget" type="number" min="0" value="${htmlEscape(filters.budget || "")}" placeholder="Max. R$"></label>
     <label>Prazo<select data-action="hiring-filter" data-filter="deadline"><option value="todos">Todos</option>${hiringDeadlines.map(([id, label]) => `<option value="${id}" ${filters.deadline === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
@@ -4582,8 +4641,8 @@ function hiringFiltersMarkup() {
   </section>`;
 }
 
-function hiringEmptyMarkup(title = "Nenhuma contratacao aberta ainda.", text = "Publique o que voce precisa e encontre profissionais da musica em minutos.") {
-  return `<section class="hiring-empty"><i data-lucide="briefcase-business"></i><h2>${htmlEscape(title)}</h2><p>${htmlEscape(text)}</p><button type="button" data-action="hiring-focus-composer">Criar pedido</button></section>`;
+function hiringEmptyMarkup(title = "Nenhuma publicacao ainda.", text = "Seja o primeiro a comecar uma conversa com a comunidade da musica.") {
+  return `<section class="hiring-empty"><i data-lucide="messages-square"></i><h2>${htmlEscape(title)}</h2><p>${htmlEscape(text)}</p><button type="button" data-action="hiring-focus-composer">Criar publicacao</button></section>`;
 }
 
 function hiringCommentMarkup(comment) {
@@ -4651,8 +4710,11 @@ function hiringRightRailMarkup() {
     categoryCounts.set(label, (categoryCounts.get(label) || 0) + 1);
   });
   const categories = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const fallbackCategories = ["Beatmaker", "Designer de capa", "Mixagem", "Producao vocal", "Marketing musical"].map((label) => [label, ""]);
-  const categoryRows = (categories.length ? categories : fallbackCategories).map(([label, count]) => `<button type="button" data-action="hiring-filter-chip" data-filter-payload="${htmlEscape(JSON.stringify({ category: sanitizeHandle(label).includes("designer") ? "designer_de_capa" : "todos" }))}"><span>${htmlEscape(label)}</span>${count ? `<small>${count} pedidos</small>` : `<small>Categoria</small>`}</button>`).join("");
+  const fallbackCategories = [["Duvidas", "duvidas"], ["Pedidos profissionais", "contratacoes"], ["Oportunidades", "oportunidades"], ["Beats", "beats"], ["Networking", "networking"]];
+  const categoryRows = (categories.length
+    ? categories.map(([label, count]) => [label, hiringCategories.find(([, categoryLabel]) => categoryLabel === label)?.[0] || "todos", count])
+    : fallbackCategories.map(([label, id]) => [label, id, ""])
+  ).map(([label, id, count]) => `<button type="button" data-action="hiring-filter-chip" data-filter-payload="${htmlEscape(JSON.stringify({ category: id }))}"><span>${htmlEscape(label)}</span>${count ? `<small>${count} publicacoes</small>` : `<small>Categoria</small>`}</button>`).join("");
   const professionalRows = professionals.length
     ? professionals.map((profile) => `<article>
         ${hiringAvatar({ name: profile.name, avatar: profile.avatar_url || profile.avatar }, "hiring-rail-avatar")}
@@ -4660,7 +4722,7 @@ function hiringRightRailMarkup() {
         <button type="button" data-action="producer" ${profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name })}>Ver</button>
       </article>`).join("")
     : `<p class="hiring-rail-muted">Complete perfis publicos para aparecerem aqui.</p>`;
-  return `<aside class="hiring-right-rail" aria-label="Widgets de contratacoes">
+  return `<aside class="hiring-right-rail" aria-label="Widgets da Comunidade ANSEND">
     <section>
       <h2>Complete seu perfil</h2>
       <p>Perfis completos recebem mais propostas e respostas mais rapidas.</p>
@@ -4688,22 +4750,22 @@ function hiringRightRailMarkup() {
 async function renderHiringPage(options = {}) {
   const detailId = hiringDetailIdFromHash();
   await loadHiringPosts({ force: Boolean(options.force || detailId) });
-  const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas vagas"]];
+  const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas publicacoes"]];
   const isFollowing = appState.hiring.activeTab === "following" && !detailId;
   const postsMarkup = appState.hiring.loading
     ? `<div class="hiring-skeleton"><span></span><span></span><span></span></div>`
     : appState.hiring.error
       ? `<section class="hiring-empty is-error"><i data-lucide="triangle-alert"></i><h2>Nao foi possivel carregar</h2><p>${htmlEscape(appState.hiring.error)}</p><button type="button" data-action="hiring-refresh">Tentar novamente</button></section>`
       : isFollowing
-        ? hiringEmptyMarkup("Voce ainda nao segue profissionais com contratacoes abertas.", "Quando houver um sistema de conexoes ativo, esta aba mostrara somente publicacoes de quem voce segue.")
+        ? hiringEmptyMarkup("Voce ainda nao segue conversas da comunidade.", "Quando houver um sistema de conexoes ativo, esta aba mostrara somente publicacoes de quem voce segue.")
         : appState.hiring.posts.length
           ? appState.hiring.posts.map((post) => hiringPostCardMarkup(post, { detail: Boolean(detailId) })).join("")
           : hiringEmptyMarkup();
   appView.innerHTML = `<main class="hiring-page hiring-native-layout" aria-labelledby="hiringTitlePage">
     <section class="hiring-feed-shell">
       <header class="hiring-topbar">
-        <div><h1 id="hiringTitlePage">Contratacoes</h1><p>Encontre profissionais da musica</p></div>
-        <nav class="hiring-tabs" aria-label="Feed de contratacoes">${tabs.map(([id, label]) => `<button type="button" data-action="hiring-tab" data-tab="${id}" class="${appState.hiring.activeTab === id ? "is-active" : ""}" aria-pressed="${appState.hiring.activeTab === id ? "true" : "false"}">${label}</button>`).join("")}</nav>
+        <div><h1 id="hiringTitlePage">${COMMUNITY_TITLE}</h1><p>${COMMUNITY_SUBTITLE}</p></div>
+        <nav class="hiring-tabs" aria-label="Feed da Comunidade ANSEND">${tabs.map(([id, label]) => `<button type="button" data-action="hiring-tab" data-tab="${id}" class="${appState.hiring.activeTab === id ? "is-active" : ""}" aria-pressed="${appState.hiring.activeTab === id ? "true" : "false"}">${label}</button>`).join("")}</nav>
       </header>
       ${detailId ? `<button type="button" class="hiring-back" data-action="hiring-back"><i data-lucide="arrow-left"></i>Voltar ao feed</button>` : ""}
       ${!detailId ? hiringComposerMarkup() : ""}${!detailId ? hiringFiltersMarkup() : ""}
@@ -4711,7 +4773,7 @@ async function renderHiringPage(options = {}) {
     </section>
     ${hiringRightRailMarkup()}
   </main>`;
-  PageTransition(appView, "contratacoes");
+  PageTransition(appView, COMMUNITY_ROUTE);
   hydrateView();
 }
 
@@ -4720,7 +4782,7 @@ async function submitHiringPost(form) {
   const title = String(form.elements.title?.value || "").trim();
   const description = String(form.elements.description?.value || "").trim();
   if (!title || !description) {
-    showToast("Preencha titulo e descricao da contratacao.", "triangle-alert");
+    showToast("Preencha titulo e descricao da publicacao.", "triangle-alert");
     return;
   }
   const payload = {
@@ -4746,7 +4808,7 @@ async function submitHiringPost(form) {
   form.reset();
   appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
   await loadHiringEngagement(appState.hiring.posts);
-  showToast("Contratacao publicada", "briefcase-business");
+  showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
   renderHiringPage({ force: false });
 }
 
@@ -4892,7 +4954,7 @@ function hiringMessageMarkup(message) {
 
 function openHiringConversationModal(conversation, post) {
   const messages = appState.hiring.messages[conversation.id] || [];
-  openModal(`<section class="hiring-chat-panel" data-conversation-id="${htmlEscape(conversation.id)}"><header><span><i data-lucide="messages-square"></i>Chat privado</span><h2>${htmlEscape(post.title)}</h2><p>Conversa vinculada a esta contratacao.</p></header><div class="hiring-message-list">${messages.length ? messages.map(hiringMessageMarkup).join("") : `<p>Nenhuma mensagem ainda.</p>`}</div><form class="hiring-message-form" data-conversation-id="${htmlEscape(conversation.id)}"><label class="sr-only" for="hiringMessageInput">Mensagem</label><input id="hiringMessageInput" name="content" type="text" maxlength="1000" placeholder="Escreva uma mensagem"><button type="submit"><i data-lucide="send"></i>Enviar</button></form></section>`);
+  openModal(`<section class="hiring-chat-panel" data-conversation-id="${htmlEscape(conversation.id)}"><header><span><i data-lucide="messages-square"></i>Chat privado</span><h2>${htmlEscape(post.title)}</h2><p>Conversa vinculada a esta publicacao.</p></header><div class="hiring-message-list">${messages.length ? messages.map(hiringMessageMarkup).join("") : `<p>Nenhuma mensagem ainda.</p>`}</div><form class="hiring-message-form" data-conversation-id="${htmlEscape(conversation.id)}"><label class="sr-only" for="hiringMessageInput">Mensagem</label><input id="hiringMessageInput" name="content" type="text" maxlength="1000" placeholder="Escreva uma mensagem"><button type="submit"><i data-lucide="send"></i>Enviar</button></form></section>`);
 }
 
 async function submitHiringMessage(form) {
@@ -5259,7 +5321,7 @@ function publicProfileRouteFromTarget(target) {
 function profileAvatarMarkup(display, className = "profile-avatar") {
   const avatar = display?.avatar || "";
   if (avatar && !avatar.includes("undefined")) {
-    return `<div class="${className}"><img src="${avatar}" alt="Avatar de ${htmlEscape(display.name)}"></div>`;
+    return `<div class="${className}">${optimizedImageMarkup({ src: avatar, alt: `Avatar de ${display.name}`, width: 96, height: 96 })}</div>`;
   }
   return `<div class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${profileInitials(display.name)}</div>`;
 }
@@ -9565,6 +9627,8 @@ function hydrateView() {
   setupHomeScrollAnimation();
   setupNexoFeedObservers();
   updateSidebarProfile();
+  setupOptimizedImages(appView);
+  setupOptimizedImages(document.querySelector(".sidebar") || document);
   applyTranslations();
   lucide.createIcons();
   requestAnimationFrame(() => setupScrollReveals());
@@ -9623,7 +9687,7 @@ function renderRoute() {
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
-  if (route === "contratacoes") {
+  if (route === COMMUNITY_ROUTE) {
     appView.innerHTML = `<main class="hiring-page"><section class="hiring-feed-shell"><div class="hiring-skeleton"><span></span><span></span><span></span></div></section></main>`;
     renderHiringPage();
   }
@@ -10846,11 +10910,11 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "hiring-back") {
-      location.hash = "contratacoes";
+      location.hash = COMMUNITY_ROUTE;
       return;
     }
     if (action === "hiring-open-post") {
-      if (postId) location.hash = `contratacoes-${postId}`;
+      if (postId) location.hash = `${COMMUNITY_ROUTE}-${postId}`;
       return;
     }
     if (action === "hiring-open-profile") {
@@ -11985,7 +12049,15 @@ function updateSidebarProfile() {
     nameEl.textContent = display.name;
   }
   if (avatarEl) {
-    avatarEl.src = display.avatar;
+    const nextAvatar = display.avatar || IMAGE_FALLBACK_SRC;
+    if (avatarEl.getAttribute("src") !== nextAvatar) {
+      avatarEl.classList.remove("is-loaded", "is-broken");
+      avatarEl.src = nextAvatar;
+    }
+    avatarEl.setAttribute("decoding", "async");
+    avatarEl.setAttribute("loading", "eager");
+    avatarEl.setAttribute("fetchpriority", "high");
+    avatarEl.dataset.fallbackSrc = IMAGE_FALLBACK_SRC;
   }
 }
 

@@ -297,6 +297,15 @@ export default {
     }
 
     const response = await env.ASSETS.fetch(request);
+    if (response.ok && url.pathname.startsWith("/assets/")) {
+      const headers = new Headers(response.headers);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
     const contentType = response.headers.get("content-type");
     if (contentType && (contentType.includes("text/html") || contentType.includes("javascript") || contentType.includes("text/css")) && !contentType.includes("charset")) {
       const newHeaders = new Headers(response.headers);
