@@ -6618,9 +6618,9 @@ body.onboarding-open { overflow: hidden; }
   --beat-blue: #0a84ff;
   --beat-blue-hover: #006fe6;
   width: 100% !important;
-  max-width: 1240px !important;
-  margin: 0 auto !important;
-  padding: 104px 18px 48px !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 104px clamp(24px, 4vw, 64px) 48px !important;
   background: var(--beat-bg) !important;
   color: var(--beat-text) !important;
   display: grid !important;
