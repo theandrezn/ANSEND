@@ -10121,7 +10121,7 @@ body.modal-open {
 }
 
 .feed .ai-hero .an-hero-copy h1 .headline-reveal-brand {
-  display: none !important;
+  display: block;
 }
 
 .feed .ai-hero .an-hero-copy h1 .headline-reveal-main {
@@ -22180,12 +22180,12 @@ body .topbar {
 /* Internal navbar capsule (holds background, padding, sizing) */
 body .floating-navbar {
   pointer-events: auto !important;
-  height: 58px !important;
-  min-height: 58px !important;
+  height: 64px !important;
+  min-height: 64px !important;
   display: flex !important;
   align-items: center !important;
   gap: 16px !important;
-  padding: 7px 9px !important;
+  padding: 8px 12px !important;
   border-radius: 999px !important;
   background: #111111 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -22201,30 +22201,58 @@ body .floating-navbar:hover {
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-/* Left logo circle */
-body .navbar-logo-circle {
-  width: 44px !important;
-  height: 44px !important;
-  background-color: #ffffff !important;
-  border-radius: 999px !important;
+/* Left Brand Logo in Header Floating Navbar */
+body .navbar-brand-logo {
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  overflow: hidden !important;
+  gap: 10px !important;
+  text-decoration: none !important;
+  flex-shrink: 0 !important;
+}
+
+body .navbar-logo-square {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.22s ease, border-color 0.22s ease !important;
+  background: #000000 !important;
+}
+
+body .navbar-brand-logo:hover .navbar-logo-square {
+  transform: scale(1.05) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+body .navbar-logo-wordmark {
+  height: 36px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  display: block !important;
   flex-shrink: 0 !important;
   transition: transform 0.22s ease !important;
 }
 
-body .navbar-logo-circle:hover {
-  transform: scale(1.05) !important;
+body .navbar-brand-logo:hover .navbar-logo-wordmark {
+  transform: scale(1.02) !important;
 }
 
-body .nav-logo-icon {
-  width: 24px !important;
-  height: 24px !important;
-  object-fit: contain !important;
-  background: transparent !important;
-  display: block !important;
+@media (max-width: 600px) {
+  body .floating-navbar {
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 6px 10px !important;
+  }
+  body .navbar-logo-square {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 8px !important;
+  }
+  body .navbar-logo-wordmark {
+    height: 28px !important;
+  }
 }
 
 /* Center nav links */
