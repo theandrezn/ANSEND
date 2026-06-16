@@ -4872,6 +4872,8 @@ function profileToProfessional(profile = activeProfile()) {
     banner_position_y: profile.banner_position_y,
     avatar_position_x: profile.avatar_position_x,
     avatar_position_y: profile.avatar_position_y,
+    banner_scale: profile.banner_scale,
+    avatar_scale: profile.avatar_scale,
     services_count: profile.services_count || 0,
     beats_count: appState.publicCatalogItems ? appState.publicCatalogItems.filter(item => item.user_id === profile.id).length : 0,
     views_count: profile.views_count || 0,
@@ -5848,6 +5850,12 @@ function clampImagePosition(value, fallback = 50) {
   return Math.max(0, Math.min(100, Math.round(number)));
 }
 
+function clampImageScale(value, fallback = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(1, Math.min(2.5, Math.round(number * 100) / 100));
+}
+
 function profileDisplayData(profile = activeProfile()) {
   const role = normalizeRole(profile?.account_role || "artista");
   const styleList = asArray(profile?.music_styles || profile?.genres || []).slice(0, 5);
@@ -5857,6 +5865,8 @@ function profileDisplayData(profile = activeProfile()) {
   const bannerPositionY = clampImagePosition(profile?.banner_position_y);
   const avatarPositionX = clampImagePosition(profile?.avatar_position_x);
   const avatarPositionY = clampImagePosition(profile?.avatar_position_y);
+  const bannerScale = clampImageScale(profile?.banner_scale);
+  const avatarScale = clampImageScale(profile?.avatar_scale);
   return {
     name: displayName,
     fullName: profile?.full_name || "",
@@ -5870,8 +5880,11 @@ function profileDisplayData(profile = activeProfile()) {
     bannerPositionY,
     avatarPositionX,
     avatarPositionY,
+    bannerScale,
+    avatarScale,
     bannerPosition: `${bannerPositionX}% ${bannerPositionY}%`,
     avatarPosition: `${avatarPositionX}% ${avatarPositionY}%`,
+    bannerSize: `${Math.round(bannerScale * 100)}%`,
     headline: profile?.headline || "",
     bio: profile?.bio || "",
     styles: styleList,
@@ -6007,7 +6020,7 @@ function publicProfileRouteFromTarget(target) {
 function profileAvatarMarkup(display, className = "profile-avatar") {
   const avatar = display?.avatar || "";
   if (avatar && !avatar.includes("undefined")) {
-    return `<div class="${className}" style="--profile-avatar-position:${htmlEscape(display.avatarPosition || "50% 50%")}">${optimizedImageMarkup({ src: avatar, alt: `Avatar de ${display.name}`, width: 96, height: 96 })}</div>`;
+    return `<div class="${className}" style="--profile-avatar-position:${htmlEscape(display.avatarPosition || "50% 50%")};--profile-avatar-scale:${htmlEscape(display.avatarScale || 1)}">${optimizedImageMarkup({ src: avatar, alt: `Avatar de ${display.name}`, width: 96, height: 96 })}</div>`;
   }
   return `<div class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${profileInitials(display.name)}</div>`;
 }
@@ -6028,7 +6041,7 @@ function profileSocialLinks(display) {
 
 function profileHeroBackgroundStyle(display) {
   return display?.banner
-    ? `--profile-banner: url('${htmlEscape(display.banner)}'); --profile-banner-position: ${htmlEscape(display.bannerPosition || "50% 50%")}`
+    ? `--profile-banner: url('${htmlEscape(display.banner)}'); --profile-banner-position: ${htmlEscape(display.bannerPosition || "50% 50%")}; --profile-banner-size: ${htmlEscape(display.bannerSize || "100%")}`
     : "";
 }
 
@@ -6519,7 +6532,7 @@ function openProfileEditor() {
         <div class="profile-editor-columns">
           <div class="profile-editor-fields">
             <div class="profile-editor-media">
-              <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)}` : ""}">
+              <div class="profile-edit-banner-preview ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)};background-size:${htmlEscape(display.bannerSize)}` : ""}">
                 <button type="button" data-action="profile-image-picker-open" data-image-type="banner"><i data-lucide="image-plus"></i>Alterar banner</button>
               </div>
               <div class="profile-editor-avatar-row">
@@ -6547,7 +6560,7 @@ function openProfileEditor() {
           <aside class="profile-editor-preview" aria-label="Prévia do perfil">
             <span>Prévia</span>
             <article>
-              <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)}` : ""}"></div>
+              <div class="profile-preview-banner ${display.banner ? "has-image" : ""}" style="${display.banner ? `background-image:url('${htmlEscape(display.banner)}');background-position:${htmlEscape(display.bannerPosition)};background-size:${htmlEscape(display.bannerSize)}` : ""}"></div>
               ${profileAvatarMarkup(display, "profile-preview-avatar")}
               <div class="profile-preview-copy">
                 <strong data-profile-preview-name>${htmlEscape(display.name)}</strong>
@@ -6576,8 +6589,10 @@ function openProfileEditor() {
           <div class="profile-image-position-controls">
             <label><span>Banner horizontal</span><input type="range" name="banner_position_x" min="0" max="100" value="${display.bannerPositionX}" data-action="profile-image-position" data-image-type="banner" data-axis="x"></label>
             <label><span>Banner vertical</span><input type="range" name="banner_position_y" min="0" max="100" value="${display.bannerPositionY}" data-action="profile-image-position" data-image-type="banner" data-axis="y"></label>
+            <label><span>Tamanho do banner</span><input type="range" name="banner_scale" min="1" max="2.5" step="0.01" value="${display.bannerScale}" data-action="profile-image-position" data-image-type="banner" data-axis="scale"></label>
             <label><span>Avatar horizontal</span><input type="range" name="avatar_position_x" min="0" max="100" value="${display.avatarPositionX}" data-action="profile-image-position" data-image-type="avatar" data-axis="x"></label>
             <label><span>Avatar vertical</span><input type="range" name="avatar_position_y" min="0" max="100" value="${display.avatarPositionY}" data-action="profile-image-position" data-image-type="avatar" data-axis="y"></label>
+            <label><span>Tamanho do avatar</span><input type="range" name="avatar_scale" min="1" max="2.5" step="0.01" value="${display.avatarScale}" data-action="profile-image-position" data-image-type="avatar" data-axis="scale"></label>
           </div>
         </div>
       </section>
@@ -6611,17 +6626,19 @@ function openProfileEditor() {
 
     <section class="profile-image-picker" data-image-picker aria-hidden="true">
       <div class="profile-image-picker-backdrop" data-action="profile-image-picker-close"></div>
-      <div class="profile-image-picker-dialog" role="dialog" aria-modal="true" aria-label="Selecionar imagem">
-        <header><div><span>ANSEND</span><h3>Selecionar imagem</h3></div><button type="button" data-action="profile-image-picker-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
-        <button type="button" class="profile-image-dropzone" data-action="profile-image-picker-browse">
-          <i data-lucide="image-up"></i>
-          <strong>Arraste uma imagem ou clique para enviar</strong>
-          <small>PNG, JPG ou WebP</small>
-        </button>
-        <div class="profile-image-picker-preview" data-image-picker-preview><i data-lucide="image"></i><span>Nenhuma imagem selecionada</span></div>
+      <div class="profile-image-picker-dialog" role="dialog" aria-modal="true" aria-label="Editar imagem">
+        <header><div><span>ANSEND</span><h3 data-image-picker-title>Editar imagem</h3></div><button type="button" data-action="profile-image-picker-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+        <div class="profile-image-edit-stage" data-image-edit-stage>
+          <div class="profile-image-edit-frame" data-image-picker-preview><i data-lucide="image"></i><span>Nenhuma imagem selecionada</span></div>
+        </div>
+        <div class="profile-image-edit-controls">
+          <button type="button" data-action="profile-image-picker-browse" aria-label="Selecionar imagem menor"><i data-lucide="image"></i></button>
+          <input type="range" min="1" max="2.5" step="0.01" value="1" data-image-edit-scale aria-label="Tamanho da imagem">
+          <button type="button" data-action="profile-image-picker-browse" aria-label="Selecionar outra imagem"><i data-lucide="image-plus"></i></button>
+        </div>
         <footer>
           <button type="button" class="is-danger" data-action="profile-image-remove">Remover imagem</button>
-          <button type="button" class="is-primary" data-action="profile-image-picker-browse">Enviar imagem</button>
+          <button type="button" class="is-primary" data-action="profile-image-picker-close">Aplicar ajuste</button>
         </footer>
       </div>
     </section>
@@ -6660,34 +6677,86 @@ function syncProfileImagePositions(form = profileEditorForm()) {
   const bannerY = clampImagePosition(form.elements.banner_position_y?.value);
   const avatarX = clampImagePosition(form.elements.avatar_position_x?.value);
   const avatarY = clampImagePosition(form.elements.avatar_position_y?.value);
+  const bannerScale = clampImageScale(form.elements.banner_scale?.value);
+  const avatarScale = clampImageScale(form.elements.avatar_scale?.value);
   form.querySelectorAll(".profile-edit-banner-preview, .profile-preview-banner").forEach((banner) => {
     banner.style.backgroundPosition = `${bannerX}% ${bannerY}%`;
+    banner.style.backgroundSize = `${Math.round(bannerScale * 100)}%`;
   });
   form.querySelectorAll(".profile-edit-avatar img, .profile-preview-avatar img").forEach((image) => {
     image.style.objectPosition = `${avatarX}% ${avatarY}%`;
   });
   form.querySelectorAll(".profile-edit-avatar, .profile-preview-avatar").forEach((avatar) => {
     avatar.style.setProperty("--profile-avatar-position", `${avatarX}% ${avatarY}%`);
+    avatar.style.setProperty("--profile-avatar-scale", String(avatarScale));
   });
+}
+
+function profileImageEditorState(type = "avatar", form = profileEditorForm()) {
+  const prefix = type === "banner" ? "banner" : "avatar";
+  return {
+    x: clampImagePosition(form?.elements[`${prefix}_position_x`]?.value),
+    y: clampImagePosition(form?.elements[`${prefix}_position_y`]?.value),
+    scale: clampImageScale(form?.elements[`${prefix}_scale`]?.value),
+  };
+}
+
+function updateProfileImageEditorPreview() {
+  const picker = document.querySelector("[data-image-picker]");
+  const form = profileEditorForm();
+  if (!picker || !form) return;
+  const type = picker.dataset.imageType || "avatar";
+  const preview = picker.querySelector("[data-image-picker-preview]");
+  const image = preview?.querySelector("img");
+  const scaleInput = picker.querySelector("[data-image-edit-scale]");
+  const state = profileImageEditorState(type, form);
+  picker.classList.toggle("is-banner-editor", type === "banner");
+  picker.classList.toggle("is-avatar-editor", type !== "banner");
+  if (scaleInput && Number(scaleInput.value) !== state.scale) scaleInput.value = String(state.scale);
+  if (image) {
+    image.style.objectPosition = `${state.x}% ${state.y}%`;
+    image.style.transform = `scale(${state.scale})`;
+  }
+  syncProfileImagePositions(form);
+}
+
+function setProfileImageEditorValue(type, values = {}) {
+  const form = profileEditorForm();
+  if (!form) return;
+  const prefix = type === "banner" ? "banner" : "avatar";
+  if (values.x !== undefined && form.elements[`${prefix}_position_x`]) {
+    form.elements[`${prefix}_position_x`].value = String(clampImagePosition(values.x));
+  }
+  if (values.y !== undefined && form.elements[`${prefix}_position_y`]) {
+    form.elements[`${prefix}_position_y`].value = String(clampImagePosition(values.y));
+  }
+  if (values.scale !== undefined && form.elements[`${prefix}_scale`]) {
+    form.elements[`${prefix}_scale`].value = String(clampImageScale(values.scale));
+  }
+  updateProfileImageEditorPreview();
 }
 
 function openProfileImagePicker(type = "avatar") {
   const picker = document.querySelector("[data-image-picker]");
-  if (!picker) return;
+  const form = profileEditorForm();
+  if (!picker || !form) return;
   picker.dataset.imageType = type;
   picker.classList.add("is-open");
   picker.setAttribute("aria-hidden", "false");
   const preview = picker.querySelector("[data-image-picker-preview]");
+  const title = picker.querySelector("[data-image-picker-title]");
   const source = type === "banner"
     ? document.querySelector(".profile-edit-banner-preview")
     : document.querySelector(".profile-edit-avatar img");
   const background = type === "banner" ? source?.style.backgroundImage : "";
   const src = type === "avatar" ? source?.getAttribute("src") : String(background || "").replace(/^url\(["']?|["']?\)$/g, "");
+  if (title) title.textContent = type === "banner" ? "Editar banner" : "Editar imagem";
   if (preview) {
     preview.innerHTML = src
-      ? `<img src="${src}" alt="Prévia da imagem selecionada">`
-      : `<i data-lucide="image"></i><span>Nenhuma imagem selecionada</span>`;
+      ? `<img src="${htmlEscape(src)}" alt="Previa da imagem selecionada" draggable="false">`
+      : `<button type="button" class="profile-image-empty" data-action="profile-image-picker-browse"><i data-lucide="image-up"></i><strong>Escolher imagem</strong><small>PNG, JPG ou WebP</small></button>`;
   }
+  updateProfileImageEditorPreview();
   lucide.createIcons();
 }
 
@@ -6753,9 +6822,11 @@ async function applyProfileImageFile(file, type) {
     });
   }
   syncProfileImagePositions(form);
-  const pickerPreview = form.querySelector("[data-image-picker-preview]");
-  if (pickerPreview) pickerPreview.innerHTML = `<img src="${src}" alt="Prévia da imagem selecionada">`;
-  closeProfileImagePicker();
+  const picker = document.querySelector("[data-image-picker]");
+  const pickerPreview = picker?.querySelector("[data-image-picker-preview]");
+  if (pickerPreview) pickerPreview.innerHTML = `<img src="${htmlEscape(src)}" alt="Previa da imagem selecionada" draggable="false">`;
+  updateProfileImageEditorPreview();
+  lucide.createIcons();
 }
 
 async function saveProfileEdit(form) {
@@ -6800,6 +6871,8 @@ async function saveProfileEdit(form) {
       banner_position_y: clampImagePosition(form.elements.banner_position_y?.value),
       avatar_position_x: clampImagePosition(form.elements.avatar_position_x?.value),
       avatar_position_y: clampImagePosition(form.elements.avatar_position_y?.value),
+      banner_scale: clampImageScale(form.elements.banner_scale?.value),
+      avatar_scale: clampImageScale(form.elements.avatar_scale?.value),
       bio: form.elements.bio?.value.trim() || null,
       instagram_url: normalizeProfileLink("instagram", form.elements.instagram_url?.value) || null,
       youtube_url: normalizeProfileLink("youtube", form.elements.youtube_url?.value) || null,
@@ -6858,6 +6931,8 @@ async function upsertProfile(profile) {
     banner_position_y: clampImagePosition(profile.banner_position_y),
     avatar_position_x: clampImagePosition(profile.avatar_position_x),
     avatar_position_y: clampImagePosition(profile.avatar_position_y),
+    banner_scale: clampImageScale(profile.banner_scale),
+    avatar_scale: clampImageScale(profile.avatar_scale),
     website_url: profile.website_url || null,
     instagram_url: profile.instagram_url || null,
     youtube_url: profile.youtube_url || null,
@@ -6872,6 +6947,8 @@ async function upsertProfile(profile) {
   if (!Object.prototype.hasOwnProperty.call(profile, "banner_position_y")) delete basePayload.banner_position_y;
   if (!Object.prototype.hasOwnProperty.call(profile, "avatar_position_x")) delete basePayload.avatar_position_x;
   if (!Object.prototype.hasOwnProperty.call(profile, "avatar_position_y")) delete basePayload.avatar_position_y;
+  if (!Object.prototype.hasOwnProperty.call(profile, "banner_scale")) delete basePayload.banner_scale;
+  if (!Object.prototype.hasOwnProperty.call(profile, "avatar_scale")) delete basePayload.avatar_scale;
   const payload = { ...basePayload };
   const authProvider = profile.auth_provider || authProviderFromUser(appState.authUser);
   if (authProvider) payload.auth_provider = authProvider;
@@ -6882,6 +6959,8 @@ async function upsertProfile(profile) {
     delete basePayload.banner_position_y;
     delete basePayload.avatar_position_x;
     delete basePayload.avatar_position_y;
+    delete basePayload.banner_scale;
+    delete basePayload.avatar_scale;
     ({ data, error } = await supabaseClient.from("profiles").upsert(basePayload, { onConflict: "id" }).select().single());
   }
   if (!error && data) appState.profile = data;
@@ -8624,13 +8703,14 @@ function compactStat(value) {
 function professionalCard(profile) {
   const bannerUrl = profile.cover_url || profile.banner;
   const bannerPosition = `${clampImagePosition(profile.banner_position_x)}% ${clampImagePosition(profile.banner_position_y)}%`;
+  const bannerSize = `${Math.round(clampImageScale(profile.banner_scale) * 100)}%`;
   const bannerStyle = bannerUrl 
-    ? `background-image: url('${htmlEscape(bannerUrl)}'); background-size: cover; background-position: ${htmlEscape(bannerPosition)};` 
+    ? `background-image: url('${htmlEscape(bannerUrl)}'); background-size: ${htmlEscape(bannerSize)}; background-position: ${htmlEscape(bannerPosition)};` 
     : `background: linear-gradient(135deg, #181818 0%, #292929 50%, #101010 100%);`;
 
   const initials = profileInitials(profile.name);
   const avatarHtml = profile.avatar_url 
-    ? `<img class="professional-card-avatar-img" src="${htmlEscape(profile.avatar_url)}" alt="Avatar de ${htmlEscape(profile.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
+    ? `<img class="professional-card-avatar-img" src="${htmlEscape(profile.avatar_url)}" alt="Avatar de ${htmlEscape(profile.name)}" style="object-position:${clampImagePosition(profile.avatar_position_x)}% ${clampImagePosition(profile.avatar_position_y)}%;--profile-avatar-scale:${clampImageScale(profile.avatar_scale)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
        <span class="professional-card-avatar-fallback" style="display: none;">${htmlEscape(initials)}</span>`
     : `<span class="professional-card-avatar-fallback">${htmlEscape(initials)}</span>`;
 
@@ -13410,7 +13490,7 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("dragover", (event) => {
-  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  const profileDropzone = event.target.closest(".profile-image-edit-stage, [data-image-picker-preview]");
   if (profileDropzone) {
     event.preventDefault();
     document.querySelector("[data-image-picker]")?.classList.add("is-dragging");
@@ -13429,7 +13509,7 @@ document.addEventListener("dragover", (event) => {
 });
 
 document.addEventListener("dragleave", (event) => {
-  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  const profileDropzone = event.target.closest(".profile-image-edit-stage, [data-image-picker-preview]");
   if (profileDropzone && !profileDropzone.contains(event.relatedTarget)) {
     document.querySelector("[data-image-picker]")?.classList.remove("is-dragging");
     return;
@@ -13445,7 +13525,7 @@ document.addEventListener("dragleave", (event) => {
 });
 
 document.addEventListener("drop", (event) => {
-  const profileDropzone = event.target.closest(".profile-image-dropzone");
+  const profileDropzone = event.target.closest(".profile-image-edit-stage, [data-image-picker-preview]");
   if (profileDropzone) {
     event.preventDefault();
     const picker = document.querySelector("[data-image-picker]");
@@ -13469,8 +13549,54 @@ document.addEventListener("drop", (event) => {
   handleReleaseFile(event.dataTransfer?.files?.[0], input?.dataset.uploadType);
 });
 
+let profileImageDragState = null;
+
+document.addEventListener("pointerdown", (event) => {
+  const image = event.target.closest?.("[data-image-picker-preview] img");
+  const picker = event.target.closest?.("[data-image-picker]");
+  if (!image || !picker?.classList.contains("is-open")) return;
+  const frame = image.closest("[data-image-picker-preview]");
+  const type = picker.dataset.imageType || "avatar";
+  const state = profileImageEditorState(type);
+  profileImageDragState = {
+    type,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    positionX: state.x,
+    positionY: state.y,
+    width: Math.max(1, frame?.clientWidth || 1),
+    height: Math.max(1, frame?.clientHeight || 1),
+  };
+  image.setPointerCapture?.(event.pointerId);
+  picker.classList.add("is-dragging");
+  event.preventDefault();
+});
+
+document.addEventListener("pointermove", (event) => {
+  if (!profileImageDragState || event.pointerId !== profileImageDragState.pointerId) return;
+  const dx = event.clientX - profileImageDragState.startX;
+  const dy = event.clientY - profileImageDragState.startY;
+  setProfileImageEditorValue(profileImageDragState.type, {
+    x: profileImageDragState.positionX - (dx / profileImageDragState.width) * 100,
+    y: profileImageDragState.positionY - (dy / profileImageDragState.height) * 100,
+  });
+});
+
+document.addEventListener("pointerup", (event) => {
+  if (!profileImageDragState || event.pointerId !== profileImageDragState.pointerId) return;
+  document.querySelector("[data-image-picker]")?.classList.remove("is-dragging");
+  profileImageDragState = null;
+});
+
 document.addEventListener("input", (event) => {
   const input = event.target;
+  const imageScaleInput = input.closest?.("[data-image-edit-scale]");
+  if (imageScaleInput) {
+    const picker = document.querySelector("[data-image-picker]");
+    setProfileImageEditorValue(picker?.dataset.imageType || "avatar", { scale: imageScaleInput.value });
+    return;
+  }
   const hiringComposer = input.closest?.(".hiring-composer");
   if (hiringComposer) {
     const title = String(hiringComposer.elements.title?.value || "").trim();

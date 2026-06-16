@@ -19,6 +19,8 @@ create table if not exists public.profiles (
   banner_position_y numeric not null default 50 check (banner_position_y between 0 and 100),
   avatar_position_x numeric not null default 50 check (avatar_position_x between 0 and 100),
   avatar_position_y numeric not null default 50 check (avatar_position_y between 0 and 100),
+  banner_scale numeric not null default 1 check (banner_scale between 1 and 2.5),
+  avatar_scale numeric not null default 1 check (avatar_scale between 1 and 2.5),
   website_url text,
   instagram_url text,
   youtube_url text,
@@ -44,6 +46,8 @@ alter table public.profiles add column if not exists banner_position_x numeric n
 alter table public.profiles add column if not exists banner_position_y numeric not null default 50 check (banner_position_y between 0 and 100);
 alter table public.profiles add column if not exists avatar_position_x numeric not null default 50 check (avatar_position_x between 0 and 100);
 alter table public.profiles add column if not exists avatar_position_y numeric not null default 50 check (avatar_position_y between 0 and 100);
+alter table public.profiles add column if not exists banner_scale numeric not null default 1 check (banner_scale between 1 and 2.5);
+alter table public.profiles add column if not exists avatar_scale numeric not null default 1 check (avatar_scale between 1 and 2.5);
 alter table public.profiles add column if not exists website_url text;
 alter table public.profiles add column if not exists instagram_url text;
 alter table public.profiles add column if not exists youtube_url text;
@@ -85,6 +89,8 @@ create table if not exists public.public_profiles (
   banner_position_y numeric not null default 50,
   avatar_position_x numeric not null default 50,
   avatar_position_y numeric not null default 50,
+  banner_scale numeric not null default 1,
+  avatar_scale numeric not null default 1,
   website_url text,
   instagram_url text,
   youtube_url text,
@@ -101,6 +107,8 @@ alter table public.public_profiles add column if not exists banner_position_x nu
 alter table public.public_profiles add column if not exists banner_position_y numeric not null default 50;
 alter table public.public_profiles add column if not exists avatar_position_x numeric not null default 50;
 alter table public.public_profiles add column if not exists avatar_position_y numeric not null default 50;
+alter table public.public_profiles add column if not exists banner_scale numeric not null default 1;
+alter table public.public_profiles add column if not exists avatar_scale numeric not null default 1;
 
 alter table public.public_profiles enable row level security;
 
@@ -130,13 +138,13 @@ begin
   insert into public.public_profiles (
     id, display_name, username, full_name, artistic_name, account_role, bio,
     avatar_url, banner_url, banner_position_x, banner_position_y,
-    avatar_position_x, avatar_position_y,
+    avatar_position_x, avatar_position_y, banner_scale, avatar_scale,
     website_url, instagram_url, youtube_url, spotify_url,
     soundcloud_url, music_styles, is_public, created_at, updated_at
   ) values (
     new.id, new.display_name, new.username, new.full_name, new.artistic_name, new.account_role, new.bio,
     new.avatar_url, new.banner_url, new.banner_position_x, new.banner_position_y,
-    new.avatar_position_x, new.avatar_position_y,
+    new.avatar_position_x, new.avatar_position_y, new.banner_scale, new.avatar_scale,
     new.website_url, new.instagram_url, new.youtube_url, new.spotify_url,
     new.soundcloud_url, new.music_styles, new.is_public, new.created_at, new.updated_at
   )
@@ -153,6 +161,8 @@ begin
     banner_position_y = excluded.banner_position_y,
     avatar_position_x = excluded.avatar_position_x,
     avatar_position_y = excluded.avatar_position_y,
+    banner_scale = excluded.banner_scale,
+    avatar_scale = excluded.avatar_scale,
     website_url = excluded.website_url,
     instagram_url = excluded.instagram_url,
     youtube_url = excluded.youtube_url,
@@ -175,14 +185,14 @@ for each row execute function public.sync_public_profile();
 insert into public.public_profiles (
   id, display_name, username, full_name, artistic_name, account_role, bio,
   avatar_url, banner_url, banner_position_x, banner_position_y,
-  avatar_position_x, avatar_position_y,
+  avatar_position_x, avatar_position_y, banner_scale, avatar_scale,
   website_url, instagram_url, youtube_url, spotify_url,
   soundcloud_url, music_styles, is_public, created_at, updated_at
 )
 select
   id, display_name, username, full_name, artistic_name, account_role, bio,
   avatar_url, banner_url, banner_position_x, banner_position_y,
-  avatar_position_x, avatar_position_y,
+  avatar_position_x, avatar_position_y, banner_scale, avatar_scale,
   website_url, instagram_url, youtube_url, spotify_url,
   soundcloud_url, music_styles, is_public, created_at, updated_at
 from public.profiles

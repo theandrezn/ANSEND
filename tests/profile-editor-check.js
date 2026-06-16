@@ -93,7 +93,8 @@ async function inspectEditor(page, viewport) {
   await page.click('[data-action="profile-image-picker-open"][data-image-type="avatar"]');
   await page.waitForSelector(".profile-image-picker.is-open");
   const picker = await page.locator(".profile-image-picker.is-open").innerText();
-  if (!picker.includes("Selecionar imagem") || !picker.includes("Arraste uma imagem ou clique para enviar")) {
+  const hasEditControls = await page.locator(".profile-image-picker.is-open [data-image-edit-scale]").count();
+  if (!picker.includes("Editar imagem") || !picker.includes("Aplicar ajuste") || !hasEditControls) {
     throw new Error("Visual image picker content is incomplete");
   }
 }
