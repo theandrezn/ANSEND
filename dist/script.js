@@ -1314,6 +1314,7 @@ const appState = {
   recommendationImpressions: new Set(),
   releaseMode: "",
   catalogImport: null,
+  followStates: {},
   authUser: initialAuthCache?.user || null,
   authSession: undefined,
   authLoading: Boolean(supabaseClient),
@@ -1562,6 +1563,11 @@ function htmlEscape(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function cssEscape(value) {
+  if (window.CSS?.escape) return window.CSS.escape(String(value ?? ""));
+  return String(value ?? "").replace(/["\\\]]/g, "\\$&");
 }
 
 function optimizedImageMarkup({
@@ -6114,6 +6120,156 @@ function resolvePublicProfile(slug) {
   return recommendation ? { ...found, recommendationReason: recommendation.recommendationReason } : found;
 }
 
+function currentFollowUserId() {
+  return appState.authUser?.id || appState.profile?.id || "";
+}
+
+function defaultFollowState(profileUserId = "") {
+  return {
+    profileUserId,
+    isFollowing: false,
+    followersCount: 0,
+    followingCount: 0,
+    loading: Boolean(supabaseClient && currentFollowUserId() && profileUserId),
+    actionLoading: false,
+    error: "",
+  };
+}
+
+function setFollowState(profileUserId, patch = {}) {
+  if (!profileUserId) return defaultFollowState("");
+  const previous = appState.followStates[profileUserId] || defaultFollowState(profileUserId);
+  const next = { ...previous, ...patch, profileUserId };
+  appState.followStates[profileUserId] = next;
+  updateFollowButton(profileUserId);
+  updateProfileFollowCounts(profileUserId);
+  return next;
+}
+
+function followButtonLabel(state) {
+  if (state?.actionLoading) return "...";
+  if (state?.loading) return "Carregando...";
+  return state?.isFollowing ? "Seguindo" : "Seguir";
+}
+
+function updateFollowButton(profileUserId) {
+  const state = appState.followStates[profileUserId] || defaultFollowState(profileUserId);
+  document.querySelectorAll(`[data-action="follow-producer"][data-profile-id="${cssEscape(profileUserId)}"]`).forEach((button) => {
+    button.disabled = Boolean(state.loading || state.actionLoading);
+    button.classList.toggle("is-following", Boolean(state.isFollowing));
+    button.setAttribute("aria-pressed", state.isFollowing ? "true" : "false");
+    button.innerHTML = `<i data-lucide="${state.isFollowing ? "user-check" : "user-plus"}"></i>${followButtonLabel(state)}`;
+  });
+  lucide.createIcons();
+}
+
+function updateProfileFollowCounts(profileUserId) {
+  const state = appState.followStates[profileUserId];
+  if (!state) return;
+  document.querySelectorAll(`[data-follow-count-profile="${cssEscape(profileUserId)}"]`).forEach((node) => {
+    const kind = node.dataset.followCount;
+    const value = kind === "following" ? state.followingCount : state.followersCount;
+    node.textContent = compactNumber(value || 0);
+  });
+}
+
+async function getFollowState(profileUserId) {
+  const followerId = currentFollowUserId();
+  const targetId = String(profileUserId || "");
+  const fallback = defaultFollowState(targetId);
+  if (!supabaseClient || !targetId) return { ...fallback, loading: false };
+  if (!followerId) {
+    const [{ count: followersCount }, { count: followingCount }] = await Promise.all([
+      supabaseClient.from("user_follows").select("id", { count: "exact", head: true }).eq("following_id", targetId),
+      supabaseClient.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", targetId),
+    ]);
+    return { ...fallback, followersCount: followersCount || 0, followingCount: followingCount || 0, loading: false };
+  }
+  const [followResult, followersResult, followingResult] = await Promise.all([
+    supabaseClient
+      .from("user_follows")
+      .select("id")
+      .eq("follower_id", followerId)
+      .eq("following_id", targetId)
+      .maybeSingle(),
+    supabaseClient.from("user_follows").select("id", { count: "exact", head: true }).eq("following_id", targetId),
+    supabaseClient.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", targetId),
+  ]);
+  if (followResult.error && followResult.error.code !== "PGRST116") throw followResult.error;
+  if (followersResult.error) throw followersResult.error;
+  if (followingResult.error) throw followingResult.error;
+  return {
+    ...fallback,
+    isFollowing: Boolean(followResult.data),
+    followersCount: followersResult.count || 0,
+    followingCount: followingResult.count || 0,
+    loading: false,
+    error: "",
+  };
+}
+
+async function refreshFollowState(profileUserId) {
+  const targetId = String(profileUserId || "");
+  if (!targetId) return null;
+  setFollowState(targetId, { loading: true, error: "" });
+  try {
+    const state = await getFollowState(targetId);
+    return setFollowState(targetId, state);
+  } catch (error) {
+    console.error("[ANSEND follow] state failed", error);
+    return setFollowState(targetId, { loading: false, error: "Nao foi possivel carregar seguidores." });
+  }
+}
+
+async function followUser(profileUserId) {
+  const followerId = currentFollowUserId();
+  const followingId = String(profileUserId || "");
+  if (!supabaseClient || !followerId) throw new Error("Faca login para seguir este perfil.");
+  if (!followingId) throw new Error("Perfil nao encontrado.");
+  if (followerId === followingId) throw new Error("Voce nao pode seguir o proprio perfil.");
+  const { error } = await supabaseClient
+    .from("user_follows")
+    .upsert({ follower_id: followerId, following_id: followingId }, { onConflict: "follower_id,following_id", ignoreDuplicates: true });
+  if (error) throw error;
+  return refreshFollowState(followingId);
+}
+
+async function unfollowUser(profileUserId) {
+  const followerId = currentFollowUserId();
+  const followingId = String(profileUserId || "");
+  if (!supabaseClient || !followerId) throw new Error("Faca login para alterar seguidores.");
+  if (!followingId) throw new Error("Perfil nao encontrado.");
+  const { error } = await supabaseClient
+    .from("user_follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId);
+  if (error) throw error;
+  return refreshFollowState(followingId);
+}
+
+async function toggleFollow(profileUserId) {
+  const targetId = String(profileUserId || "");
+  if (!targetId) return;
+  const current = appState.followStates[targetId] || await refreshFollowState(targetId);
+  if (current?.actionLoading) return;
+  const previous = appState.followStates[targetId] || defaultFollowState(targetId);
+  setFollowState(targetId, {
+    actionLoading: true,
+    error: "",
+    isFollowing: !previous.isFollowing,
+    followersCount: Math.max(0, (previous.followersCount || 0) + (previous.isFollowing ? -1 : 1)),
+  });
+  try {
+    await (previous.isFollowing ? unfollowUser(targetId) : followUser(targetId));
+    showToast(previous.isFollowing ? "Voce deixou de seguir este perfil." : "Agora voce esta seguindo este perfil.", previous.isFollowing ? "user-minus" : "user-plus");
+  } catch (error) {
+    console.error("[ANSEND follow] toggle failed", error);
+    setFollowState(targetId, { ...previous, actionLoading: false, loading: false, error: error.message || "Nao foi possivel atualizar o follow." });
+    showToast(error.message || "Nao foi possivel atualizar este perfil.", "triangle-alert");
+  }
+}
+
 function renderProfileNotFound(slug) {
   appView.innerHTML = `<section class="profile-page spotify-profile">
     <div class="profile-not-found">
@@ -6129,14 +6285,16 @@ function renderProfileNotFound(slug) {
 function renderSpotifyProfile({ profile, isOwner = false, professional = null } = {}) {
   const safeProfile = profile || activeProfile() || {};
   const display = profileDisplayData(safeProfile);
+  const profileUserId = String(safeProfile.id || "");
   const catalogItems = profileCatalogFor(safeProfile, isOwner);
   const publishedCount = catalogItems.filter((item) => item.status === "published" || item.source !== "catalog").length;
+  const followState = appState.followStates[profileUserId] || defaultFollowState(profileUserId);
   const actionButtons = isOwner
     ? `<button type="button" class="profile-action is-primary" data-action="toggle-edit-profile"><i data-lucide="edit-3"></i>Editar perfil</button>
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>
        <button type="button" class="profile-action" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>`
-    : `<button type="button" class="profile-action is-primary" data-action="follow-producer"><i data-lucide="user-plus"></i>Seguir</button>
-       <button type="button" class="profile-action" data-action="professional-contact" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
+    : `<button type="button" class="profile-action is-primary ${followState.isFollowing ? "is-following" : ""}" data-action="follow-producer" data-profile-id="${htmlEscape(profileUserId)}" aria-pressed="${followState.isFollowing ? "true" : "false"}" ${followState.loading || followState.actionLoading ? "disabled" : ""}><i data-lucide="${followState.isFollowing ? "user-check" : "user-plus"}"></i>${followButtonLabel(followState)}</button>
+       <button type="button" class="profile-action" data-action="professional-contact" data-profile-id="${htmlEscape(profileUserId)}" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
   const linksMarkup = profileSocialLinks(display);
   const aboutMarkup = display.bio || linksMarkup;
@@ -6163,6 +6321,10 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
         <div class="profile-published-count" aria-label="Itens publicados">
           <span>Publicados</span>
           <strong>${publishedCount}</strong>
+          <span>Seguidores</span>
+          <strong data-follow-count="followers" data-follow-count-profile="${htmlEscape(profileUserId)}">${compactNumber(followState.followersCount)}</strong>
+          <span>Seguindo</span>
+          <strong data-follow-count="following" data-follow-count-profile="${htmlEscape(profileUserId)}">${compactNumber(followState.followingCount)}</strong>
         </div>
       </div>
       <nav class="profile-tabs" aria-label="Secoes do perfil">
@@ -6758,6 +6920,9 @@ function openProfileImagePicker(type = "avatar") {
   }
   updateProfileImageEditorPreview();
   lucide.createIcons();
+  if (!isOwner && profileUserId) {
+    requestAnimationFrame(() => refreshFollowState(profileUserId));
+  }
 }
 
 function closeProfileImagePicker() {
@@ -8695,6 +8860,10 @@ function compactStat(value) {
   if (number >= 1000000) return `${(number / 1000000).toFixed(number >= 10000000 ? 0 : 1)}M`;
   if (number >= 1000) return `${(number / 1000).toFixed(number >= 10000 ? 0 : 1)}K`;
   return String(number);
+}
+
+function compactNumber(value) {
+  return compactStat(value);
 }
 
 function professionalCard(profile) {
@@ -13395,14 +13564,19 @@ document.addEventListener("click", (event) => {
   }
   if (action === "producer-focus") document.querySelector("#producerProfile")?.scrollIntoView({ behavior: prefersReducedMotion.matches ? "auto" : "smooth", block: "start" });
   if (action === "follow-producer") {
-    const profileId = target.dataset.profileId || target.closest(".profile-page")?.querySelector(".profile-action[data-action='professional-contact']")?.dataset.profileId || "";
-    trackUserEvent("follow", "professional", profileId || resolvePublicProfile(location.hash.replace("#perfil-", ""))?.id || "", { source: "follow-producer" });
-    target.classList.toggle("is-following");
-    if (target.closest(".professional-card")) {
-      target.setAttribute("aria-pressed", target.classList.contains("is-following") ? "true" : "false");
-    } else {
-      target.textContent = target.classList.contains("is-following") ? "Seguindo" : "Seguir";
+    const profileId = target.dataset.profileId || resolvePublicProfile(location.hash.replace("#perfil-", ""))?.id || "";
+    if (!appState.authUser) {
+      showToast("Faça login para seguir este perfil.", "user-plus");
+      appState.sellerMode = "login";
+      location.hash = "vendedor";
+      return;
     }
+    if (profileId === currentFollowUserId()) {
+      showToast("Você não pode seguir o próprio perfil.", "user-x");
+      return;
+    }
+    toggleFollow(profileId);
+    return;
   }
   if (action === "download") showToast("Download preparado com sucesso", "download");
   if (action === "seller") {

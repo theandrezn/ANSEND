@@ -15579,6 +15579,21 @@ body:has(.nexo-feed-page) .footer {
   gap: 14px;
 }
 
+.profile-action[data-action="follow-producer"].is-following {
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .22);
+  color: var(--text);
+}
+
+.profile-action[data-action="follow-producer"]:disabled {
+  opacity: .68;
+  cursor: wait;
+}
+
+.profile-published-count {
+  grid-template-columns: auto;
+}
+
 @media (max-width: 560px) {
   .app-modal {
     padding: 10px;
