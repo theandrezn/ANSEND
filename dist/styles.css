@@ -26271,13 +26271,15 @@ body[data-route="cadastrar"] .release-mode-selector {
 body[data-route="cadastrar"] .release-mode-hero {
   display: flex !important;
   justify-content: space-between !important;
-  align-items: flex-start !important;
+  align-items: center !important;
   gap: 32px !important;
-  padding: 0 0 24px 0 !important;
-  border-bottom: 1px solid #1F1F1F !important;
-  flex-wrap: wrap !important;
-  background: transparent !important;
+  padding: 32px !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.025) !important;
   min-height: auto !important;
+  flex-wrap: wrap !important;
+  box-shadow: none !important;
 }
 
 body[data-route="cadastrar"] .release-mode-hero h1 {
@@ -26298,15 +26300,18 @@ body[data-route="cadastrar"] .release-mode-hero p {
   margin: 0 !important;
 }
 
+body[data-route="cadastrar"] .release-mode-hero aside,
 body[data-route="cadastrar"] .release-aside-card {
   background: #080808 !important;
-  border: 1px solid #1F1F1F !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 12px !important;
   padding: 16px 20px !important;
   max-width: 300px !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 6px !important;
+  align-self: center !important;
+  box-shadow: none !important;
 }
 
 body[data-route="cadastrar"] .release-aside-card strong {
@@ -26411,6 +26416,11 @@ body[data-route="cadastrar"] .release-mode-card {
   text-decoration: none !important;
   font-family: inherit !important;
   width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card::after {
+  content: none !important;
+  display: none !important;
 }
 
 body[data-route="cadastrar"] .release-mode-card:hover {
