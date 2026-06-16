@@ -29,6 +29,12 @@ if (!/const HIRING_POST_LIMIT = 24/.test(script)) {
 if (!/appState\.hiring\.cache/.test(script) || !/function hiringCacheKey/.test(script)) {
   throw new Error("Community cache missing");
 }
+if (!/renderedCommunityEarly[\s\S]*currentRoute\(\) === COMMUNITY_ROUTE[\s\S]*renderRoute\(\)/.test(script)) {
+  throw new Error("Community route must render before auth/public data boot completes");
+}
+if (/if \(route !== COMMUNITY_ROUTE\) PageTransition\(appView, route\);/.test(script) === false) {
+  throw new Error("Community route should bypass section transition wrapper");
+}
 if (!/Promise\.allSettled/.test(script)) {
   throw new Error("Community independent loads should use Promise.allSettled");
 }

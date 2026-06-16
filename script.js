@@ -5661,7 +5661,6 @@ async function renderHiringPage(options = {}) {
     </section>
     ${hiringRightRailMarkup()}
   </main>`;
-  PageTransition(appView, COMMUNITY_ROUTE);
   hydrateView();
   stop();
   loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
@@ -7817,6 +7816,10 @@ async function initAuth() {
   const previousUserId = appState.authUser?.id || null;
   appState.authLoading = true;
   const stopAuthPerf = perfStart("Auth session loaded");
+  const renderedCommunityEarly = currentRoute() === COMMUNITY_ROUTE && !shouldRedirectAfterOAuth && !shouldRedirectAfterEmailConfirmation;
+  if (renderedCommunityEarly) {
+    renderRoute();
+  }
   const sessionPromise = supabaseClient.auth.getSession();
   try {
     const sessionResult = await withAuthTimeout(sessionPromise, "getSession");
@@ -11799,7 +11802,7 @@ function renderRoute() {
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
-  PageTransition(appView, route);
+  if (route !== COMMUNITY_ROUTE) PageTransition(appView, route);
   hydrateView();
   stopShellPerf();
 }

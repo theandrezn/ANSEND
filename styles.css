@@ -25662,6 +25662,13 @@ body[data-route="comunidade"] .section-transition__content {
   min-height: 100dvh;
 }
 
+body[data-route="comunidade"] #appView.app-view > .hiring-native-layout {
+  width: 100%;
+  min-height: 100dvh;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 @media (max-width: 720px) {
   body[data-route="comunidade"] {
     --sidebar-width: 260px;
