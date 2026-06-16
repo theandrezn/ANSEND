@@ -127,6 +127,49 @@ on public.content_embeddings for select
 to authenticated
 using (true);
 
+drop policy if exists "Owners can insert content embeddings" on public.content_embeddings;
+create policy "Owners can insert content embeddings"
+on public.content_embeddings for insert
+to authenticated
+with check (
+  (target_type = 'professional' and target_id = (select auth.uid()))
+  or (target_type = 'beat' and exists (
+    select 1 from public.beats where id = target_id and user_id = (select auth.uid())
+    union all
+    select 1 from public.catalog_items where id = target_id and user_id = (select auth.uid())
+  ))
+  or (target_type = 'post' and exists (
+    select 1 from public.hiring_posts where id = target_id and user_id = (select auth.uid())
+  ))
+);
+
+drop policy if exists "Owners can update content embeddings" on public.content_embeddings;
+create policy "Owners can update content embeddings"
+on public.content_embeddings for update
+to authenticated
+using (
+  (target_type = 'professional' and target_id = (select auth.uid()))
+  or (target_type = 'beat' and exists (
+    select 1 from public.beats where id = target_id and user_id = (select auth.uid())
+    union all
+    select 1 from public.catalog_items where id = target_id and user_id = (select auth.uid())
+  ))
+  or (target_type = 'post' and exists (
+    select 1 from public.hiring_posts where id = target_id and user_id = (select auth.uid())
+  ))
+)
+with check (
+  (target_type = 'professional' and target_id = (select auth.uid()))
+  or (target_type = 'beat' and exists (
+    select 1 from public.beats where id = target_id and user_id = (select auth.uid())
+    union all
+    select 1 from public.catalog_items where id = target_id and user_id = (select auth.uid())
+  ))
+  or (target_type = 'post' and exists (
+    select 1 from public.hiring_posts where id = target_id and user_id = (select auth.uid())
+  ))
+);
+
 create or replace function public.recommendation_event_weight(
   p_event_type text,
   p_duration_seconds numeric default null
@@ -203,10 +246,37 @@ create or replace function public.upsert_content_embedding(
   p_text_content text,
   p_embedding extensions.vector(1536)
 ) returns void
-language sql
+language plpgsql
 security invoker
 set search_path = public, extensions
 as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_target_type = 'professional' and p_target_id <> auth.uid() then
+    raise exception 'Only the profile owner can update this embedding';
+  end if;
+
+  if p_target_type = 'beat' and not exists (
+    select 1 from public.beats where id = p_target_id and user_id = auth.uid()
+    union all
+    select 1 from public.catalog_items where id = p_target_id and user_id = auth.uid()
+  ) then
+    raise exception 'Only the content owner can update this embedding';
+  end if;
+
+  if p_target_type = 'post' and not exists (
+    select 1 from public.hiring_posts where id = p_target_id and user_id = auth.uid()
+  ) then
+    raise exception 'Only the post owner can update this embedding';
+  end if;
+
+  if p_target_type not in ('professional', 'beat', 'post') then
+    raise exception 'Unsupported embedding target type';
+  end if;
+
   insert into public.content_embeddings (target_type, target_id, text_content, embedding, updated_at)
   values (p_target_type, p_target_id, p_text_content, p_embedding, now())
   on conflict (target_type, target_id)
@@ -214,6 +284,7 @@ as $$
     text_content = excluded.text_content,
     embedding = excluded.embedding,
     updated_at = now();
+end;
 $$;
 
 create or replace function public.update_user_interest_profile(
@@ -471,7 +542,8 @@ limit least(greatest(coalesce(p_limit, 30), 1), 80);
 $$;
 
 grant execute on function public.track_user_event(text, text, uuid, numeric, jsonb) to authenticated;
-revoke execute on function public.upsert_content_embedding(text, uuid, text, extensions.vector(1536)) from public, anon, authenticated;
+revoke execute on function public.upsert_content_embedding(text, uuid, text, extensions.vector(1536)) from public, anon;
+grant execute on function public.upsert_content_embedding(text, uuid, text, extensions.vector(1536)) to authenticated;
 grant execute on function public.update_user_interest_profile(text, extensions.vector(1536), text[], text[], numeric, numeric, text[]) to authenticated;
 revoke execute on function public.get_recommended_professionals(uuid, integer) from anon;
 revoke execute on function public.get_recommended_feed(uuid, integer) from anon;

@@ -174,6 +174,18 @@ async function handleEmbedContent(request, env) {
         updated_at: new Date().toISOString(),
       }]),
     });
+    if (write.error && !write.configured && request.headers.get("Authorization")) {
+      const rpcWrite = await supabaseRpc(env, "upsert_content_embedding", {
+        p_target_type: targetType,
+        p_target_id: targetId,
+        p_text_content: textContent,
+        p_embedding: `[${embedding.join(",")}]`,
+      }, request.headers.get("Authorization") || "");
+      if (rpcWrite.error) {
+        return jsonResponse({ success: false, configured: rpcWrite.configured, error: rpcWrite.error }, { status: rpcWrite.configured ? 502 : 200 });
+      }
+      return jsonResponse({ success: true, configured: true });
+    }
     if (write.error) {
       return jsonResponse({ success: false, configured: write.configured, error: write.error }, { status: write.configured ? 502 : 200 });
     }
