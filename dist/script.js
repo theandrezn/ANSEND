@@ -9498,7 +9498,10 @@ function setReleaseStep(step, form = releaseFormElement()) {
   const next = releasePage.querySelector('button[data-action="release-next"]');
   const submit = releasePage.querySelector('button[data-action="publish-catalog"]');
   
-  if (back) back.disabled = nextStep === 0;
+  if (back) {
+    back.disabled = false;
+    back.textContent = nextStep === 0 ? "Trocar modo" : "Voltar";
+  }
   if (next) next.style.display = nextStep === 5 ? "none" : "flex";
   if (submit) submit.style.display = nextStep === 5 ? "flex" : "none";
   
@@ -12857,7 +12860,13 @@ document.addEventListener("click", (event) => {
   }
   if (action === "release-back") {
     const form = releaseFormElement();
-    setReleaseStep(releaseCurrentStep(form) - 1, form);
+    const current = releaseCurrentStep(form);
+    if (current <= 0) {
+      appState.releaseMode = "";
+      renderMusicUpload("selector");
+    } else {
+      setReleaseStep(current - 1, form);
+    }
     return;
   }
   if (action === "release-preview-play") {
