@@ -7,6 +7,8 @@ const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
+const AUTH_CACHE_KEY = "ansend-auth-cache-v1";
+const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
 const COMMUNITY_TITLE = "Comunidade ANSEND";
@@ -30,6 +32,7 @@ const supabaseClient = isSupabaseConfigured
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storage: window.localStorage,
     },
   })
   : null;
@@ -1266,6 +1269,8 @@ const topBeatOfDay = {
   audio: "assets/top-beat-psiiiko.mp3",
   tags: ["Type Beat", "Top 1 do dia"],
 };
+const initialAuthCache = supabaseClient ? cachedAuthState() : null;
+
 const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
@@ -1303,9 +1308,12 @@ const appState = {
   nexoChatMessages: [],
   nexoChatLoading: false,
   nexoChatError: "",
-  authUser: null,
-  profile: supabaseClient ? null : JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
-  authReady: !supabaseClient,
+  authUser: initialAuthCache?.user || null,
+  authSession: undefined,
+  authLoading: Boolean(supabaseClient),
+  profileLoading: Boolean(supabaseClient && initialAuthCache?.user && !initialAuthCache?.profile),
+  profile: supabaseClient ? (initialAuthCache?.profile || null) : JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
+  authReady: !supabaseClient || Boolean(initialAuthCache?.user),
   query: "",
   genre: "Todos",
   playing: null,
@@ -1599,6 +1607,37 @@ function safeReadJson(key, fallback = null) {
   } catch (_error) {
     return fallback;
   }
+}
+
+function cachedAuthState() {
+  const cached = safeReadJson(AUTH_CACHE_KEY, null);
+  if (!cached || typeof cached !== "object") return null;
+  if (!cached.user?.id) return null;
+  return cached;
+}
+
+function persistAuthCache() {
+  if (!appState.authUser?.id) return;
+  try {
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({
+      user: {
+        id: appState.authUser.id,
+        email: appState.authUser.email || "",
+        role: appState.authUser.role || "authenticated",
+        aud: appState.authUser.aud || "authenticated",
+        app_metadata: appState.authUser.app_metadata || {},
+        user_metadata: appState.authUser.user_metadata || {},
+      },
+      profile: appState.profile || null,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    debugAuth("auth_cache_write_failed", { error: error?.message || String(error) });
+  }
+}
+
+function clearAuthCache() {
+  localStorage.removeItem(AUTH_CACHE_KEY);
 }
 
 function nexoDefaultQuiz(prompt = "") {
@@ -5982,10 +6021,18 @@ function profileFromAuthUser(user, fallback = {}) {
 
 async function loadProfile(user) {
   if (!supabaseClient || !user) return null;
-  const { data, error } = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  appState.profileLoading = true;
+  try {
+  debugAuth("profile_load_start", { userId: user.id });
+  const { data, error } = await withTimeout(
+    supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    8500,
+    "Profile fetch timeout"
+  );
   if (error) {
     debugAuth("profile_load_error", { userId: user.id, error: error.message });
-    appState.profile = profileFromAuthUser(user);
+    appState.profile = appState.profile || profileFromAuthUser(user);
+    persistAuthCache();
     showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
     return appState.profile;
   }
@@ -5996,26 +6043,40 @@ async function loadProfile(user) {
     if (!result.error) {
       localStorage.removeItem(pendingProfileKey(user.id));
     } else {
-      appState.profile = fallbackProfile;
+      appState.profile = appState.profile || fallbackProfile;
       console.error("[ANSEND auth] profile upsert from pending failed", result.error);
     }
     debugAuth("profile_created_from_pending", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
-    return result.data || appState.profile;
+    appState.profile = result.data || appState.profile || fallbackProfile;
+    persistAuthCache();
+    return appState.profile;
   }
   if (!data) {
     const fallbackProfile = profileFromAuthUser(user);
     const result = await upsertProfile(fallbackProfile);
     if (result.error) {
-      appState.profile = fallbackProfile;
+      appState.profile = appState.profile || fallbackProfile;
       console.error("[ANSEND auth] profile upsert from auth user failed", result.error);
+    } else {
+      appState.profile = result.data;
     }
     debugAuth("profile_created_from_auth_user", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
-    return result.data || appState.profile;
+    persistAuthCache();
+    return appState.profile;
   }
   appState.profile = data;
   clearLocalPreviewProfile();
+  persistAuthCache();
   debugAuth("profile_loaded", { userId: user.id, profileId: data.id });
   return data;
+  } catch (error) {
+    debugAuth("profile_load_failed_transient", { userId: user.id, error: error?.message || String(error) });
+    appState.profile = appState.profile || profileFromAuthUser(user);
+    persistAuthCache();
+    return appState.profile;
+  } finally {
+    appState.profileLoading = false;
+  }
 }
 
 async function loadAdminStatus() {
@@ -6174,6 +6235,8 @@ async function loadPublicPlatformDataSafe(reason = "auth") {
 async function hydrateAuthenticatedUser(user, options = {}) {
   if (!user) return;
   appState.authUser = user;
+  appState.authReady = true;
+  appState.authLoading = false;
   await loadProfile(user);
   if (options.touchLogin) {
     await touchProfileLoginMetadata({
@@ -6183,14 +6246,22 @@ async function hydrateAuthenticatedUser(user, options = {}) {
   }
   await loadAdminStatus();
   await loadOwnedCatalogItems();
+  persistAuthCache();
 }
 
-function clearAuthenticatedSession(reason = "no-session") {
+function clearAuthenticatedSession(reason = "no-session", options = {}) {
+  const explicit = Boolean(options.explicit || reason.includes("signout") || reason.includes("logout") || reason.includes("SIGNED_OUT"));
   appState.authUser = null;
+  appState.authSession = null;
+  appState.authLoading = false;
+  appState.profileLoading = false;
   appState.profile = null;
   appState.isAdmin = false;
   appState.adminProfiles = [];
-  clearLocalPreviewProfile();
+  if (explicit) {
+    clearAuthCache();
+    clearLocalPreviewProfile();
+  }
   appState.ownedCatalogItems = [];
   syncCatalogCompatibilityState();
   debugAuth(reason, { reason });
@@ -6204,7 +6275,18 @@ async function reconcileInitialSession(sessionPromise, reason = "initial_timeout
       return;
     }
     const user = data?.session?.user || null;
-    if (!user || appState.authUser?.id === user.id) return;
+    if (!user) {
+      clearAuthenticatedSession("late_no_session_confirmed", { explicit: true });
+      appState.authReady = true;
+      syncAccountUi();
+      renderRoutePreservingAuthFocus(true);
+      return;
+    }
+    appState.authSession = data.session;
+    if (appState.authUser?.id === user.id) {
+      persistAuthCache();
+      return;
+    }
     await loadPublicPlatformDataSafe("late_session");
     await hydrateAuthenticatedUser(user, { touchLogin: false });
     appState.authReady = true;
@@ -6235,6 +6317,7 @@ async function initAuth() {
     return;
   }
   const previousUserId = appState.authUser?.id || null;
+  appState.authLoading = true;
   const sessionPromise = supabaseClient.auth.getSession();
   try {
     const sessionResult = await withAuthTimeout(sessionPromise, "getSession");
@@ -6242,9 +6325,11 @@ async function initAuth() {
       debugAuth("init_get_session_timeout", { timeoutMs: INITIAL_AUTH_TIMEOUT_MS });
       reconcileInitialSession(sessionPromise, "getSession_timeout");
       await loadPublicPlatformDataSafe("initial_timeout");
-      clearAuthenticatedSession("init_session_timeout_fallback");
+      appState.authReady = true;
+      appState.authLoading = false;
     } else {
       const session = sessionResult.data?.session || null;
+      appState.authSession = session;
       const userResult = session
         ? await withAuthTimeout(supabaseClient.auth.getUser(), "getUser")
         : { data: { user: null }, error: null, timedOut: false };
@@ -6263,15 +6348,17 @@ async function initAuth() {
           lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
         });
       } else {
-        clearAuthenticatedSession("init_no_session");
+        clearAuthenticatedSession("init_no_session", { explicit: true });
       }
     }
   } catch (error) {
     debugAuth("init_auth_failed", { error: error?.message || String(error) });
     await loadPublicPlatformDataSafe("initial_error");
-    clearAuthenticatedSession("init_error_fallback");
+    appState.authReady = true;
+    appState.authLoading = false;
   } finally {
     appState.authReady = true;
+    appState.authLoading = false;
     syncAccountUi();
   }
   if (appState.authUser && shouldRedirectAfterOAuth) {
@@ -6299,6 +6386,7 @@ async function initAuth() {
     try {
       await loadPublicPlatformDataSafe("auth_state_change");
       if (session?.user) {
+        appState.authSession = session;
         appState.authUser = session.user;
         await hydrateAuthenticatedUser(session.user, {
           touchLogin: _event === "SIGNED_IN",
@@ -6309,14 +6397,17 @@ async function initAuth() {
           clearEmailConfirmation();
           clearEmailConfirmationIntent();
         }
+      } else if (_event === "SIGNED_OUT" || _event === "USER_DELETED") {
+        clearAuthenticatedSession(`auth_state_${_event}`, { explicit: true });
       } else {
-        clearAuthenticatedSession("auth_state_no_session");
+        debugAuth("auth_state_null_session_ignored", { event: _event });
       }
     } catch (error) {
       debugAuth("auth_state_failed", { event: _event, error: error?.message || String(error) });
       if (session?.user) appState.authUser = session.user;
     } finally {
       appState.authReady = true;
+      appState.authLoading = false;
       syncAccountUi();
       renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
     }
@@ -7901,7 +7992,6 @@ async function currentReleaseUploadUser() {
   if (error) throw error;
   const sessionUser = data?.session?.user || null;
   if (!sessionUser?.id) {
-    clearAuthenticatedSession("release_upload_no_session");
     throw new Error("Entre na sua conta para enviar arquivos e publicar.");
   }
   if (appState.authUser?.id !== sessionUser.id) {
@@ -10676,14 +10766,11 @@ async function handleAccountSubmit(form) {
 }
 
 async function handleLogout() {
+  localStorage.setItem(AUTH_EXPLICIT_LOGOUT_KEY, String(Date.now()));
   if (supabaseClient && appState.authUser) {
     await supabaseClient.auth.signOut();
   }
-  appState.authUser = null;
-  appState.profile = null;
-  appState.isAdmin = false;
-  appState.adminProfiles = [];
-  clearLocalPreviewProfile();
+  clearAuthenticatedSession("logout_explicit", { explicit: true });
   showToast("Você saiu da conta ANSEND", "log-out");
   renderRoute();
 }
@@ -10700,6 +10787,24 @@ function scrollCatalog(button, direction) {
 const menuToggle = document.querySelector(".menu-toggle");
 menuToggle?.addEventListener("click", () => document.body.classList.toggle("menu-open"));
 window.addEventListener("hashchange", () => renderRoutePreservingAuthFocus());
+window.addEventListener("storage", (event) => {
+  if (event.key === AUTH_EXPLICIT_LOGOUT_KEY && event.newValue) {
+    clearAuthenticatedSession("storage_logout_explicit", { explicit: true });
+    syncAccountUi();
+    renderRoutePreservingAuthFocus(true);
+    return;
+  }
+  if (event.key !== AUTH_CACHE_KEY || !event.newValue || appState.authUser) return;
+  const cached = cachedAuthState();
+  if (!cached?.user?.id) return;
+  appState.authUser = cached.user;
+  appState.profile = cached.profile || appState.profile;
+  appState.authReady = true;
+  appState.authLoading = false;
+  appState.profileLoading = false;
+  syncAccountUi();
+  renderRoutePreservingAuthFocus(true);
+});
 
 document.addEventListener("pointerdown", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
