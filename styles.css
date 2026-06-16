@@ -20561,7 +20561,8 @@ body:not([data-route="feed"]) .topbar {
 body[data-route="perfil"] #appView.app-view,
 body[data-route="perfil-publico"] #appView.app-view,
 body[data-route="ia"] #appView.app-view,
-body[data-route="nexo-feed"] #appView.app-view {
+body[data-route="nexo-feed"] #appView.app-view,
+body[data-route="detalhe"] #appView.app-view {
   padding: 0 !important;
 }
 
