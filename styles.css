@@ -102,7 +102,7 @@ body.requires-auth .seller-auth-panel {
   width: min(49%, 720px);
 }
 .ai-hero .an-hero-brand img {
-  width: clamp(138px, 10vw, 184px);
+  width: clamp(260px, 24vw, 420px) !important;
   filter: drop-shadow(0 0 22px rgba(255, 106, 0, .18));
 }
 .ai-hero .an-kicker {
@@ -1641,10 +1641,10 @@ button:focus-visible, a:focus-visible, input:focus-visible {
     drop-shadow(0 24px 42px rgba(0, 0, 0, .62));
 }
 .an-hero-brand img {
-  width: clamp(108px, 10vw, 158px);
+  width: clamp(260px, 24vw, 420px) !important;
   height: auto;
   display: block;
-  margin-bottom: clamp(14px, 1.8vw, 24px);
+  margin-bottom: clamp(18px, 2.2vw, 32px);
 }
 .an-kicker {
   display: flex;
@@ -7644,8 +7644,8 @@ body.onboarding-open { overflow: hidden; }
   top: 51%;
 }
 .feed .ai-hero .an-hero-brand img {
-  width: clamp(118px, 8.2vw, 152px);
-  margin-bottom: clamp(14px, 1.35vw, 22px);
+  width: clamp(260px, 24vw, 420px) !important;
+  margin-bottom: clamp(18px, 2.2vw, 32px);
 }
 .feed .ai-hero .an-hero-copy h1 {
   max-width: 640px;
@@ -7736,7 +7736,7 @@ body.onboarding-open { overflow: hidden; }
     transform: none;
   }
   .feed .ai-hero .an-hero-brand img {
-    width: 108px;
+    width: clamp(180px, 45vw, 240px) !important;
     margin-bottom: 18px;
   }
   .feed .ai-hero .an-hero-copy h1 {
@@ -8362,7 +8362,7 @@ body.onboarding-open { overflow: hidden; }
   box-shadow: 0 24px 76px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .035);
 }
 .feed .ai-hero.is-beatmaker-hero .an-hero-brand {
-  display: none;
+  display: block !important;
 }
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy {
   left: clamp(36px, 4vw, 64px);
@@ -8756,7 +8756,7 @@ body.onboarding-open { overflow: hidden; }
 }
 
 .feed .ai-hero .an-hero-brand {
-  display: none;
+  display: block !important;
 }
 
 .feed .ai-hero .an-kicker,
@@ -10121,7 +10121,7 @@ body.modal-open {
 }
 
 .feed .ai-hero .an-hero-copy h1 .headline-reveal-brand {
-  color: var(--orange);
+  display: none !important;
 }
 
 .feed .ai-hero .an-hero-copy h1 .headline-reveal-main {
