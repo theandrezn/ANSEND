@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, "..");
 const script = fs.readFileSync(path.join(root, "script.js"), "utf8");
 const migration = fs.readFileSync(path.join(root, "supabase", "migrations", "20260616233000_hiring_performance_indexes.sql"), "utf8");
 const adsMigration = fs.readFileSync(path.join(root, "supabase", "migrations", "20260616234500_promoted_beats_ads.sql"), "utf8");
+const styles = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 
 const renderMatch = script.match(/async function renderHiringPage\(options = \{\}\) \{([\s\S]*?)async function submitHiringPost/);
 if (!renderMatch) throw new Error("renderHiringPage not found");
@@ -41,6 +42,12 @@ if (!/renderedCommunityEarly[\s\S]*currentRoute\(\) === COMMUNITY_ROUTE[\s\S]*re
 }
 if (/if \(route !== COMMUNITY_ROUTE\) PageTransition\(appView, route\);/.test(script) === false) {
   throw new Error("Community route should bypass section transition wrapper");
+}
+if (!/communityRouteEnter/.test(styles) || !/body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
+  throw new Error("Community route transition animation missing");
+}
+if (!/prefers-reduced-motion[\s\S]*communityRouteEnter|prefers-reduced-motion[\s\S]*body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
+  throw new Error("Community route transition must respect reduced motion");
 }
 if (!/Promise\.allSettled/.test(script)) {
   throw new Error("Community independent loads should use Promise.allSettled");

@@ -25386,6 +25386,38 @@ body[data-route="contratacoes"] .section-transition__content {
   background: #000;
 }
 
+body[data-route="comunidade"] .community-ad-rail,
+body[data-route="comunidade"] .hiring-feed-shell,
+body[data-route="comunidade"] .hiring-right-rail {
+  animation: communityRouteEnter .32s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+body[data-route="comunidade"] .community-ad-rail {
+  animation-delay: .02s;
+}
+
+body[data-route="comunidade"] .hiring-feed-shell {
+  animation-delay: .06s;
+}
+
+body[data-route="comunidade"] .hiring-right-rail {
+  animation-delay: .1s;
+}
+
+@keyframes communityRouteEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
 .community-ad-rail {
   width: 100%;
   min-width: 0;
@@ -25806,7 +25838,10 @@ img[data-fallback-src].is-broken {
   img[data-fallback-src],
   .community-ad-card.is-loading .community-ad-placeholder-art,
   .community-ad-card.is-loading .community-ad-copy strong,
-  .community-ad-card.is-loading .community-ad-copy p {
+  .community-ad-card.is-loading .community-ad-copy p,
+  body[data-route="comunidade"] .community-ad-rail,
+  body[data-route="comunidade"] .hiring-feed-shell,
+  body[data-route="comunidade"] .hiring-right-rail {
     animation: none !important;
   }
 
