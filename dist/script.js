@@ -5230,6 +5230,39 @@ function communityBeatUrl(beatId) {
   return `${location.origin}${location.pathname}#beat-${encodeURIComponent(beatId)}`;
 }
 
+function ansendSelectMarkup({
+  id,
+  label,
+  name = "",
+  value = "",
+  options = [],
+  action = "",
+  filter = "",
+  className = "",
+}) {
+  const normalizedOptions = options.map(([optionValue, optionLabel]) => [String(optionValue), String(optionLabel)]);
+  const selected = normalizedOptions.find(([optionValue]) => optionValue === String(value)) || normalizedOptions[0] || ["", "Selecione"];
+  const listId = `${id}-listbox`;
+  const inputAttrs = [
+    name ? `name="${htmlEscape(name)}"` : "",
+    action ? `data-action="${htmlEscape(action)}"` : "",
+    filter ? `data-filter="${htmlEscape(filter)}"` : "",
+  ].filter(Boolean).join(" ");
+  return `<label class="ansend-select-field ${className}">
+    <span>${htmlEscape(label)}</span>
+    <span class="ansend-select" data-ansend-select data-select-id="${htmlEscape(id)}">
+      <input type="hidden" value="${htmlEscape(selected[0])}" ${inputAttrs}>
+      <button type="button" class="ansend-select-trigger" data-action="ansend-select-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="${htmlEscape(listId)}">
+        <span>${htmlEscape(selected[1])}</span>
+        <i data-lucide="chevron-down" aria-hidden="true"></i>
+      </button>
+      <span class="ansend-select-menu" id="${htmlEscape(listId)}" role="listbox" aria-label="${htmlEscape(label)}">
+        ${normalizedOptions.map(([optionValue, optionLabel]) => `<button type="button" role="option" data-action="ansend-select-option" data-value="${htmlEscape(optionValue)}" aria-selected="${optionValue === selected[0] ? "true" : "false"}">${htmlEscape(optionLabel)}</button>`).join("")}
+      </span>
+    </span>
+  </label>`;
+}
+
 function mergePublicProfiles(profiles = []) {
   if (!Array.isArray(profiles) || !profiles.length) return;
   const byId = new Map(appState.publicProfiles.map((profile) => [String(profile.id), profile]));
@@ -5457,10 +5490,10 @@ function hiringComposerMarkup() {
       <label class="sr-only" for="hiringTitle">Titulo da vaga ou pedido</label>
       <input id="hiringTitle" class="hiring-composer-title" name="title" type="text" maxlength="120" placeholder="Titulo da vaga/pedido" aria-label="Titulo da vaga ou pedido">
       <div class="hiring-composer-grid">
-        <label>Categoria<select name="category">${hiringCategories.filter(([id]) => id !== "todos").map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
+        ${ansendSelectMarkup({ id: "hiringCategorySelect", label: "Categoria", name: "category", value: "duvidas", options: hiringCategories.filter(([id]) => id !== "todos") })}
         <label>Orcamento<input name="budget_amount" type="number" inputmode="decimal" min="0" placeholder="R$300"></label>
-        <label>Prazo<select name="deadline_type">${hiringDeadlines.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
-        <label>Local<select name="work_mode"><option value="remote">Remoto</option><option value="onsite">Presencial</option><option value="hybrid">Hibrido</option></select></label>
+        ${ansendSelectMarkup({ id: "hiringDeadlineSelect", label: "Prazo", name: "deadline_type", value: "hoje", options: hiringDeadlines })}
+        ${ansendSelectMarkup({ id: "hiringWorkModeSelect", label: "Local", name: "work_mode", value: "remote", options: [["remote", "Remoto"], ["onsite", "Presencial"], ["hybrid", "Hibrido"]] })}
         <label class="is-wide">Referencias<input name="references" type="text" placeholder="YouTube, Spotify, BeatStars, SoundCloud ou texto livre"></label>
         <label class="hiring-negotiable"><input name="budget_type" type="checkbox" value="negotiable"> A combinar</label>
       </div>
@@ -5501,11 +5534,11 @@ function hiringFiltersMarkup() {
     <button type="button" data-action="hiring-toggle-filters"><i data-lucide="sliders-horizontal"></i>Filtros</button>
   </section>
   <section class="hiring-filters" aria-label="Filtros da comunidade" hidden>
-    <label>Categoria<select data-action="hiring-filter" data-filter="category">${hiringCategories.map(([id, label]) => `<option value="${id}" ${filters.category === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    ${ansendSelectMarkup({ id: "hiringFilterCategory", label: "Categoria", value: filters.category, options: hiringCategories, action: "hiring-filter", filter: "category" })}
     <label>Orcamento<input data-action="hiring-filter" data-filter="budget" type="number" min="0" value="${htmlEscape(filters.budget || "")}" placeholder="Max. R$"></label>
-    <label>Prazo<select data-action="hiring-filter" data-filter="deadline"><option value="todos">Todos</option>${hiringDeadlines.map(([id, label]) => `<option value="${id}" ${filters.deadline === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-    <label>Status<select data-action="hiring-filter" data-filter="status"><option value="todos">Todos</option>${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${filters.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-    <label>Tipo<select data-action="hiring-filter" data-filter="workMode"><option value="todos">Todos</option>${Object.entries(hiringWorkModes).map(([id, label]) => `<option value="${id}" ${filters.workMode === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    ${ansendSelectMarkup({ id: "hiringFilterDeadline", label: "Prazo", value: filters.deadline, options: [["todos", "Todos"], ...hiringDeadlines], action: "hiring-filter", filter: "deadline" })}
+    ${ansendSelectMarkup({ id: "hiringFilterStatus", label: "Status", value: filters.status, options: [["todos", "Todos"], ...Object.entries(hiringStatusLabels)], action: "hiring-filter", filter: "status" })}
+    ${ansendSelectMarkup({ id: "hiringFilterWorkMode", label: "Tipo", value: filters.workMode, options: [["todos", "Todos"], ...Object.entries(hiringWorkModes)], action: "hiring-filter", filter: "workMode" })}
   </section>`;
 }
 
@@ -5645,6 +5678,50 @@ async function trackCommunityAdEvent(kind, adId) {
   } catch (error) {
     console.warn("[ANSEND community ads] tracking skipped", error?.message || error);
   }
+}
+
+function closeAnsendSelects(except = null) {
+  document.querySelectorAll(".ansend-select.is-open").forEach((select) => {
+    if (select === except) return;
+    select.classList.remove("is-open");
+    select.querySelector(".ansend-select-trigger")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function openAnsendSelect(select, { focusSelected = false } = {}) {
+  if (!select) return;
+  closeAnsendSelects(select);
+  select.classList.add("is-open");
+  select.querySelector(".ansend-select-trigger")?.setAttribute("aria-expanded", "true");
+  if (focusSelected) {
+    const selectedOption = select.querySelector('[role="option"][aria-selected="true"]') || select.querySelector('[role="option"]');
+    selectedOption?.focus({ preventScroll: true });
+  }
+}
+
+function setAnsendSelectValue(select, value, { emitChange = true } = {}) {
+  if (!select) return;
+  const input = select.querySelector("input[type='hidden']");
+  const triggerLabel = select.querySelector(".ansend-select-trigger span");
+  const options = [...select.querySelectorAll('[role="option"]')];
+  const nextOption = options.find((option) => String(option.dataset.value) === String(value)) || options[0];
+  if (!input || !nextOption) return;
+  options.forEach((option) => option.setAttribute("aria-selected", String(option === nextOption)));
+  input.value = nextOption.dataset.value || "";
+  if (triggerLabel) triggerLabel.textContent = nextOption.textContent.trim();
+  closeAnsendSelects();
+  select.querySelector(".ansend-select-trigger")?.focus({ preventScroll: true });
+  if (emitChange) input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function focusAnsendSelectOption(select, direction = 1) {
+  const options = [...(select?.querySelectorAll('[role="option"]') || [])];
+  if (!options.length) return;
+  const activeIndex = Math.max(0, options.indexOf(document.activeElement));
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.getAttribute("aria-selected") === "true"));
+  const baseIndex = document.activeElement?.getAttribute?.("role") === "option" ? activeIndex : selectedIndex;
+  const nextIndex = Math.max(0, Math.min(options.length - 1, baseIndex + direction));
+  options[nextIndex]?.focus({ preventScroll: true });
 }
 
 function hiringCommentMarkup(comment) {
@@ -13018,6 +13095,34 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  const ansendSelect = event.target.closest?.(".ansend-select");
+  if (ansendSelect) {
+    const isTrigger = event.target.closest(".ansend-select-trigger");
+    const isOption = event.target.getAttribute?.("role") === "option";
+    if ((event.key === "Enter" || event.key === " ") && isTrigger) {
+      event.preventDefault();
+      ansendSelect.classList.contains("is-open") ? closeAnsendSelects() : openAnsendSelect(ansendSelect, { focusSelected: true });
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!ansendSelect.classList.contains("is-open")) openAnsendSelect(ansendSelect, { focusSelected: true });
+      else focusAnsendSelectOption(ansendSelect, event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if ((event.key === "Enter" || event.key === " ") && isOption) {
+      event.preventDefault();
+      setAnsendSelectValue(ansendSelect, event.target.dataset.value);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeAnsendSelects();
+      ansendSelect.querySelector(".ansend-select-trigger")?.focus({ preventScroll: true });
+      return;
+    }
+  }
+
   if (event.target?.matches?.("#nexoChatInput") && event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     const form = event.target.closest(".nexo-chat-form");
@@ -13070,6 +13175,23 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const ansendSelectToggle = event.target.closest("[data-action='ansend-select-toggle']");
+  if (ansendSelectToggle) {
+    event.preventDefault();
+    const select = ansendSelectToggle.closest(".ansend-select");
+    select?.classList.contains("is-open") ? closeAnsendSelects() : openAnsendSelect(select);
+    return;
+  }
+
+  const ansendSelectOption = event.target.closest("[data-action='ansend-select-option']");
+  if (ansendSelectOption) {
+    event.preventDefault();
+    setAnsendSelectValue(ansendSelectOption.closest(".ansend-select"), ansendSelectOption.dataset.value);
+    return;
+  }
+
+  if (!event.target.closest(".ansend-select")) closeAnsendSelects();
+
   const communityAdLink = event.target.closest("[data-action='community-ad-open']");
   if (communityAdLink) {
     const adId = communityAdLink.dataset.adId || communityAdLink.closest("[data-promoted-ad-id]")?.dataset.promotedAdId || "";

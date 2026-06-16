@@ -34,6 +34,12 @@ if (!/appState\.hiring\.cache/.test(script) || !/function hiringCacheKey/.test(s
 if (!/function communityAdMarkup\(\)/.test(script) || !/function loadCommunityPromotedAd/.test(script)) {
   throw new Error("Community promoted ad component missing");
 }
+if (!/function ansendSelectMarkup\(/.test(script) || !/data-action="ansend-select-toggle"/.test(script)) {
+  throw new Error("Community custom select component missing");
+}
+if (/<label>Categoria<select name="category"|<label>Prazo<select name="deadline_type"|<label>Local<select name="work_mode"/.test(script)) {
+  throw new Error("Community composer should not use native selects");
+}
 if (/await\s+loadCommunityPromotedAd/.test(renderBody)) {
   throw new Error("Community render blocks on promoted ad loading");
 }
