@@ -9926,29 +9926,52 @@ function hydrateReleaseDetailsStep(form, producerName, genreOptions, keyOptions)
 }
 
 function renderReleaseModeSelector() {
-  appView.innerHTML = `${pageIntro("cadastrar")}<section class="release-mode-selector">
-    <header>
-      <span>ANSEND RELEASE</span>
-      <h2>Como voce quer publicar?</h2>
-      <p>Escolha entre upload proprio, incorporacao segura do YouTube ou importacao em lote para catalogos completos.</p>
+  appView.innerHTML = `<section class="release-mode-selector" aria-labelledby="releaseModeTitle">
+    <header class="release-mode-hero">
+      <div>
+        <span>ANSEND RELEASE</span>
+        <h1 id="releaseModeTitle">Lancar musica</h1>
+        <p>Escolha o formato ideal para publicar um beat, incorporar um video ou montar um catalogo completo.</p>
+      </div>
+      <aside aria-label="Resumo do sistema de publicacao">
+        <strong>Sistema ANSEND</strong>
+        <small>Uploads protegidos, metadados organizados e publicacao persistente no catalogo.</small>
+      </aside>
     </header>
+    <div class="release-mode-intro">
+      <span>Escolha um fluxo</span>
+      <h2>Como voce quer publicar?</h2>
+    </div>
     <div class="release-mode-grid">
-      <button type="button" data-action="release-mode-choice" data-mode="upload">
-        <i data-lucide="upload-cloud"></i>
-        <strong>Beat individual - Upload</strong>
-        <small>Envie capa e arquivo de audio pelo Supabase Storage.</small>
+      <button type="button" class="release-mode-card is-featured" data-action="release-mode-choice" data-mode="upload">
+        <span class="release-mode-icon"><i data-lucide="upload-cloud"></i></span>
+        <span class="release-mode-copy">
+          <strong>Beat individual - Upload</strong>
+          <small>Envie capa e arquivo de audio pelo sistema ANSEND.</small>
+        </span>
+        <em>Publicacao completa</em>
       </button>
-      <button type="button" data-action="release-mode-choice" data-mode="youtube">
-        <i data-lucide="youtube"></i>
-        <strong>Beat individual - YouTube</strong>
-        <small>Incorpore o player oficial sem oferecer saida para o YouTube.</small>
+      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="youtube">
+        <span class="release-mode-icon"><i data-lucide="youtube"></i></span>
+        <span class="release-mode-copy">
+          <strong>Beat individual - YouTube</strong>
+          <small>Incorpore o player oficial sem mandar o ouvinte para fora.</small>
+        </span>
+        <em>Embed seguro</em>
       </button>
-      <button type="button" data-action="release-mode-choice" data-mode="catalog">
-        <i data-lucide="library-big"></i>
-        <strong>Importar Catalogo</strong>
-        <small>Suba varios arquivos ou cole varios links para publicar em lote.</small>
+      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="catalog">
+        <span class="release-mode-icon"><i data-lucide="library-big"></i></span>
+        <span class="release-mode-copy">
+          <strong>Importar Catalogo</strong>
+          <small>Suba varios arquivos ou cole varios links para publicar em lote.</small>
+        </span>
+        <em>Lote rapido</em>
       </button>
     </div>
+    <footer class="release-mode-note">
+      <i data-lucide="shield-check"></i>
+      <span>Voce revisa tudo antes de publicar. Nenhum item aparece no marketplace sem confirmacao.</span>
+    </footer>
   </section>`;
   lucide.createIcons();
 }
@@ -10139,7 +10162,7 @@ function renderCatalogImportPage() {
         <input type="file" multiple accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3,audio/mp4,audio/aac,audio/ogg" data-action="catalog-file-input">
         <i data-lucide="upload-cloud"></i>
         <strong>Selecione varios arquivos de audio</strong>
-        <small>MP3, WAV, FLAC, M4A, AAC ou OGG. Os arquivos vao para o Supabase Storage.</small>
+        <small>MP3, WAV, FLAC, M4A, AAC ou OGG. Os arquivos vao para o sistema ANSEND.</small>
       </label>` : `
       <div class="catalog-import-youtube-box">
         <label>Links do YouTube<textarea rows="7" data-catalog-youtube-links placeholder="Cole um link por linha. Ex: https://youtu.be/xxxxxxxxxxx"></textarea></label>
