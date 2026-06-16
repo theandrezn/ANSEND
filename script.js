@@ -6076,21 +6076,279 @@ function fileExtension(file) {
   return ext || "png";
 }
 
+function storageDebug(message, details = {}) {
+  if (!AUTH_DEBUG_ENABLED) return;
+  const safeDetails = { ...details };
+  delete safeDetails.access_token;
+  delete safeDetails.refresh_token;
+  console.debug(`[ANSEND Storage] ${message}`, safeDetails);
+}
+
+function normalizeStorageError(error, context = {}) {
+  const rawMessage = String(error?.message || error?.error_description || error?.error || error?.name || "").trim();
+  const status = Number(error?.statusCode || error?.status || error?.code || 0);
+  const lower = rawMessage.toLowerCase();
+  const label = context.label || "arquivo";
+  if (error?.code === "AUTH_SESSION_MISSING" || /auth session missing|no current session|missing session/i.test(rawMessage)) {
+    return {
+      code: "AUTH_SESSION_MISSING",
+      retryable: false,
+      message: `Entre novamente para enviar ${label}. A sessao do Supabase nao esta ativa neste navegador.`,
+      rawMessage,
+    };
+  }
+  if (/jwt|expired|invalid token|token is expired/i.test(rawMessage) || status === 401) {
+    return {
+      code: "JWT_EXPIRED",
+      retryable: true,
+      message: `A sessao foi renovada. Tente enviar ${label} novamente.`,
+      rawMessage,
+    };
+  }
+  if (/row-level security|rls|permission|not authorized|unauthorized|403|violates row-level/i.test(rawMessage) || status === 403) {
+    return {
+      code: "STORAGE_POLICY_DENIED",
+      retryable: false,
+      message: `O Storage recusou ${label}: permissao negada pela policy do bucket.`,
+      rawMessage,
+    };
+  }
+  if (/bucket not found|bucket.*not.*found|not found/i.test(lower) || status === 404) {
+    return {
+      code: "BUCKET_NOT_FOUND",
+      retryable: false,
+      message: `Bucket de Storage ausente para ${label}.`,
+      rawMessage,
+    };
+  }
+  if (/payload too large|entity too large|file size|too large|413/i.test(lower) || status === 413) {
+    return {
+      code: "FILE_TOO_LARGE",
+      retryable: false,
+      message: `${label} esta grande demais para o limite do Storage.`,
+      rawMessage,
+    };
+  }
+  if (/mime|content.?type|invalid type|formato/i.test(lower)) {
+    return {
+      code: "INVALID_MIME",
+      retryable: false,
+      message: `Formato invalido para ${label}.`,
+      rawMessage,
+    };
+  }
+  if (/failed to fetch|network|timeout|demorou/i.test(lower) || error?.name === "AbortError") {
+    return {
+      code: "NETWORK_ERROR",
+      retryable: true,
+      message: `Falha de rede ao enviar ${label}. Verifique a conexao e tente novamente.`,
+      rawMessage,
+    };
+  }
+  if (/already exists|duplicate|409/i.test(lower) || status === 409) {
+    return {
+      code: "DUPLICATE_OBJECT",
+      retryable: false,
+      message: `Ja existe um arquivo com este caminho. Selecione ${label} novamente.`,
+      rawMessage,
+    };
+  }
+  return {
+    code: "STORAGE_ERROR",
+    retryable: false,
+    message: rawMessage || `Nao foi possivel enviar ${label}.`,
+    rawMessage,
+  };
+}
+
+async function ensureStorageAuthSession({ forceRefresh = false } = {}) {
+  if (!supabaseClient) {
+    const error = new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
+    error.code = "SUPABASE_NOT_CONFIGURED";
+    throw error;
+  }
+  let session = null;
+  let sessionError = null;
+  try {
+    const result = forceRefresh
+      ? await withTimeout(supabaseClient.auth.refreshSession(), 20000, "A renovacao da sessao demorou demais.")
+      : await withTimeout(supabaseClient.auth.getSession(), 20000, "A validacao da sessao demorou demais.");
+    session = result?.data?.session || null;
+    sessionError = result?.error || null;
+  } catch (error) {
+    sessionError = error;
+  }
+  if (!session && !forceRefresh && supabaseClient.auth.refreshSession) {
+    try {
+      const refreshed = await withTimeout(
+        supabaseClient.auth.refreshSession(),
+        20000,
+        "A renovacao da sessao demorou demais."
+      );
+      session = refreshed?.data?.session || null;
+      sessionError = refreshed?.error || sessionError;
+    } catch (error) {
+      sessionError = error;
+    }
+  }
+  if (!session?.user?.id) {
+    const error = new Error(sessionError?.message || "AUTH_SESSION_MISSING");
+    error.code = "AUTH_SESSION_MISSING";
+    throw error;
+  }
+  let verifiedUser = session.user;
+  try {
+    const userResult = await withTimeout(
+      supabaseClient.auth.getUser(),
+      20000,
+      "A validacao do usuario demorou demais."
+    );
+    if (userResult?.error) throw userResult.error;
+    verifiedUser = userResult?.data?.user || verifiedUser;
+  } catch (error) {
+    const normalized = normalizeStorageError(error, { label: "arquivo" });
+    if (normalized.code === "JWT_EXPIRED" && !forceRefresh) {
+      return ensureStorageAuthSession({ forceRefresh: true });
+    }
+    throw error;
+  }
+  if (!verifiedUser?.id || verifiedUser.id !== session.user.id) {
+    const error = new Error("AUTH_SESSION_MISMATCH");
+    error.code = "AUTH_SESSION_MISSING";
+    throw error;
+  }
+  appState.authSession = session;
+  if (appState.authUser?.id !== verifiedUser.id) {
+    appState.authUser = verifiedUser;
+    await loadProfile(verifiedUser);
+    syncAccountUi();
+  }
+  persistAuthCache();
+  return { session, user: verifiedUser };
+}
+
+const STORAGE_UPLOAD_LIMITS = {
+  cover: {
+    label: "capa",
+    bucket: "beat-covers",
+    folder: "beat-covers",
+    maxBytes: 10 * 1024 * 1024,
+    allowedMime: ["image/jpeg", "image/png", "image/webp"],
+    allowedExt: ["jpg", "jpeg", "png", "webp"],
+    upsert: true,
+  },
+  audio: {
+    label: "audio",
+    bucket: "beat-audio",
+    folder: "beat-audio",
+    maxBytes: 250 * 1024 * 1024,
+    allowedMime: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/flac", "audio/mp4", "audio/aac", "audio/ogg", "video/mp4"],
+    allowedExt: ["mp3", "wav", "m4a", "aac", "ogg", "flac"],
+    upsert: false,
+  },
+  stems: {
+    label: "stems",
+    bucket: "beat-stems",
+    folder: "beat-stems",
+    maxBytes: 500 * 1024 * 1024,
+    allowedMime: ["application/zip", "application/x-zip-compressed"],
+    allowedExt: ["zip"],
+    upsert: false,
+  },
+  avatar: {
+    label: "avatar",
+    bucket: "profile-avatars",
+    folder: "profile/avatar",
+    maxBytes: 10 * 1024 * 1024,
+    allowedMime: ["image/jpeg", "image/png", "image/webp"],
+    allowedExt: ["jpg", "jpeg", "png", "webp"],
+    upsert: true,
+  },
+  banner: {
+    label: "banner",
+    bucket: "profile-banners",
+    folder: "profile/banner",
+    maxBytes: 15 * 1024 * 1024,
+    allowedMime: ["image/jpeg", "image/png", "image/webp"],
+    allowedExt: ["jpg", "jpeg", "png", "webp"],
+    upsert: true,
+  },
+};
+
+function validateStorageFile(file, config) {
+  if (!file) {
+    const error = new Error("Nenhum arquivo selecionado.");
+    error.code = "NO_FILE";
+    throw error;
+  }
+  const ext = fileExtension(file).replace(/[^a-z0-9]/g, "").toLowerCase();
+  const type = String(file.type || "").toLowerCase();
+  const mimeOk = config.allowedMime.includes(type);
+  const extOk = config.allowedExt.includes(ext);
+  if (!mimeOk && !extOk) {
+    const error = new Error(`Formato invalido para ${config.label}.`);
+    error.code = "INVALID_MIME";
+    throw error;
+  }
+  if (file.size > config.maxBytes) {
+    const error = new Error(`${config.label} esta grande demais.`);
+    error.code = "FILE_TOO_LARGE";
+    throw error;
+  }
+  return ext || config.allowedExt[0];
+}
+
+async function uploadStorageFile(file, options = {}) {
+  const config = options.config || STORAGE_UPLOAD_LIMITS[options.type || "cover"];
+  if (!config) throw new Error("Tipo de upload nao suportado.");
+  const ext = validateStorageFile(file, config);
+  const { user } = await ensureStorageAuthSession({ forceRefresh: Boolean(options.forceRefresh) });
+  const safeBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), config.label);
+  const fileId = typeof window.crypto?.randomUUID === "function" ? window.crypto.randomUUID() : generateUUID();
+  const path = options.path || `${user.id}/${config.folder}/${safeBase}-${fileId}.${ext}`;
+  storageDebug("upload_start", {
+    bucket: config.bucket,
+    path,
+    userId: user.id,
+    fileType: file.type,
+    fileSize: file.size,
+  });
+  const upload = async () => withTimeout(
+    supabaseClient.storage.from(config.bucket).upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type || undefined,
+      upsert: options.upsert ?? config.upsert,
+    }),
+    options.timeoutMs || releaseUploadTimeoutMs(options.type),
+    `O upload da ${config.label} demorou demais.`
+  );
+  let result = await upload();
+  if (result?.error) {
+    const normalized = normalizeStorageError(result.error, { label: config.label });
+    if (normalized.code === "JWT_EXPIRED" && !options.forceRefresh) {
+      await ensureStorageAuthSession({ forceRefresh: true });
+      result = await upload();
+    }
+  }
+  if (result?.error) {
+    const normalized = normalizeStorageError(result.error, { label: config.label });
+    const error = new Error(normalized.message);
+    error.code = normalized.code;
+    error.raw = result.error;
+    throw error;
+  }
+  const { data: urlData } = supabaseClient.storage.from(config.bucket).getPublicUrl(path);
+  const publicUrl = urlData?.publicUrl || "";
+  if (!publicUrl) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
+  storageDebug("upload_success", { bucket: config.bucket, path, userId: user.id, fileSize: file.size });
+  return { bucket: config.bucket, path, publicUrl, url: publicUrl, user };
+}
+
 async function uploadProfileAsset(file, type) {
   if (!file) return { url: "", path: "" };
   if (supabaseClient && appState.authUser) {
-    const bucket = type === "banner" ? "profile-banners" : "profile-avatars";
-    const path = `${appState.authUser.id}/${type}-${Date.now()}.${fileExtension(file)}`;
-    const { error } = await supabaseClient.storage.from(bucket).upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type || "image/png",
-      upsert: false,
-    });
-    if (!error) {
-      const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path);
-      return { url: data?.publicUrl || "", path };
-    }
-    throw error;
+    const result = await uploadStorageFile(file, { type });
+    return { url: result.publicUrl, path: result.path, bucket: result.bucket };
   }
   return { url: await fileToDataUrl(file), path: "" };
 }
@@ -8648,48 +8906,8 @@ function withTimeout(promise, ms, message) {
 }
 
 async function currentReleaseUploadUser() {
-  if (!supabaseClient) {
-    throw new Error("Storage permanente nao configurado. Configure o Supabase antes de publicar.");
-  }
-  let sessionUser = null;
-  let sessionError = null;
-  try {
-    const { data, error } = await withTimeout(
-      supabaseClient.auth.getSession(),
-      20000,
-      "A validacao da sessao demorou demais."
-    );
-    if (error) sessionError = error;
-    sessionUser = data?.session?.user || null;
-  } catch (error) {
-    sessionError = error;
-  }
-  if (!sessionUser) {
-    try {
-      const { data, error } = await withTimeout(
-        supabaseClient.auth.getUser(),
-        20000,
-        "A validacao do usuario demorou demais."
-      );
-      if (error) sessionError = error;
-      sessionUser = data?.user || null;
-    } catch (error) {
-      sessionError = error;
-    }
-  }
-  if (!sessionUser && appState.authUser?.id) {
-    console.warn("[ANSEND release] Supabase session check was slow; trying storage upload with cached authenticated user.", sessionError);
-    sessionUser = appState.authUser;
-  }
-  if (!sessionUser?.id) {
-    throw new Error("Entre na sua conta para enviar arquivos e publicar.");
-  }
-  if (appState.authUser?.id !== sessionUser.id) {
-    appState.authUser = sessionUser;
-    await loadProfile(sessionUser);
-    syncAccountUi();
-  }
-  return sessionUser;
+  const { user } = await ensureStorageAuthSession();
+  return user;
 }
 
 const releaseUploadTokens = new Map();
@@ -8881,17 +9099,8 @@ function setReleaseUploadError(dropzone, message = "", options = {}) {
 
 function releaseStorageErrorMessage(error, type) {
   const label = type === "cover" ? "capa" : type === "audio" ? "audio" : "arquivo";
-  const rawMessage = String(error?.message || error?.error_description || error?.error || "").trim();
-  if (/row-level security|permission|not authorized|unauthorized|jwt|403/i.test(rawMessage)) {
-    return `Nao foi possivel enviar a ${label}: sua sessao expirou ou nao tem permissao no Storage. Faca login novamente e tente de novo.`;
-  }
-  if (/already exists|duplicate|409/i.test(rawMessage)) {
-    return `Esse envio ficou preso em um arquivo anterior. Selecione a ${label} novamente.`;
-  }
-  if (/timeout|demorou|network|failed to fetch/i.test(rawMessage)) {
-    return `O upload da ${label} demorou demais. Verifique sua conexao e tente de novo.`;
-  }
-  return rawMessage || `Nao foi possivel enviar a ${label}. Tente novamente.`;
+  const normalized = normalizeStorageError(error, { label });
+  return normalized.message;
 }
 
 function releaseUploadTimeoutMs(type) {
@@ -9146,169 +9355,27 @@ function setReleaseStep(step, form = releaseFormElement()) {
 }
 
 async function handleReleaseUpload(file, type, progressCallback) {
-  const uploadUser = await currentReleaseUploadUser();
   const isCover = type === "cover";
   const isAudio = type === "audio";
   const isStems = type === "stems";
-  const extension = String(file.name || "").split(".").pop()?.toLowerCase() || "";
-  if (isCover && !(/^image\/(png|jpe?g|webp)$/i.test(file.type || "") || ["jpg", "jpeg", "png", "webp"].includes(extension))) {
-    throw new Error("Envie uma capa JPG, PNG ou WEBP.");
-  }
-  if (isAudio && !(/^(audio\/|video\/mp4)/i.test(file.type || "") || ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension))) {
-    throw new Error("Envie um arquivo de audio valido.");
-  }
-  if (isStems && !(/(zip|x-zip-compressed)/i.test(file.type || "") || extension === "zip")) {
-    throw new Error("Envie os stems em um arquivo ZIP.");
-  }
-
-  let url = "";
-  let path = "";
-  
-  const userId = uploadUser.id;
   const form = releaseFormElement();
   const beatId = form?.dataset?.beatId || generateUUID();
-  const rawExt = file.name.split(".").pop() || (type === "cover" ? "webp" : "mp3");
-  const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, "") || (type === "cover" ? "webp" : "mp3");
-  const bucket = type === "cover" ? "beat-covers" : type === "audio" ? "beat-audio" : "beat-stems";
-  const uploadKey = `${Date.now()}-${generateUUID().slice(0, 8)}`;
-  const folder = type === "cover" ? "covers" : type === "audio" ? "audio" : "stems";
-  const fileBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), type);
-  const fileName = `${type === "cover" ? "cover" : type === "audio" ? "audio" : "stems"}-${fileBase}-${uploadKey}.${ext}`;
-  path = `${userId}/${folder}/${beatId}/${fileName}`;
-  
+  const configType = isCover ? "cover" : isAudio ? "audio" : isStems ? "stems" : type;
+  const config = STORAGE_UPLOAD_LIMITS[configType];
+  if (!config) throw new Error("Tipo de upload nao suportado.");
   progressCallback?.(55);
-  const uploadOptions = {
-    cacheControl: "3600",
-    contentType: file.type || undefined,
-    upsert: type === "cover"
-  };
-  const { error } = await withTimeout(
-    supabaseClient.storage.from(bucket).upload(path, file, uploadOptions),
-    releaseUploadTimeoutMs(type),
-    `O upload da ${type === "cover" ? "capa" : type === "audio" ? "audio" : "arquivo"} demorou demais.`
-  );
-    
-  if (error) throw error;
-  
-  const { data: urlData } = supabaseClient.storage
-    .from(bucket)
-    .getPublicUrl(path);
-    
-  url = urlData?.publicUrl || "";
-  if (!url) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
-  
+  const ext = validateStorageFile(file, config);
+  const { user } = await ensureStorageAuthSession();
+  const fileBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), configType);
+  const fileName = `${configType}-${fileBase}-${Date.now()}-${generateUUID().slice(0, 8)}.${ext}`;
+  const path = `${user.id}/${config.folder}/${beatId}/${fileName}`;
+  const result = await uploadStorageFile(file, {
+    type: configType,
+    path,
+    timeoutMs: releaseUploadTimeoutMs(type),
+  });
   progressCallback?.(100);
-  return { url, path };
-}
-
-async function handleReleaseFile(file, type) {
-  if (!file) return;
-  if (!supabaseClient || !appState.authUser) {
-    showToast("Você precisa estar autenticado para enviar arquivos.", "triangle-alert");
-    location.hash = "vendedor";
-    return;
-  }
-  const form = releaseFormElement();
-  if (!form) return;
-  
-  // Find progress bar elements in the correct dropzone
-  const dropzone = form.querySelector(`[data-upload-drop="${type}"]`);
-  const progressContainer = dropzone?.querySelector(".upload-progress-container");
-  const progressBar = dropzone?.querySelector(".upload-progress-bar");
-  const progressPercent = dropzone?.querySelector(".upload-progress-percent");
-  
-  setReleaseUploadError(dropzone, "");
-  if (type === "cover") {
-    setCoverPreview(file, form);
-    syncReleaseForm(form);
-  }
-  setReleaseUploadInProgress(type, true, form);
-  if (progressBar) progressBar.style.width = "0%";
-  if (progressPercent) progressPercent.textContent = "0%";
-  if (progressContainer) progressContainer.style.display = "block";
-  
-  try {
-    const result = await handleReleaseUpload(file, type, (progress) => {
-      if (progressBar) progressBar.style.width = `${progress}%`;
-      if (progressPercent) progressPercent.textContent = `${progress}%`;
-    });
-    
-    // Hide progress bar after complete
-    if (progressContainer) progressContainer.style.display = "none";
-    setReleaseUploadInProgress(type, false, form);
-    
-    // Set values
-    if (type === "cover") {
-      form.elements.cover_url.value = result.url;
-      form.elements.cover_path.value = result.path;
-      
-      const preview = form.querySelector(".release-cover-preview");
-      if (preview) {
-        preview.src = result.url;
-        preview.classList.add("has-preview");
-      }
-      dropzone?.classList.add("has-file");
-      dropzone?.classList.remove("has-local-preview");
-      const coverActions = form.querySelector(".cover-actions-container");
-      if (coverActions) coverActions.style.display = "block";
-      
-      showToast("Capa enviada com sucesso!", "image");
-    } else if (type === "audio") {
-      form.elements.audio_url.value = result.url;
-      form.elements.audio_path.value = result.path;
-      
-      // Calculate file size and metadata mock
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      form.elements.file_size.value = file.size;
-      
-      // Render player
-      const audioPreview = form.querySelector(".release-audio-preview");
-      const nameNode = form.querySelector("[data-audio-name]");
-      const sizeNode = form.querySelector("[data-audio-size]");
-      const player = audioPreview?.querySelector("audio");
-      
-      if (nameNode) nameNode.textContent = file.name;
-      if (sizeNode) sizeNode.textContent = `${sizeMB} MB · carregando...`;
-      if (player) {
-        player.src = result.url;
-        player.hidden = false;
-        player.onloadedmetadata = () => {
-          const duration = player.duration;
-          form.elements.duration_seconds.value = Math.round(duration);
-          const minutes = Math.floor(duration / 60);
-          const seconds = Math.round(duration % 60).toString().padStart(2, '0');
-          if (sizeNode) sizeNode.textContent = `${sizeMB} MB · ${minutes}:${seconds}`;
-          syncReleaseForm(form);
-        };
-      }
-      if (audioPreview) audioPreview.style.display = "flex";
-      dropzone?.classList.add("has-file");
-      
-      showToast("Áudio enviado com sucesso!", "music");
-    } else if (type === "stems") {
-      form.elements.stems_url.value = result.url;
-      form.elements.stems_path.value = result.path;
-      
-      const stemsPreview = form.querySelector(".stems-preview");
-      const nameNode = form.querySelector("[data-stems-name]");
-      if (nameNode) nameNode.textContent = file.name;
-      if (stemsPreview) stemsPreview.style.display = "block";
-      dropzone?.classList.add("has-file");
-      
-      showToast("ZIP de Stems enviado com sucesso!", "archive");
-    }
-    
-    syncReleaseForm(form);
-  } catch (err) {
-    if (progressContainer) progressContainer.style.display = "none";
-    setReleaseUploadInProgress(type, false, form);
-    if (progressBar) progressBar.style.width = "0%";
-    if (progressPercent) progressPercent.textContent = "0%";
-    const message = releaseStorageErrorMessage(err, type);
-    setReleaseUploadError(dropzone, message);
-    console.error("Release upload failed", err);
-    showToast(message, "alert-triangle");
-  }
+  return { url: result.publicUrl, path: result.path, bucket: result.bucket };
 }
 
 async function handleReleaseFile(file, type) {
@@ -10200,30 +10267,16 @@ async function findUploadDuplicate(fileName) {
 }
 
 async function uploadCatalogAudioFile(item, batchId, progressCallback) {
-  const uploadUser = await currentReleaseUploadUser();
   const file = item.file;
-  const extension = String(file.name || "").split(".").pop()?.toLowerCase() || "mp3";
-  if (!(/^(audio\/|video\/mp4)/i.test(file.type || "") || ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(extension))) {
-    throw new Error("Arquivo de audio invalido.");
-  }
-  const safeExt = extension.replace(/[^a-z0-9]/g, "") || "mp3";
+  const config = STORAGE_UPLOAD_LIMITS.audio;
+  const safeExt = validateStorageFile(file, config);
+  const { user } = await ensureStorageAuthSession();
   const base = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), "audio");
-  const path = `${uploadUser.id}/audio/${batchId}/audio-${base}-${Date.now()}-${generateUUID().slice(0, 8)}.${safeExt}`;
+  const path = `${user.id}/${config.folder}/${batchId}/audio-${base}-${Date.now()}-${generateUUID().slice(0, 8)}.${safeExt}`;
   progressCallback?.(30);
-  const { error } = await withTimeout(
-    supabaseClient.storage.from("beat-audio").upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type || undefined,
-      upsert: false,
-    }),
-    90000,
-    "O upload do audio demorou demais."
-  );
-  if (error) throw error;
-  const { data } = supabaseClient.storage.from("beat-audio").getPublicUrl(path);
-  if (!data?.publicUrl) throw new Error("Storage nao retornou URL publica.");
+  const result = await uploadStorageFile(file, { type: "audio", path, timeoutMs: 90000 });
   progressCallback?.(100);
-  return { url: data.publicUrl, path, size: file.size };
+  return { url: result.publicUrl, path: result.path, bucket: result.bucket, size: file.size };
 }
 
 async function runWithConcurrency(items, limit, worker) {
