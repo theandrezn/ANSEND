@@ -15836,6 +15836,248 @@ body:has(.nexo-feed-page) .footer {
   background: rgba(255, 106, 0, .13);
 }
 
+.nexo-feed-comments-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.nexo-feed-comments-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(3, 5, 7, .54);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.nexo-feed-comments-panel {
+  position: relative;
+  width: min(390px, calc(100vw - 32px));
+  height: min(760px, calc(100vh - 48px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 22px;
+  background: #1b1f24;
+  color: #f8fafc;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .62);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.nexo-feed-comments-panel header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 14px;
+}
+
+.nexo-feed-comments-panel header h2 {
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.nexo-feed-comments-panel header span {
+  justify-self: end;
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nexo-feed-comments-panel header button,
+.nexo-feed-comment-heart,
+.nexo-feed-comment-form button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #f8fafc;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.nexo-feed-comments-panel button:focus-visible,
+.nexo-feed-comment-form input:focus-visible {
+  outline: 2px solid rgba(255, 106, 0, .9);
+  outline-offset: 2px;
+}
+
+.nexo-feed-comments-context {
+  display: none;
+}
+
+.nexo-feed-comments-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 8px 12px 18px;
+  scrollbar-color: #a8adb4 transparent;
+  scrollbar-width: thin;
+}
+
+.nexo-feed-comments-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.nexo-feed-comments-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nexo-feed-comments-list::-webkit-scrollbar-thumb {
+  background: #a8adb4;
+  border-radius: 999px;
+}
+
+.nexo-feed-comment {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.nexo-feed-comment-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  overflow: hidden;
+  align-self: start;
+  background: #d8dde4;
+  color: #5d6671;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.nexo-feed-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nexo-feed-comment-avatar.is-current {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, .18);
+}
+
+.nexo-feed-comment-body {
+  min-width: 0;
+}
+
+.nexo-feed-comment-body p {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.27;
+}
+
+.nexo-feed-comment-body strong {
+  color: #fff;
+  font-weight: 900;
+}
+
+.nexo-feed-comment-body time {
+  color: #aab2bd;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nexo-feed-comment-body footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.nexo-feed-comment-body footer button,
+.nexo-feed-comment-replies {
+  border: 0;
+  background: transparent;
+  color: #aab2bd;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nexo-feed-comment-replies {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.nexo-feed-comment-replies span {
+  width: 26px;
+  height: 1px;
+  background: #727a84;
+}
+
+.nexo-feed-comment-heart {
+  align-self: center;
+  color: #b3bac3;
+}
+
+.nexo-feed-comment-heart svg,
+.nexo-feed-comment-form button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nexo-feed-comment-heart.is-active,
+.nexo-feed-comment-heart:hover {
+  color: #ff3b68;
+}
+
+.nexo-feed-comment-form {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 36px 36px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  background: #1b1f24;
+}
+
+.nexo-feed-comment-form input {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: #2a2f35;
+  color: #f8fafc;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.nexo-feed-comment-form input::placeholder {
+  color: #b2bac4;
+}
+
+.nexo-feed-comment-form button {
+  min-width: 36px;
+  min-height: 36px;
+  color: #b2bac4;
+}
+
+.nexo-feed-comment-form button[type="submit"] {
+  color: #ff7a1a;
+}
+
+body.nexo-feed-comments-open {
+  overflow: hidden;
+}
+
 @media (max-width: 820px) {
   .nexo-feed-page {
     height: calc(100vh - 64px) !important;
@@ -15878,6 +16120,17 @@ body:has(.nexo-feed-page) .footer {
 
   .nexo-feed-scroll-controls {
     right: 10px;
+  }
+
+  .nexo-feed-comments-layer {
+    align-items: end;
+    padding: 0;
+  }
+
+  .nexo-feed-comments-panel {
+    width: 100%;
+    height: min(76vh, 680px);
+    border-radius: 22px 22px 0 0;
   }
 }
 

@@ -3147,6 +3147,150 @@ function renderNexoFeed() {
   });
 }
 
+function nexoFeedCommentStorageKey(feedItemId) {
+  return `ansend-feed-comments-${feedItemId}`;
+}
+
+function nexoFeedDefaultComments(item = {}) {
+  const title = item.title || "esse drop";
+  const author = item.creatorName || "ANSEND";
+  return [
+    {
+      id: "c1",
+      user: "beatrix.sound",
+      avatar: img("photo-1494790108377-be9c29b29330"),
+      time: "11 sem",
+      text: `A vibe de ${title} ficou absurda.`,
+      likes: 406,
+      replies: 1,
+    },
+    {
+      id: "c2",
+      user: "naye.rosouzah",
+      avatar: img("photo-1517841905240-472988babdf9"),
+      time: "11 sem",
+      text: "A carinha dele 😅",
+      likes: 84,
+      replies: 0,
+    },
+    {
+      id: "c3",
+      user: "llorenadutra",
+      avatar: img("photo-1534528741775-53994a69daeb"),
+      time: "11 sem",
+      text: `O ${author} entregou demais nesse som.`,
+      likes: 228,
+      replies: 1,
+    },
+    {
+      id: "c4",
+      user: "casferreira.ciiii",
+      avatar: img("photo-1500648767791-00dcc994a43e"),
+      time: "11 sem",
+      text: "Nome da musica?",
+      likes: 4,
+      replies: 1,
+    },
+    {
+      id: "c5",
+      user: "barbosa.deboramaria",
+      avatar: img("photo-1524504388940-b1c1722653e1"),
+      time: "11 sem",
+      text: "Limpou porque ficou bom demais.",
+      likes: 169,
+      replies: 0,
+    },
+  ];
+}
+
+function readNexoFeedComments(item) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(nexoFeedCommentStorageKey(item.id)) || "[]");
+    return [...nexoFeedDefaultComments(item), ...saved];
+  } catch (_error) {
+    return nexoFeedDefaultComments(item);
+  }
+}
+
+function saveNexoFeedComment(item, text) {
+  const clean = String(text || "").trim();
+  if (!clean) return;
+  const key = nexoFeedCommentStorageKey(item.id);
+  const saved = safeReadJson(key, []);
+  const profile = activeProfile();
+  const display = profileDisplayData(profile);
+  const entry = {
+    id: generateUUID(),
+    user: sanitizeHandle(display.username || display.name || appState.authUser?.email?.split("@")[0] || "ansend.user"),
+    avatar: display.avatar || "",
+    time: "agora",
+    text: clean,
+    likes: 0,
+    replies: 0,
+    isOwn: true,
+  };
+  localStorage.setItem(key, JSON.stringify([entry, ...saved].slice(0, 60)));
+}
+
+function nexoFeedCommentAvatar(comment) {
+  if (comment.avatar) return `<img src="${htmlEscape(comment.avatar)}" alt="">`;
+  return `<span>${htmlEscape((comment.user || "A").slice(0, 1).toUpperCase())}</span>`;
+}
+
+function nexoFeedCommentMarkup(comment) {
+  return `<article class="nexo-feed-comment" data-comment-id="${htmlEscape(comment.id)}">
+    <div class="nexo-feed-comment-avatar">${nexoFeedCommentAvatar(comment)}</div>
+    <div class="nexo-feed-comment-body">
+      <p><strong>${htmlEscape(comment.user)}</strong> <time>${htmlEscape(comment.time)}</time><br>${htmlEscape(comment.text)}</p>
+      <footer>
+        <button type="button" data-action="nexo-feed-comment-like">${Number(comment.likes || 0).toLocaleString("pt-BR")} curtidas</button>
+        <button type="button" data-action="nexo-feed-comment-reply">Responder</button>
+      </footer>
+      ${comment.replies ? `<button type="button" class="nexo-feed-comment-replies" data-action="nexo-feed-comment-replies" data-replies="${Number(comment.replies)}"><span></span>Ver todas as ${comment.replies} respostas</button>` : ""}
+    </div>
+    <button type="button" class="nexo-feed-comment-heart" data-action="nexo-feed-comment-like" aria-label="Curtir comentario"><i data-lucide="heart"></i></button>
+  </article>`;
+}
+
+function openNexoFeedComments(item) {
+  if (!item) return;
+  closeNexoFeedComments();
+  const comments = readNexoFeedComments(item);
+  const safeTitle = htmlEscape(item.title || "Publicacao");
+  document.body.insertAdjacentHTML("beforeend", `<section class="nexo-feed-comments-layer" data-feed-comments="${htmlEscape(item.id)}" aria-label="Comentarios do feed">
+    <button type="button" class="nexo-feed-comments-scrim" data-action="close-feed-comments" aria-label="Fechar comentarios"></button>
+    <aside class="nexo-feed-comments-panel" role="dialog" aria-modal="true" aria-labelledby="feedCommentsTitle">
+      <header>
+        <button type="button" data-action="close-feed-comments" aria-label="Fechar comentarios"><i data-lucide="x"></i></button>
+        <h2 id="feedCommentsTitle">Comentarios</h2>
+        <span>${comments.length}</span>
+      </header>
+      <div class="nexo-feed-comments-context">
+        <strong>${safeTitle}</strong>
+        <small>${htmlEscape(item.creatorName || "ANSEND")}</small>
+      </div>
+      <div class="nexo-feed-comments-list" role="list">
+        ${comments.map(nexoFeedCommentMarkup).join("")}
+      </div>
+      <form class="nexo-feed-comment-form" data-feed-item-id="${htmlEscape(item.id)}">
+        <div class="nexo-feed-comment-avatar is-current">${nexoFeedCommentAvatar({ user: activeProfile()?.full_name || "A", avatar: profileDisplayData(activeProfile()).avatar })}</div>
+        <label class="sr-only" for="nexoFeedCommentInput">Adicionar comentario</label>
+        <input id="nexoFeedCommentInput" name="comment" type="text" maxlength="220" placeholder="Adicione um comentario..." autocomplete="off">
+        <button type="button" data-action="nexo-feed-comment-emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
+        <button type="submit" aria-label="Enviar comentario"><i data-lucide="arrow-up"></i></button>
+      </form>
+    </aside>
+  </section>`);
+  document.body.classList.add("nexo-feed-comments-open");
+  lucide.createIcons();
+  document.querySelector(".nexo-feed-comment-form input")?.focus();
+}
+
+function closeNexoFeedComments() {
+  document.querySelector(".nexo-feed-comments-layer")?.remove();
+  document.body.classList.remove("nexo-feed-comments-open");
+}
+
 function nexoFeedPlaybackSvg(mode = "play") {
   if (mode === "pause") {
     return `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect x="20" y="16" width="8" height="32" rx="2" fill="currentColor"></rect><rect x="36" y="16" width="8" height="32" rx="2" fill="currentColor"></rect></svg>`;
@@ -12484,6 +12628,41 @@ document.addEventListener("click", (event) => {
     closeMusicPreferenceQuiz();
     return;
   }
+  if (action === "close-feed-comments") {
+    closeNexoFeedComments();
+    return;
+  }
+  if (action === "nexo-feed-comment-like") {
+    target.classList.toggle("is-active");
+    const comment = target.closest(".nexo-feed-comment");
+    comment?.querySelector(".nexo-feed-comment-heart")?.classList.toggle("is-active", target.classList.contains("is-active"));
+    return;
+  }
+  if (action === "nexo-feed-comment-reply") {
+    const user = target.closest(".nexo-feed-comment")?.querySelector("strong")?.textContent || "";
+    const input = document.querySelector(".nexo-feed-comment-form input");
+    if (input) {
+      input.value = user ? `@${user} ` : "";
+      input.focus();
+    }
+    return;
+  }
+  if (action === "nexo-feed-comment-replies") {
+    target.classList.toggle("is-open");
+    const count = target.dataset.replies || "1";
+    target.innerHTML = target.classList.contains("is-open")
+      ? `<span></span>Ocultar respostas`
+      : `<span></span>Ver todas as ${count} respostas`;
+    return;
+  }
+  if (action === "nexo-feed-comment-emoji") {
+    const input = target.closest(".nexo-feed-comment-form")?.querySelector("input");
+    if (input) {
+      input.value = `${input.value}${input.value ? " " : ""}😍`;
+      input.focus();
+    }
+    return;
+  }
   if (action === "close-audio-editor") {
     document.querySelector(".audio-editor-popover")?.remove();
     return;
@@ -12728,27 +12907,7 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "nexo-feed-comments") {
-      if (item.type === "beat" || item.type === "music") {
-        const beat = findBeat(item.metadata?.beatId || item.id);
-        if (beat) {
-          appState.playing = beat.id;
-          updateMiniPlayer(beat);
-        }
-        openCommentsPanel();
-      } else {
-        openModal(`<section class="player-tool-modal comments-tool-modal">
-          <span><i data-lucide="message-circle"></i>Comentarios</span>
-          <h2>${item.title}</h2>
-          <div class="comment-list">
-            <article><strong>ANSEND</strong><p>Conte para a NEXO se esse perfil combina com seu projeto.</p></article>
-            <article><strong>NEXO IA</strong><p>Use este espaco para salvar feedback e pedir recomendacoes parecidas.</p></article>
-          </div>
-          <form class="comment-form">
-            <input type="text" placeholder="Escreva um comentario">
-            <button type="submit" data-action="comment-preview">Enviar</button>
-          </form>
-        </section>`);
-      }
+      openNexoFeedComments(item);
       return;
     }
     if (action === "nexo-feed-open") {
@@ -13358,6 +13517,17 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const feedCommentForm = event.target.closest(".nexo-feed-comment-form");
+  if (feedCommentForm) {
+    event.preventDefault();
+    const item = feedItemForEvent(feedCommentForm.dataset.feedItemId);
+    const input = feedCommentForm.elements.comment;
+    const text = input?.value?.trim();
+    if (!item || !text) return;
+    saveNexoFeedComment(item, text);
+    openNexoFeedComments(item);
+    return;
+  }
   const hiringComposerForm = event.target.closest(".hiring-composer");
   if (hiringComposerForm) {
     event.preventDefault();
@@ -13610,6 +13780,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     document.body.classList.remove("menu-open");
     closePlayerFloatingPanels();
+    closeNexoFeedComments();
     closeModal();
   }
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".beat-card")) {
