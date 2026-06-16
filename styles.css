@@ -26216,6 +26216,578 @@ body[data-route="comunidade"] .topbar {
   }
 }
 
+/* --- PREMIUM RELEASE MODE SELECTOR & STEPPER --- */
+body[data-route="cadastrar"] #appView.app-view {
+  background: #000000 !important;
+}
+
+body[data-route="cadastrar"] .release-mode-selector {
+  width: 100% !important;
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  padding: 40px 24px 120px !important;
+  box-sizing: border-box !important;
+  background: #000000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 48px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-hero {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  gap: 32px !important;
+  padding: 0 0 24px 0 !important;
+  border-bottom: 1px solid #1F1F1F !important;
+  flex-wrap: wrap !important;
+  background: transparent !important;
+  min-height: auto !important;
+}
+
+body[data-route="cadastrar"] .release-mode-hero h1 {
+  font-size: 36px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: #FFFFFF !important;
+  margin: 0 0 12px 0 !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .release-mode-hero p {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: #A1A1AA !important;
+  max-width: 600px !important;
+  margin: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-aside-card {
+  background: #080808 !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 12px !important;
+  padding: 16px 20px !important;
+  max-width: 300px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+body[data-route="cadastrar"] .release-aside-card strong {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #FFFFFF !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+body[data-route="cadastrar"] .release-aside-card small {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #71717A !important;
+}
+
+/* Stepper styling (mode selector and inside form) */
+body[data-route="cadastrar"] .release-progress-stepper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+}
+
+body[data-route="cadastrar"] .release-progress-stepper::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 20px !important;
+  right: 20px !important;
+  height: 1px !important;
+  background: #1F1F1F !important;
+  z-index: 1 !important;
+}
+
+body[data-route="cadastrar"] .release-progress-step {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  position: relative !important;
+  z-index: 2 !important;
+  background: #000000 !important;
+  padding: 0 12px !important;
+}
+
+body[data-route="cadastrar"] .release-progress-step-circle {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  border: 1px solid #1F1F1F !important;
+  background: #080808 !important;
+  color: #71717A !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+body[data-route="cadastrar"] .release-progress-step.is-active .release-progress-step-circle {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #000000 !important;
+}
+
+body[data-route="cadastrar"] .release-progress-step-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #71717A !important;
+  transition: color 0.2s ease !important;
+}
+
+body[data-route="cadastrar"] .release-progress-step.is-active .release-progress-step-label {
+  color: #FFFFFF !important;
+}
+
+/* Grid layout for cards */
+body[data-route="cadastrar"] .release-mode-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 24px !important;
+  width: 100% !important;
+}
+
+/* Premium Card styling */
+body[data-route="cadastrar"] .release-mode-card {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 16px !important;
+  padding: 32px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-decoration: none !important;
+  font-family: inherit !important;
+  width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card:hover {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+  transform: translateY(-2px) !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card:focus-visible {
+  outline: 2px solid #FFFFFF !important;
+  outline-offset: 2px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card-header {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-bottom: 24px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-icon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  background: #080808 !important;
+  border: 1px solid #1F1F1F !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #FFFFFF !important;
+  transition: border-color 0.2s ease !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card:hover .release-mode-icon {
+  border-color: #2A2A2A !important;
+}
+
+body[data-route="cadastrar"] .release-mode-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card-header strong {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #FFFFFF !important;
+  letter-spacing: -0.02em !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card-header small {
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #A1A1AA !important;
+}
+
+body[data-route="cadastrar"] .release-mode-benefits {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 0 32px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-mode-benefits li {
+  font-size: 13px !important;
+  color: #A1A1AA !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-benefits li svg.success-check {
+  color: #22C55E !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-mode-cta {
+  margin-top: auto !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #FFFFFF !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: gap 0.2s ease !important;
+}
+
+body[data-route="cadastrar"] .release-mode-card:hover .release-mode-cta {
+  gap: 10px !important;
+}
+
+body[data-route="cadastrar"] .release-mode-cta svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Safety note footer */
+body[data-route="cadastrar"] .release-mode-note {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 16px 0 0 0 !important;
+  color: #71717A !important;
+  font-size: 13px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+body[data-route="cadastrar"] .release-mode-note svg {
+  width: 18px !important;
+  height: 18px !important;
+  color: #22C55E !important;
+}
+
+/* Overriding inner stepper circles in forms */
+body[data-route="cadastrar"] .release-step span {
+  border-color: #1F1F1F !important;
+  background: #080808 !important;
+  color: #71717A !important;
+}
+
+body[data-route="cadastrar"] .release-step.is-active span {
+  border-color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-step.is-complete {
+  color: #22C55E !important;
+}
+
+body[data-route="cadastrar"] .release-step.is-complete span {
+  border-color: #22C55E !important;
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #22C55E !important;
+}
+
+body[data-route="cadastrar"] .release-step.is-active {
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .release-stepper::before {
+  background: #1F1F1F !important;
+}
+
+/* Form Dropzones and Elements Overrides */
+body[data-route="cadastrar"] .release-dropzone {
+  border-color: #1F1F1F !important;
+  background: #0D0D0D !important;
+}
+
+body[data-route="cadastrar"] .release-dropzone:hover {
+  border-color: #2A2A2A !important;
+  background: #141414 !important;
+}
+
+body[data-route="cadastrar"] .release-upload-icon {
+  background: #080808 !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .upload-progress-bar {
+  background: #FFFFFF !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-requirements {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .release-audio-preview {
+  background: #0D0D0D !important;
+  border-color: #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .release-audio-preview-header span {
+  color: #22C55E !important;
+}
+
+body[data-route="cadastrar"] .release-audio-info svg {
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .add-track-btn {
+  background: #080808 !important;
+  border-color: #1F1F1F !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .add-track-btn:hover {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+}
+
+/* Licenses grid & cards */
+body[data-route="cadastrar"] .license-info-card {
+  background: #0D0D0D !important;
+  border-color: #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .license-info-card:hover {
+  border-color: #2A2A2A !important;
+  background: #141414 !important;
+  transform: translateY(-2px) !important;
+}
+
+body[data-route="cadastrar"] .license-info-card.is-selected {
+  border-color: #FFFFFF !important;
+  background: #141414 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .license-info-card .license-price {
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .license-checkbox-group input[type="checkbox"],
+body[data-route="cadastrar"] .delivery-checklist input[type="checkbox"] {
+  accent-color: #FFFFFF !important;
+}
+
+/* Review step card */
+body[data-route="cadastrar"] .review-grid {
+  background: #0D0D0D !important;
+  border-color: #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .review-header-info p {
+  color: #A1A1AA !important;
+}
+
+/* Fixed Bottom Action Bar */
+body[data-route="cadastrar"] .release-bottom-bar {
+  background: rgba(8, 8, 8, 0.95) !important;
+  border-top-color: #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .release-footer-track small {
+  color: #A1A1AA !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner .release-next-btn,
+body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner .release-next-btn:hover,
+body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn:hover {
+  background: #E4E4E7 !important;
+  border-color: #E4E4E7 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner .release-back-btn,
+body[data-route="cadastrar"] .release-bottom-inner .release-draft-btn {
+  border-color: #1F1F1F !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner .release-back-btn:hover:not(:disabled),
+body[data-route="cadastrar"] .release-bottom-inner .release-draft-btn:hover {
+  border-color: #2A2A2A !important;
+  background: #141414 !important;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+}
+
+/* Custom Select Dropdowns */
+body[data-route="cadastrar"] .custom-select-trigger {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .custom-select-trigger:focus {
+  border-color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .custom-select-options {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .custom-select-option:hover {
+  background: #141414 !important;
+}
+
+/* Fields & Inputs */
+body[data-route="cadastrar"] .release-field input,
+body[data-route="cadastrar"] .release-field select,
+body[data-route="cadastrar"] .release-field textarea {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .release-field input:focus,
+body[data-route="cadastrar"] .release-field select:focus,
+body[data-route="cadastrar"] .release-field textarea:focus {
+  border-color: #FFFFFF !important;
+}
+
+/* YouTube Flows Overrides */
+body[data-route="cadastrar"] .youtube-release-preview {
+  border-color: #1F1F1F !important;
+  background: #0D0D0D !important;
+  color: #71717A !important;
+}
+
+body[data-route="cadastrar"] .youtube-release-form footer .is-primary,
+body[data-route="cadastrar"] .catalog-import-actions .is-primary {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+}
+
+body[data-route="cadastrar"] .youtube-release-form footer .is-primary:hover,
+body[data-route="cadastrar"] .catalog-import-actions .is-primary:hover {
+  background: #E4E4E7 !important;
+  border-color: #E4E4E7 !important;
+}
+
+body[data-route="cadastrar"] .youtube-release-form footer button,
+body[data-route="cadastrar"] .catalog-import-actions button,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button,
+body[data-route="cadastrar"] .catalog-import-youtube-box button {
+  border-radius: 8px !important;
+  border-color: #1F1F1F !important;
+  background: #0D0D0D !important;
+}
+
+body[data-route="cadastrar"] .youtube-release-form footer button:hover,
+body[data-route="cadastrar"] .catalog-import-actions button:hover,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button:hover,
+body[data-route="cadastrar"] .catalog-import-youtube-box button:hover {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+}
+
+/* Catalog Import Overrides */
+body[data-route="cadastrar"] .catalog-import-dropzone {
+  background: #0D0D0D !important;
+  border: 1px dashed #1F1F1F !important;
+  border-radius: 12px !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-dropzone.is-dragging {
+  border-color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-youtube-box textarea,
+body[data-route="cadastrar"] .catalog-import-bulk-panel input,
+body[data-route="cadastrar"] .catalog-import-bulk-panel select,
+body[data-route="cadastrar"] .catalog-import-fields input,
+body[data-route="cadastrar"] .catalog-import-fields select,
+body[data-route="cadastrar"] .catalog-import-fields textarea {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 8px !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-youtube-box textarea:focus,
+body[data-route="cadastrar"] .catalog-import-bulk-panel input:focus,
+body[data-route="cadastrar"] .catalog-import-bulk-panel select:focus,
+body[data-route="cadastrar"] .catalog-import-fields input:focus,
+body[data-route="cadastrar"] .catalog-import-fields select:focus,
+body[data-route="cadastrar"] .catalog-import-fields textarea:focus {
+  border-color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-bulk-panel {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 12px !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-item {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 12px !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-mode-tabs button {
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+  border-radius: 8px !important;
+}
+
+body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border-color: #FFFFFF !important;
+}
+
 /* ==========================================
    PREMIUM GLASSMORPHIC NOTIFICATION DROP-DOWN
    ========================================== */

@@ -7258,13 +7258,10 @@ function syncAccountUi() {
   // Update premium navbar auth button text based on login state
   const authBtnText = document.querySelector(".navbar-auth-btn .auth-btn-text");
   if (authBtnText) {
-    if (hasAccountAccess()) {
+    if (hasAccountAccess() || profile) {
       const email = appState.authUser?.email || "";
-      const name = profile?.full_name || profile?.artistic_name || email || "Minha Conta";
+      const name = profile?.display_name || profile?.username || profile?.full_name || profile?.artistic_name || email || "Minha Conta";
       authBtnText.textContent = name.length > 25 ? name.substring(0, 22) + "..." : name;
-      if (appState.authUser?.email && !profile?.full_name && !profile?.artistic_name) {
-        authBtnText.textContent = appState.authUser.email;
-      }
     } else {
       authBtnText.textContent = appLocale.current === "pt-BR" ? "Entrar" : "Sign In";
     }
@@ -7272,7 +7269,7 @@ function syncAccountUi() {
 
   const notifContainer = document.getElementById("navbarNotificationContainer");
   if (notifContainer) {
-    if (hasAccountAccess()) {
+    if (hasAccountAccess() || profile) {
       notifContainer.removeAttribute("hidden");
     } else {
       notifContainer.setAttribute("hidden", "true");
@@ -7291,13 +7288,13 @@ function protectedRoute(route) {
 function renderReleaseAuthRequired(reason = "missing-session") {
   debugAuth("release_auth_blocked", { reason });
   appView.innerHTML = `
-    <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
-      <div class="release-fallback-head" style="margin-bottom:24px;">
-        <i data-lucide="shield-alert" style="width:48px; height:48px; color:#ff6a00; margin:0 auto 16px;"></i>
-        <h2 style="font-size:28px; color:#fff; margin-top:8px;">AutenticaÃ§Ã£o NecessÃ¡ria</h2>
-        <p style="color:#888; font-size:14px; margin-top:8px;">VocÃª precisa criar uma conta ou fazer login para lanÃ§ar suas mÃºsicas e beats na plataforma.</p>
+    <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:600px; margin:80px auto; padding:40px 32px; background:#080808; border:1px solid #1F1F1F; border-radius:16px; text-align:center;">
+      <div class="release-fallback-head" style="margin-bottom:32px;">
+        <i data-lucide="shield-alert" style="width:48px; height:48px; color:#71717A; margin:0 auto 16px;"></i>
+        <h2 style="font-size:24px; color:#fff; font-weight:700; margin-top:8px; letter-spacing:-0.02em;">Autenticação Necessária</h2>
+        <p style="color:#A1A1AA; font-size:14px; margin-top:12px; line-height:1.5;">Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.</p>
       </div>
-      <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer; text-decoration:none; display:inline-block;">Entrar / Criar Conta</a>
+      <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ffffff; border:none; color:#000000; font-weight:600; padding:12px 28px; border-radius:8px; cursor:pointer; text-decoration:none; display:inline-block; font-size:14px; transition: opacity 0.2s ease;">Entrar / Criar Conta</a>
     </section>`;
   lucide.createIcons();
 }
@@ -10171,48 +10168,85 @@ function renderReleaseModeSelector() {
   appView.innerHTML = `<section class="release-mode-selector" aria-labelledby="releaseModeTitle">
     <header class="release-mode-hero">
       <div>
-        <span>ANSEND RELEASE</span>
-        <h1 id="releaseModeTitle">Lancar musica</h1>
-        <p>Escolha o formato ideal para publicar um beat, incorporar um video ou montar um catalogo completo.</p>
+        <h1 id="releaseModeTitle">Lançar música</h1>
+        <p>Escolha o melhor formato para publicar seu beat na ANSEND. Envie um arquivo, incorpore um vídeo do YouTube ou importe seu catálogo completo.</p>
       </div>
-      <aside aria-label="Resumo do sistema de publicacao">
+      <aside class="release-aside-card" aria-label="Resumo do sistema de publicacao">
         <strong>Sistema ANSEND</strong>
-        <small>Uploads protegidos, metadados organizados e publicacao persistente no catalogo.</small>
+        <small>Uploads protegidos, metadados organizados e publicação persistente no catálogo.</small>
       </aside>
     </header>
-    <div class="release-mode-intro">
-      <span>Escolha um fluxo</span>
-      <h2>Como voce quer publicar?</h2>
+
+    <div class="release-progress-stepper" aria-label="Progresso do lançamento">
+      <div class="release-progress-step is-active" aria-current="step">
+        <span class="release-progress-step-circle">1</span>
+        <span class="release-progress-step-label">Formato</span>
+      </div>
+      <div class="release-progress-step">
+        <span class="release-progress-step-circle">2</span>
+        <span class="release-progress-step-label">Detalhes</span>
+      </div>
+      <div class="release-progress-step">
+        <span class="release-progress-step-circle">3</span>
+        <span class="release-progress-step-label">Arquivos</span>
+      </div>
+      <div class="release-progress-step">
+        <span class="release-progress-step-circle">4</span>
+        <span class="release-progress-step-label">Revisão</span>
+      </div>
+      <div class="release-progress-step">
+        <span class="release-progress-step-circle">5</span>
+        <span class="release-progress-step-label">Publicação</span>
+      </div>
     </div>
+
     <div class="release-mode-grid">
-      <button type="button" class="release-mode-card is-featured" data-action="release-mode-choice" data-mode="upload">
-        <span class="release-mode-icon"><i data-lucide="upload-cloud"></i></span>
-        <span class="release-mode-copy">
-          <strong>Beat individual - Upload</strong>
-          <small>Envie capa e arquivo de audio pelo sistema ANSEND.</small>
-        </span>
-        <em>Publicacao completa</em>
+      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="upload" aria-label="Publicar beat individual por upload">
+        <div class="release-mode-card-header">
+          <span class="release-mode-icon"><i data-lucide="upload-cloud"></i></span>
+          <strong>Beat individual</strong>
+          <small>Envie áudio, capa e informações completas do beat.</small>
+        </div>
+        <ul class="release-mode-benefits">
+          <li><i data-lucide="check" class="success-check"></i> Upload protegido</li>
+          <li><i data-lucide="check" class="success-check"></i> Capa personalizada</li>
+          <li><i data-lucide="check" class="success-check"></i> Publicação no marketplace</li>
+        </ul>
+        <span class="release-mode-cta">Começar upload <i data-lucide="arrow-right"></i></span>
       </button>
-      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="youtube">
-        <span class="release-mode-icon"><i data-lucide="youtube"></i></span>
-        <span class="release-mode-copy">
-          <strong>Beat individual - YouTube</strong>
-          <small>Incorpore o player oficial sem mandar o ouvinte para fora.</small>
-        </span>
-        <em>Embed seguro</em>
+
+      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="youtube" aria-label="Importar beat individual do YouTube">
+        <div class="release-mode-card-header">
+          <span class="release-mode-icon"><i data-lucide="youtube"></i></span>
+          <strong>Importar do YouTube</strong>
+          <small>Cole o link do vídeo e mantenha o player oficial dentro da ANSEND.</small>
+        </div>
+        <ul class="release-mode-benefits">
+          <li><i data-lucide="check" class="success-check"></i> Sem precisar subir arquivo</li>
+          <li><i data-lucide="check" class="success-check"></i> Player incorporado</li>
+          <li><i data-lucide="check" class="success-check"></i> Ideal para beats já publicados</li>
+        </ul>
+        <span class="release-mode-cta">Colar link <i data-lucide="arrow-right"></i></span>
       </button>
-      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="catalog">
-        <span class="release-mode-icon"><i data-lucide="library-big"></i></span>
-        <span class="release-mode-copy">
-          <strong>Importar Catalogo</strong>
-          <small>Suba varios arquivos ou cole varios links para publicar em lote.</small>
-        </span>
-        <em>Lote rapido</em>
+
+      <button type="button" class="release-mode-card" data-action="release-mode-choice" data-mode="catalog" aria-label="Importar catálogo em lote">
+        <div class="release-mode-card-header">
+          <span class="release-mode-icon"><i data-lucide="library-big"></i></span>
+          <strong>Importar catálogo</strong>
+          <small>Publique vários beats de uma vez com upload em lote ou múltiplos links.</small>
+        </div>
+        <ul class="release-mode-benefits">
+          <li><i data-lucide="check" class="success-check"></i> Upload em lote</li>
+          <li><i data-lucide="check" class="success-check"></i> Vários links de uma vez</li>
+          <li><i data-lucide="check" class="success-check"></i> Economia de tempo para produtores</li>
+        </ul>
+        <span class="release-mode-cta">Importar catálogo <i data-lucide="arrow-right"></i></span>
       </button>
     </div>
+
     <footer class="release-mode-note">
       <i data-lucide="shield-check"></i>
-      <span>Voce revisa tudo antes de publicar. Nenhum item aparece no marketplace sem confirmacao.</span>
+      <span>Você revisa tudo antes de publicar. Nenhum beat aparece no marketplace sem sua confirmação.</span>
     </footer>
   </section>`;
   lucide.createIcons();
@@ -10694,13 +10728,13 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
-      <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
-        <div class="release-fallback-head" style="margin-bottom:24px;">
-          <i data-lucide="shield-alert" style="width:48px; height:48px; color:#ff6a00; margin:0 auto 16px;"></i>
-          <h2 style="font-size:28px; color:#fff; margin-top:8px;">Autenticação Necessária</h2>
-          <p style="color:#888; font-size:14px; margin-top:8px;">Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.</p>
+      <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:600px; margin:80px auto; padding:40px 32px; background:#080808; border:1px solid #1F1F1F; border-radius:16px; text-align:center;">
+        <div class="release-fallback-head" style="margin-bottom:32px;">
+          <i data-lucide="shield-alert" style="width:48px; height:48px; color:#71717A; margin:0 auto 16px;"></i>
+          <h2 style="font-size:24px; color:#fff; font-weight:700; margin-top:8px; letter-spacing:-0.02em;">Autenticação Necessária</h2>
+          <p style="color:#A1A1AA; font-size:14px; margin-top:12px; line-height:1.5;">Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.</p>
         </div>
-        <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer; text-decoration:none; display:inline-block;">Entrar / Criar Conta</a>
+        <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ffffff; border:none; color:#000000; font-weight:600; padding:12px 28px; border-radius:8px; cursor:pointer; text-decoration:none; display:inline-block; font-size:14px; transition: opacity 0.2s ease;">Entrar / Criar Conta</a>
       </section>`;
     applyLocaleTextOverrides(appView);
     lucide.createIcons();
@@ -10838,14 +10872,14 @@ function renderMusicUploadFallback(error) {
     ? `<small class="release-fallback-error" style="color:#ef4444; margin-top:8px; display:block;">Render seguro ativado: ${error.message}</small>`
     : "";
   appView.innerHTML = `
-  <section class="release-fallback-page" aria-label="Cadastrar música" style="max-width:800px; margin:40px auto; padding:32px; background:#0b0b0b; border:1px solid rgba(255,106,0,0.2); border-radius:16px; text-align:center;">
-    <div class="release-fallback-head" style="margin-bottom:24px;">
-      <span style="color:#ff6a00; font-size:12px; font-weight:900; text-transform:uppercase;">ANSEND release</span>
-      <h2 style="font-size:28px; color:#fff; margin-top:8px;">Lançar música</h2>
-      <p style="color:#888; font-size:14px;">Cadastre capa, áudio, licença e preço para publicar no seu catálogo.</p>
+  <section class="release-fallback-page" aria-label="Cadastrar música" style="max-width:600px; margin:80px auto; padding:40px 32px; background:#080808; border:1px solid #1F1F1F; border-radius:16px; text-align:center;">
+    <div class="release-fallback-head" style="margin-bottom:32px;">
+      <span style="color:#A1A1AA; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing: 0.1em;">ANSEND Release</span>
+      <h2 style="font-size:24px; color:#fff; font-weight:700; margin-top:12px; letter-spacing:-0.02em;">Lançar música</h2>
+      <p style="color:#71717A; font-size:14px; margin-top:8px; line-height: 1.5;">Cadastre capa, áudio, licença e preço para publicar no seu catálogo.</p>
       ${errorNote}
     </div>
-    <button type="button" onclick="renderMusicUpload();" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer;">Tentar recarregar fluxo completo</button>
+    <button type="button" onclick="renderMusicUpload();" style="background:#ffffff; border:none; color:#000000; font-weight:600; padding:12px 28px; border-radius:8px; cursor:pointer; font-size:14px; transition: opacity 0.2s ease;">Tentar recarregar fluxo completo</button>
   </section>`;
 }
 
