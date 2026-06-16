@@ -222,6 +222,32 @@
               </svg>
             </button>
           </div>
+
+          <!-- Notifications Bell -->
+          <div class="navbar-notification-container" id="navbarNotificationContainer" hidden>
+            <button class="navbar-notification-btn" id="navbarNotificationBtn" type="button" aria-label="Notificações" aria-expanded="false" aria-haspopup="true">
+              <i data-lucide="bell"></i>
+              <span class="notification-badge" id="notificationBadge" hidden>0</span>
+            </button>
+            <div class="navbar-notification-dropdown" id="navbarNotificationDropdown" hidden>
+              <div class="notification-dropdown-header">
+                <h3>Notificações</h3>
+                <span class="notification-unread-count" id="notificationUnreadCount">0 novas</span>
+                <button type="button" class="notification-mark-all-read-btn" id="notificationMarkAllReadBtn">Marcar tudo como lido</button>
+              </div>
+              <div class="notification-list" id="notificationList">
+                <div class="notification-empty-state">
+                  <i data-lucide="bell-off"></i>
+                  <p>Nenhuma notificação ainda.</p>
+                  <span>Quando alguém interagir com você, vamos avisar aqui.</span>
+                </div>
+              </div>
+              <div class="notification-dropdown-footer" id="notificationDropdownFooter" hidden>
+                <button type="button" class="notification-load-more-btn" id="notificationLoadMoreBtn">Ver mais</button>
+              </div>
+            </div>
+          </div>
+
           <div class="navbar-auth-container">
             <button class="navbar-auth-btn" type="button" aria-expanded="false" aria-haspopup="true">
               <span class="auth-btn-text">Entrar</span>

@@ -7190,6 +7190,15 @@ function syncAccountUi() {
       authBtnText.textContent = appLocale.current === "pt-BR" ? "Entrar" : "Sign In";
     }
   }
+
+  const notifContainer = document.getElementById("navbarNotificationContainer");
+  if (notifContainer) {
+    if (hasAccountAccess()) {
+      notifContainer.removeAttribute("hidden");
+    } else {
+      notifContainer.setAttribute("hidden", "true");
+    }
+  }
 }
 
 function hasAccountAccess() {
@@ -7270,6 +7279,9 @@ async function hydrateAuthenticatedUser(user, options = {}) {
   await loadAdminStatus();
   await loadOwnedCatalogItems();
   persistAuthCache();
+  if (typeof initNotifications === "function") {
+    initNotifications(user.id);
+  }
 }
 
 function clearAuthenticatedSession(reason = "no-session", options = {}) {
@@ -7288,6 +7300,9 @@ function clearAuthenticatedSession(reason = "no-session", options = {}) {
   appState.ownedCatalogItems = [];
   syncCatalogCompatibilityState();
   debugAuth(reason, { reason });
+  if (typeof cleanupNotifications === "function") {
+    cleanupNotifications();
+  }
 }
 
 async function reconcileInitialSession(sessionPromise, reason = "initial_timeout") {
@@ -13862,6 +13877,7 @@ function initNavbarListeners() {
   document.addEventListener("click", (event) => {
     const authBtn = event.target.closest(".navbar-auth-btn");
     if (authBtn) {
+      closeNotificationsDropdown();
       if (hasAccountAccess()) {
         const container = authBtn.closest(".navbar-auth-container");
         if (container) {
@@ -13875,12 +13891,36 @@ function initNavbarListeners() {
       return;
     }
 
+    const notifyBtn = event.target.closest(".navbar-notification-btn");
+    if (notifyBtn) {
+      event.stopPropagation();
+      const dropdown = document.getElementById("navbarNotificationDropdown");
+      const isVisible = dropdown && dropdown.classList.contains("is-visible");
+      
+      // Close user account dropdown if open
+      document.querySelectorAll(".navbar-auth-container").forEach((c) => {
+        c.classList.remove("dropdown-open");
+        c.querySelector(".navbar-auth-btn")?.setAttribute("aria-expanded", "false");
+      });
+      
+      if (isVisible) {
+        closeNotificationsDropdown();
+      } else {
+        openNotificationsDropdown();
+      }
+      return;
+    }
+
     // Close dropdown on click outside
     if (!event.target.closest(".navbar-auth-container")) {
       document.querySelectorAll(".navbar-auth-container").forEach((c) => {
         c.classList.remove("dropdown-open");
         c.querySelector(".navbar-auth-btn")?.setAttribute("aria-expanded", "false");
       });
+    }
+
+    if (!event.target.closest(".navbar-notification-container")) {
+      closeNotificationsDropdown();
     }
 
     // Close dropdown on clicking any option item
@@ -13893,6 +13933,415 @@ function initNavbarListeners() {
       }
     }
   });
+
+  // Esc key closure
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeNotificationsDropdown();
+      document.querySelectorAll(".navbar-auth-container").forEach((c) => {
+        c.classList.remove("dropdown-open");
+        c.querySelector(".navbar-auth-btn")?.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
+
+  // Mark all as read button
+  document.getElementById("notificationMarkAllReadBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    markAllNotificationsAsRead();
+  });
+
+  // Load more button
+  document.getElementById("notificationLoadMoreBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    fetchNotificationsList(false);
+  });
+}
+
+/* ==========================================
+   ANSEND REALTIME NOTIFICATION SYSTEM SERVICE
+   ========================================== */
+
+const notificationsState = {
+  list: [],
+  unreadCount: 0,
+  loading: false,
+  error: "",
+  offset: 0,
+  limit: 20,
+  hasMore: false,
+  realtimeChannel: null,
+  pollingInterval: null,
+  initializedUserId: null
+};
+
+async function initNotifications(userId) {
+  if (notificationsState.initializedUserId === userId) return;
+  
+  notificationsState.initializedUserId = userId;
+  notificationsState.list = [];
+  notificationsState.unreadCount = 0;
+  notificationsState.offset = 0;
+  notificationsState.hasMore = false;
+  notificationsState.error = "";
+  
+  const container = document.getElementById("navbarNotificationContainer");
+  if (container) container.removeAttribute("hidden");
+
+  await fetchUnreadCount();
+  await fetchNotificationsList(true);
+  
+  subscribeRealtimeNotifications(userId);
+  
+  if (notificationsState.pollingInterval) clearInterval(notificationsState.pollingInterval);
+  notificationsState.pollingInterval = setInterval(async () => {
+    if (appState.authUser) {
+      await fetchUnreadCount();
+    }
+  }, 45000);
+}
+
+function cleanupNotifications() {
+  notificationsState.initializedUserId = null;
+  notificationsState.list = [];
+  notificationsState.unreadCount = 0;
+  notificationsState.offset = 0;
+  notificationsState.hasMore = false;
+  
+  if (notificationsState.realtimeChannel) {
+    supabaseClient?.removeChannel(notificationsState.realtimeChannel);
+    notificationsState.realtimeChannel = null;
+  }
+  
+  if (notificationsState.pollingInterval) {
+    clearInterval(notificationsState.pollingInterval);
+    notificationsState.pollingInterval = null;
+  }
+  
+  const container = document.getElementById("navbarNotificationContainer");
+  if (container) container.setAttribute("hidden", "true");
+  
+  const badge = document.getElementById("notificationBadge");
+  if (badge) {
+    badge.setAttribute("hidden", "true");
+    badge.textContent = "0";
+  }
+  
+  closeNotificationsDropdown();
+}
+
+async function fetchUnreadCount() {
+  if (!supabaseClient || !appState.authUser) return;
+  try {
+    const { data, error } = await supabaseClient.rpc("get_unread_notifications_count");
+    if (!error && data !== null) {
+      const count = Number(data);
+      notificationsState.unreadCount = count;
+      updateUnreadBadge(count);
+    }
+  } catch (err) {
+    console.error("[ANSEND notifications] failed to fetch unread count", err);
+  }
+}
+
+function updateUnreadBadge(count) {
+  const badge = document.getElementById("notificationBadge");
+  const countText = document.getElementById("notificationUnreadCount");
+  
+  if (badge) {
+    if (count > 0) {
+      badge.removeAttribute("hidden");
+      badge.textContent = count > 99 ? "99+" : String(count);
+    } else {
+      badge.setAttribute("hidden", "true");
+      badge.textContent = "0";
+    }
+  }
+  
+  if (countText) {
+    countText.textContent = `${count} novas`;
+  }
+}
+
+async function fetchNotificationsList(isInitial = false) {
+  if (!supabaseClient || !appState.authUser) return;
+  
+  if (isInitial) {
+    notificationsState.offset = 0;
+    notificationsState.list = [];
+  }
+  
+  notificationsState.loading = true;
+  notificationsState.error = "";
+  renderNotificationsList();
+  
+  try {
+    const { data, error } = await supabaseClient.rpc("get_notifications", {
+      p_limit: notificationsState.limit,
+      p_offset: notificationsState.offset
+    });
+    
+    if (error) throw error;
+    
+    const items = data || [];
+    if (isInitial) {
+      notificationsState.list = items;
+    } else {
+      notificationsState.list = [...notificationsState.list, ...items];
+    }
+    
+    notificationsState.hasMore = items.length === notificationsState.limit;
+    notificationsState.offset += items.length;
+    notificationsState.loading = false;
+    
+    renderNotificationsList();
+  } catch (err) {
+    console.error("[ANSEND notifications] error fetching list", err);
+    notificationsState.loading = false;
+    notificationsState.error = "Não foi possível carregar as notificações agora.";
+    renderNotificationsList();
+  }
+}
+
+function renderNotificationsList() {
+  const listContainer = document.getElementById("notificationList");
+  const footer = document.getElementById("notificationDropdownFooter");
+  
+  if (!listContainer) return;
+  
+  if (notificationsState.loading && notificationsState.list.length === 0) {
+    listContainer.innerHTML = Array.from({ length: 3 }).map(() => `
+      <div class="notification-skeleton">
+        <div class="notification-skeleton-avatar"></div>
+        <div class="notification-skeleton-text">
+          <div class="notification-skeleton-line"></div>
+          <div class="notification-skeleton-line short"></div>
+        </div>
+      </div>
+    `).join("");
+    if (footer) footer.setAttribute("hidden", "true");
+    return;
+  }
+  
+  if (notificationsState.error) {
+    listContainer.innerHTML = `
+      <div class="notification-empty-state">
+        <i data-lucide="alert-triangle"></i>
+        <p>Erro ao carregar</p>
+        <span>${notificationsState.error}</span>
+      </div>
+    `;
+    if (footer) footer.setAttribute("hidden", "true");
+    lucide.createIcons();
+    return;
+  }
+  
+  if (notificationsState.list.length === 0) {
+    listContainer.innerHTML = `
+      <div class="notification-empty-state">
+        <i data-lucide="bell-off"></i>
+        <p>Nenhuma notificação ainda.</p>
+        <span>Quando alguém interagir com você, vamos avisar aqui.</span>
+      </div>
+    `;
+    if (footer) footer.setAttribute("hidden", "true");
+    lucide.createIcons();
+    return;
+  }
+  
+  let html = notificationsState.list.map((item) => {
+    const isUnread = !item.is_read ? " is-unread" : "";
+    
+    let avatarHtml = "";
+    if (item.actor_avatar) {
+      avatarHtml = `<img class="app-optimized-image" src="${item.actor_avatar}" alt="Avatar" width="36" height="36" />`;
+    } else {
+      let icon = "bell";
+      if (item.type === "profile_follow") icon = "user-plus";
+      else if (item.type === "beat_like") icon = "heart";
+      else if (item.type === "beat_purchase") icon = "shopping-bag";
+      else if (item.type === "profile_hire") icon = "briefcase";
+      else if (item.type === "community_like") icon = "thumbs-up";
+      else if (item.type === "community_comment" || item.type === "community_comment_reply") icon = "message-square";
+      else if (item.type === "contract_new") icon = "file-text";
+      else if (item.type === "contract_accepted") icon = "check-circle";
+      else if (item.type === "contract_rejected") icon = "x-circle";
+      else if (item.type === "contract_message") icon = "mail";
+      
+      avatarHtml = `
+        <div class="notification-avatar-fallback">
+          <i data-lucide="${icon}"></i>
+        </div>
+      `;
+    }
+    
+    return `
+      <a class="notification-item${isUnread}" data-id="${item.id}" data-url="${item.action_url || ""}" role="menuitem">
+        <div class="notification-avatar-container">
+          ${avatarHtml}
+        </div>
+        <div class="notification-content">
+          <p class="notification-text"><strong>${item.title}:</strong> ${item.body}</p>
+          <span class="notification-time">${formatRelativeTime(item.created_at)}</span>
+        </div>
+      </a>
+    `;
+  }).join("");
+  
+  listContainer.innerHTML = html;
+  
+  if (footer) {
+    if (notificationsState.hasMore) {
+      footer.removeAttribute("hidden");
+    } else {
+      footer.setAttribute("hidden", "true");
+    }
+  }
+  
+  listContainer.querySelectorAll(".notification-item").forEach((element) => {
+    element.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const id = element.dataset.id;
+      const url = element.dataset.url;
+      
+      if (id) {
+        markNotificationAsReadLocal(id);
+        await supabaseClient.rpc("mark_notification_read", { p_notification_id: id });
+        await fetchUnreadCount();
+      }
+      
+      closeNotificationsDropdown();
+      
+      if (url) {
+        location.hash = url.startsWith("#") ? url.replace(/^#/, "") : url;
+      }
+    });
+  });
+  
+  lucide.createIcons();
+}
+
+function markNotificationAsReadLocal(id) {
+  const index = notificationsState.list.findIndex(item => item.id === id);
+  if (index !== -1) {
+    notificationsState.list[index].is_read = true;
+  }
+  renderNotificationsList();
+}
+
+async function markAllNotificationsAsRead() {
+  if (!supabaseClient || !appState.authUser) return;
+  
+  notificationsState.list.forEach((item) => {
+    item.is_read = true;
+  });
+  notificationsState.unreadCount = 0;
+  updateUnreadBadge(0);
+  renderNotificationsList();
+  
+  try {
+    const { error } = await supabaseClient.rpc("mark_all_notifications_read");
+    if (error) throw error;
+  } catch (err) {
+    console.error("[ANSEND notifications] failed to mark all as read", err);
+    await fetchUnreadCount();
+    await fetchNotificationsList(true);
+  }
+}
+
+function subscribeRealtimeNotifications(userId) {
+  if (notificationsState.realtimeChannel) {
+    supabaseClient?.removeChannel(notificationsState.realtimeChannel);
+  }
+  
+  if (!supabaseClient) return;
+  
+  const channel = supabaseClient
+    .channel(`public:notifications:recipient_id=eq.${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `recipient_id=eq.${userId}`
+      },
+      async (payload) => {
+        await fetchUnreadCount();
+        const dropdown = document.getElementById("navbarNotificationDropdown");
+        if (dropdown && dropdown.classList.contains("is-visible")) {
+          await fetchNotificationsList(true);
+        }
+        if (payload.new && payload.new.title) {
+          showToast(`${payload.new.title}: ${payload.new.body}`, "bell");
+        }
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "notifications",
+        filter: `recipient_id=eq.${userId}`
+      },
+      async () => {
+        await fetchUnreadCount();
+        const dropdown = document.getElementById("navbarNotificationDropdown");
+        if (dropdown && dropdown.classList.contains("is-visible")) {
+          await fetchNotificationsList(true);
+        }
+      }
+    )
+    .subscribe();
+    
+  notificationsState.realtimeChannel = channel;
+}
+
+function openNotificationsDropdown() {
+  const dropdown = document.getElementById("navbarNotificationDropdown");
+  const btn = document.getElementById("navbarNotificationBtn");
+  if (dropdown && btn) {
+    dropdown.removeAttribute("hidden");
+    setTimeout(() => {
+      dropdown.classList.add("is-visible");
+      btn.classList.add("dropdown-open");
+      btn.setAttribute("aria-expanded", "true");
+    }, 10);
+    fetchNotificationsList(true);
+  }
+}
+
+function closeNotificationsDropdown() {
+  const dropdown = document.getElementById("navbarNotificationDropdown");
+  const btn = document.getElementById("navbarNotificationBtn");
+  if (dropdown && btn) {
+    dropdown.classList.remove("is-visible");
+    btn.classList.remove("dropdown-open");
+    btn.setAttribute("aria-expanded", "false");
+    setTimeout(() => {
+      if (!dropdown.classList.contains("is-visible")) {
+        dropdown.setAttribute("hidden", "true");
+      }
+    }, 250);
+  }
+}
+
+function formatRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return "agora";
+  if (diffMins < 60) return `${diffMins} min`;
+  if (diffHours < 24) return `${diffHours} h`;
+  if (diffDays === 1) return "ontem";
+  if (diffDays < 7) return `${diffDays} dias`;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
 setLocale(detectLocale(), { manual: false });
