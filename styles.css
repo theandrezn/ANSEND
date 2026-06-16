@@ -23456,3 +23456,1502 @@ body[data-route="profissionais"] .professional-tab:focus-visible {
     padding: 6px !important;
   }
 }
+/* Contratacoes: X-inspired professional hiring feed. */
+body[data-route="contratacoes"] {
+  background: #000 !important;
+  color: #f5f5f5;
+}
+
+body[data-route="contratacoes"] .page,
+body[data-route="contratacoes"] #appView.app-view {
+  background: #000 !important;
+}
+
+.hiring-page {
+  min-height: 100vh;
+  background: #000;
+  color: #f5f5f5;
+  padding: 0;
+}
+
+.hiring-feed-shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  min-height: 100vh;
+  border-left: 1px solid #202327;
+  border-right: 1px solid #202327;
+  background: #000;
+}
+
+.hiring-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: rgba(0, 0, 0, .86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid #202327;
+}
+
+.hiring-topbar h1 {
+  margin: 0;
+  padding: 14px 18px 8px;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.hiring-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.hiring-tabs button,
+.hiring-back,
+.hiring-icon-btn,
+.hiring-post-actions button,
+.hiring-professional-actions button,
+.hiring-author-copy button,
+.hiring-post-body,
+.hiring-author-avatar,
+.hiring-empty button,
+.hiring-message-form button,
+.hiring-comment-form button {
+  font: inherit;
+  color: inherit;
+}
+
+.hiring-tabs button {
+  min-height: 48px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #8b98a5;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hiring-tabs button:hover,
+.hiring-tabs button:focus-visible {
+  background: #080808;
+  color: #f5f5f5;
+}
+
+.hiring-tabs button.is-active {
+  color: #fff;
+  border-bottom-color: #1d9bf0;
+}
+
+.hiring-composer {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #202327;
+}
+
+.hiring-avatar,
+.hiring-comment-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #16181c;
+  color: #f5f5f5;
+  font-weight: 800;
+}
+
+.hiring-avatar img,
+.hiring-comment-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hiring-composer-main input,
+.hiring-composer-main textarea,
+.hiring-composer-main select,
+.hiring-filters input,
+.hiring-filters select,
+.hiring-status-select select,
+.hiring-proposal-form input,
+.hiring-proposal-form textarea,
+.hiring-comment-form input,
+.hiring-message-form input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid #2f3336;
+  border-radius: 8px;
+  background: #000;
+  color: #f5f5f5;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.hiring-composer-main textarea {
+  min-height: 54px;
+  resize: none;
+  border-color: transparent;
+  padding-left: 0;
+  font-size: 1.18rem;
+  line-height: 1.45;
+}
+
+.hiring-composer-main textarea::placeholder,
+.hiring-composer-main input::placeholder,
+.hiring-comment-form input::placeholder,
+.hiring-message-form input::placeholder {
+  color: #71767b;
+}
+
+.hiring-composer-main :is(input, textarea, select):focus,
+.hiring-filters :is(input, select):focus,
+.hiring-proposal-form :is(input, textarea):focus,
+.hiring-comment-form input:focus,
+.hiring-message-form input:focus,
+.hiring-tabs button:focus-visible,
+.hiring-post button:focus-visible {
+  outline: 2px solid #1d9bf0;
+  outline-offset: 2px;
+}
+
+.hiring-composer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 0 12px;
+}
+
+.hiring-composer-grid label,
+.hiring-filters label,
+.hiring-proposal-form label {
+  display: grid;
+  gap: 6px;
+  color: #8b98a5;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.hiring-composer-grid .is-wide {
+  grid-column: 1 / -1;
+}
+
+.hiring-negotiable {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.hiring-negotiable input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.hiring-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid #202327;
+  padding-top: 10px;
+}
+
+.hiring-composer-tools span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  color: #1d9bf0;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.hiring-composer-tools svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hiring-composer-tools button,
+.hiring-empty button,
+.hiring-message-form button,
+.hiring-comment-form button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: #eff3f4;
+  color: #0f1419;
+  padding: 0 18px;
+  font-weight: 800;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.hiring-composer-tools button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.hiring-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #202327;
+}
+
+.hiring-post {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #202327;
+  animation: hiringFadeIn .22s ease-out both;
+}
+
+.hiring-post:hover {
+  background: #030303;
+}
+
+.hiring-post-head {
+  display: grid;
+  grid-template-columns: 44px 1fr 36px;
+  gap: 10px;
+  align-items: start;
+}
+
+.hiring-author-avatar,
+.hiring-author-copy button,
+.hiring-post-body,
+.hiring-icon-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hiring-author-copy button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.hiring-author-copy strong {
+  color: #f5f5f5;
+}
+
+.hiring-author-copy span,
+.hiring-author-copy small,
+.hiring-post-body small,
+.hiring-comment span,
+.hiring-message span {
+  color: #71767b;
+}
+
+.hiring-author-copy svg {
+  width: 16px;
+  height: 16px;
+  color: #1d9bf0;
+}
+
+.hiring-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #71767b;
+}
+
+.hiring-icon-btn:hover,
+.hiring-post-actions button:hover {
+  color: #f5f5f5;
+  background: #0b0f12;
+}
+
+.hiring-post-body {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding-left: 54px;
+}
+
+.hiring-post-body h2 {
+  margin: 0;
+  color: #f5f5f5;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.hiring-post-body p {
+  margin: 0;
+  color: #f5f5f5;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.hiring-post-body small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hiring-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 0 6px 54px;
+}
+
+.hiring-tags span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #2f3336;
+  border-radius: 999px;
+  color: #c9d1d9;
+  padding: 0 10px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.hiring-tags [data-status="open"] {
+  border-color: rgba(29, 155, 240, .45);
+  color: #79c7ff;
+}
+
+.hiring-post-actions,
+.hiring-professional-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-left: 50px;
+  margin-top: 6px;
+}
+
+.hiring-post-actions button,
+.hiring-professional-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #71767b;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.hiring-professional-actions button {
+  border: 1px solid #2f3336;
+  color: #e7e9ea;
+  font-weight: 800;
+}
+
+.hiring-professional-actions button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.hiring-post-actions button.is-active,
+.hiring-professional-actions button.is-active {
+  color: #1d9bf0;
+}
+
+.hiring-status-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #71767b;
+  font-size: .8rem;
+}
+
+.hiring-status-select select {
+  min-height: 38px;
+  min-width: 150px;
+}
+
+.hiring-comments,
+.hiring-owner-proposals {
+  margin: 12px 0 0 54px;
+  border-top: 1px solid #202327;
+  padding-top: 12px;
+}
+
+.hiring-comment {
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  gap: 9px;
+  padding: 10px 0;
+}
+
+.hiring-comment-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: .75rem;
+}
+
+.hiring-comment p,
+.hiring-proposal-preview p {
+  margin: 4px 0 0;
+  color: #f5f5f5;
+  line-height: 1.45;
+}
+
+.hiring-comment button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #71767b;
+}
+
+.hiring-comment-form,
+.hiring-message-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.hiring-empty,
+.hiring-skeleton {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 10px;
+  min-height: 320px;
+  padding: 42px 20px;
+  border-bottom: 1px solid #202327;
+}
+
+.hiring-empty svg {
+  width: 34px;
+  height: 34px;
+  color: #1d9bf0;
+}
+
+.hiring-empty h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.hiring-empty p {
+  max-width: 420px;
+  margin: 0;
+  color: #71767b;
+}
+
+.hiring-skeleton span {
+  width: min(560px, 86%);
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #101214, #202327, #101214);
+  animation: hiringPulse 1.3s ease-in-out infinite;
+}
+
+.hiring-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  margin: 10px 16px;
+  border: 1px solid #2f3336;
+  border-radius: 999px;
+  background: #000;
+  color: #f5f5f5;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.hiring-owner-proposals {
+  display: grid;
+  gap: 10px;
+}
+
+.hiring-owner-proposals h3 {
+  margin: 0;
+  font-size: .95rem;
+}
+
+.hiring-proposal-preview {
+  border: 1px solid #2f3336;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.hiring-proposal-preview span,
+.hiring-proposal-preview small {
+  display: block;
+  color: #71767b;
+  margin-top: 3px;
+}
+
+.hiring-proposal-form,
+.hiring-chat-panel {
+  display: grid;
+  gap: 14px;
+  padding: clamp(22px, 3vw, 32px);
+}
+
+.hiring-proposal-form > span,
+.hiring-chat-panel header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1d9bf0;
+  font-weight: 800;
+}
+
+.hiring-proposal-form h2,
+.hiring-chat-panel h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.25rem;
+  letter-spacing: 0;
+}
+
+.hiring-chat-panel header p {
+  margin: 4px 0 0;
+  color: #71767b;
+}
+
+.hiring-message-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 8px 2px;
+}
+
+.hiring-message {
+  justify-self: start;
+  max-width: min(420px, 84%);
+  border: 1px solid #2f3336;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #060606;
+}
+
+.hiring-message.is-mine {
+  justify-self: end;
+  border-color: rgba(29, 155, 240, .45);
+  background: #06111a;
+}
+
+.hiring-message p {
+  margin: 0;
+}
+
+@keyframes hiringFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hiringPulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 760px) {
+  body[data-route="contratacoes"] {
+    --sidebar-width: 0px;
+  }
+
+  body[data-route="contratacoes"] .sidebar {
+    transform: translateX(-110%) !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body[data-route="contratacoes"] .page,
+  body[data-route="contratacoes"] #appView.app-view {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .hiring-feed-shell {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .hiring-composer,
+  .hiring-post {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .hiring-composer-grid,
+  .hiring-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .hiring-post-body,
+  .hiring-tags,
+  .hiring-post-actions,
+  .hiring-professional-actions,
+  .hiring-comments,
+  .hiring-owner-proposals {
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .hiring-professional-actions button,
+  .hiring-status-select,
+  .hiring-status-select select {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hiring-comment-form,
+  .hiring-message-form {
+    grid-template-columns: 1fr;
+  }
+
+  .app-modal:has(.hiring-proposal-form),
+  .app-modal:has(.hiring-chat-panel) {
+    padding: 0;
+  }
+
+  .app-modal-panel:has(.hiring-proposal-form),
+  .app-modal-panel:has(.hiring-chat-panel) {
+    width: 100vw;
+    min-height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiring-post,
+  .hiring-skeleton span {
+    animation: none !important;
+  }
+}
+
+/* Contratacoes refactor: full Twitter/X-like shell. Keep after legacy route styles. */
+body[data-route="contratacoes"] {
+  --sidebar-width: 0px;
+  overflow-x: hidden;
+}
+
+body[data-route="contratacoes"] > .sidebar,
+body[data-route="contratacoes"] .topbar,
+body[data-route="contratacoes"] .navbar,
+body[data-route="contratacoes"] .premium-navbar {
+  display: none !important;
+}
+
+body[data-route="contratacoes"] .page,
+body[data-route="contratacoes"] #appView.app-view {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: auto !important;
+}
+
+body[data-route="contratacoes"] #appView.app-view::before,
+body[data-route="contratacoes"] #appView.app-view::after,
+body[data-route="contratacoes"] .page::before,
+body[data-route="contratacoes"] .page::after {
+  content: none !important;
+  display: none !important;
+}
+
+.hiring-x-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(600px, 680px) minmax(300px, 360px);
+  gap: 0;
+  justify-content: center;
+  align-items: start;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.hiring-x-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 10px 16px;
+  border-right: 1px solid #2f3336;
+  background: #000;
+}
+
+.hiring-x-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.hiring-x-logo:hover,
+.hiring-x-sidebar nav a:hover,
+.hiring-x-profile:hover {
+  background: #181818;
+}
+
+.hiring-x-logo img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.hiring-x-sidebar nav {
+  display: grid;
+  gap: 2px;
+}
+
+.hiring-x-sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 46px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  color: #e7e9ea;
+  text-decoration: none;
+  padding: 0 16px 0 12px;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.hiring-x-sidebar nav a.is-active {
+  color: #fff;
+  font-weight: 850;
+}
+
+.hiring-x-sidebar nav svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.hiring-x-post-btn {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #eff3f4;
+  color: #0f1419;
+  font: inherit;
+  font-weight: 850;
+  margin: 14px 0;
+  padding: 0 22px;
+  cursor: pointer;
+}
+
+.hiring-x-post-btn:hover {
+  background: #dfe5e8;
+}
+
+.hiring-x-profile {
+  display: grid;
+  grid-template-columns: 40px 1fr 18px;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  margin-top: auto;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #e7e9ea;
+  padding: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hiring-x-profile-avatar,
+.hiring-rail-avatar {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #16181c;
+  color: #fff;
+  font-weight: 850;
+}
+
+.hiring-x-profile-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.hiring-x-profile-avatar img,
+.hiring-rail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hiring-x-profile strong,
+.hiring-x-profile small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hiring-x-profile small {
+  color: #71767b;
+}
+
+.hiring-x-layout .hiring-feed-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-left: 0;
+  border-right: 1px solid #2f3336;
+}
+
+.hiring-x-layout .hiring-topbar {
+  top: 0;
+}
+
+.hiring-x-layout .hiring-topbar > div {
+  padding: 12px 16px 8px;
+}
+
+.hiring-x-layout .hiring-topbar h1 {
+  padding: 0;
+  font-size: 1.28rem;
+}
+
+.hiring-x-layout .hiring-topbar p {
+  margin: 2px 0 0;
+  color: #71767b;
+  font-size: .82rem;
+}
+
+.hiring-x-layout .hiring-tabs button {
+  position: relative;
+  border-bottom: 0;
+}
+
+.hiring-x-layout .hiring-tabs button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #1d9bf0;
+  transform: translateX(-50%);
+  transition: width .18s ease;
+}
+
+.hiring-x-layout .hiring-tabs button.is-active::after {
+  width: 54px;
+}
+
+.hiring-x-layout .hiring-composer {
+  grid-template-columns: 44px 1fr;
+  padding: 14px 16px 10px;
+  border-bottom-color: #2f3336;
+}
+
+.hiring-x-layout .hiring-composer-main textarea {
+  min-height: 44px;
+  max-height: 150px;
+  border: 0;
+  padding: 8px 0 4px;
+  font-size: 1.18rem;
+}
+
+.hiring-composer-title,
+.hiring-composer-grid {
+  display: none;
+}
+
+.hiring-composer.is-expanded .hiring-composer-title {
+  display: block;
+  margin: 4px 0 8px;
+}
+
+.hiring-composer.is-expanded .hiring-composer-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 10px;
+}
+
+.hiring-composer.is-expanded .hiring-composer-grid label {
+  min-width: 148px;
+  flex: 1 1 148px;
+}
+
+.hiring-composer.is-expanded .hiring-composer-grid .is-wide {
+  flex-basis: 100%;
+}
+
+.hiring-x-layout .hiring-composer-grid input,
+.hiring-x-layout .hiring-composer-grid select,
+.hiring-x-layout .hiring-composer-title {
+  min-height: 38px;
+  border-radius: 999px;
+  font-size: .9rem;
+}
+
+.hiring-x-layout .hiring-composer-tools {
+  border-top: 1px solid #2f3336;
+  gap: 4px;
+  padding-top: 9px;
+}
+
+.hiring-x-layout .hiring-composer-tools button:not([type="submit"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1d9bf0;
+  padding: 0 8px;
+  font-size: .88rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.hiring-x-layout .hiring-composer-tools button:not([type="submit"]):hover {
+  background: rgba(29, 155, 240, .12);
+}
+
+.hiring-x-layout .hiring-composer-tools button[type="submit"] {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 18px;
+  background: #eff3f4;
+  color: #0f1419;
+}
+
+.hiring-filter-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 16px;
+  border-bottom: 1px solid #2f3336;
+  scrollbar-width: none;
+}
+
+.hiring-filter-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.hiring-filter-strip button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 1px solid #2f3336;
+  border-radius: 999px;
+  background: #000;
+  color: #e7e9ea;
+  padding: 0 14px;
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.hiring-filter-strip button:hover,
+.hiring-filter-strip button.is-active {
+  background: #181818;
+  border-color: #536471;
+}
+
+.hiring-x-layout .hiring-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px 16px;
+}
+
+.hiring-x-layout .hiring-filters[hidden] {
+  display: none !important;
+}
+
+.hiring-x-layout .hiring-post {
+  padding: 12px 16px 10px;
+  border-bottom-color: #2f3336;
+}
+
+.hiring-x-layout .hiring-post:hover {
+  background: rgba(255, 255, 255, .025);
+}
+
+.hiring-x-layout .hiring-post-body h2 {
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.hiring-x-layout .hiring-tags span {
+  min-height: 26px;
+  background: #050505;
+}
+
+.hiring-x-layout .hiring-professional-actions {
+  gap: 8px;
+}
+
+.hiring-x-layout .hiring-professional-actions button {
+  min-height: 34px;
+  font-size: .86rem;
+}
+
+.hiring-right-rail {
+  position: sticky;
+  top: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 14px 0 40px 18px;
+  background: #000;
+}
+
+.hiring-right-rail section {
+  border: 1px solid #2f3336;
+  border-radius: 16px;
+  background: #000;
+  padding: 14px;
+}
+
+.hiring-right-rail h2 {
+  margin: 0 0 10px;
+  color: #e7e9ea;
+  font-size: 1.02rem;
+  letter-spacing: 0;
+}
+
+.hiring-right-rail p,
+.hiring-right-rail li,
+.hiring-right-rail small,
+.hiring-rail-muted {
+  color: #71767b;
+}
+
+.hiring-right-rail p {
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.hiring-right-rail > section > button,
+.hiring-follow-list article button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #eff3f4;
+  color: #0f1419;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.hiring-trend-list,
+.hiring-follow-list {
+  display: grid;
+  gap: 4px;
+}
+
+.hiring-trend-list button {
+  display: grid;
+  gap: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #e7e9ea;
+  padding: 9px 4px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hiring-trend-list button:hover {
+  background: #080808;
+}
+
+.hiring-follow-list article {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 0;
+}
+
+.hiring-rail-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.hiring-follow-list strong,
+.hiring-follow-list small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hiring-right-rail ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 1180px) {
+  .hiring-x-layout {
+    grid-template-columns: 76px minmax(560px, 680px);
+  }
+
+  .hiring-right-rail {
+    display: none;
+  }
+
+  .hiring-x-sidebar {
+    align-items: center;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .hiring-x-sidebar nav a {
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .hiring-x-sidebar nav a span,
+  .hiring-x-profile span,
+  .hiring-x-profile > svg,
+  .hiring-x-post-btn {
+    display: none;
+  }
+
+  .hiring-x-profile {
+    display: grid;
+    grid-template-columns: 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hiring-x-layout {
+    display: block;
+    padding-bottom: 72px;
+  }
+
+  .hiring-x-sidebar {
+    position: fixed !important;
+    inset: auto 0 0 0;
+    z-index: 50;
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    min-height: 0;
+    height: 64px;
+    border-right: 0;
+    border-top: 1px solid #2f3336;
+    padding: 6px 8px;
+    transform: none !important;
+  }
+
+  .hiring-x-logo,
+  .hiring-x-post-btn,
+  .hiring-x-profile,
+  .hiring-x-sidebar nav a:nth-child(5),
+  .hiring-x-sidebar nav a:nth-child(n+6) {
+    display: none;
+  }
+
+  .hiring-x-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    height: 100%;
+  }
+
+  .hiring-x-sidebar nav a {
+    width: auto;
+    height: 52px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .hiring-x-sidebar nav a span {
+    display: none;
+  }
+
+  .hiring-x-sidebar nav a:nth-child(8) {
+    display: flex;
+  }
+
+  .hiring-x-layout .hiring-feed-shell {
+    border-right: 0;
+  }
+
+  .hiring-x-layout .hiring-composer {
+    grid-template-columns: 38px 1fr;
+  }
+
+  .hiring-x-layout .hiring-composer-tools button:not([type="submit"]) span {
+    display: none;
+  }
+
+  .hiring-composer.is-expanded .hiring-composer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .hiring-x-layout .hiring-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Contratacoes now uses the native ANSEND app shell/sidebar.
+   Keep this block last so it cancels the previous route-specific X sidebar shell. */
+body[data-route="contratacoes"] {
+  --sidebar-width: 260px;
+  overflow-x: hidden;
+}
+
+body[data-route="contratacoes"] .page,
+body[data-route="contratacoes"] #appView.app-view {
+  width: calc(100% - var(--sidebar-width)) !important;
+  max-width: none !important;
+  min-height: 100dvh !important;
+  margin: 0 0 0 var(--sidebar-width) !important;
+  padding: 0 !important;
+  left: auto !important;
+  background: #000 !important;
+}
+
+body[data-route="contratacoes"] > .sidebar {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+body[data-route="contratacoes"] .section-transition,
+body[data-route="contratacoes"] .section-transition__content {
+  width: 100%;
+  min-height: 100dvh;
+}
+
+.hiring-native-layout {
+  display: grid;
+  grid-template-columns: minmax(600px, 680px) minmax(300px, 360px);
+  justify-content: center;
+  align-items: start;
+  gap: 0;
+  width: 100%;
+  min-height: 100dvh;
+  background: #000;
+}
+
+.hiring-native-layout .hiring-feed-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-left: 1px solid #2f3336;
+  border-right: 1px solid #2f3336;
+}
+
+.hiring-native-layout .hiring-topbar {
+  top: 0;
+}
+
+.hiring-native-layout .hiring-topbar > div {
+  padding: 12px 16px 8px;
+}
+
+.hiring-native-layout .hiring-topbar h1 {
+  padding: 0;
+  font-size: 1.28rem;
+}
+
+.hiring-native-layout .hiring-topbar p {
+  margin: 2px 0 0;
+  color: #71767b;
+  font-size: .82rem;
+}
+
+.hiring-native-layout .hiring-tabs button {
+  position: relative;
+  border-bottom: 0;
+}
+
+.hiring-native-layout .hiring-tabs button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #1d9bf0;
+  transform: translateX(-50%);
+  transition: width .18s ease;
+}
+
+.hiring-native-layout .hiring-tabs button.is-active::after {
+  width: 54px;
+}
+
+.hiring-native-layout .hiring-composer {
+  grid-template-columns: 44px 1fr;
+  padding: 14px 16px 10px;
+  border-bottom-color: #2f3336;
+}
+
+.hiring-native-layout .hiring-composer-main textarea {
+  min-height: 44px;
+  max-height: 150px;
+  border: 0;
+  padding: 8px 0 4px;
+  font-size: 1.18rem;
+}
+
+.hiring-native-layout .hiring-composer-grid input,
+.hiring-native-layout .hiring-composer-grid select,
+.hiring-native-layout .hiring-composer-title {
+  min-height: 38px;
+  border-radius: 999px;
+  font-size: .9rem;
+}
+
+.hiring-native-layout .hiring-composer-tools {
+  border-top: 1px solid #2f3336;
+  gap: 4px;
+  padding-top: 9px;
+}
+
+.hiring-native-layout .hiring-composer-tools button:not([type="submit"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1d9bf0;
+  padding: 0 8px;
+  font-size: .88rem;
+  font-weight: 750;
+  margin: 0;
+}
+
+.hiring-native-layout .hiring-composer-tools button:not([type="submit"]):hover {
+  background: rgba(29, 155, 240, .12);
+}
+
+.hiring-native-layout .hiring-composer-tools button[type="submit"] {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 18px;
+  background: #eff3f4;
+  color: #0f1419;
+}
+
+.hiring-native-layout .hiring-filters {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 12px 16px;
+}
+
+.hiring-native-layout .hiring-filters[hidden] {
+  display: none !important;
+}
+
+.hiring-native-layout .hiring-post {
+  padding: 12px 16px 10px;
+  border-bottom-color: #2f3336;
+}
+
+.hiring-native-layout .hiring-post:hover {
+  background: rgba(255, 255, 255, .025);
+}
+
+.hiring-native-layout .hiring-post-body h2 {
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.hiring-native-layout .hiring-tags span {
+  min-height: 26px;
+  background: #050505;
+}
+
+.hiring-native-layout .hiring-professional-actions {
+  gap: 8px;
+}
+
+.hiring-native-layout .hiring-professional-actions button {
+  min-height: 34px;
+  font-size: .86rem;
+}
+
+@media (max-width: 1180px) {
+  .hiring-native-layout {
+    grid-template-columns: minmax(0, 680px);
+  }
+
+  .hiring-native-layout .hiring-right-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  body[data-route="contratacoes"] {
+    --sidebar-width: 260px;
+  }
+
+  body[data-route="contratacoes"] .page,
+  body[data-route="contratacoes"] #appView.app-view {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  body[data-route="contratacoes"] > .sidebar {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateX(-100%) !important;
+  }
+
+  body[data-route="contratacoes"].menu-open > .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body[data-route="contratacoes"] .topbar {
+    display: flex !important;
+  }
+
+  .hiring-native-layout {
+    display: block;
+  }
+
+  .hiring-native-layout .hiring-feed-shell {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .hiring-native-layout .hiring-composer {
+    grid-template-columns: 38px 1fr;
+  }
+
+  .hiring-native-layout .hiring-composer-tools button:not([type="submit"]) span {
+    display: none;
+  }
+
+  .hiring-native-layout .hiring-filters {
+    grid-template-columns: 1fr;
+  }
+}

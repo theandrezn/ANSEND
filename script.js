@@ -425,14 +425,16 @@ function applyTranslations(root = document) {
     favoritos: "nav.favorites",
     compras: "nav.orders",
     biblioteca: "nav.library",
+    musicas: "nav.myMusic",
     cadastrar: "nav.upload",
     produtores: "nav.professionals",
     perfil: "nav.profile",
     configuracoes: "nav.settings",
   };
   Object.entries(navKeys).forEach(([route, key]) => {
-    const label = document.querySelector(`.nav-link[data-route="${route}"] span`);
-    if (label) label.textContent = t(key);
+    document.querySelectorAll(`.nav-link[data-route="${route}"] span, .sidebar-nav-item[data-route="${route}"] span:first-of-type, .navbar-link[data-route="${route}"]`).forEach((label) => {
+      label.textContent = t(key);
+    });
   });
   const seller = document.querySelector(".seller-mini");
   if (seller) {
@@ -548,7 +550,7 @@ const englishTextPairs = [
   ["Ofertas para membros", "Member Offers"],
   ["Lançar Música", "Release Music"],
   ["In\u00edcio", "Home"],
-  ["Feed", "Home"],
+  ["Feed", "Feed"],
   ["NEXO IA", "NEXO AI"],
   ["Explorar", "Explore"],
   ["Favoritos", "Favorites"],
@@ -875,6 +877,119 @@ const englishTextPairs = [
   ["Ativar aleatorio", "Turn shuffle on"],
   ["Ir para a musica", "Go to Track"],
   ["Ir para o artista", "Go to Artist"],
+  ["Músicas", "Music"],
+  ["Musicas", "Music"],
+  ["Autenticacao Necessaria", "Authentication Required"],
+  ["Autenticação Necessária", "Authentication Required"],
+  ["Voce precisa criar uma conta ou fazer login para lancar suas musicas e beats na plataforma.", "You need to create an account or sign in to release your songs and beats on the platform."],
+  ["Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.", "You need to create an account or sign in to release your songs and beats on the platform."],
+  ["Entrar / Criar Conta", "Sign in / Create Account"],
+  ["Converse com a inteligencia musical da ANSEND", "Talk to ANSEND's music intelligence"],
+  ["Transforme uma ideia em um plano real de lancamento, com orientacao sobre beat, capa, mix/master, marketing, curadoria e proximos passos.", "Turn an idea into a real release plan with guidance for beat, cover, mix/master, marketing, curation, and next steps."],
+  ["Quero lancar uma musica do zero", "I want to release a song from scratch"],
+  ["Me ajude a montar um plano de lancamento", "Help me build a release plan"],
+  ["Quero encontrar produtores, designers e curadores", "I want to find producers, designers, and curators"],
+  ["Analise minha ideia musical", "Analyze my music idea"],
+  ["Monte um diagnostico para meu proximo single", "Build a diagnostic for my next single"],
+  ["Conte sua ideia, seu momento ou o que voce quer lancar...", "Share your idea, your current stage, or what you want to release..."],
+  ["Enviar mensagem para NEXO IA", "Send message to NEXO AI"],
+  ["NEXO IA esta pensando", "NEXO AI is thinking"],
+  ["Informacoes do Beat", "Beat Information"],
+  ["Informações do Beat", "Beat Information"],
+  ["Preencha apenas o essencial agora. Voce pode adicionar detalhes extras se quiser melhorar a descoberta do beat.", "Fill in only the essentials now. You can add extra details if you want to improve beat discovery."],
+  ["Preencha apenas o essencial agora. Você pode adicionar detalhes extras se quiser melhorar a descoberta do beat.", "Fill in only the essentials now. You can add extra details if you want to improve beat discovery."],
+  ["Publicado por", "Published by"],
+  ["Titulo do beat *", "Beat title *"],
+  ["Título do beat *", "Beat title *"],
+  ["Genero *", "Genre *"],
+  ["Gênero *", "Genre *"],
+  ["Selecione o genero", "Select genre"],
+  ["Selecione o gênero", "Select genre"],
+  ["Tom musical / Key *", "Musical key *"],
+  ["Selecione o tom", "Select key"],
+  ["Adicionar mais detalhes", "Add more details"],
+  ["opcional", "optional"],
+  ["Subgenero", "Subgenre"],
+  ["Subgênero", "Subgenre"],
+  ["Subgenero opcional", "Subgenre optional"],
+  ["Subgênero opcional", "Subgenre optional"],
+  ["Descricao curta", "Short description"],
+  ["Descrição curta", "Short description"],
+  ["Descricao curta opcional", "Short description optional"],
+  ["Descrição curta opcional", "Short description optional"],
+  ["Essa faixa ja foi lancada antes?", "Has this track been released before?"],
+  ["Essa faixa já foi lançada antes?", "Has this track been released before?"],
+  ["Sim", "Yes"],
+  ["Nao", "No"],
+  ["Não", "No"],
+  ["Detalhes", "Details"],
+  ["Faixa", "Track"],
+  ["Preco", "Price"],
+  ["Preço", "Price"],
+  ["Entrega", "Delivery"],
+  ["Revisao", "Review"],
+  ["Revisão", "Review"],
+  ["Sem titulo", "Untitled"],
+  ["Sem título", "Untitled"],
+  ["Salvar Rascunho", "Save Draft"],
+  ["Voltar", "Back"],
+  ["Proximo", "Next"],
+  ["Próximo", "Next"],
+  ["Capa do Beat", "Beat Cover"],
+  ["Envie uma capa quadrada de alta qualidade. Recomendamos 3000x3000px.", "Upload a high-quality square cover. We recommend 3000x3000px."],
+  ["Arraste ou selecione a capa", "Drag or select the cover"],
+  ["Enviando capa...", "Uploading cover..."],
+  ["Recomendacoes", "Recommendations"],
+  ["Recomendações", "Recommendations"],
+  ["Imagem quadrada perfeita (1:1)", "Perfect square image (1:1)"],
+  ["Minimo 1400x1400px (ideal 3000x3000px)", "Minimum 1400x1400px (ideal 3000x3000px)"],
+  ["Mínimo 1400x1400px (ideal 3000x3000px)", "Minimum 1400x1400px (ideal 3000x3000px)"],
+  ["Sem textos pequenos ou logos adicionais", "No small text or additional logos"],
+  ["Sem imagens borradas ou pixeladas", "No blurry or pixelated images"],
+  ["Arquivo de Audio", "Audio File"],
+  ["Arquivo de Áudio", "Audio File"],
+  ["Suba o arquivo de audio do beat (MP3, WAV ou FLAC).", "Upload the beat audio file (MP3, WAV, or FLAC)."],
+  ["Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).", "Upload the beat audio file (MP3, WAV, or FLAC)."],
+  ["Arraste ou selecione o audio", "Drag or select the audio"],
+  ["Arraste ou selecione o áudio", "Drag or select the audio"],
+  ["MP3, WAV ou FLAC de alta qualidade", "High-quality MP3, WAV, or FLAC"],
+  ["Enviando audio...", "Uploading audio..."],
+  ["Enviando áudio...", "Uploading audio..."],
+  ["Preview Pronto", "Preview Ready"],
+  ["Licenca e Preco", "License and Price"],
+  ["Licença e Preço", "License and Price"],
+  ["Defina o tipo de licenca e o valor do beat.", "Set the license type and beat price."],
+  ["Defina o tipo de licença e o valor do beat.", "Set the license type and beat price."],
+  ["Basica", "Basic"],
+  ["Básica", "Basic"],
+  ["Gratis", "Free"],
+  ["Grátis", "Free"],
+  ["Exclusiva", "Exclusive"],
+  ["Preco do Beat (R$) *", "Beat Price (USD) *"],
+  ["Preço do Beat (R$) *", "Beat Price (USD) *"],
+  ["Vendas maximas", "Maximum sales"],
+  ["Vendas máximas", "Maximum sales"],
+  ["Termos da licenca (opcional)", "License terms (optional)"],
+  ["Termos da licença (opcional)", "License terms (optional)"],
+  ["Entrega do Beat", "Beat Delivery"],
+  ["Especifique os arquivos que o comprador recebera.", "Specify the files the buyer will receive."],
+  ["Especifique os arquivos que o comprador receberá.", "Specify the files the buyer will receive."],
+  ["Arquivos incluidos na compra *", "Files included in purchase *"],
+  ["Arquivos incluídos na compra *", "Files included in purchase *"],
+  ["Observacoes para o comprador", "Notes for the buyer"],
+  ["Observações para o comprador", "Notes for the buyer"],
+  ["Selecione o ZIP de Stems", "Select the Stems ZIP"],
+  ["Pistas individuais do beat", "Individual beat tracks"],
+  ["Revisao Final", "Final Review"],
+  ["Revisão Final", "Final Review"],
+  ["Confira todas as informacoes antes de publicar.", "Check all information before publishing."],
+  ["Confira todas as informações antes de publicar.", "Check all information before publishing."],
+  ["por Produtor ANSEND", "by ANSEND Producer"],
+  ["Arquivos", "Files"],
+  ["Descricao", "Description"],
+  ["Descrição", "Description"],
+  ["Sem descricao fornecida.", "No description provided."],
+  ["Sem descrição fornecida.", "No description provided."],
 ];
 
 const localeTextMaps = {
@@ -896,7 +1011,7 @@ function translateUiText(value) {
 
 function translateToastText(message) {
   let next = translateUiText(message);
-  if (appLocale.current === "en") {
+  if (appLocale.current === "en-US") {
     next = next
       .replace(/^Tocando top 1 do dia:/, "Playing top 1 of the day:")
       .replace(/^Tocando agora:/, "Now playing:")
@@ -1155,6 +1270,25 @@ const appState = {
   publicCatalogItems: [],
   ownedCatalogItems: [],
   publicProfiles: [],
+  hiring: {
+    activeTab: "for-you",
+    filters: {
+      category: "todos",
+      budget: "",
+      deadline: "todos",
+      status: "todos",
+      workMode: "todos",
+    },
+    posts: [],
+    comments: {},
+    proposals: [],
+    conversations: [],
+    messages: {},
+    loading: false,
+    error: "",
+    detailId: "",
+    lastLoadedAt: 0,
+  },
   isAdmin: false,
   adminProfiles: [],
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
@@ -2997,6 +3131,7 @@ function currentRouteFromHash() {
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
   if (route.startsWith("perfil-")) return "perfil-publico";
+  if (route.startsWith("contratacoes-")) return "contratacoes";
   const knownRoutes = new Set([
     "feed",
     "nexo-feed",
@@ -3006,6 +3141,7 @@ function currentRouteFromHash() {
     "biblioteca",
     "ia",
     "produtores",
+    "contratacoes",
     "perfil",
     "cadastrar",
     "configuracoes",
@@ -4208,6 +4344,572 @@ async function publishBeat(payload) {
       .single());
   }
   return { data, error };
+}
+
+const hiringCategories = [
+  ["todos", "Todos"],
+  ["beatmaker", "Beatmaker"],
+  ["produtor_musical", "Produtor Musical"],
+  ["mixagem", "Mixagem"],
+  ["masterizacao", "Masterizacao"],
+  ["designer_de_capa", "Designer"],
+  ["videomaker", "Videomaker"],
+  ["marketing_musical", "Marketing Musical"],
+  ["compositor", "Compositor"],
+  ["vocalista", "Vocalista"],
+  ["curador", "Curador"],
+  ["outro", "Outro"],
+];
+const hiringDeadlines = [["hoje", "Hoje"], ["24h", "24h"], ["48h", "48h"], ["esta_semana", "Esta semana"], ["sem_urgencia", "Sem urgencia"], ["data_personalizada", "Data personalizada"]];
+const hiringWorkModes = { remote: "Remoto", onsite: "Presencial", hybrid: "Hibrido" };
+const hiringStatusLabels = { open: "Aberta", negotiating: "Em negociacao", hired: "Contratada", completed: "Finalizada", cancelled: "Cancelada" };
+const hiringActionTables = { like: "hiring_likes", save: "hiring_saves", repost: "hiring_reposts" };
+
+function hiringRequireAuth() {
+  if (hasAccountAccess()) return true;
+  showToast("Entre para interagir com contratacoes.", "log-in");
+  location.hash = "vendedor";
+  return false;
+}
+
+function hiringCategoryLabel(value = "") {
+  return hiringCategories.find(([id]) => id === value)?.[1] || value || "Outro";
+}
+
+function hiringDeadlineLabel(value = "") {
+  return hiringDeadlines.find(([id]) => id === value)?.[1] || value || "Sem urgencia";
+}
+
+function hiringBudgetLabel(post = {}) {
+  if (post.budget_type === "negotiable" || !post.budget_amount) return "A combinar";
+  return Number(post.budget_amount || 0).toLocaleString("pt-BR", { style: "currency", currency: post.currency || "BRL", maximumFractionDigits: 0 });
+}
+
+function hiringRelativeDate(value) {
+  const date = value ? new Date(value) : new Date();
+  const diffMs = Date.now() - date.getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 45000) return "agora";
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) return `ha ${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `ha ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `ha ${days}d`;
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+}
+
+function hiringAuthorDisplay(userId) {
+  const profile = profileForUserId(userId);
+  const display = profileDisplayData(profile);
+  const name = display.name || "Profissional ANSEND";
+  const username = display.username || sanitizeHandle(name);
+  return {
+    id: userId,
+    name,
+    username,
+    handle: username ? `@${username}` : "",
+    avatar: display.avatar,
+    verified: Boolean(profile?.is_verified || profile?.verified || profile?.verified_at),
+    roleLabel: display.roleLabel || accountRoleLabel(profile?.account_role),
+  };
+}
+
+function hiringAvatar(display, className = "hiring-avatar") {
+  if (display.avatar) return `<span class="${className}"><img src="${htmlEscape(display.avatar)}" alt="Avatar de ${htmlEscape(display.name)}"></span>`;
+  return `<span class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${htmlEscape(profileInitials(display.name))}</span>`;
+}
+
+function hiringDetailIdFromHash() {
+  const raw = String(location.hash || "").replace(/^#/, "");
+  if (raw.startsWith("contratacoes-")) return safeDecode(raw.replace(/^contratacoes-/, ""));
+  return new URLSearchParams(raw.split("?")[1] || "").get("id") || "";
+}
+
+function hiringPostUrl(postId) {
+  return `${location.origin}${location.pathname}#contratacoes-${encodeURIComponent(postId)}`;
+}
+
+async function loadHiringPosts({ force = false } = {}) {
+  if (!supabaseClient) {
+    appState.hiring.posts = [];
+    appState.hiring.error = "Supabase nao esta configurado neste ambiente.";
+    return [];
+  }
+  const detailId = hiringDetailIdFromHash();
+  const fresh = Date.now() - Number(appState.hiring.lastLoadedAt || 0) < 12000;
+  if (!force && !detailId && fresh && appState.hiring.posts.length) return appState.hiring.posts;
+  appState.hiring.loading = true;
+  appState.hiring.error = "";
+  try {
+    await loadPublicPlatformData();
+    let query = supabaseClient.from("hiring_posts").select("*").order("created_at", { ascending: false }).limit(80);
+    if (detailId) {
+      query = query.eq("id", detailId).limit(1);
+    } else if (appState.hiring.activeTab === "mine") {
+      if (!appState.authUser) {
+        appState.hiring.posts = [];
+        return [];
+      }
+      query = query.eq("user_id", appState.authUser.id);
+    } else {
+      query = query.eq("visibility", "public");
+    }
+    const filters = appState.hiring.filters || {};
+    if (!detailId && filters.category && filters.category !== "todos") query = query.eq("category", filters.category);
+    if (!detailId && filters.deadline && filters.deadline !== "todos") query = query.eq("deadline_type", filters.deadline);
+    if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
+    if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
+    const { data, error } = await query;
+    if (error) throw error;
+    let posts = data || [];
+    if (!detailId && appState.hiring.activeTab === "following") posts = [];
+    if (!detailId && filters.budget) {
+      const max = Number(filters.budget);
+      if (Number.isFinite(max) && max > 0) posts = posts.filter((post) => !post.budget_amount || Number(post.budget_amount) <= max);
+    }
+    appState.hiring.posts = posts.map((post) => ({ ...post, metrics: {}, viewer: {} }));
+    appState.hiring.detailId = detailId;
+    appState.hiring.lastLoadedAt = Date.now();
+    await loadHiringEngagement(appState.hiring.posts);
+    return appState.hiring.posts;
+  } catch (error) {
+    console.error("[ANSEND hiring] load failed", error);
+    appState.hiring.error = error.message || "Nao foi possivel carregar contratacoes.";
+    appState.hiring.posts = [];
+    return [];
+  } finally {
+    appState.hiring.loading = false;
+  }
+}
+
+async function loadHiringEngagement(posts = appState.hiring.posts) {
+  const ids = posts.map((post) => post.id).filter(Boolean);
+  if (!supabaseClient || !ids.length) return;
+  const [likes, saves, reposts, interests, comments, proposals] = await Promise.all([
+    supabaseClient.from("hiring_likes").select("post_id,user_id").in("post_id", ids),
+    supabaseClient.from("hiring_saves").select("post_id,user_id").in("post_id", ids),
+    supabaseClient.from("hiring_reposts").select("post_id,user_id").in("post_id", ids),
+    supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
+    supabaseClient.from("hiring_comments").select("*").in("post_id", ids).order("created_at", { ascending: true }),
+    supabaseClient.from("hiring_proposals").select("*").in("post_id", ids).order("created_at", { ascending: false }),
+  ]);
+  const rowsFor = (result) => result.error ? [] : (result.data || []);
+  const groupedComments = {};
+  rowsFor(comments).forEach((comment) => {
+    groupedComments[comment.post_id] = groupedComments[comment.post_id] || [];
+    groupedComments[comment.post_id].push(comment);
+  });
+  appState.hiring.comments = groupedComments;
+  appState.hiring.proposals = rowsFor(proposals);
+  const currentUserId = appState.authUser?.id || "";
+  posts.forEach((post) => {
+    const postRows = (rows) => rows.filter((row) => row.post_id === post.id);
+    post.metrics = {
+      likes: postRows(rowsFor(likes)).length,
+      saves: postRows(rowsFor(saves)).length,
+      reposts: postRows(rowsFor(reposts)).length,
+      interests: postRows(rowsFor(interests)).length,
+      comments: groupedComments[post.id]?.length || 0,
+      proposals: postRows(rowsFor(proposals)).length,
+    };
+    post.viewer = {
+      liked: postRows(rowsFor(likes)).some((row) => row.user_id === currentUserId),
+      saved: postRows(rowsFor(saves)).some((row) => row.user_id === currentUserId),
+      reposted: postRows(rowsFor(reposts)).some((row) => row.user_id === currentUserId),
+      interested: postRows(rowsFor(interests)).some((row) => row.user_id === currentUserId),
+      proposed: postRows(rowsFor(proposals)).some((row) => row.sender_id === currentUserId),
+    };
+  });
+}
+
+function hiringComposerMarkup() {
+  const profile = profileDisplayData(activeProfile());
+  return `<form class="hiring-composer" data-hiring-composer novalidate>
+    ${hiringAvatar({ ...profile, name: profile.name || "ANSEND" })}
+    <div class="hiring-composer-main">
+      <label class="sr-only" for="hiringDescription">Descricao</label>
+      <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="Do que voce precisa hoje?" aria-label="Do que voce precisa hoje?"></textarea>
+      <label class="sr-only" for="hiringTitle">Titulo da vaga ou pedido</label>
+      <input id="hiringTitle" class="hiring-composer-title" name="title" type="text" maxlength="120" placeholder="Titulo da vaga/pedido" aria-label="Titulo da vaga ou pedido">
+      <div class="hiring-composer-grid">
+        <label>Categoria<select name="category">${hiringCategories.filter(([id]) => id !== "todos").map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
+        <label>Orcamento<input name="budget_amount" type="number" inputmode="decimal" min="0" placeholder="R$300"></label>
+        <label>Prazo<select name="deadline_type">${hiringDeadlines.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
+        <label>Local<select name="work_mode"><option value="remote">Remoto</option><option value="onsite">Presencial</option><option value="hybrid">Hibrido</option></select></label>
+        <label class="is-wide">Referencias<input name="references" type="text" placeholder="YouTube, Spotify, BeatStars, SoundCloud ou texto livre"></label>
+        <label class="hiring-negotiable"><input name="budget_type" type="checkbox" value="negotiable"> A combinar</label>
+      </div>
+      <div class="hiring-composer-tools" aria-label="Opcoes da contratacao">
+        <button type="button" data-action="hiring-expand-composer" title="Categoria e detalhes"><i data-lucide="tags"></i><span>Categoria</span></button>
+        <button type="button" data-action="hiring-expand-composer" title="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
+        <button type="button" data-action="hiring-expand-composer" title="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
+        <button type="button" data-action="hiring-expand-composer" title="Referencias"><i data-lucide="link"></i><span>Referencias</span></button>
+        <button type="button" data-action="hiring-expand-composer" title="Anexo preparado"><i data-lucide="paperclip"></i><span>Anexo</span></button>
+        <button type="button" data-action="hiring-expand-composer" title="Local ou remoto"><i data-lucide="map-pin"></i><span>Local/Remoto</span></button>
+        <button type="submit" disabled>Publicar</button>
+      </div>
+    </div>
+  </form>`;
+}
+
+function hiringFiltersMarkup() {
+  const filters = appState.hiring.filters;
+  const chips = [
+    ["todos", "Todos", { category: "todos", deadline: "todos", status: "todos", workMode: "todos", budget: "" }],
+    ["beatmaker", "Beatmaker", { category: "beatmaker" }],
+    ["designer", "Designer", { category: "designer_de_capa" }],
+    ["produtor", "Produtor", { category: "produtor_musical" }],
+    ["mixmaster", "Mix/Master", { category: "mixagem" }],
+    ["marketing", "Marketing", { category: "marketing_musical" }],
+    ["urgente", "Urgente", { deadline: "hoje" }],
+    ["remoto", "Remoto", { workMode: "remote" }],
+    ["ate300", "Ate R$300", { budget: "300" }],
+    ["hoje", "Hoje", { deadline: "hoje" }],
+  ];
+  return `<section class="hiring-filter-strip" aria-label="Filtros rapidos">
+    ${chips.map(([id, label, payload]) => {
+      const active = Object.entries(payload).every(([key, value]) => String(filters[key] || (key === "budget" ? "" : "todos")) === String(value));
+      return `<button type="button" class="${active ? "is-active" : ""}" data-action="hiring-filter-chip" data-filter-payload="${htmlEscape(JSON.stringify(payload))}">${label}</button>`;
+    }).join("")}
+    <button type="button" data-action="hiring-toggle-filters"><i data-lucide="sliders-horizontal"></i>Filtros</button>
+  </section>
+  <section class="hiring-filters" aria-label="Filtros de contratacoes" hidden>
+    <label>Categoria<select data-action="hiring-filter" data-filter="category">${hiringCategories.map(([id, label]) => `<option value="${id}" ${filters.category === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    <label>Orcamento<input data-action="hiring-filter" data-filter="budget" type="number" min="0" value="${htmlEscape(filters.budget || "")}" placeholder="Max. R$"></label>
+    <label>Prazo<select data-action="hiring-filter" data-filter="deadline"><option value="todos">Todos</option>${hiringDeadlines.map(([id, label]) => `<option value="${id}" ${filters.deadline === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    <label>Status<select data-action="hiring-filter" data-filter="status"><option value="todos">Todos</option>${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${filters.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    <label>Tipo<select data-action="hiring-filter" data-filter="workMode"><option value="todos">Todos</option>${Object.entries(hiringWorkModes).map(([id, label]) => `<option value="${id}" ${filters.workMode === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+  </section>`;
+}
+
+function hiringEmptyMarkup(title = "Nenhuma contratacao aberta ainda.", text = "Publique o que voce precisa e encontre profissionais da musica em minutos.") {
+  return `<section class="hiring-empty"><i data-lucide="briefcase-business"></i><h2>${htmlEscape(title)}</h2><p>${htmlEscape(text)}</p><button type="button" data-action="hiring-focus-composer">Criar pedido</button></section>`;
+}
+
+function hiringCommentMarkup(comment) {
+  const author = hiringAuthorDisplay(comment.user_id);
+  return `<article class="hiring-comment" data-comment-id="${htmlEscape(comment.id)}">
+    ${hiringAvatar(author, "hiring-comment-avatar")}
+    <div><strong>${htmlEscape(author.name)}</strong><span>${htmlEscape(author.handle)} · ${hiringRelativeDate(comment.created_at)}</span><p>${htmlEscape(comment.content)}</p></div>
+    ${comment.user_id === appState.authUser?.id ? `<button type="button" data-action="hiring-comment-delete" data-comment-id="${htmlEscape(comment.id)}" aria-label="Apagar comentario"><i data-lucide="trash-2"></i></button>` : ""}
+  </article>`;
+}
+
+function hiringProposalPreviewMarkup(proposal) {
+  const sender = hiringAuthorDisplay(proposal.sender_id);
+  const amount = proposal.proposed_amount ? Number(proposal.proposed_amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Valor a combinar";
+  return `<article class="hiring-proposal-preview"><strong>${htmlEscape(sender.name)}</strong><span>${amount} · ${htmlEscape(proposal.delivery_deadline || "Prazo a combinar")}</span><p>${htmlEscape(proposal.message)}</p>${proposal.portfolio_links ? `<small>${htmlEscape(proposal.portfolio_links)}</small>` : ""}</article>`;
+}
+
+function hiringPostCardMarkup(post, { detail = false } = {}) {
+  const author = hiringAuthorDisplay(post.user_id);
+  const isOwner = appState.authUser?.id && appState.authUser.id === post.user_id;
+  const comments = appState.hiring.comments[post.id] || [];
+  const ownerProposals = isOwner ? appState.hiring.proposals.filter((proposal) => proposal.post_id === post.id) : [];
+  const profileAttrs = profileTargetAttrs({ id: author.id, username: author.username, title: author.name });
+  return `<article class="hiring-post ${detail ? "is-detail" : ""}" data-post-id="${htmlEscape(post.id)}">
+    <header class="hiring-post-head">
+      <button type="button" class="hiring-author-avatar" data-action="hiring-open-profile" ${profileAttrs}>${hiringAvatar(author)}</button>
+      <div class="hiring-author-copy">
+        <button type="button" data-action="hiring-open-profile" ${profileAttrs}><strong>${htmlEscape(author.name)}</strong>${author.verified ? `<i data-lucide="badge-check" aria-label="Verificado"></i>` : ""}<span>${htmlEscape(author.handle || "@ansend")} · ${hiringRelativeDate(post.created_at)}</span></button>
+        <small>${htmlEscape(author.roleLabel || "Profissional da musica")}</small>
+      </div>
+      <button type="button" class="hiring-icon-btn" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
+    </header>
+    <button type="button" class="hiring-post-body" data-action="hiring-open-post" data-post-id="${htmlEscape(post.id)}">
+      <h2>${htmlEscape(post.title)}</h2>
+      <p>${htmlEscape(post.description)}</p>
+      ${post.reference_links ? `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>` : ""}
+    </button>
+    <div class="hiring-tags"><span>${htmlEscape(hiringCategoryLabel(post.category))}</span><span>${htmlEscape(hiringBudgetLabel(post))}</span><span>${htmlEscape(hiringDeadlineLabel(post.deadline_type))}</span><span>${htmlEscape(hiringWorkModes[post.work_mode] || post.work_mode)}</span><span data-status="${htmlEscape(post.status)}">${htmlEscape(hiringStatusLabels[post.status] || post.status)}</span></div>
+    <div class="hiring-post-actions">
+      <button type="button" data-action="hiring-comment-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Comentar"><i data-lucide="message-circle"></i><span>${post.metrics?.comments || 0}</span></button>
+      <button type="button" class="${post.viewer?.reposted ? "is-active" : ""}" data-action="hiring-repost" data-post-id="${htmlEscape(post.id)}" aria-label="Repostar"><i data-lucide="repeat-2"></i><span>${post.metrics?.reposts || 0}</span></button>
+      <button type="button" class="${post.viewer?.liked ? "is-active" : ""}" data-action="hiring-like" data-post-id="${htmlEscape(post.id)}" aria-label="Curtir"><i data-lucide="heart"></i><span>${post.metrics?.likes || 0}</span></button>
+      <button type="button" class="${post.viewer?.saved ? "is-active" : ""}" data-action="hiring-save" data-post-id="${htmlEscape(post.id)}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>${post.metrics?.saves || 0}</span></button>
+      <button type="button" data-action="hiring-share" data-post-id="${htmlEscape(post.id)}" aria-label="Compartilhar"><i data-lucide="share"></i></button>
+    </div>
+    <div class="hiring-professional-actions">
+      <button type="button" class="${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
+      <button type="button" class="${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
+      <button type="button" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="messages-square"></i>Abrir chat</button>
+      ${isOwner ? `<label class="hiring-status-select">Status<select data-action="hiring-status" data-post-id="${htmlEscape(post.id)}">${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${post.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>` : ""}
+    </div>
+    <section class="hiring-comments" ${detail ? "" : "hidden"}>
+      <div class="hiring-comment-list">${comments.length ? comments.map(hiringCommentMarkup).join("") : `<p>Seja o primeiro a comentar.</p>`}</div>
+      <form class="hiring-comment-form" data-post-id="${htmlEscape(post.id)}"><label class="sr-only" for="hiringComment-${htmlEscape(post.id)}">Comentario</label><input id="hiringComment-${htmlEscape(post.id)}" name="content" type="text" maxlength="500" placeholder="Escreva um comentario"><button type="submit">Responder</button></form>
+    </section>
+    ${ownerProposals.length ? `<section class="hiring-owner-proposals"><h3>Propostas recebidas</h3>${ownerProposals.map(hiringProposalPreviewMarkup).join("")}</section>` : ""}
+  </article>`;
+}
+
+function hiringRightRailMarkup() {
+  const professionals = activeProfessionalProfiles().slice(0, 4);
+  const categoryCounts = new Map();
+  appState.hiring.posts.forEach((post) => {
+    const label = hiringCategoryLabel(post.category);
+    categoryCounts.set(label, (categoryCounts.get(label) || 0) + 1);
+  });
+  const categories = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const fallbackCategories = ["Beatmaker", "Designer de capa", "Mixagem", "Producao vocal", "Marketing musical"].map((label) => [label, ""]);
+  const categoryRows = (categories.length ? categories : fallbackCategories).map(([label, count]) => `<button type="button" data-action="hiring-filter-chip" data-filter-payload="${htmlEscape(JSON.stringify({ category: sanitizeHandle(label).includes("designer") ? "designer_de_capa" : "todos" }))}"><span>${htmlEscape(label)}</span>${count ? `<small>${count} pedidos</small>` : `<small>Categoria</small>`}</button>`).join("");
+  const professionalRows = professionals.length
+    ? professionals.map((profile) => `<article>
+        ${hiringAvatar({ name: profile.name, avatar: profile.avatar_url || profile.avatar }, "hiring-rail-avatar")}
+        <div><strong>${htmlEscape(profile.name)}</strong><small>@${htmlEscape(profile.username || sanitizeHandle(profile.name))} · ${htmlEscape(profile.role)}</small></div>
+        <button type="button" data-action="producer" ${profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name })}>Ver</button>
+      </article>`).join("")
+    : `<p class="hiring-rail-muted">Complete perfis publicos para aparecerem aqui.</p>`;
+  return `<aside class="hiring-right-rail" aria-label="Widgets de contratacoes">
+    <section>
+      <h2>Complete seu perfil</h2>
+      <p>Perfis completos recebem mais propostas e respostas mais rapidas.</p>
+      <button type="button" data-route="perfil">Editar perfil</button>
+    </section>
+    <section>
+      <h2>Categorias em alta</h2>
+      <div class="hiring-trend-list">${categoryRows}</div>
+    </section>
+    <section>
+      <h2>Profissionais recomendados</h2>
+      <div class="hiring-follow-list">${professionalRows}</div>
+    </section>
+    <section>
+      <h2>Dicas para contratar</h2>
+      <ul>
+        <li>Defina referencias claras.</li>
+        <li>Informe prazo e orcamento.</li>
+        <li>Prefira perfis verificados.</li>
+      </ul>
+    </section>
+  </aside>`;
+}
+
+async function renderHiringPage(options = {}) {
+  const detailId = hiringDetailIdFromHash();
+  await loadHiringPosts({ force: Boolean(options.force || detailId) });
+  const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas vagas"]];
+  const isFollowing = appState.hiring.activeTab === "following" && !detailId;
+  const postsMarkup = appState.hiring.loading
+    ? `<div class="hiring-skeleton"><span></span><span></span><span></span></div>`
+    : appState.hiring.error
+      ? `<section class="hiring-empty is-error"><i data-lucide="triangle-alert"></i><h2>Nao foi possivel carregar</h2><p>${htmlEscape(appState.hiring.error)}</p><button type="button" data-action="hiring-refresh">Tentar novamente</button></section>`
+      : isFollowing
+        ? hiringEmptyMarkup("Voce ainda nao segue profissionais com contratacoes abertas.", "Quando houver um sistema de conexoes ativo, esta aba mostrara somente publicacoes de quem voce segue.")
+        : appState.hiring.posts.length
+          ? appState.hiring.posts.map((post) => hiringPostCardMarkup(post, { detail: Boolean(detailId) })).join("")
+          : hiringEmptyMarkup();
+  appView.innerHTML = `<main class="hiring-page hiring-native-layout" aria-labelledby="hiringTitlePage">
+    <section class="hiring-feed-shell">
+      <header class="hiring-topbar">
+        <div><h1 id="hiringTitlePage">Contratacoes</h1><p>Encontre profissionais da musica</p></div>
+        <nav class="hiring-tabs" aria-label="Feed de contratacoes">${tabs.map(([id, label]) => `<button type="button" data-action="hiring-tab" data-tab="${id}" class="${appState.hiring.activeTab === id ? "is-active" : ""}" aria-pressed="${appState.hiring.activeTab === id ? "true" : "false"}">${label}</button>`).join("")}</nav>
+      </header>
+      ${detailId ? `<button type="button" class="hiring-back" data-action="hiring-back"><i data-lucide="arrow-left"></i>Voltar ao feed</button>` : ""}
+      ${!detailId ? hiringComposerMarkup() : ""}${!detailId ? hiringFiltersMarkup() : ""}
+      <section class="hiring-feed" aria-live="polite">${postsMarkup}</section>
+    </section>
+    ${hiringRightRailMarkup()}
+  </main>`;
+  PageTransition(appView, "contratacoes");
+  hydrateView();
+}
+
+async function submitHiringPost(form) {
+  if (!hiringRequireAuth()) return;
+  const title = String(form.elements.title?.value || "").trim();
+  const description = String(form.elements.description?.value || "").trim();
+  if (!title || !description) {
+    showToast("Preencha titulo e descricao da contratacao.", "triangle-alert");
+    return;
+  }
+  const payload = {
+    user_id: appState.authUser.id,
+    title: title.slice(0, 120),
+    description: description.slice(0, 1200),
+    category: form.elements.category?.value || "outro",
+    budget_amount: form.elements.budget_type?.checked ? null : (form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null),
+    budget_type: form.elements.budget_type?.checked ? "negotiable" : "fixed",
+    currency: "BRL",
+    deadline_type: form.elements.deadline_type?.value || "sem_urgencia",
+    work_mode: form.elements.work_mode?.value || "remote",
+    reference_links: String(form.elements.references?.value || "").trim() || null,
+    attachments: [],
+    status: "open",
+    visibility: "public",
+  };
+  const { data, error } = await supabaseClient.from("hiring_posts").insert(payload).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel publicar.", "triangle-alert");
+    return;
+  }
+  form.reset();
+  appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
+  await loadHiringEngagement(appState.hiring.posts);
+  showToast("Contratacao publicada", "briefcase-business");
+  renderHiringPage({ force: false });
+}
+
+async function toggleHiringAction(kind, postId) {
+  if (!hiringRequireAuth()) return;
+  const table = hiringActionTables[kind];
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!table || !post) return;
+  const viewerKey = kind === "like" ? "liked" : kind === "save" ? "saved" : "reposted";
+  const metricKey = kind === "like" ? "likes" : kind === "save" ? "saves" : "reposts";
+  const isActive = Boolean(post.viewer?.[viewerKey]);
+  const result = isActive
+    ? await supabaseClient.from(table).delete().eq("post_id", postId).eq("user_id", appState.authUser.id)
+    : await supabaseClient.from(table).insert({ post_id: postId, user_id: appState.authUser.id });
+  if (result.error) {
+    showToast(result.error.message || "Acao nao concluida.", "triangle-alert");
+    return;
+  }
+  post.viewer[viewerKey] = !isActive;
+  post.metrics[metricKey] = Math.max(0, Number(post.metrics[metricKey] || 0) + (isActive ? -1 : 1));
+  renderHiringPage({ force: false });
+}
+
+async function sendHiringInterest(postId) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id === appState.authUser.id) return;
+  const { error } = await supabaseClient.from("hiring_interests").upsert({ post_id: postId, user_id: appState.authUser.id }, { onConflict: "post_id,user_id" });
+  if (error) {
+    showToast(error.message || "Nao foi possivel enviar interesse.", "triangle-alert");
+    return;
+  }
+  post.viewer.interested = true;
+  post.metrics.interests = Math.max(1, Number(post.metrics.interests || 0) + 1);
+  showToast("Interesse enviado", "hand");
+  renderHiringPage({ force: false });
+}
+
+function openHiringProposalModal(postId) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id === appState.authUser.id) return;
+  openModal(`<form class="hiring-proposal-form" data-post-id="${htmlEscape(postId)}"><span><i data-lucide="send"></i>Enviar proposta</span><h2>${htmlEscape(post.title)}</h2><label>Mensagem da proposta<textarea name="message" rows="5" maxlength="1200" required placeholder="Explique como voce pode resolver essa demanda."></textarea></label><label>Valor sugerido<input name="proposed_amount" type="number" inputmode="decimal" min="0" placeholder="R$"></label><label>Prazo de entrega<input name="delivery_deadline" type="text" maxlength="80" placeholder="Ex: hoje, 24h, sexta-feira"></label><label>Links de portfolio<input name="portfolio_links" type="text" maxlength="500" placeholder="SoundCloud, BeatStars, Instagram, site"></label><button class="seller-submit" type="submit">Enviar proposta<i data-lucide="arrow-right"></i></button></form>`);
+}
+
+async function submitHiringProposal(form) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === form.dataset.postId);
+  if (!post || post.user_id === appState.authUser.id) return;
+  const message = String(form.elements.message?.value || "").trim();
+  if (!message) {
+    showToast("Escreva uma mensagem para a proposta.", "triangle-alert");
+    return;
+  }
+  const payload = {
+    post_id: post.id,
+    sender_id: appState.authUser.id,
+    receiver_id: post.user_id,
+    message: message.slice(0, 1200),
+    proposed_amount: form.elements.proposed_amount?.value ? Number(form.elements.proposed_amount.value) : null,
+    delivery_deadline: String(form.elements.delivery_deadline?.value || "").trim() || null,
+    portfolio_links: String(form.elements.portfolio_links?.value || "").trim() || null,
+    attachments: [],
+    status: "pending",
+  };
+  const { data, error } = await supabaseClient.from("hiring_proposals").insert(payload).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel enviar proposta.", "triangle-alert");
+    return;
+  }
+  appState.hiring.proposals.unshift(data);
+  post.viewer.proposed = true;
+  post.metrics.proposals = Number(post.metrics.proposals || 0) + 1;
+  closeModal();
+  showToast("Proposta enviada", "send");
+  renderHiringPage({ force: false });
+}
+
+async function submitHiringComment(form) {
+  if (!hiringRequireAuth()) return;
+  const postId = form.dataset.postId;
+  const content = String(form.elements.content?.value || "").trim();
+  if (!content) return;
+  const { data, error } = await supabaseClient.from("hiring_comments").insert({ post_id: postId, user_id: appState.authUser.id, content: content.slice(0, 500) }).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel comentar.", "triangle-alert");
+    return;
+  }
+  appState.hiring.comments[postId] = [...(appState.hiring.comments[postId] || []), data];
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (post) post.metrics.comments = Number(post.metrics.comments || 0) + 1;
+  form.reset();
+  renderHiringPage({ force: false });
+}
+
+async function deleteHiringComment(commentId) {
+  if (!hiringRequireAuth()) return;
+  const { error } = await supabaseClient.from("hiring_comments").delete().eq("id", commentId).eq("user_id", appState.authUser.id);
+  if (error) {
+    showToast(error.message || "Nao foi possivel apagar comentario.", "triangle-alert");
+    return;
+  }
+  Object.keys(appState.hiring.comments).forEach((postId) => {
+    appState.hiring.comments[postId] = appState.hiring.comments[postId].filter((comment) => comment.id !== commentId);
+  });
+  renderHiringPage({ force: false });
+}
+
+async function updateHiringStatus(postId, status) {
+  if (!hiringRequireAuth()) return;
+  const { data, error } = await supabaseClient.from("hiring_posts").update({ status }).eq("id", postId).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel alterar status.", "triangle-alert");
+    return;
+  }
+  appState.hiring.posts = appState.hiring.posts.map((post) => post.id === postId ? { ...post, ...data } : post);
+  showToast("Status atualizado", "badge-check");
+  renderHiringPage({ force: false });
+}
+
+async function openHiringChat(postId) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id === appState.authUser.id) return;
+  const { data, error } = await supabaseClient.from("hiring_conversations").upsert({ post_id: post.id, client_id: post.user_id, professional_id: appState.authUser.id }, { onConflict: "post_id,client_id,professional_id" }).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel abrir chat.", "triangle-alert");
+    return;
+  }
+  const { data: messages, error: messageError } = await supabaseClient.from("hiring_messages").select("*").eq("conversation_id", data.id).order("created_at", { ascending: true });
+  if (messageError) {
+    showToast(messageError.message || "Nao foi possivel carregar mensagens.", "triangle-alert");
+    return;
+  }
+  appState.hiring.messages[data.id] = messages || [];
+  openHiringConversationModal(data, post);
+}
+
+function hiringMessageMarkup(message) {
+  const mine = message.sender_id === appState.authUser?.id;
+  return `<article class="hiring-message ${mine ? "is-mine" : ""}"><p>${htmlEscape(message.content)}</p><span>${hiringRelativeDate(message.created_at)}</span></article>`;
+}
+
+function openHiringConversationModal(conversation, post) {
+  const messages = appState.hiring.messages[conversation.id] || [];
+  openModal(`<section class="hiring-chat-panel" data-conversation-id="${htmlEscape(conversation.id)}"><header><span><i data-lucide="messages-square"></i>Chat privado</span><h2>${htmlEscape(post.title)}</h2><p>Conversa vinculada a esta contratacao.</p></header><div class="hiring-message-list">${messages.length ? messages.map(hiringMessageMarkup).join("") : `<p>Nenhuma mensagem ainda.</p>`}</div><form class="hiring-message-form" data-conversation-id="${htmlEscape(conversation.id)}"><label class="sr-only" for="hiringMessageInput">Mensagem</label><input id="hiringMessageInput" name="content" type="text" maxlength="1000" placeholder="Escreva uma mensagem"><button type="submit"><i data-lucide="send"></i>Enviar</button></form></section>`);
+}
+
+async function submitHiringMessage(form) {
+  if (!hiringRequireAuth()) return;
+  const conversationId = form.dataset.conversationId;
+  const content = String(form.elements.content?.value || "").trim();
+  if (!content) return;
+  const { data, error } = await supabaseClient.from("hiring_messages").insert({ conversation_id: conversationId, sender_id: appState.authUser.id, content: content.slice(0, 1000), attachments: [] }).select().single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel enviar mensagem.", "triangle-alert");
+    return;
+  }
+  appState.hiring.messages[conversationId] = [...(appState.hiring.messages[conversationId] || []), data];
+  const panel = document.querySelector(".hiring-chat-panel");
+  const list = panel?.querySelector(".hiring-message-list");
+  if (list) list.innerHTML = appState.hiring.messages[conversationId].map(hiringMessageMarkup).join("");
+  form.reset();
 }
 
 async function updateCatalogVisibility(table, id, status) {
@@ -6535,18 +7237,28 @@ function renderAiWorkspace() {
   requestAnimationFrame(() => {
     setupNexoChatInput();
     scrollNexoChatToBottom();
+    applyLocaleTextOverrides(appView);
     lucide.createIcons();
   });
 }
 
 
-const nexoChatSuggestions = [
-  "Quero lancar uma musica do zero",
-  "Me ajude a montar um plano de lancamento",
-  "Quero encontrar produtores, designers e curadores",
-  "Analise minha ideia musical",
-  "Monte um diagnostico para meu proximo single",
-];
+const nexoChatSuggestions = {
+  "pt-BR": [
+    "Quero lancar uma musica do zero",
+    "Me ajude a montar um plano de lancamento",
+    "Quero encontrar produtores, designers e curadores",
+    "Analise minha ideia musical",
+    "Monte um diagnostico para meu proximo single",
+  ],
+  "en-US": [
+    "I want to release a song from scratch",
+    "Help me build a release plan",
+    "I want to find producers, designers, and curators",
+    "Analyze my music idea",
+    "Build a diagnostic for my next single",
+  ],
+};
 
 function nexoChatMessages() {
   if (!Array.isArray(appState.nexoChatMessages)) appState.nexoChatMessages = [];
@@ -6575,12 +7287,14 @@ function renderNexoChatMessage(message) {
 }
 
 function renderNexoChatWelcome() {
+  const isEnglish = appLocale.current === "en-US";
+  const suggestions = nexoChatSuggestions[appLocale.current] || nexoChatSuggestions["pt-BR"];
   return `<section class="nexo-chat-welcome" aria-label="Introducao da NEXO IA">
     <span>NEXO IA</span>
-    <h1>Converse com a inteligencia musical da ANSEND</h1>
-    <p>Transforme uma ideia em um plano real de lancamento, com orientacao sobre beat, capa, mix/master, marketing, curadoria e proximos passos.</p>
+    <h1>${isEnglish ? "Talk to ANSEND's music intelligence" : "Converse com a inteligencia musical da ANSEND"}</h1>
+    <p>${isEnglish ? "Turn an idea into a real release plan with guidance for beat, cover, mix/master, marketing, curation, and next steps." : "Transforme uma ideia em um plano real de lancamento, com orientacao sobre beat, capa, mix/master, marketing, curadoria e proximos passos."}</p>
     <div class="nexo-chat-suggestions">
-      ${nexoChatSuggestions.map((prompt) => `<button type="button" data-action="nexo-chat-suggestion" data-prompt="${htmlEscape(prompt)}"><i data-lucide="sparkles"></i>${htmlEscape(prompt)}</button>`).join("")}
+      ${suggestions.map((prompt) => `<button type="button" data-action="nexo-chat-suggestion" data-prompt="${htmlEscape(prompt)}"><i data-lucide="sparkles"></i>${htmlEscape(prompt)}</button>`).join("")}
     </div>
   </section>`;
 }
@@ -6594,14 +7308,14 @@ function renderNexoChat() {
         ${messages.length ? messages.map(renderNexoChatMessage).join("") : renderNexoChatWelcome()}
         ${isLoading ? `<article class="nexo-chat-message is-assistant is-typing">
           <div class="nexo-chat-avatar"><span>N</span></div>
-          <div class="nexo-chat-bubble"><p>NEXO IA esta pensando<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
+          <div class="nexo-chat-bubble"><p>${appLocale.current === "en-US" ? "NEXO AI is thinking" : "NEXO IA esta pensando"}<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
         </article>` : ""}
       </div>
       ${appState.nexoChatError ? `<p class="nexo-chat-error"><i data-lucide="circle-alert"></i>${htmlEscape(appState.nexoChatError)}</p>` : ""}
       <form class="nexo-chat-form" autocomplete="off">
         <div class="nexo-chat-input-wrap">
-          <textarea id="nexoChatInput" name="message" rows="1" ${isLoading ? "disabled" : ""} placeholder="Conte sua ideia, seu momento ou o que voce quer lancar..."></textarea>
-          <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar mensagem para NEXO IA"><i data-lucide="${isLoading ? "loader-2" : "send"}"></i></button>
+          <textarea id="nexoChatInput" name="message" rows="1" ${isLoading ? "disabled" : ""} placeholder="${appLocale.current === "en-US" ? "Share your idea, your current stage, or what you want to release..." : "Conte sua ideia, seu momento ou o que voce quer lancar..."}"></textarea>
+          <button type="submit" ${isLoading ? "disabled" : ""} aria-label="${appLocale.current === "en-US" ? "Send message to NEXO AI" : "Enviar mensagem para NEXO IA"}"><i data-lucide="${isLoading ? "loader-2" : "send"}"></i></button>
         </div>
       </form>
     </main>
@@ -8273,6 +8987,7 @@ function renderMusicUpload() {
         </div>
         <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ff6a00; border:none; color:#000; font-weight:800; padding:12px 24px; border-radius:99px; cursor:pointer; text-decoration:none; display:inline-block;">Entrar / Criar Conta</a>
       </section>`;
+    applyLocaleTextOverrides(appView);
     lucide.createIcons();
     return;
   }
@@ -8384,6 +9099,7 @@ function renderMusicUpload() {
   setupMusicUploadEventListeners();
   restoreReleaseCoverDraft();
   syncReleaseForm();
+  applyLocaleTextOverrides(appView);
   lucide.createIcons();
 }
 
@@ -8907,6 +9623,10 @@ function renderRoute() {
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
+  if (route === "contratacoes") {
+    appView.innerHTML = `<main class="hiring-page"><section class="hiring-feed-shell"><div class="hiring-skeleton"><span></span><span></span><span></span></div></section></main>`;
+    renderHiringPage();
+  }
   if (route === "perfil") renderProfile();
   if (route === "perfil-publico") renderPublicProfile();
   if (route === "cadastrar") {
@@ -10080,6 +10800,103 @@ document.addEventListener("click", (event) => {
   if (!target) return;
   const action = target.dataset.action;
   const isPlayerDropdownAction = Boolean(target.closest(".player-more-dropdown"));
+  if (action?.startsWith("hiring-")) {
+    const postId = target.dataset.postId || target.closest("[data-post-id]")?.dataset.postId || "";
+    if (action === "hiring-tab") {
+      appState.hiring.activeTab = target.dataset.tab || "for-you";
+      appState.hiring.lastLoadedAt = 0;
+      renderHiringPage({ force: true });
+      return;
+    }
+    if (action === "hiring-refresh") {
+      appState.hiring.lastLoadedAt = 0;
+      renderHiringPage({ force: true });
+      return;
+    }
+    if (action === "hiring-focus-composer") {
+      const composer = document.querySelector(".hiring-composer");
+      composer?.classList.add("is-expanded");
+      composer?.querySelector("textarea")?.focus();
+      return;
+    }
+    if (action === "hiring-expand-composer") {
+      const composer = target.closest(".hiring-composer");
+      composer?.classList.add("is-expanded");
+      composer?.querySelector(".hiring-composer-title")?.focus();
+      return;
+    }
+    if (action === "hiring-toggle-filters") {
+      const filters = document.querySelector(".hiring-filters");
+      if (filters) filters.hidden = !filters.hidden;
+      return;
+    }
+    if (action === "hiring-filter-chip") {
+      try {
+        const payload = JSON.parse(target.dataset.filterPayload || "{}");
+        appState.hiring.filters = { ...appState.hiring.filters, ...payload };
+        appState.hiring.lastLoadedAt = 0;
+        renderHiringPage({ force: true });
+      } catch (error) {
+        console.error("[ANSEND hiring] invalid filter chip", error);
+      }
+      return;
+    }
+    if (action === "hiring-open-own-profile") {
+      location.hash = "perfil";
+      return;
+    }
+    if (action === "hiring-back") {
+      location.hash = "contratacoes";
+      return;
+    }
+    if (action === "hiring-open-post") {
+      if (postId) location.hash = `contratacoes-${postId}`;
+      return;
+    }
+    if (action === "hiring-open-profile") {
+      const route = publicProfileRouteFromTarget(target);
+      if (route) location.hash = route;
+      return;
+    }
+    if (action === "hiring-comment-toggle") {
+      const section = target.closest(".hiring-post")?.querySelector(".hiring-comments");
+      if (section) section.hidden = !section.hidden;
+      return;
+    }
+    if (action === "hiring-like") {
+      toggleHiringAction("like", postId);
+      return;
+    }
+    if (action === "hiring-save") {
+      toggleHiringAction("save", postId);
+      return;
+    }
+    if (action === "hiring-repost") {
+      toggleHiringAction("repost", postId);
+      return;
+    }
+    if (action === "hiring-share") {
+      navigator.clipboard?.writeText(hiringPostUrl(postId));
+      showToast("Link copiado", "share");
+      return;
+    }
+    if (action === "hiring-interest") {
+      sendHiringInterest(postId);
+      return;
+    }
+    if (action === "hiring-proposal-open") {
+      openHiringProposalModal(postId);
+      return;
+    }
+    if (action === "hiring-chat-open") {
+      openHiringChat(postId);
+      return;
+    }
+    if (action === "hiring-comment-delete") {
+      deleteHiringComment(target.dataset.commentId);
+      return;
+    }
+  }
   const feedHost = target.closest(".nexo-feed-card");
   if (feedHost && action && !action.startsWith("nexo-feed-")) {
     const feedItemId = feedHost.dataset.feedItemId;
@@ -10765,6 +11582,19 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const hiringFilter = event.target.closest('[data-action="hiring-filter"]');
+  if (hiringFilter) {
+    const key = hiringFilter.dataset.filter;
+    if (key) appState.hiring.filters[key] = hiringFilter.value;
+    appState.hiring.lastLoadedAt = 0;
+    renderHiringPage({ force: true });
+    return;
+  }
+  const hiringStatus = event.target.closest('[data-action="hiring-status"]');
+  if (hiringStatus) {
+    updateHiringStatus(hiringStatus.dataset.postId, hiringStatus.value);
+    return;
+  }
   const profileFileInput = event.target.closest(".profile-editor-file");
   if (profileFileInput) {
     const file = profileFileInput.files?.[0];
@@ -10830,6 +11660,26 @@ document.addEventListener("drop", (event) => {
 
 document.addEventListener("input", (event) => {
   const input = event.target;
+  const hiringComposer = input.closest?.(".hiring-composer");
+  if (hiringComposer) {
+    const title = String(hiringComposer.elements.title?.value || "").trim();
+    const description = String(hiringComposer.elements.description?.value || "").trim();
+    const button = hiringComposer.querySelector('button[type="submit"]');
+    if (button) button.disabled = !(title && description);
+    hiringComposer.classList.toggle("is-expanded", Boolean(title || description || document.activeElement?.closest?.(".hiring-composer")));
+    if (input.matches("textarea")) {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(180, input.scrollHeight)}px`;
+    }
+    return;
+  }
+  const hiringFilterInput = input.closest?.('[data-action="hiring-filter"][data-filter="budget"]');
+  if (hiringFilterInput) {
+    appState.hiring.filters.budget = hiringFilterInput.value;
+    window.clearTimeout(appState.hiring.filterTimer);
+    appState.hiring.filterTimer = window.setTimeout(() => renderHiringPage({ force: true }), 350);
+    return;
+  }
   if (input.closest(".profile-editor-shell")) {
     syncProfileEditorPreview(input.closest(".profile-editor-shell"));
   }
@@ -10855,6 +11705,30 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const hiringComposerForm = event.target.closest(".hiring-composer");
+  if (hiringComposerForm) {
+    event.preventDefault();
+    await submitHiringPost(hiringComposerForm);
+    return;
+  }
+  const hiringProposalForm = event.target.closest(".hiring-proposal-form");
+  if (hiringProposalForm) {
+    event.preventDefault();
+    await submitHiringProposal(hiringProposalForm);
+    return;
+  }
+  const hiringCommentForm = event.target.closest(".hiring-comment-form");
+  if (hiringCommentForm) {
+    event.preventDefault();
+    await submitHiringComment(hiringCommentForm);
+    return;
+  }
+  const hiringMessageForm = event.target.closest(".hiring-message-form");
+  if (hiringMessageForm) {
+    event.preventDefault();
+    await submitHiringMessage(hiringMessageForm);
+    return;
+  }
   const releaseUploadForm = event.target.closest(".release-upload-form");
   if (releaseUploadForm) {
     event.preventDefault();
