@@ -40,6 +40,12 @@ if (!/function ansendSelectMarkup\(/.test(script) || !/data-action="ansend-selec
 if (/<label>Categoria<select name="category"|<label>Prazo<select name="deadline_type"|<label>Local<select name="work_mode"/.test(script)) {
   throw new Error("Community composer should not use native selects");
 }
+if (!/hiringComposerQuickActions/.test(script) || !/data-action="hiring-composer-popover"/.test(script)) {
+  throw new Error("Community composer quick action popovers missing");
+}
+if (/class="hiring-composer-title"|Titulo da vaga\/pedido|hiring-composer-grid/.test(script.match(/function hiringComposerMarkup\(\) \{[\s\S]*?function hiringFiltersMarkup/)?.[0] || "")) {
+  throw new Error("Community composer should stay compact, without fixed form fields");
+}
 if (/await\s+loadCommunityPromotedAd/.test(renderBody)) {
   throw new Error("Community render blocks on promoted ad loading");
 }

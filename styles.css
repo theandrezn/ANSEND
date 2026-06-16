@@ -25825,6 +25825,273 @@ body[data-route="comunidade"] .hiring-right-rail {
   color: #0f1419;
 }
 
+.hiring-native-layout .hiring-composer {
+  position: relative;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom-color: #2f3336;
+  background: #000;
+}
+
+.hiring-native-layout .hiring-composer-main {
+  position: relative;
+  min-width: 0;
+}
+
+.hiring-native-layout .hiring-composer-main textarea {
+  min-height: 54px;
+  max-height: 180px;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f7f9f9;
+  padding: 8px 0 4px;
+  font-size: 1.24rem;
+  line-height: 1.45;
+  box-shadow: none;
+}
+
+.hiring-native-layout .hiring-composer-main textarea:focus {
+  outline: none;
+}
+
+.hiring-native-layout .hiring-composer-main textarea::placeholder {
+  color: #71767b;
+}
+
+.hiring-composer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 0;
+  margin: 2px 0 0;
+}
+
+.hiring-composer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: #060708;
+  color: #d7eefc;
+  padding: 0 8px 0 10px;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.hiring-composer-chip button {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8b98a5;
+  padding: 0;
+}
+
+.hiring-composer-chip button:hover,
+.hiring-composer-chip button:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, .09);
+}
+
+.hiring-composer-chip svg {
+  width: 12px;
+  height: 12px;
+}
+
+.hiring-composer-popovers {
+  position: relative;
+  z-index: 30;
+}
+
+.hiring-composer-popover {
+  position: absolute;
+  left: 0;
+  bottom: 8px;
+  width: min(380px, calc(100vw - 40px));
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 14px;
+  background: #08080a;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .5);
+  transform: translateY(calc(100% + 12px));
+  z-index: 80;
+}
+
+.hiring-composer-popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hiring-composer-popover strong {
+  color: #fff;
+  font-size: .95rem;
+}
+
+.hiring-composer-popover p {
+  margin: 6px 0 10px;
+  color: #8b98a5;
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.hiring-composer-popover header button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  min-height: 30px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8b98a5;
+  padding: 0;
+}
+
+.hiring-composer-popover header button:hover,
+.hiring-composer-popover header button:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+}
+
+.hiring-composer-choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hiring-composer-choice-list button {
+  min-height: 36px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: #050505;
+  color: #f7f9f9;
+  padding: 0 12px;
+  font-size: .84rem;
+  font-weight: 800;
+}
+
+.hiring-composer-choice-list button:hover,
+.hiring-composer-choice-list button:focus-visible {
+  border-color: rgba(29, 155, 240, .42);
+  background: rgba(29, 155, 240, .12);
+  color: #fff;
+}
+
+.hiring-composer-reference-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.hiring-composer-reference-row input {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: #030303;
+  color: #fff;
+  padding: 0 12px;
+}
+
+.hiring-composer-reference-row input:focus {
+  outline: 2px solid rgba(29, 155, 240, .7);
+  outline-offset: 2px;
+}
+
+.hiring-composer-reference-row button {
+  min-height: 40px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #eff3f4;
+  color: #0f1419;
+  padding: 0 14px;
+  font-weight: 850;
+}
+
+.hiring-native-layout .hiring-composer-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  border-top: 1px solid #2f3336;
+  padding-top: 10px;
+}
+
+.hiring-composer-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #1d9bf0;
+  padding: 0 8px;
+  font-size: .84rem;
+  font-weight: 800;
+}
+
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button span {
+  display: none;
+}
+
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button:hover,
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button:focus-visible,
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button.is-active {
+  outline: none;
+  background: rgba(29, 155, 240, .12);
+}
+
+.hiring-native-layout .hiring-composer-tools .hiring-composer-action-row svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hiring-publish-btn,
+.hiring-native-layout .hiring-composer-tools .hiring-publish-btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  background: #1d9bf0;
+  color: #fff;
+  padding: 0 18px;
+  font-weight: 900;
+}
+
+.hiring-publish-btn:disabled,
+.hiring-native-layout .hiring-composer-tools .hiring-publish-btn:disabled {
+  background: #2f3336;
+  color: #0f1419;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 .hiring-native-layout .hiring-filters {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 12px 16px;

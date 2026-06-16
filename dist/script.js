@@ -5480,31 +5480,99 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
   });
 }
 
+const hiringComposerQuickActions = {
+  category: {
+    title: "Categoria",
+    description: "Ajude a comunidade a entender o tipo de publicacao.",
+    choices: hiringCategories.filter(([id]) => id !== "todos").map(([value, label]) => ({ value, label })),
+  },
+  budget: {
+    title: "Orcamento",
+    description: "Opcional, mas ajuda a filtrar oportunidades.",
+    choices: [
+      { value: "negotiable", label: "A combinar", budgetType: "negotiable", budgetAmount: "" },
+      { value: "100", label: "Ate R$100", budgetType: "fixed", budgetAmount: "100" },
+      { value: "300", label: "R$100-R$300", budgetType: "fixed", budgetAmount: "300" },
+      { value: "700", label: "R$300-R$700", budgetType: "fixed", budgetAmount: "700" },
+      { value: "1000", label: "R$700+", budgetType: "fixed", budgetAmount: "1000" },
+    ],
+  },
+  deadline: {
+    title: "Prazo",
+    description: "Quando voce precisa de resposta ou entrega?",
+    choices: [
+      { value: "hoje", label: "Hoje" },
+      { value: "esta_semana", label: "Essa semana" },
+      { value: "sem_urgencia", label: "Este mes" },
+      { value: "data_personalizada", label: "Sem prazo" },
+    ],
+  },
+  work_mode: {
+    title: "Local",
+    description: "Escolha como essa conversa ou pedido acontece.",
+    choices: Object.entries(hiringWorkModes).map(([value, label]) => ({ value, label })),
+  },
+};
+
+function hiringComposerHiddenFieldsMarkup() {
+  return `<input type="hidden" name="title" value="">
+    <input type="hidden" name="category" value="duvidas" data-chip-label="">
+    <input type="hidden" name="budget_amount" value="">
+    <input type="hidden" name="budget_type" value="fixed">
+    <input type="hidden" name="budget_label" value="">
+    <input type="hidden" name="deadline_type" value="sem_urgencia" data-chip-label="">
+    <input type="hidden" name="work_mode" value="remote" data-chip-label="">
+    <input type="hidden" name="references" value="">`;
+}
+
+function hiringComposerPopoverMarkup(type, config) {
+  return `<section class="hiring-composer-popover" data-hiring-popover="${htmlEscape(type)}" hidden>
+    <header><strong>${htmlEscape(config.title)}</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>${htmlEscape(config.description)}</p>
+    <div class="hiring-composer-choice-list">
+      ${config.choices.map((choice) => `<button type="button" data-action="hiring-composer-choice" data-field="${htmlEscape(type)}" data-value="${htmlEscape(choice.value)}" data-label="${htmlEscape(choice.label)}" data-budget-type="${htmlEscape(choice.budgetType || "")}" data-budget-amount="${htmlEscape(choice.budgetAmount ?? "")}">${htmlEscape(choice.label)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function hiringComposerReferencePopoverMarkup() {
+  return `<section class="hiring-composer-popover" data-hiring-popover="references" hidden>
+    <header><strong>Referencia</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>Cole um link do YouTube, Spotify, BeatStars, SoundCloud ou texto curto.</p>
+    <div class="hiring-composer-reference-row">
+      <label class="sr-only" for="hiringReferenceInput">Referencia</label>
+      <input id="hiringReferenceInput" type="text" placeholder="Cole uma referencia">
+      <button type="button" data-action="hiring-composer-reference-save">Adicionar</button>
+    </div>
+  </section>`;
+}
+
 function hiringComposerMarkup() {
   const profile = profileDisplayData(activeProfile());
   return `<form class="hiring-composer" data-hiring-composer novalidate>
     ${hiringAvatar({ ...profile, name: profile.name || "ANSEND" })}
     <div class="hiring-composer-main">
+      ${hiringComposerHiddenFieldsMarkup()}
       <label class="sr-only" for="hiringDescription">Descricao</label>
-      <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="Do que voce precisa hoje?" aria-label="Do que voce precisa hoje?"></textarea>
-      <label class="sr-only" for="hiringTitle">Titulo da vaga ou pedido</label>
-      <input id="hiringTitle" class="hiring-composer-title" name="title" type="text" maxlength="120" placeholder="Titulo da vaga/pedido" aria-label="Titulo da vaga ou pedido">
-      <div class="hiring-composer-grid">
-        ${ansendSelectMarkup({ id: "hiringCategorySelect", label: "Categoria", name: "category", value: "duvidas", options: hiringCategories.filter(([id]) => id !== "todos") })}
-        <label>Orcamento<input name="budget_amount" type="number" inputmode="decimal" min="0" placeholder="R$300"></label>
-        ${ansendSelectMarkup({ id: "hiringDeadlineSelect", label: "Prazo", name: "deadline_type", value: "hoje", options: hiringDeadlines })}
-        ${ansendSelectMarkup({ id: "hiringWorkModeSelect", label: "Local", name: "work_mode", value: "remote", options: [["remote", "Remoto"], ["onsite", "Presencial"], ["hybrid", "Hibrido"]] })}
-        <label class="is-wide">Referencias<input name="references" type="text" placeholder="YouTube, Spotify, BeatStars, SoundCloud ou texto livre"></label>
-        <label class="hiring-negotiable"><input name="budget_type" type="checkbox" value="negotiable"> A combinar</label>
+      <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="O que esta acontecendo na musica?" aria-label="O que esta acontecendo na musica?"></textarea>
+      <div class="hiring-composer-chips" data-hiring-composer-chips aria-live="polite"></div>
+      <div class="hiring-composer-popovers">
+        ${Object.entries(hiringComposerQuickActions).map(([type, config]) => hiringComposerPopoverMarkup(type, config)).join("")}
+        ${hiringComposerReferencePopoverMarkup()}
       </div>
       <div class="hiring-composer-tools" aria-label="Opcoes da publicacao">
-        <button type="button" data-action="hiring-expand-composer" title="Categoria e detalhes"><i data-lucide="tags"></i><span>Categoria</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Referencias"><i data-lucide="link"></i><span>Referencias</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Anexo preparado"><i data-lucide="paperclip"></i><span>Anexo</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Local ou remoto"><i data-lucide="map-pin"></i><span>Local/Remoto</span></button>
-        <button type="submit" disabled>Publicar</button>
+        <div class="hiring-composer-action-row">
+          <button type="button" data-action="hiring-composer-soon" title="Imagem/anexo" aria-label="Imagem/anexo"><i data-lucide="image"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Beat ou audio" aria-label="Beat ou audio"><i data-lucide="music"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="references" title="Link ou referencia" aria-label="Link ou referencia"><i data-lucide="link"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Enquete" aria-label="Enquete"><i data-lucide="list-checks"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="category" title="Categoria" aria-label="Categoria"><i data-lucide="tags"></i><span>Categoria</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="budget" title="Orcamento" aria-label="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="work_mode" title="Local" aria-label="Local"><i data-lucide="map-pin"></i><span>Local</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="deadline" title="Prazo" aria-label="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
+        </div>
+        <button type="submit" class="hiring-publish-btn" disabled>Publicar</button>
       </div>
     </div>
   </form>`;
@@ -5678,6 +5746,102 @@ async function trackCommunityAdEvent(kind, adId) {
   } catch (error) {
     console.warn("[ANSEND community ads] tracking skipped", error?.message || error);
   }
+}
+
+function closeHiringComposerPopovers(form = document) {
+  form.querySelectorAll?.(".hiring-composer-popover").forEach((popover) => { popover.hidden = true; });
+  form.querySelectorAll?.('[data-action="hiring-composer-popover"]').forEach((button) => button.classList.remove("is-active"));
+}
+
+function openHiringComposerPopover(form, type) {
+  if (!form || !type) return;
+  closeHiringComposerPopovers(form);
+  const popover = form.querySelector(`[data-hiring-popover="${CSS.escape(type)}"]`);
+  const trigger = form.querySelector(`[data-action="hiring-composer-popover"][data-popover="${CSS.escape(type)}"]`);
+  if (!popover) return;
+  popover.hidden = false;
+  trigger?.classList.add("is-active");
+  popover.querySelector("button, input")?.focus({ preventScroll: true });
+}
+
+function hiringComposerChipData(form) {
+  const elements = form?.elements;
+  if (!elements) return [];
+  const chips = [];
+  if (elements.category?.dataset.chipLabel) chips.push(["category", elements.category.dataset.chipLabel]);
+  if (elements.budget_label?.value) chips.push(["budget", elements.budget_label.value]);
+  if (elements.work_mode?.dataset.chipLabel) chips.push(["work_mode", elements.work_mode.dataset.chipLabel]);
+  if (elements.deadline_type?.dataset.chipLabel) chips.push(["deadline", elements.deadline_type.dataset.chipLabel]);
+  if (elements.references?.value) chips.push(["references", elements.references.value]);
+  return chips;
+}
+
+function updateHiringComposerChips(form) {
+  const container = form?.querySelector("[data-hiring-composer-chips]");
+  if (!container) return;
+  const chips = hiringComposerChipData(form);
+  container.innerHTML = chips.map(([field, label]) => `<span class="hiring-composer-chip" data-chip-field="${htmlEscape(field)}">${htmlEscape(label)}<button type="button" data-action="hiring-composer-chip-remove" data-field="${htmlEscape(field)}" aria-label="Remover ${htmlEscape(label)}"><i data-lucide="x"></i></button></span>`).join("");
+  hydrateView();
+}
+
+function setHiringComposerChoice(form, target) {
+  const field = target?.dataset.field || "";
+  if (!form || !field) return;
+  const elements = form.elements;
+  const label = target.dataset.label || target.textContent.trim();
+  if (field === "budget") {
+    elements.budget_type.value = target.dataset.budgetType || "fixed";
+    elements.budget_amount.value = target.dataset.budgetAmount || "";
+    elements.budget_label.value = label;
+  } else if (field === "work_mode") {
+    elements.work_mode.value = target.dataset.value || "remote";
+    elements.work_mode.dataset.chipLabel = label;
+  } else if (field === "deadline") {
+    elements.deadline_type.value = target.dataset.value || "sem_urgencia";
+    elements.deadline_type.dataset.chipLabel = label;
+  } else if (field === "category") {
+    elements.category.value = target.dataset.value || "duvidas";
+    elements.category.dataset.chipLabel = label;
+  }
+  closeHiringComposerPopovers(form);
+  updateHiringComposerChips(form);
+}
+
+function removeHiringComposerChip(form, field) {
+  if (!form || !field) return;
+  const elements = form.elements;
+  if (field === "budget") {
+    elements.budget_type.value = "fixed";
+    elements.budget_amount.value = "";
+    elements.budget_label.value = "";
+  } else if (field === "work_mode") {
+    elements.work_mode.value = "remote";
+    elements.work_mode.dataset.chipLabel = "";
+  } else if (field === "deadline") {
+    elements.deadline_type.value = "sem_urgencia";
+    elements.deadline_type.dataset.chipLabel = "";
+  } else if (field === "category") {
+    elements.category.value = "duvidas";
+    elements.category.dataset.chipLabel = "";
+  } else if (field === "references") {
+    elements.references.value = "";
+  }
+  updateHiringComposerChips(form);
+}
+
+function resetHiringComposerMeta(form) {
+  if (!form?.elements) return;
+  form.elements.category.value = "duvidas";
+  form.elements.category.dataset.chipLabel = "";
+  form.elements.budget_type.value = "fixed";
+  form.elements.budget_amount.value = "";
+  form.elements.budget_label.value = "";
+  form.elements.deadline_type.value = "sem_urgencia";
+  form.elements.deadline_type.dataset.chipLabel = "";
+  form.elements.work_mode.value = "remote";
+  form.elements.work_mode.dataset.chipLabel = "";
+  form.elements.references.value = "";
+  updateHiringComposerChips(form);
 }
 
 function closeAnsendSelects(except = null) {
@@ -5893,19 +6057,20 @@ async function renderHiringPage(options = {}) {
 
 async function submitHiringPost(form) {
   if (!hiringRequireAuth()) return;
-  const title = String(form.elements.title?.value || "").trim();
   const description = String(form.elements.description?.value || "").trim();
-  if (!title || !description) {
-    showToast("Preencha titulo e descricao da publicacao.", "triangle-alert");
+  if (!description) {
+    showToast("Escreva algo para publicar.", "triangle-alert");
     return;
   }
+  const title = String(form.elements.title?.value || description.split(/\s+/).slice(0, 10).join(" ")).trim();
+  const budgetType = form.elements.budget_type?.value || "fixed";
   const payload = {
     user_id: appState.authUser.id,
     title: title.slice(0, 120),
     description: description.slice(0, 1200),
-    category: form.elements.category?.value || "outro",
-    budget_amount: form.elements.budget_type?.checked ? null : (form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null),
-    budget_type: form.elements.budget_type?.checked ? "negotiable" : "fixed",
+    category: form.elements.category?.value || "duvidas",
+    budget_amount: budgetType === "negotiable" ? null : (form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null),
+    budget_type: budgetType,
     currency: "BRL",
     deadline_type: form.elements.deadline_type?.value || "sem_urgencia",
     work_mode: form.elements.work_mode?.value || "remote",
@@ -5921,6 +6086,7 @@ async function submitHiringPost(form) {
   }
   invalidateHiringCache();
   form.reset();
+  resetHiringComposerMeta(form);
   appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
   await loadHiringEngagement(appState.hiring.posts);
   showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
@@ -13095,6 +13261,10 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.querySelector(".hiring-composer-popover:not([hidden])")) {
+    closeHiringComposerPopovers(document);
+  }
+
   const ansendSelect = event.target.closest?.(".ansend-select");
   if (ansendSelect) {
     const isTrigger = event.target.closest(".ansend-select-trigger");
@@ -13191,6 +13361,58 @@ document.addEventListener("click", (event) => {
   }
 
   if (!event.target.closest(".ansend-select")) closeAnsendSelects();
+
+  const hiringComposerPopoverButton = event.target.closest("[data-action='hiring-composer-popover']");
+  if (hiringComposerPopoverButton) {
+    event.preventDefault();
+    openHiringComposerPopover(hiringComposerPopoverButton.closest(".hiring-composer"), hiringComposerPopoverButton.dataset.popover);
+    return;
+  }
+
+  const hiringComposerChoice = event.target.closest("[data-action='hiring-composer-choice']");
+  if (hiringComposerChoice) {
+    event.preventDefault();
+    setHiringComposerChoice(hiringComposerChoice.closest(".hiring-composer"), hiringComposerChoice);
+    return;
+  }
+
+  const hiringComposerReferenceSave = event.target.closest("[data-action='hiring-composer-reference-save']");
+  if (hiringComposerReferenceSave) {
+    event.preventDefault();
+    const form = hiringComposerReferenceSave.closest(".hiring-composer");
+    const input = form?.querySelector("#hiringReferenceInput");
+    const value = String(input?.value || "").trim();
+    if (form && value) {
+      form.elements.references.value = value.slice(0, 240);
+      input.value = "";
+      closeHiringComposerPopovers(form);
+      updateHiringComposerChips(form);
+    }
+    return;
+  }
+
+  const hiringComposerChipRemove = event.target.closest("[data-action='hiring-composer-chip-remove']");
+  if (hiringComposerChipRemove) {
+    event.preventDefault();
+    removeHiringComposerChip(hiringComposerChipRemove.closest(".hiring-composer"), hiringComposerChipRemove.dataset.field);
+    return;
+  }
+
+  if (event.target.closest("[data-action='hiring-composer-popover-close']")) {
+    event.preventDefault();
+    closeHiringComposerPopovers(event.target.closest(".hiring-composer"));
+    return;
+  }
+
+  if (event.target.closest("[data-action='hiring-composer-soon']")) {
+    event.preventDefault();
+    showToast("Recurso preparado para a proxima etapa.", "sparkles");
+    return;
+  }
+
+  if (!event.target.closest(".hiring-composer-popover, [data-action='hiring-composer-popover']")) {
+    closeHiringComposerPopovers(document);
+  }
 
   const communityAdLink = event.target.closest("[data-action='community-ad-open']");
   if (communityAdLink) {
@@ -14314,11 +14536,10 @@ document.addEventListener("input", (event) => {
   }
   const hiringComposer = input.closest?.(".hiring-composer");
   if (hiringComposer) {
-    const title = String(hiringComposer.elements.title?.value || "").trim();
     const description = String(hiringComposer.elements.description?.value || "").trim();
     const button = hiringComposer.querySelector('button[type="submit"]');
-    if (button) button.disabled = !(title && description);
-    hiringComposer.classList.toggle("is-expanded", Boolean(title || description || document.activeElement?.closest?.(".hiring-composer")));
+    if (button) button.disabled = !description;
+    hiringComposer.classList.toggle("is-writing", Boolean(description || document.activeElement?.closest?.(".hiring-composer")));
     if (input.matches("textarea")) {
       input.style.height = "auto";
       input.style.height = `${Math.min(180, input.scrollHeight)}px`;
