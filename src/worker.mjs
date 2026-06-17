@@ -1,4 +1,4 @@
-import { buildNexoDeveloperPrompt } from "./nexo/nexo-prompt.mjs";
+﻿import { buildNexoDeveloperPrompt } from "./nexo/nexo-prompt.mjs";
 import { nexoDiagnosisSchema } from "./nexo/nexo-schema.mjs";
 import { validateNexoQuiz } from "./nexo/nexo-validation.mjs";
 import { ANSEND_ROUTES, inferNexoRouteAction, publicNexoRoutes, resolveNexoRouteKey } from "./nexo/ansend-routes.mjs";
@@ -201,7 +201,7 @@ async function createEmbedding(text, env) {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({
       model: "text-embedding-3-small",
@@ -227,7 +227,7 @@ async function supabaseRest(env, path, init = {}) {
     headers: {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
       Prefer: "return=representation,resolution=merge-duplicates",
       ...(init.headers || {}),
     },
@@ -251,7 +251,7 @@ async function supabaseAuthedRest(env, path, authHeader = "", init = {}) {
     headers: {
       apikey: key,
       Authorization: serviceKey ? `Bearer ${serviceKey}` : authHeader,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
       ...(init.headers || {}),
     },
   });
@@ -345,7 +345,7 @@ async function supabaseRpc(env, fn, payload, authHeader = "") {
     headers: {
       apikey: key,
       Authorization: authHeader || `Bearer ${key}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify(payload || {}),
   });
@@ -509,7 +509,7 @@ async function handleNexoIntent(request, env) {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         model: env.NEXO_INTENT_MODEL || "gpt-5-mini",
@@ -616,7 +616,7 @@ async function handleNexoChat(request, env) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=utf-8",
         },
         body: JSON.stringify({ ...baseOpenAiPayload, model }),
       });
@@ -737,7 +737,7 @@ async function handleNexoAnalysis(request, env) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=utf-8",
         },
         body: JSON.stringify({ ...baseOpenAiPayload, model }),
       });
@@ -954,7 +954,7 @@ async function handleOrderDownload(request, env) {
     headers: {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({ expiresIn: 300 }),
   });
