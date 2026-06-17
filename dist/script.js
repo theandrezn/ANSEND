@@ -6307,36 +6307,45 @@ function chatMessageMarkup(message) {
       ["Status", chatProposalStatusLabel(status)],
     ].filter(([, value]) => String(value || "").trim());
     return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
-      <div class="chat-message-bubble chat-proposal-bubble">
-        <span>${mine ? "Proposta enviada" : "Proposta recebida"}</span>
-        ${metadata.service_title && metadata.service_title !== "Proposta ANSEND" ? `<strong>${htmlEscape(metadata.service_title)}</strong>` : ""}
-        ${metadata.description ? `<p>${htmlEscape(metadata.description)}</p>` : ""}
-        ${fields.length ? `<dl>${fields.map(([label, value]) => `<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join("")}</dl>` : ""}
-        ${canRespond ? `<div class="chat-proposal-actions">
-          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="accepted">Aceitar</button>
-          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="rejected">Recusar</button>
-        </div>` : ""}
-        ${canCancel ? `<div class="chat-proposal-actions">
-          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="cancelled">Cancelar proposta</button>
-        </div>` : ""}
+      <div class="chat-message-container">
+        <div class="chat-message-bubble chat-proposal-bubble">
+          <span>${mine ? "Proposta enviada" : "Proposta recebida"}</span>
+          ${metadata.service_title && metadata.service_title !== "Proposta ANSEND" ? `<strong>${htmlEscape(metadata.service_title)}</strong>` : ""}
+          ${metadata.description ? `<p>${htmlEscape(metadata.description)}</p>` : ""}
+          ${fields.length ? `<dl>${fields.map(([label, value]) => `<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join("")}</dl>` : ""}
+          ${canRespond ? `<div class="chat-proposal-actions">
+            <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="accepted">Aceitar</button>
+            <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="rejected">Recusar</button>
+          </div>` : ""}
+          ${canCancel ? `<div class="chat-proposal-actions">
+            <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="cancelled">Cancelar proposta</button>
+          </div>` : ""}
+        </div>
         <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
         ${chatMessageStatusMarkup(message)}
       </div>
     </div>`;
   }
   if (message.message_type === "attachment" || message.message_type === "audio" || message.message_type === "gif") {
+    const kind = metadata.kind || (message.message_type === "gif" ? "image" : "file");
+    const isMedia = kind === "image" || kind === "video" || message.message_type === "gif";
+    const bubbleClass = isMedia ? "chat-message-bubble has-media" : "chat-message-bubble has-file";
     return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
-      <div class="chat-message-bubble">
-        ${chatAttachmentMetadataMarkup(metadata)}
-        ${message.body && message.body !== metadata.name ? `<p>${htmlEscape(message.body)}</p>` : ""}
+      <div class="chat-message-container">
+        <div class="${bubbleClass}">
+          ${chatAttachmentMetadataMarkup(metadata)}
+          ${message.body && message.body !== metadata.name ? `<p>${htmlEscape(message.body)}</p>` : ""}
+        </div>
         <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
         ${chatMessageStatusMarkup(message)}
       </div>
     </div>`;
   }
   return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
-    <div class="chat-message-bubble">
-      <p>${htmlEscape(message.body)}</p>
+    <div class="chat-message-container">
+      <div class="chat-message-bubble">
+        <p>${htmlEscape(message.body)}</p>
+      </div>
       <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
       ${chatMessageStatusMarkup(message)}
     </div>
