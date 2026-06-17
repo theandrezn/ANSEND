@@ -57,6 +57,53 @@ async function run() {
       syncMiniPlayerState();
     });
 
+    await page.evaluate(() => {
+      PlayerStore.setCurrent(topBeatOfDay, { status: "loading" });
+      updateMiniPlayer(topBeatOfDay);
+      showMiniPlayer();
+      syncMiniPlayerState();
+    });
+    const loadingControls = await page.evaluate(() => {
+      const player = document.querySelector(".mini-player");
+      const selectors = [
+        '[data-action="favorite-current"]',
+        '[data-action="mini-play"]',
+        '[data-action="volume"]',
+        '[data-action="close-mini-player"]',
+        '[data-action="next-track"]',
+        '[data-action="prev-track"]',
+        '[data-action="queue"]',
+        '[data-action="edit-beat"]',
+        '[data-action="loop-beat"]',
+        '[data-action="more-player"]',
+        '[data-action="buy-current"]',
+      ];
+      return {
+        hidden: player?.hidden,
+        active: player?.classList.contains("is-active"),
+        loading: player?.classList.contains("is-loading"),
+        display: player ? getComputedStyle(player).display : "",
+        controls: selectors.map((selector) => {
+          const element = player?.querySelector(selector);
+          const rect = element?.getBoundingClientRect();
+          return {
+            selector,
+            exists: Boolean(element),
+            visible: Boolean(rect && rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== "hidden"),
+            hasSvg: Boolean(element?.querySelector("svg")),
+          };
+        }),
+      };
+    });
+    const missingLoadingControls = loadingControls.controls.filter((control) => !control.exists || !control.visible || !control.hasSvg);
+    if (loadingControls.hidden || !loadingControls.active || !loadingControls.loading || loadingControls.display === "none" || missingLoadingControls.length) {
+      throw new Error(`Mini player controls are not stable during loading: ${JSON.stringify({ loadingControls, missingLoadingControls })}`);
+    }
+    await page.evaluate(() => {
+      PlayerStore.setStatus("paused");
+      syncMiniPlayerState();
+    });
+
     const hasLyricsButton = await page.locator('[data-action="lyrics"]').count();
     if (hasLyricsButton) throw new Error("Lyrics button should be removed from the mini player.");
 

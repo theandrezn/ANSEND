@@ -15145,6 +15145,42 @@ const youtubeBeatPlayerState = {
   playResolver: null,
 };
 
+let suppressAudioPauseEventsUntil = 0;
+let playerPlaybackRequestId = 0;
+
+function suppressUpcomingAudioPauseEvents(durationMs = 900) {
+  suppressAudioPauseEventsUntil = Math.max(suppressAudioPauseEventsUntil, Date.now() + durationMs);
+}
+
+function isAudioPauseEventSuppressed() {
+  return Date.now() < suppressAudioPauseEventsUntil;
+}
+
+function setButtonLucideIcon(button, iconName) {
+  if (!button || !iconName) return false;
+  if (button.dataset.playerIcon === iconName && button.querySelector("svg")) return false;
+  button.dataset.playerIcon = iconName;
+  button.innerHTML = `<i data-lucide="${iconName}"></i>`;
+  return true;
+}
+
+function refreshPlayerIcons(changed) {
+  if (changed && window.lucide?.createIcons) lucide.createIcons();
+}
+
+function nextPlayerPlaybackRequest() {
+  playerPlaybackRequestId += 1;
+  return playerPlaybackRequestId;
+}
+
+function isCurrentPlaybackRequest(requestId) {
+  return requestId === playerPlaybackRequestId;
+}
+
+function cancelCurrentPlaybackRequest() {
+  playerPlaybackRequestId += 1;
+}
+
 const PlayerStore = {
   setCurrent(item, { status = "loading", error = "" } = {}) {
     const beat = normalizePlayerBeat(item);
@@ -15385,6 +15421,7 @@ function syncMiniPlayerState() {
   const loopButton = player.querySelector('[data-action="loop-beat"]');
   const volumeButton = player.querySelector('[data-action="volume"]');
   const miniButton = player.querySelector('[data-action="mini-play"]');
+  let iconsChanged = false;
   favoriteButton?.classList.toggle("is-active", appState.favorites.has(current?.id));
   loopButton?.classList.toggle("is-active", appState.player.loop);
   player.classList.toggle("is-looping", appState.player.loop);
@@ -15392,13 +15429,13 @@ function syncMiniPlayerState() {
   player.classList.toggle("has-error", appState.player.status === "error");
   player.classList.toggle("is-playing", appState.player.status === "playing");
   if (miniButton) {
-    const isPlaying = appState.player.status === "playing";
-    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
-    miniButton.setAttribute("aria-label", isPlaying ? "Pausar" : "Tocar");
+    const isPendingOrPlaying = appState.player.status === "playing" || (appState.player.status === "loading" && Boolean(current?.id));
+    iconsChanged = setButtonLucideIcon(miniButton, isPendingOrPlaying ? "pause" : "play") || iconsChanged;
+    miniButton.setAttribute("aria-label", isPendingOrPlaying ? "Pausar" : "Tocar");
   }
   if (volumeButton) {
     const icon = appState.player.volume <= .02 ? "volume-x" : appState.player.volume < .45 ? "volume-1" : "volume-2";
-    volumeButton.innerHTML = `<i data-lucide="${icon}"></i>`;
+    iconsChanged = setButtonLucideIcon(volumeButton, icon) || iconsChanged;
   }
   const volumePopover = document.querySelector(".player-volume-popover");
   if (volumePopover) {
@@ -15411,10 +15448,11 @@ function syncMiniPlayerState() {
     if (label) label.textContent = `${Math.round(safeVolume * 100)}%`;
     if (muteButton) {
       muteButton.setAttribute("aria-label", safeVolume <= .02 ? "Ativar som" : "Mutar");
-      muteButton.innerHTML = `<i data-lucide="${volumeIcon}"></i>`;
+      iconsChanged = setButtonLucideIcon(muteButton, volumeIcon) || iconsChanged;
     }
   }
   applyPlayerAudioSettings();
+  refreshPlayerIcons(iconsChanged);
 }
 
 function showMiniPlayer() {
@@ -15534,6 +15572,7 @@ function topBeatAudio() {
 }
 
 async function playYouTubeBeat(item, { quiet = false } = {}) {
+  const requestId = nextPlayerPlaybackRequest();
   const beat = normalizePlayerBeat(item);
   const videoId = beat?.youtube_video_id || "";
   if (!beat || !videoId) {
@@ -15545,6 +15584,7 @@ async function playYouTubeBeat(item, { quiet = false } = {}) {
   }
   const audio = topBeatAudio();
   if (audio) {
+    suppressUpcomingAudioPauseEvents();
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
@@ -15563,6 +15603,10 @@ async function playYouTubeBeat(item, { quiet = false } = {}) {
       player.playVideo();
     }
     const confirmedPlaying = await playingPromise;
+    if (!isCurrentPlaybackRequest(requestId)) {
+      player.pauseVideo?.();
+      return false;
+    }
     if (!confirmedPlaying) {
       const message = "Não foi possível reproduzir este beat";
       console.error("[ANSEND player] YouTube did not enter PLAYING state", { beat, videoId });
@@ -15574,6 +15618,7 @@ async function playYouTubeBeat(item, { quiet = false } = {}) {
     if (!quiet) showToast(`Tocando agora: ${beat.title}`, "play");
     return true;
   } catch (error) {
+    if (!isCurrentPlaybackRequest(requestId)) return false;
     const message = "Não foi possível reproduzir este beat";
     console.error("[ANSEND player] YouTube playback error", { error, beat });
     PlayerStore.setStatus("error", { error: message });
@@ -15630,6 +15675,7 @@ function setTopBeatPlaying(isPlaying) {
 }
 
 async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) {
+  const requestId = nextPlayerPlaybackRequest();
   const beat = normalizePlayerBeat(item);
   if (!beat) return false;
   if (beat.source_type === "youtube") {
@@ -15649,6 +15695,7 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
   }
 
   pauseYouTubeBeat({ quiet: true });
+  suppressUpcomingAudioPauseEvents();
   audio.pause();
   PlayerStore.setCurrent(beat, { status: "loading" });
   updateMiniPlayer(beat);
@@ -15662,6 +15709,11 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
 
   try {
     await audio.play();
+    if (!isCurrentPlaybackRequest(requestId)) {
+      suppressUpcomingAudioPauseEvents(200);
+      audio.pause();
+      return false;
+    }
     showMiniPlayer();
     PlayerStore.setStatus("playing", {
       duration: Number(audio.duration) || 0,
@@ -15671,6 +15723,7 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
     if (!quiet) showToast(`Tocando agora: ${beat.title}`, "play");
     return true;
   } catch (error) {
+    if (!isCurrentPlaybackRequest(requestId)) return false;
     if (!suppressErrorLog) console.error("[ANSEND player] upload playback error", { error, beat });
     const message = "Não foi possível reproduzir este beat";
     PlayerStore.setStatus("error", { error: message });
@@ -15689,6 +15742,21 @@ async function toggleBeatPlayback(item) {
   if (!beat) return false;
   if (String(appState.playing || "") !== String(beat.id || "")) {
     return playBeat(beat);
+  }
+  if (appState.player.status === "loading") {
+    cancelCurrentPlaybackRequest();
+    const audio = topBeatAudio();
+    if (audio) {
+      suppressUpcomingAudioPauseEvents(200);
+      audio.pause();
+    }
+    pauseYouTubeBeat({ quiet: true });
+    PlayerStore.setStatus("paused", {
+      duration: Number(audio?.duration) || Number(appState.player.duration) || 0,
+      currentTime: Number(audio?.currentTime) || Number(appState.player.currentTime) || 0,
+    });
+    setTopBeatPlaying(false);
+    return false;
   }
   if (beat.source_type === "youtube") {
     const player = youtubeBeatPlayerState.player;
@@ -15754,6 +15822,7 @@ window.addEventListener("load", () => {
   });
   topBeatAudio()?.addEventListener("pause", () => {
     if (isCurrentYoutubeSource() || appState.player.status === "ended") return;
+    if (isAudioPauseEventSuppressed()) return;
     const audio = topBeatAudio();
     PlayerStore.setStatus("paused", {
       duration: Number(audio?.duration) || 0,
