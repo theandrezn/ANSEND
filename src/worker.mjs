@@ -983,6 +983,10 @@ export default {
     const url = new URL(request.url);
     let response;
 
+    if (url.hostname === "www.ansendmusic.site") {
+      return Response.redirect(`https://ansendmusic.site${url.pathname}${url.search}`, 301);
+    }
+
     if (url.pathname === "/api/checkout") {
       response = await handleCheckout(request, env);
       return withSecurityHeaders(response, request);
@@ -1050,9 +1054,12 @@ export default {
       return withSecurityHeaders(response, request);
     }
     const contentType = response.headers.get("content-type");
-    if (contentType && (contentType.includes("text/html") || contentType.includes("javascript") || contentType.includes("text/css")) && !contentType.includes("charset")) {
+    if (contentType && (contentType.includes("text/html") || contentType.includes("javascript") || contentType.includes("text/css"))) {
       const newHeaders = new Headers(response.headers);
-      newHeaders.set("content-type", `${contentType}; charset=utf-8`);
+      if (!contentType.includes("charset")) {
+        newHeaders.set("content-type", `${contentType}; charset=utf-8`);
+      }
+      newHeaders.set("Cache-Control", "public, max-age=0, must-revalidate");
       response = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,

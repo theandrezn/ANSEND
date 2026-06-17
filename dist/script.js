@@ -7,11 +7,8 @@ const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
-const AUTH_CACHE_KEY = "ansend-auth-cache-v1";
-const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
-const AUTH_PAGE_STARTED_AT = Date.now();
-const AUTH_LOGOUT_EVENT_GRACE_MS = 2000;
-const AUTH_RESYNC_THROTTLE_MS = 1200;
+const ANSEND_BUILD_ID = window.ANSEND_BUILD_ID || "dev";
+const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
@@ -53,6 +50,13 @@ const AUTH_DEBUG_ENABLED = Boolean(
   || location.hostname === "127.0.0.1"
   || localStorage.getItem("ansend-auth-debug") === "true"
 );
+console.info("[ANSEND BUILD]", {
+  buildId: ANSEND_BUILD_ID,
+  origin: location.origin,
+  href: location.href,
+  supabaseUrl: SUPABASE_CONFIG.url || null,
+  storageKey: SUPABASE_AUTH_STORAGE_KEY,
+});
 
 const localeConfig = {
   "pt-BR": {
@@ -1281,7 +1285,6 @@ const topBeatOfDay = {
   audio: "assets/top-beat-psiiiko.mp3",
   tags: ["Type Beat", "Top 1 do dia"],
 };
-const initialAuthCache = supabaseClient ? cachedAuthState() : null;
 
 const appState = {
   favorites: new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]")),
@@ -1380,12 +1383,12 @@ const appState = {
   releaseMode: "",
   catalogImport: null,
   followStates: {},
-  authUser: initialAuthCache?.user || null,
-  authSession: undefined,
+  authUser: null,
+  authSession: null,
   authLoading: Boolean(supabaseClient),
-  profileLoading: Boolean(supabaseClient && initialAuthCache?.user && !initialAuthCache?.profile),
-  profile: supabaseClient ? (initialAuthCache?.profile || null) : JSON.parse(localStorage.getItem("ansend-profile-preview") || "null"),
-  authReady: !supabaseClient || Boolean(initialAuthCache?.user),
+  profileLoading: false,
+  profile: null,
+  authReady: !supabaseClient,
   query: "",
   genre: "Todos",
   playing: null,
@@ -1704,64 +1707,6 @@ function safeReadJson(key, fallback = null) {
   } catch (_error) {
     return fallback;
   }
-}
-
-function cachedAuthState() {
-  const cached = safeReadJson(AUTH_CACHE_KEY, null);
-  if (!cached || typeof cached !== "object") return null;
-  if (!cached.user?.id) return null;
-  return cached;
-}
-
-function persistAuthCache() {
-  if (!appState.authUser?.id) return;
-  try {
-    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({
-      user: {
-        id: appState.authUser.id,
-        email: appState.authUser.email || "",
-        role: appState.authUser.role || "authenticated",
-        aud: appState.authUser.aud || "authenticated",
-        app_metadata: appState.authUser.app_metadata || {},
-        user_metadata: appState.authUser.user_metadata || {},
-      },
-      profile: appState.profile || null,
-      savedAt: new Date().toISOString(),
-    }));
-  } catch (error) {
-    debugAuth("auth_cache_write_failed", { error: error?.message || String(error) });
-  }
-}
-
-function clearAuthCache() {
-  localStorage.removeItem(AUTH_CACHE_KEY);
-}
-
-function isSupabaseAuthStorageKey(key) {
-  return Boolean(
-    key
-    && key.startsWith(`sb-${SUPABASE_PROJECT_REF}-`)
-    && key.includes("auth-token")
-  );
-}
-
-function hasStoredAuthSessionHint() {
-  if (cachedAuthState()?.user?.id) return true;
-  try {
-    return Object.keys(localStorage).some(isSupabaseAuthStorageKey);
-  } catch (_error) {
-    return false;
-  }
-}
-
-function authLogoutEventTimestamp(value) {
-  const timestamp = Number(value);
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function isFreshAuthLogoutEvent(value) {
-  const timestamp = authLogoutEventTimestamp(value);
-  return timestamp > 0 && timestamp >= AUTH_PAGE_STARTED_AT - AUTH_LOGOUT_EVENT_GRACE_MS;
 }
 
 function nexoDefaultQuiz(prompt = "") {
@@ -8551,7 +8496,6 @@ async function ensureStorageAuthSession({ forceRefresh = false } = {}) {
     await loadProfile(verifiedUser);
     syncAccountUi();
   }
-  persistAuthCache();
   return { session, user: verifiedUser };
 }
 
@@ -9214,7 +9158,6 @@ async function touchProfileLoginMetadata({ lastLoginAt = null, authProvider = nu
 }
 
 function debugAuth(label, details = {}) {
-  if (!AUTH_DEBUG_ENABLED) return;
   const rawSession = details.session || null;
   const safeSession = rawSession ? {
     hasSession: true,
@@ -9226,14 +9169,23 @@ function debugAuth(label, details = {}) {
     } : null,
   } : { hasSession: false };
   const { session, ...rest } = details;
-  console.debug("[ANSEND auth]", label, {
+  const diagnostic = {
+    buildId: ANSEND_BUILD_ID,
+    event: details.event || label,
+    origin: location.origin,
+    href: location.href,
+    supabaseUrl: SUPABASE_CONFIG.url || null,
+    storageKey: SUPABASE_AUTH_STORAGE_KEY,
     route: currentRoute(),
     authReady: appState.authReady,
     userId: appState.authUser?.id || null,
     profileId: appState.profile?.id || null,
     ...rest,
     session: safeSession,
-  });
+  };
+  window.__ANSEND_AUTH_DIAG__ = diagnostic;
+  if (!AUTH_DEBUG_ENABLED) return;
+  console.debug("[ANSEND auth]", label, diagnostic);
 }
 
 function authProviderFromUser(user) {
@@ -9278,7 +9230,6 @@ async function loadProfile(user) {
   if (error) {
     debugAuth("profile_load_error", { userId: user.id, error: error.message });
     appState.profile = appState.profile || profileFromAuthUser(user);
-    persistAuthCache();
     showToast("Não consegui carregar seu perfil do Supabase", "triangle-alert");
     return appState.profile;
   }
@@ -9294,7 +9245,6 @@ async function loadProfile(user) {
     }
     debugAuth("profile_created_from_pending", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
     appState.profile = result.data || appState.profile || fallbackProfile;
-    persistAuthCache();
     return appState.profile;
   }
   if (!data) {
@@ -9307,18 +9257,15 @@ async function loadProfile(user) {
       appState.profile = result.data;
     }
     debugAuth("profile_created_from_auth_user", { userId: user.id, profileId: result.data?.id || null, error: result.error?.message || null });
-    persistAuthCache();
     return appState.profile;
   }
   appState.profile = data;
   clearLocalPreviewProfile();
-  persistAuthCache();
   debugAuth("profile_loaded", { userId: user.id, profileId: data.id });
   return data;
   } catch (error) {
     debugAuth("profile_load_failed_transient", { userId: user.id, error: error?.message || String(error) });
     appState.profile = appState.profile || profileFromAuthUser(user);
-    persistAuthCache();
     return appState.profile;
   } finally {
     appState.profileLoading = false;
@@ -9460,7 +9407,8 @@ async function deleteBeatItem(itemId, sourceTable, triggerButton = null) {
 function syncAccountUi() {
   document.body.dataset.accountRole = appState.profile?.account_role || "visitor";
   const route = currentRoute();
-  const authRequiredForRoute = !hasAccountAccess() && protectedRoute(route);
+  const authPending = Boolean(supabaseClient && appState.authLoading && !appState.authReady);
+  const authRequiredForRoute = !authPending && !hasAccountAccess() && protectedRoute(route);
   document.body.classList.toggle("is-authenticated", hasAccountAccess());
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
@@ -9474,7 +9422,9 @@ function syncAccountUi() {
   // Update premium navbar auth button text based on login state
   const authBtnText = document.querySelector(".navbar-auth-btn .auth-btn-text");
   if (authBtnText) {
-    if (hasAccountAccess() || profile) {
+    if (authPending) {
+      authBtnText.textContent = appLocale.current === "pt-BR" ? "Carregando" : "Loading";
+    } else if (hasAccountAccess()) {
       const email = appState.authUser?.email || "";
       const name = profile?.display_name || profile?.username || profile?.full_name || profile?.artistic_name || email || "Minha Conta";
       authBtnText.textContent = name.length > 25 ? name.substring(0, 22) + "..." : name;
@@ -9485,7 +9435,7 @@ function syncAccountUi() {
 
   const notifContainer = document.getElementById("navbarNotificationContainer");
   if (notifContainer) {
-    if (hasAccountAccess() || profile) {
+    if (hasAccountAccess()) {
       notifContainer.removeAttribute("hidden");
     } else {
       notifContainer.setAttribute("hidden", "true");
@@ -9499,6 +9449,19 @@ function hasAccountAccess() {
 
 function protectedRoute(route) {
   return ["compras", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
+}
+
+function renderAuthLoading(reason = "session") {
+  debugAuth("auth_loading_screen", { reason });
+  appView.innerHTML = `
+    <section class="auth-loading-page" aria-label="Validando sessao" style="min-height:52vh; display:grid; place-items:center; padding:48px 24px; text-align:center;">
+      <div>
+        <i data-lucide="loader-2" class="auth-loading-icon" style="width:42px; height:42px; color:#A1A1AA; animation:spin 1.1s linear infinite;"></i>
+        <h2 style="font-size:22px; color:#fff; font-weight:700; margin-top:18px;">Validando sessao</h2>
+        <p style="color:#A1A1AA; font-size:14px; margin-top:8px;">Sincronizando seu acesso com seguranca.</p>
+      </div>
+    </section>`;
+  lucide.createIcons();
 }
 
 function renderReleaseAuthRequired(reason = "missing-session") {
@@ -9532,22 +9495,6 @@ function renderRoutePreservingAuthFocus(force = false) {
   renderRoute();
 }
 
-const INITIAL_AUTH_TIMEOUT_MS = 2200;
-
-function timeoutResult(label) {
-  return { timedOut: true, label, data: {}, error: null };
-}
-
-function withAuthTimeout(promise, label, timeoutMs = INITIAL_AUTH_TIMEOUT_MS) {
-  let timeoutId;
-  return Promise.race([
-    promise.then((value) => ({ ...value, timedOut: false })),
-    new Promise((resolve) => {
-      timeoutId = setTimeout(() => resolve(timeoutResult(label)), timeoutMs);
-    }),
-  ]).finally(() => clearTimeout(timeoutId));
-}
-
 async function loadPublicPlatformDataSafe(reason = "auth") {
   try {
     await loadPublicPlatformData();
@@ -9556,76 +9503,12 @@ async function loadPublicPlatformDataSafe(reason = "auth") {
   }
 }
 
-async function hydrateAuthenticatedUser(user, options = {}) {
-  if (!user) return;
-  appState.authUser = user;
-  appState.authReady = true;
-  appState.authLoading = false;
-  await loadProfile(user);
-  if (options.touchLogin) {
-    await touchProfileLoginMetadata({
-      lastLoginAt: options.lastLoginAt || null,
-      authProvider: authProviderFromUser(user),
-    });
-  }
-  await loadAdminStatus();
-  await loadOwnedCatalogItems();
-  persistAuthCache();
-  if (typeof initNotifications === "function") {
-    initNotifications(user.id);
-  }
+function renderApplication(forceRoute = false) {
+  syncAccountUi();
+  renderRoutePreservingAuthFocus(forceRoute);
 }
 
-let authResyncPromise = null;
-let lastAuthResyncAt = 0;
-
-async function resyncAuthSession(reason = "manual", options = {}) {
-  if (!supabaseClient) return false;
-  const now = Date.now();
-  if (!options.force && authResyncPromise) return authResyncPromise;
-  if (!options.force && now - lastAuthResyncAt < AUTH_RESYNC_THROTTLE_MS) return Boolean(appState.authUser?.id);
-  lastAuthResyncAt = now;
-  authResyncPromise = (async () => {
-    debugAuth("auth_resync_start", { reason });
-    try {
-      const sessionResult = await withAuthTimeout(supabaseClient.auth.getSession(), `resync_${reason}_getSession`);
-      if (sessionResult.timedOut) {
-        debugAuth("auth_resync_timeout", { reason, stage: "getSession" });
-        return false;
-      }
-      const session = sessionResult.data?.session || null;
-      if (!session?.user) {
-        debugAuth("auth_resync_no_session", { reason, error: sessionResult.error?.message || null });
-        return false;
-      }
-      const userResult = await withAuthTimeout(supabaseClient.auth.getUser(), `resync_${reason}_getUser`);
-      const user = userResult.data?.user || session.user;
-      if (!user?.id) {
-        debugAuth("auth_resync_no_user", { reason, timedOut: Boolean(userResult.timedOut), error: userResult.error?.message || null });
-        return false;
-      }
-      const previousUserId = appState.authUser?.id || null;
-      appState.authSession = session;
-      await loadPublicPlatformDataSafe(`auth_resync_${reason}`);
-      await hydrateAuthenticatedUser(user, { touchLogin: false });
-      appState.authReady = true;
-      appState.authLoading = false;
-      syncAccountUi();
-      renderRoutePreservingAuthFocus(previousUserId !== user.id || options.forceRender);
-      debugAuth("auth_resync_success", { reason, userId: user.id });
-      return true;
-    } catch (error) {
-      debugAuth("auth_resync_failed", { reason, error: error?.message || String(error) });
-      return false;
-    } finally {
-      authResyncPromise = null;
-    }
-  })();
-  return authResyncPromise;
-}
-
-function clearAuthenticatedSession(reason = "no-session", options = {}) {
-  const explicit = Boolean(options.explicit || reason.includes("signout") || reason.includes("logout") || reason.includes("SIGNED_OUT"));
+function clearAuthenticatedApplicationState(reason = "no-session") {
   appState.authUser = null;
   appState.authSession = null;
   appState.authLoading = false;
@@ -9633,10 +9516,6 @@ function clearAuthenticatedSession(reason = "no-session", options = {}) {
   appState.profile = null;
   appState.isAdmin = false;
   appState.adminProfiles = [];
-  if (explicit) {
-    clearAuthCache();
-    clearLocalPreviewProfile();
-  }
   appState.ownedCatalogItems = [];
   syncCatalogCompatibilityState();
   debugAuth(reason, { reason });
@@ -9645,37 +9524,91 @@ function clearAuthenticatedSession(reason = "no-session", options = {}) {
   }
 }
 
-async function reconcileInitialSession(sessionPromise, reason = "initial_timeout") {
-  try {
-    const { data, error } = await sessionPromise;
-    if (error) {
-      debugAuth("late_session_error", { reason, error: error.message });
-      return;
-    }
-    const user = data?.session?.user || null;
-    if (!user) {
-      clearAuthenticatedSession("late_no_session_confirmed", { explicit: true });
-      appState.authReady = true;
-      syncAccountUi();
-      renderRoutePreservingAuthFocus(true);
-      return;
-    }
-    appState.authSession = data.session;
-    if (appState.authUser?.id === user.id) {
-      persistAuthCache();
-      return;
-    }
-    await loadPublicPlatformDataSafe("late_session");
-    await hydrateAuthenticatedUser(user, { touchLogin: false });
+async function applySession(session, options = {}) {
+  const source = options.source || "session";
+  const user = session?.user || null;
+  debugAuth("apply_session", { source, event: source, session });
+  appState.authSession = session || null;
+  appState.authUser = user;
+  appState.authReady = true;
+  appState.authLoading = false;
+
+  if (!user?.id) {
+    clearAuthenticatedApplicationState(`apply_session_${source}_anonymous`);
     appState.authReady = true;
-    syncAccountUi();
-    renderRoutePreservingAuthFocus(true);
-  } catch (error) {
-    debugAuth("late_session_failed", { reason, error: error?.message || String(error) });
+    appState.authLoading = false;
+    return false;
   }
+
+  if (appState.profile?.id && appState.profile.id !== user.id) {
+    appState.profile = null;
+  }
+  await loadPublicPlatformDataSafe(`apply_session_${source}`);
+  try {
+    await loadProfile(user);
+  } catch (error) {
+    debugAuth("apply_session_profile_failed", { source, userId: user.id, error: error?.message || String(error) });
+    appState.profile = appState.profile || profileFromAuthUser(user);
+  }
+  if (options.touchLogin) {
+    try {
+      await touchProfileLoginMetadata({
+        lastLoginAt: options.lastLoginAt || null,
+        authProvider: authProviderFromUser(user),
+      });
+    } catch (error) {
+      debugAuth("apply_session_touch_login_failed", { source, userId: user.id, error: error?.message || String(error) });
+    }
+  }
+  const followups = await Promise.allSettled([
+    loadAdminStatus(),
+    loadOwnedCatalogItems(),
+  ]);
+  followups.forEach((result, index) => {
+    if (result.status === "rejected") {
+      debugAuth("apply_session_data_failed", {
+        source,
+        stage: index === 0 ? "admin" : "catalog",
+        error: result.reason?.message || String(result.reason),
+      });
+    }
+  });
+  if (typeof initNotifications === "function") {
+    initNotifications(user.id);
+  }
+  return true;
 }
 
-async function initAuth() {
+let authStateSubscription = null;
+let authStateListenerRegistered = false;
+let authStateApplyPromise = Promise.resolve();
+
+function registerAuthStateListener() {
+  if (!supabaseClient || authStateListenerRegistered) return;
+  authStateListenerRegistered = true;
+  const { data } = supabaseClient.auth.onAuthStateChange((event, session) => {
+    authStateApplyPromise = authStateApplyPromise
+      .catch(() => {})
+      .then(async () => {
+        const oldUserId = appState.authUser?.id || null;
+        debugAuth("auth_state_change", { event, session });
+        await applySession(session || null, {
+          source: event,
+          touchLogin: event === "SIGNED_IN",
+          lastLoginAt: event === "SIGNED_IN" ? new Date().toISOString() : null,
+        });
+        if (event === "SIGNED_IN") {
+          clearOAuthRedirectIntent();
+          clearEmailConfirmation();
+          clearEmailConfirmationIntent();
+        }
+        renderApplication(oldUserId !== (appState.authUser?.id || null) || event === "SIGNED_OUT");
+      });
+  });
+  authStateSubscription = data?.subscription || null;
+}
+
+async function initializeAuth() {
   const oauthError = readOAuthCallbackError();
   const shouldRedirectAfterOAuth = hasOAuthRedirectIntent();
   const shouldRedirectAfterEmailConfirmation = hasEmailConfirmationIntent();
@@ -9690,52 +9623,24 @@ async function initAuth() {
     appState.ownedCatalogItems = [];
     syncCatalogCompatibilityState();
     appState.authReady = true;
-    syncAccountUi();
-    renderRoutePreservingAuthFocus();
+    appState.authLoading = false;
+    renderApplication(true);
     return;
   }
+  registerAuthStateListener();
   const previousUserId = appState.authUser?.id || null;
   appState.authLoading = true;
   const stopAuthPerf = perfStart("Auth session loaded");
-  const renderedCommunityEarly = currentRoute() === COMMUNITY_ROUTE && !shouldRedirectAfterOAuth && !shouldRedirectAfterEmailConfirmation;
-  if (renderedCommunityEarly) {
-    renderRoute();
-  }
-  const sessionPromise = supabaseClient.auth.getSession();
   try {
-    const sessionResult = await withAuthTimeout(sessionPromise, "getSession");
-    if (sessionResult.timedOut) {
-      debugAuth("init_get_session_timeout", { timeoutMs: INITIAL_AUTH_TIMEOUT_MS });
-      reconcileInitialSession(sessionPromise, "getSession_timeout");
-      await loadPublicPlatformDataSafe("initial_timeout");
-      appState.authReady = true;
-      appState.authLoading = false;
-    } else {
-      const session = sessionResult.data?.session || null;
-      appState.authSession = session;
-      const userResult = session
-        ? await withAuthTimeout(supabaseClient.auth.getUser(), "getUser")
-        : { data: { user: null }, error: null, timedOut: false };
-      const user = userResult.data?.user || session?.user || null;
-      debugAuth("init_get_session", {
-        session,
-        getSessionError: sessionResult.error?.message || null,
-        getUserId: user?.id || null,
-        getUserTimedOut: Boolean(userResult.timedOut),
-        getUserError: userResult.error?.message || null,
-      });
-      await loadPublicPlatformDataSafe("initial_session");
-      if (user) {
-        await hydrateAuthenticatedUser(user, {
-          touchLogin: true,
-          lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
-        });
-      } else {
-        clearAuthenticatedSession("init_no_session", { explicit: true });
-      }
-    }
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) debugAuth("initialize_get_session_error", { error: error.message });
+    await applySession(data?.session || null, {
+      source: "initial_getSession",
+      touchLogin: Boolean(data?.session?.user && shouldRedirectAfterOAuth),
+      lastLoginAt: shouldRedirectAfterOAuth ? new Date().toISOString() : null,
+    });
   } catch (error) {
-    debugAuth("init_auth_failed", { error: error?.message || String(error) });
+    debugAuth("initialize_auth_failed", { error: error?.message || String(error) });
     await loadPublicPlatformDataSafe("initial_error");
     appState.authReady = true;
     appState.authLoading = false;
@@ -9763,39 +9668,7 @@ async function initAuth() {
     renderRoutePreservingAuthFocus(true);
     return;
   }
-  renderRoutePreservingAuthFocus(previousUserId !== (appState.authUser?.id || null));
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    debugAuth("auth_state_change", { event: _event, session });
-    const oldUserId = appState.authUser?.id || null;
-    try {
-      await loadPublicPlatformDataSafe("auth_state_change");
-      if (session?.user) {
-        appState.authSession = session;
-        appState.authUser = session.user;
-        await hydrateAuthenticatedUser(session.user, {
-          touchLogin: _event === "SIGNED_IN",
-          lastLoginAt: _event === "SIGNED_IN" ? new Date().toISOString() : null,
-        });
-        if (_event === "SIGNED_IN") {
-          clearOAuthRedirectIntent();
-          clearEmailConfirmation();
-          clearEmailConfirmationIntent();
-        }
-      } else if (_event === "SIGNED_OUT" || _event === "USER_DELETED") {
-        clearAuthenticatedSession(`auth_state_${_event}`, { explicit: true });
-      } else {
-        debugAuth("auth_state_null_session_ignored", { event: _event });
-      }
-    } catch (error) {
-      debugAuth("auth_state_failed", { event: _event, error: error?.message || String(error) });
-      if (session?.user) appState.authUser = session.user;
-    } finally {
-      appState.authReady = true;
-      appState.authLoading = false;
-      syncAccountUi();
-      renderRoutePreservingAuthFocus(oldUserId !== (appState.authUser?.id || null));
-    }
-  });
+  renderApplication(previousUserId !== (appState.authUser?.id || null));
 }
 
 function persistOnboarding(profile) {
@@ -14630,7 +14503,8 @@ function renderRoute() {
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
   syncPrimaryNavbarVisibility(route);
   const accountAccess = hasAccountAccess();
-  const authRequiredForRoute = !accountAccess && protectedRoute(route);
+  const authPending = Boolean(supabaseClient && appState.authLoading && !appState.authReady);
+  const authRequiredForRoute = !authPending && !accountAccess && protectedRoute(route);
   appView.classList.add("app-view");
   appView.classList.toggle("feed", route === "feed");
   document.body.classList.toggle("is-authenticated", accountAccess);
@@ -14642,6 +14516,13 @@ function renderRoute() {
   appView.classList.remove("route-slide-in", "route-slide-left");
   document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
+  if (authPending) {
+    renderAuthLoading(`route_${route}`);
+    window.scrollTo({ top: 0, behavior: "auto" });
+    PageTransition(appView, route);
+    hydrateView();
+    return;
+  }
   if (authRequiredForRoute) {
     appState.sellerMode = appState.sellerMode || "login";
     if (route === "cadastrar") {
@@ -15878,13 +15759,13 @@ async function handleAccountSubmit(form) {
     if (mode === "login") {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-      if (sessionError) throw sessionError;
-      appState.authUser = sessionData.session?.user || data.session?.user || data.user || null;
-      if (!appState.authUser || !sessionData.session) throw new Error("Sessao Supabase nao foi criada para este login.");
-      await loadProfile(appState.authUser);
-      await loadAdminStatus();
-      await loadCatalogItems();
+      const session = data.session || (await supabaseClient.auth.getSession()).data?.session || null;
+      if (!session?.user?.id) throw new Error("Sessao Supabase nao foi criada para este login.");
+      await applySession(session, {
+        source: "password_login",
+        touchLogin: true,
+        lastLoginAt: new Date().toISOString(),
+      });
       setAuthFormMessage(form, "Login realizado. Abrindo seu painel...", "success");
       showToast("Login realizado", "cloud-check");
       redirectAfterLogin();
@@ -15909,19 +15790,19 @@ async function handleAccountSubmit(form) {
     if (data.user) {
       localStorage.setItem(pendingProfileKey(data.user.id), JSON.stringify(profile));
     }
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-    if (sessionError) throw sessionError;
-    appState.authUser = sessionData.session?.user || data.session?.user || null;
-    if (appState.authUser) {
-      const result = await upsertProfile(profileFromAuthUser(appState.authUser, profile));
+    const session = data.session || (await supabaseClient.auth.getSession()).data?.session || null;
+    if (session?.user?.id) {
+      const result = await upsertProfile(profileFromAuthUser(session.user, profile));
       if (result.error) {
         console.error("[ANSEND auth] signup profile upsert failed", result.error);
-        await loadProfile(appState.authUser);
       } else {
-        localStorage.removeItem(pendingProfileKey(appState.authUser.id));
+        localStorage.removeItem(pendingProfileKey(session.user.id));
       }
-      await loadAdminStatus();
-      await loadOwnedCatalogItems();
+      await applySession(session, {
+        source: "signup",
+        touchLogin: true,
+        lastLoginAt: new Date().toISOString(),
+      });
       showToast("Conta criada e perfil salvo", "badge-check");
     } else if (data.user) {
       rememberEmailConfirmation({
@@ -15960,17 +15841,14 @@ async function handleAccountSubmit(form) {
 }
 
 async function handleLogout() {
-  localStorage.setItem(AUTH_EXPLICIT_LOGOUT_KEY, String(Date.now()));
-  try {
-    if (supabaseClient && appState.authUser) {
-      await supabaseClient.auth.signOut();
-    }
-  } finally {
-    localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+  } else {
+    clearLocalPreviewProfile();
   }
-  clearAuthenticatedSession("logout_explicit", { explicit: true });
+  await applySession(null, { source: "logout" });
   showToast("Você saiu da conta ANSEND", "log-out");
-  renderRoute();
+  renderApplication(true);
 }
 
 function scrollCatalog(button, direction) {
@@ -15985,46 +15863,6 @@ function scrollCatalog(button, direction) {
 const menuToggle = document.querySelector(".menu-toggle");
 menuToggle?.addEventListener("click", () => document.body.classList.toggle("menu-open"));
 window.addEventListener("hashchange", () => renderRoutePreservingAuthFocus());
-window.addEventListener("storage", (event) => {
-  if (event.key === AUTH_EXPLICIT_LOGOUT_KEY) {
-    if (event.newValue && isFreshAuthLogoutEvent(event.newValue)) {
-      clearAuthenticatedSession("storage_logout_explicit", { explicit: true });
-      syncAccountUi();
-      renderRoutePreservingAuthFocus(true);
-    } else if (event.newValue) {
-      debugAuth("storage_logout_stale_ignored", { value: event.newValue });
-    }
-    return;
-  }
-  if (event.key === AUTH_CACHE_KEY && event.newValue && !appState.authUser) {
-    const cached = cachedAuthState();
-    if (!cached?.user?.id) return;
-    appState.profile = cached.profile || appState.profile;
-    appState.authLoading = true;
-    syncAccountUi();
-    resyncAuthSession("auth_cache_storage", { forceRender: true });
-    return;
-  }
-  if (isSupabaseAuthStorageKey(event.key) && event.newValue && !appState.authUser) {
-    appState.authLoading = true;
-    syncAccountUi();
-    resyncAuthSession("supabase_storage", { forceRender: true });
-  }
-});
-
-function resyncVisibleAuthSession(reason = "visible") {
-  if (!supabaseClient || appState.authUser || !hasStoredAuthSessionHint()) return;
-  appState.authLoading = true;
-  syncAccountUi();
-  resyncAuthSession(reason, { forceRender: true });
-}
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") resyncVisibleAuthSession("visibility");
-});
-
-window.addEventListener("focus", () => resyncVisibleAuthSession("focus"));
-
 document.addEventListener("pointerdown", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
 }, true);
@@ -19310,8 +19148,9 @@ detectLocaleWithGeo()
   .finally(() => {
     initSidebarListeners();
     initNavbarListeners();
-    renderRoutePreservingAuthFocus();
-    initAuth();
+    syncAccountUi();
+    renderRoutePreservingAuthFocus(true);
+    initializeAuth();
   });
 
 

@@ -4,6 +4,10 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
+const liveEmail = process.env.ANSEND_E2E_EMAIL || "";
+const livePassword = process.env.ANSEND_E2E_PASSWORD || "";
+const liveBaseURL = process.env.ANSEND_E2E_BASE_URL || "https://ansendmusic.site";
+
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -46,15 +50,15 @@ function serveStatic(req, res) {
 function supabaseMock() {
   return `
     (() => {
+      const storageKey = "ansend-test-session-state";
       const user = {
         id: "multi-tab-user",
         email: "multi@ansend.test",
         role: "authenticated",
         aud: "authenticated",
-        app_metadata: { provider: "google" },
+        app_metadata: { provider: "password" },
         user_metadata: { full_name: "Sessao Multi Aba", display_name: "Sessao Multi Aba", username: "multiaba" }
       };
-      const session = { user, access_token: "multi-tab-token", expires_at: Math.floor(Date.now() / 1000) + 3600 };
       const profile = {
         id: user.id,
         email: user.email,
@@ -62,9 +66,21 @@ function supabaseMock() {
         display_name: "Sessao Multi Aba",
         username: "multiaba",
         account_role: "artista",
-        avatar_url: "/assets/ansend-logo-icon.png",
+        avatar_url: "/assets/ansend-logo-square.png",
         music_styles: ["Trap"]
       };
+      const session = () => ({
+        user,
+        access_token: "redacted-local-test-token",
+        refresh_token: "redacted-local-refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      });
+      function signedIn() {
+        return localStorage.getItem(storageKey) === "signed-in";
+      }
+      function emit(callbacks, event, currentSession) {
+        callbacks.forEach((callback) => callback(event, currentSession));
+      }
       function emptyList() {
         return Promise.resolve({ data: [], error: null });
       }
@@ -109,20 +125,38 @@ function supabaseMock() {
       }
       window.supabase = {
         createClient(url, key, options) {
-          window.__supabaseOptions = options;
-          let signedIn = localStorage.getItem("ansend-test-supabase-session") !== "signed-out";
-          window.__ansendTestSetSignedIn = (value) => { signedIn = Boolean(value); };
+          window.__supabaseOptions = { url, key, auth: options.auth };
+          const callbacks = [];
+          window.addEventListener("storage", (event) => {
+            if (event.key !== storageKey) return;
+            emit(callbacks, event.newValue === "signed-in" ? "SIGNED_IN" : "SIGNED_OUT", event.newValue === "signed-in" ? session() : null);
+          });
+          window.__ansendTestRefreshToken = () => emit(callbacks, "TOKEN_REFRESHED", signedIn() ? session() : null);
           return {
             auth: {
-              getSession: async () => ({ data: { session: signedIn ? session : null }, error: null }),
-              getUser: async () => ({ data: { user: signedIn ? user : null }, error: null }),
-              onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+              getSession: async () => ({ data: { session: signedIn() ? session() : null }, error: null }),
+              getUser: async () => ({ data: { user: signedIn() ? user : null }, error: null }),
+              onAuthStateChange: (callback) => {
+                callbacks.push(callback);
+                return { data: { subscription: { unsubscribe() {} } } };
+              },
+              signInWithPassword: async () => {
+                localStorage.setItem(storageKey, "signed-in");
+                const currentSession = session();
+                emit(callbacks, "SIGNED_IN", currentSession);
+                return { data: { session: currentSession, user }, error: null };
+              },
               signOut: async () => {
-                signedIn = false;
-                localStorage.setItem("ansend-test-supabase-session", "signed-out");
+                localStorage.setItem(storageKey, "signed-out");
+                emit(callbacks, "SIGNED_OUT", null);
                 return { error: null };
               },
-              signInWithOAuth: async () => ({ data: { url: "#" }, error: null })
+              signInWithOAuth: async () => ({ data: { url: "#" }, error: null }),
+              refreshSession: async () => {
+                const currentSession = signedIn() ? session() : null;
+                emit(callbacks, "TOKEN_REFRESHED", currentSession);
+                return { data: { session: currentSession }, error: null };
+              }
             },
             from: tableApi,
             rpc: async (name) => ({ data: name === "is_current_user_admin" ? false : [], error: null }),
@@ -139,115 +173,158 @@ function supabaseMock() {
   `;
 }
 
-async function waitAuthenticated(page) {
-  await page.waitForFunction(() => document.body.classList.contains("is-authenticated"), { timeout: 30000 });
-  await page.waitForFunction(() => localStorage.getItem("ansend-auth-cache-v1")?.includes("multi-tab-user"), { timeout: 10000 });
-}
-
-async function run() {
+async function startServer() {
   const server = http.createServer(serveStatic);
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
   });
-  const port = server.address().port;
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ baseURL: `http://127.0.0.1:${port}` });
+  return server;
+}
 
-  await context.route("**/@supabase/supabase-js@*/dist/umd/supabase.min.js", (route) => {
-    route.fulfill({ contentType: "text/javascript", body: supabaseMock() });
-  });
-  await context.route("**/lucide.min.js", (route) => {
-    route.fulfill({ contentType: "text/javascript", body: "window.lucide = { createIcons() {} };" });
-  });
-
-  try {
-    await context.addInitScript(() => localStorage.setItem("ansend-test-supabase-session", "signed-out"));
-    const delayed = await context.newPage();
-    await delayed.goto("/index.html#feed", { waitUntil: "domcontentloaded" });
-    await delayed.waitForFunction(() => document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent?.trim() === "Entrar", { timeout: 10000 });
-    await delayed.evaluate(() => {
-      window.__ansendTestSetSignedIn?.(true);
-      localStorage.setItem("ansend-test-supabase-session", "signed-in");
-      localStorage.setItem("ansend-auth-cache-v1", JSON.stringify({
-        user: {
-          id: "multi-tab-user",
-          email: "multi@ansend.test",
-          role: "authenticated",
-          aud: "authenticated",
-          app_metadata: { provider: "google" },
-          user_metadata: { full_name: "Sessao Multi Aba", display_name: "Sessao Multi Aba", username: "multiaba" }
-        },
-        profile: {
-          id: "multi-tab-user",
-          email: "multi@ansend.test",
-          full_name: "Sessao Multi Aba",
-          display_name: "Sessao Multi Aba",
-          username: "multiaba",
-          account_role: "artista",
-          avatar_url: "/assets/ansend-logo-icon.png",
-          music_styles: ["Trap"]
-        },
-        savedAt: new Date().toISOString()
-      }));
-      window.dispatchEvent(new StorageEvent("storage", {
-        key: "ansend-auth-cache-v1",
-        newValue: localStorage.getItem("ansend-auth-cache-v1"),
-        storageArea: localStorage
-      }));
+async function installAuthTextRecorder(context) {
+  await context.addInitScript(() => {
+    window.__authButtonTextHistory = [];
+    const record = () => {
+      const text = document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent?.trim();
+      if (text) window.__authButtonTextHistory.push(text);
+    };
+    window.addEventListener("DOMContentLoaded", () => {
+      record();
+      new MutationObserver(record).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     });
-    await waitAuthenticated(delayed);
-    const delayedButton = await delayed.evaluate(() => document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent || "");
-    if (!delayedButton.includes("Sessao Multi Aba") && !delayedButton.includes("multiaba")) {
-      throw new Error(`A tab that started anonymous did not hydrate the shared authenticated session: ${delayedButton}`);
-    }
-    await delayed.close();
-    await context.addInitScript(() => localStorage.setItem("ansend-test-supabase-session", "signed-in"));
+  });
+}
 
-    const perfil = await context.newPage();
-    const feed = await context.newPage();
-    await Promise.all([
-      perfil.goto("/index.html#perfil", { waitUntil: "domcontentloaded" }),
-      feed.goto("/index.html#feed", { waitUntil: "domcontentloaded" }),
-    ]);
-    await Promise.all([waitAuthenticated(perfil), waitAuthenticated(feed)]);
+async function waitAuthenticated(page) {
+  await page.waitForFunction(() => document.body.classList.contains("is-authenticated"), { timeout: 45000 });
+  await page.waitForFunction(() => {
+    const text = document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent?.trim() || "";
+    return text && text !== "Entrar" && text !== "Sign In" && text !== "Carregando" && text !== "Loading";
+  }, { timeout: 45000 });
+}
 
-    const authOptions = await perfil.evaluate(() => window.__supabaseOptions?.auth || {});
-    if (!authOptions.persistSession || !authOptions.autoRefreshToken || !authOptions.detectSessionInUrl || !authOptions.storage) {
-      throw new Error(`Supabase auth options are not persistent/localStorage based: ${JSON.stringify(authOptions)}`);
-    }
+async function waitLoggedOut(page) {
+  await page.waitForFunction(() => !document.body.classList.contains("is-authenticated"), { timeout: 30000 });
+  await page.waitForFunction(() => {
+    const text = document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent?.trim() || "";
+    return text === "Entrar" || text === "Sign In";
+  }, { timeout: 30000 });
+}
 
-    await Promise.all([
-      perfil.reload({ waitUntil: "domcontentloaded" }),
-      feed.reload({ waitUntil: "domcontentloaded" }),
-    ]);
-    await Promise.all([waitAuthenticated(perfil), waitAuthenticated(feed)]);
+async function login(page, email, password) {
+  await page.waitForSelector("#seller-email", { timeout: 45000 });
+  await page.fill("#seller-email", email);
+  await page.fill("#seller-password", password);
+  await Promise.all([
+    waitAuthenticated(page),
+    page.locator(".seller-auth-form").evaluate((form) => form.requestSubmit()),
+  ]);
+}
 
-    await perfil.evaluate(() => localStorage.setItem("ansend-explicit-logout-at", String(Date.now() - 60000)));
-    await feed.waitForTimeout(300);
-    const ignoredStaleLogout = await feed.evaluate(() => document.body.classList.contains("is-authenticated"));
-    if (!ignoredStaleLogout) throw new Error("A stale logout marker from another tab cleared the active session.");
+async function diagnostics(page) {
+  return page.evaluate(() => ({
+    diag: window.__ANSEND_AUTH_DIAG__ || null,
+    authTextHistory: window.__authButtonTextHistory || [],
+    supabaseOptions: window.__supabaseOptions?.auth || null,
+  }));
+}
 
-    await perfil.evaluate(() => localStorage.setItem("ansend-test-profile-fail-next", "1"));
-    await perfil.reload({ waitUntil: "domcontentloaded" });
-    await waitAuthenticated(perfil);
-    const stillHasCachedProfile = await perfil.evaluate(() => {
-      const cached = JSON.parse(localStorage.getItem("ansend-auth-cache-v1") || "null");
-      return cached?.profile?.username === "multiaba";
+async function runScenario({ context, baseURL, email, password, localMode }) {
+  await installAuthTextRecorder(context);
+  if (localMode) {
+    await context.addInitScript(() => {
+      if (!localStorage.getItem("ansend-test-session-state")) {
+        localStorage.setItem("ansend-test-session-state", "signed-out");
+      }
     });
-    if (!stillHasCachedProfile) throw new Error("Transient profile failure removed the cached profile/session.");
-
-    await perfil.evaluate(() => document.querySelector('[data-action="logout-account"]')?.click());
-    await Promise.all([
-      perfil.waitForFunction(() => !document.body.classList.contains("is-authenticated"), { timeout: 10000 }),
-      feed.waitForFunction(() => !document.body.classList.contains("is-authenticated"), { timeout: 10000 }),
-    ]);
-  } finally {
-    await browser.close();
-    await new Promise((resolve) => server.close(resolve));
+    await context.route("**/@supabase/supabase-js@*/dist/umd/supabase.min.js", (route) => {
+      route.fulfill({ contentType: "text/javascript", body: supabaseMock() });
+    });
+    await context.route("**/lucide.min.js", (route) => {
+      route.fulfill({ contentType: "text/javascript", body: "window.lucide = { createIcons() {} };" });
+    });
   }
 
-  console.log("Auth multi-tab OK: refresh/profile failures keep session and explicit logout syncs tabs.");
+  const pageA = await context.newPage();
+  await pageA.goto(`${baseURL}/#vendedor`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await login(pageA, email, password);
+
+  const pageB = await context.newPage();
+  await pageB.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await waitAuthenticated(pageB);
+  const beforeProfile = await diagnostics(pageB);
+  if (beforeProfile.authTextHistory.includes("Entrar") || beforeProfile.authTextHistory.includes("Sign In")) {
+    throw new Error(`Second tab rendered anonymous navbar before session resolution: ${JSON.stringify(beforeProfile.authTextHistory)}`);
+  }
+
+  await pageB.goto(`${baseURL}/#perfil`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await waitAuthenticated(pageB);
+  await Promise.all([
+    pageA.reload({ waitUntil: "domcontentloaded" }),
+    pageB.reload({ waitUntil: "domcontentloaded" }),
+  ]);
+  await Promise.all([waitAuthenticated(pageA), waitAuthenticated(pageB)]);
+
+  await pageB.close();
+  const reopenedB = await context.newPage();
+  await reopenedB.goto(`${baseURL}/#perfil`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await waitAuthenticated(reopenedB);
+
+  if (localMode) {
+    await reopenedB.evaluate(() => window.__ansendTestRefreshToken?.());
+    await waitAuthenticated(reopenedB);
+  } else {
+    await reopenedB.evaluate(() => window.__ANSEND_AUTH_DIAG__);
+  }
+
+  const collected = await Promise.all([pageA, reopenedB].map(diagnostics));
+  const storageKeys = collected.map((item) => item.diag?.storageKey).filter(Boolean);
+  const userIds = collected.map((item) => item.diag?.userId).filter(Boolean);
+  if (new Set(storageKeys).size !== 1 || !storageKeys[0]) {
+    throw new Error(`Tabs disagree on Supabase storage key: ${JSON.stringify(collected)}`);
+  }
+  if (new Set(userIds).size !== 1 || !userIds[0]) {
+    throw new Error(`Tabs disagree on authenticated userId: ${JSON.stringify(collected)}`);
+  }
+
+  const authOptions = collected.find((item) => item.supabaseOptions)?.supabaseOptions;
+  if (localMode && (!authOptions?.persistSession || !authOptions?.autoRefreshToken || !authOptions?.detectSessionInUrl || !authOptions?.storage)) {
+    throw new Error(`Supabase auth options are not persistent/localStorage based: ${JSON.stringify(authOptions)}`);
+  }
+
+  await pageA.evaluate(() => document.querySelector('[data-action="logout-account"]')?.click());
+  await Promise.all([waitLoggedOut(pageA), waitLoggedOut(reopenedB)]);
+
+  return collected.map((item) => item.diag);
+}
+
+async function run() {
+  const localMode = !(liveEmail && livePassword);
+  let server = null;
+  let baseURL = liveBaseURL.replace(/\/$/, "");
+  if (localMode) {
+    server = await startServer();
+    baseURL = `http://127.0.0.1:${server.address().port}`;
+    console.warn("ANSEND_E2E_EMAIL/PASSWORD not set; running multi-tab auth against local Supabase Auth mock.");
+  }
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ baseURL });
+
+  try {
+    const diag = await runScenario({
+      context,
+      baseURL,
+      email: liveEmail || "multi@ansend.test",
+      password: livePassword || "password-local-test",
+      localMode,
+    });
+    console.log(`Auth multi-tab OK (${localMode ? "local mock" : "live"}): ${JSON.stringify(diag)}`);
+  } finally {
+    await browser.close();
+    if (server) await new Promise((resolve) => server.close(resolve));
+  }
 }
 
 run().catch((error) => {

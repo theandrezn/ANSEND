@@ -87,18 +87,24 @@ async function run() {
       hash: await page.evaluate(() => location.hash),
       text: await page.locator("body").innerText().catch(() => ""),
       appHeight: await page.locator("#appView").evaluate((element) => Math.round(element.getBoundingClientRect().height)).catch(() => 0),
+      authLoading: await page.locator(".auth-loading-page").isVisible().catch(() => false),
       releaseFallback: await page.locator(".release-fallback-page").isVisible().catch(() => false),
       feedHero: await page.locator(".ai-hero").isVisible().catch(() => false),
+      authButtonText: await page.locator(".navbar-auth-btn .auth-btn-text").innerText().catch(() => ""),
     })));
 
-    const blocked = results.filter((result) =>
-      result.text.includes("Preparando acesso seguro") ||
-      result.text.includes("Verificando sua conta") ||
+    const failures = results.filter((result) =>
+      !result.authLoading ||
+      result.releaseFallback ||
+      result.feedHero ||
+      result.text.includes("Autenticacao Necessaria") ||
+      result.text.includes("Autenticação Necessária") ||
+      result.authButtonText.trim() === "Entrar" ||
       result.appHeight < 120
     );
 
-    if (blocked.length || !results[0].releaseFallback || !results[1].feedHero) {
-      console.error(JSON.stringify({ results, blocked }, null, 2));
+    if (failures.length) {
+      console.error(JSON.stringify({ results, failures }, null, 2));
       process.exit(1);
     }
   } finally {
@@ -106,7 +112,7 @@ async function run() {
     await new Promise((resolve) => server.close(resolve));
   }
 
-  console.log("Auth no-block OK: stalled Supabase session checks do not lock multiple tabs.");
+  console.log("Auth no-block OK: unresolved Supabase session renders neutral loading, not anonymous UI.");
 }
 
 run().catch((error) => {

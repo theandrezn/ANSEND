@@ -9,7 +9,7 @@
     "test:routes": "node tests/route-stability-check.js",
     "test:auth-focus": "node tests/auth-focus-check.js",
     "test:auth-no-block": "node tests/auth-no-block-check.js",
-    "test:auth-multi-tab": "node tests/auth-multi-tab-session-check.js",
+    "test:auth-multi-tab": "node tests/auth-architecture-check.js && node tests/auth-multi-tab-session-check.js",
     "test:paint-layer": "node tests/paint-layer-check.js",
     "test:profile-editor": "node tests/profile-editor-check.js",
     "test:profile-persistence": "node tests/profile-persistence-check.js",
