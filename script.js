@@ -11613,7 +11613,6 @@ function renderBeatDetail() {
     }
   }
 }
-}
 
 function renderSettings() {
   const profile = activeProfile();
@@ -13765,7 +13764,15 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
       <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:600px; margin:80px auto; padding:40px 32px; background:#080808; border:1px solid #1F1F1F; border-radius:16px; text-align:center;">
         <div class="release-fallback-head" style="margin-bottom:32px;">
           <i data-lucide="shield-alert" style="width:48px; height:48px; color:#71717A; margin:0 auto 16px;"></i>
-          <h2 style="font-size:24px; color:#fff; font-weight:700; margin-  const profile = activeProfile();
+          <h2 style="font-size:24px; color:#fff; font-weight:700; margin-top:12px; letter-spacing:-0.02em;">Entre para lançar música</h2>
+          <p style="color:#71717A; font-size:14px; margin-top:8px; line-height:1.5;">Você precisa criar uma conta ou fazer login para publicar beats na plataforma.</p>
+        </div>
+        <button type="button" data-route="vendedor" style="background:#ffffff; border:none; color:#000000; font-weight:600; padding:12px 28px; border-radius:8px; cursor:pointer; font-size:14px;">Entrar / Criar conta</button>
+      </section>`;
+    lucide.createIcons();
+    return;
+  }
+  const profile = activeProfile();
   const display = profileDisplayData(profile);
   const releaseProducerName = display.name || profile?.artistic_name || profile?.full_name || profile?.username || appState.authUser?.email?.split("@")[0] || "ANSEND";
   const beatId = generateUUID();
@@ -19032,7 +19039,7 @@ async function loadUserOrders() {
   if (!supabaseClient || !appState.authUser) return [];
   const { data, error } = await supabaseClient
     .from("orders")
-    .select(\`
+    .select(`
       id,
       total_cents,
       status,
@@ -19052,7 +19059,7 @@ async function loadUserOrders() {
         accepted_contract_at,
         accepted_contract_version
       )
-    \`)
+    `)
     .eq("buyer_id", appState.authUser.id)
     .eq("status", "completed")
     .order("created_at", { ascending: false });
@@ -19064,28 +19071,27 @@ async function loadUserOrders() {
 }
 
 function generateContractText(beatTitle, producerName, buyerName, licenseName, royaltyBuyer, royaltyProducer, streamLimit, includedFiles, dateString) {
-  return \`CONTRATO DE LICENÇA DE USO DE BEAT/PRODUÇÃO MUSICAL
+  return `CONTRATO DE LICENCA DE USO DE BEAT/PRODUCAO MUSICAL
 
-Este contrato regula a licença de exploração comercial do Beat intitulado "\${beatTitle}", produzido por \${producerName}, doravante denominado "PRODUTOR", adquirido por \${buyerName}, doravante denominado "LICENCIADO", nas condições estabelecidas sob a licença "\${licenseName}".
+Este contrato regula a licenca de exploracao comercial do Beat intitulado "${beatTitle}", produzido por ${producerName}, doravante denominado "PRODUTOR", adquirido por ${buyerName}, doravante denominado "LICENCIADO", nas condicoes estabelecidas sob a licenca "${licenseName}".
 
-1. CONCESSÃO E USO
-1.1. O PRODUTOR concede ao LICENCIADO uma licença de uso do Beat para fins de reprodução, distribuição, apresentações ao vivo e monetização em plataformas de streaming e digitais.
-1.2. Esta licença é outorgada em caráter \${licenseName.includes("Exclusiva") ? "EXCLUSIVO" : "NÃO EXCLUSIVO"}.
+1. CONCESSAO E USO
+1.1. O PRODUTOR concede ao LICENCIADO uma licenca de uso do Beat para fins de reproducao, distribuicao, apresentacoes ao vivo e monetizacao em plataformas de streaming e digitais.
+1.2. Esta licenca e outorgada em carater ${licenseName.includes("Exclusiva") ? "EXCLUSIVO" : "NAO EXCLUSIVO"}.
 
 2. LIMITES E ROYALTIES
-2.1. Royalties da Composição/Master: As partes concordam com a divisão de royalties estabelecida em \${royaltyBuyer}% para o LICENCIADO (Artista/Comprador) e \${royaltyProducer}% para o PRODUTOR.
-2.2. Streams Digitais: O limite de reproduções acumuladas nas plataformas é de \${streamLimit}.
-2.3. Videoclipes Oficiais: Fica permitida a gravação e veiculação de clipes promocionais/oficiais nas plataformas de compartilhamento de vídeo.
+2.1. Royalties da Composicao/Master: As partes concordam com a divisao de royalties estabelecida em ${royaltyBuyer}% para o LICENCIADO (Artista/Comprador) e ${royaltyProducer}% para o PRODUTOR.
+2.2. Streams Digitais: O limite de reproducoes acumuladas nas plataformas e de ${streamLimit}.
+2.3. Videoclipes Oficiais: Fica permitida a gravacao e veiculacao de clipes promocionais/oficiais nas plataformas de compartilhamento de video.
 
 3. ARQUIVOS ENTREGUES
-O PRODUTOR entrega os arquivos: \${includedFiles}.
+O PRODUTOR entrega os arquivos: ${includedFiles}.
 
-4. DECLARAÇÃO DE ACEITE
-O LICENCIADO declara ter lido, compreendido e aceitado todos os termos deste contrato em \${dateString}.
+4. DECLARACAO DE ACEITE
+O LICENCIADO declara ter lido, compreendido e aceitado todos os termos deste contrato em ${dateString}.
 
-Identificador do Pedido: Gerado eletronicamente na confirmação do pagamento pela ANSEND.\`;
+Identificador do Pedido: Gerado eletronicamente na confirmacao do pagamento pela ANSEND.`;
 }
-
 function formatPriceBRL(value) {
   const cleanValue = String(value).replace(/\\D/g, "");
   if (!cleanValue) return "";
