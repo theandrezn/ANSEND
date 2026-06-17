@@ -100,6 +100,38 @@ async function run() {
       throw new Error(`Mini player controls are not stable during loading: ${JSON.stringify({ loadingControls, missingLoadingControls })}`);
     }
     await page.evaluate(() => {
+      if (!document.querySelector("#nexoFloatingAssistantRoot")) {
+        document.body.insertAdjacentHTML("beforeend", `
+          <div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant">
+            <button type="button" class="nexo-floating-button" data-action="nexo-assistant-toggle" aria-label="Abrir NEXO IA">
+              <span class="nexo-floating-icon"></span>
+            </button>
+          </div>
+        `);
+      }
+    });
+    const floatingOverlap = await page.evaluate(() => {
+      const close = document.querySelector('[data-action="close-mini-player"]');
+      const root = document.querySelector("#nexoFloatingAssistantRoot");
+      const nexoButton = document.querySelector(".nexo-floating-button");
+      const closeRect = close?.getBoundingClientRect();
+      const nexoRect = nexoButton?.getBoundingClientRect();
+      const closeStyle = close ? getComputedStyle(close) : null;
+      const rootStyle = root ? getComputedStyle(root) : null;
+      const buttonStyle = nexoButton ? getComputedStyle(nexoButton) : null;
+      return {
+        closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
+        nexoVisible: Boolean(nexoRect && nexoRect.width > 0 && nexoRect.height > 0),
+        verticalGap: closeRect && nexoRect ? Math.round(nexoRect.top - closeRect.bottom) : null,
+        closeZIndex: closeStyle?.zIndex,
+        rootPointerEvents: rootStyle?.pointerEvents,
+        buttonPointerEvents: buttonStyle?.pointerEvents,
+      };
+    });
+    if (!floatingOverlap.closeVisible || !floatingOverlap.nexoVisible || floatingOverlap.verticalGap < 12 || Number(floatingOverlap.closeZIndex) < 9600 || floatingOverlap.rootPointerEvents !== "none" || floatingOverlap.buttonPointerEvents !== "auto") {
+      throw new Error(`Mini player close button overlaps or loses clicks near NEXO: ${JSON.stringify(floatingOverlap)}`);
+    }
+    await page.evaluate(() => {
       PlayerStore.setStatus("paused");
       syncMiniPlayerState();
     });
