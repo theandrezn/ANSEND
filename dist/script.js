@@ -2161,7 +2161,7 @@ function beatCard(item) {
       ${optimizedImageMarkup({ src: item.cover, alt: `Capa do beat ${item.title}`, className: "card-art-source", width: 320, height: 320, priority: Boolean(item.homeCard) })}
       ${item.badge ? `<span class="badge ${klass}">${item.badge}</span>` : ""}
       <button class="fav-over${favoriteClass}" type="button" data-action="favorite" data-id="${item.id}" aria-label="Favoritar ${item.title}"><i data-lucide="heart"></i></button>
-      <button class="play-over" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}"><i data-lucide="play"></i></button>
+      <button class="play-over" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}" data-player-icon="play"><span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup("play")}</span></button>
     </div>
     <div class="card-info">
       <h3 class="card-title">${item.title}</h3>
@@ -5531,10 +5531,8 @@ function ChatAudioPlayerMarkup(url, name, sizeOrDetails = "", isPreview = false)
     <div class="ansend-chat-audio-player" data-state="loading" data-preview="${isPreview}">
       <audio src="${htmlEscape(url)}" preload="metadata"></audio>
       
-      <button type="button" class="audio-play-btn" aria-label="Reproduzir">
-        <i data-lucide="play" class="icon-play" style="display:none;"></i>
-        <i data-lucide="pause" class="icon-pause" style="display:none;"></i>
-        <span class="icon-loader"><i class="animate-spin" data-lucide="loader-2"></i></span>
+      <button type="button" class="audio-play-btn is-loading" aria-label="Carregando audio" data-player-icon="loading">
+        <span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup("loading")}</span>
       </button>
       
       <div class="audio-center-info">
@@ -5575,9 +5573,6 @@ function initChatAudioPlayers() {
     player.classList.add("is-initialized");
     const audio = player.querySelector("audio");
     const playBtn = player.querySelector(".audio-play-btn");
-    const playIcon = player.querySelector(".icon-play");
-    const pauseIcon = player.querySelector(".icon-pause");
-    const loaderIcon = player.querySelector(".icon-loader");
     
     const timeDisplay = player.querySelector(".audio-time");
     const timelineFill = player.querySelector(".audio-timeline-fill");
@@ -5611,56 +5606,45 @@ function initChatAudioPlayers() {
       timelineFill.style.width = `${percent}%`;
       updateTimeDisplay();
     }
+
+    function setChatAudioButtonState(state) {
+      const icon = state === "loading" ? "loading" : state === "playing" ? "pause" : "play";
+      const label = icon === "loading" ? "Carregando audio" : icon === "pause" ? "Pausar" : "Reproduzir";
+      player.setAttribute("data-state", state);
+      setPlayerControlIcon(playBtn, icon, { label });
+    }
     
     // Configura eventos do elemento de áudio
     audio.addEventListener("loadedmetadata", () => {
-      player.setAttribute("data-state", "ready");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon) playIcon.style.display = "";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("ready");
       updateTimeDisplay();
     });
     
     if (audio.readyState >= 1) {
-      player.setAttribute("data-state", "ready");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon) playIcon.style.display = "";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("ready");
       updateTimeDisplay();
     }
     
     audio.addEventListener("canplay", () => {
-      player.setAttribute("data-state", "ready");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon && audio.paused) playIcon.style.display = "";
+      setChatAudioButtonState(audio.paused ? "ready" : "playing");
       updateTimeDisplay();
     });
     
     audio.addEventListener("waiting", () => {
-      if (loaderIcon) loaderIcon.style.display = "";
-      if (playIcon) playIcon.style.display = "none";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("loading");
     });
     
     audio.addEventListener("playing", () => {
-      player.setAttribute("data-state", "playing");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon) playIcon.style.display = "none";
-      if (pauseIcon) pauseIcon.style.display = "";
+      setChatAudioButtonState("playing");
     });
     
     audio.addEventListener("pause", () => {
-      player.setAttribute("data-state", "paused");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon) playIcon.style.display = "";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("paused");
     });
     
     audio.addEventListener("ended", () => {
       audio.currentTime = 0;
-      player.setAttribute("data-state", "ready");
-      if (playIcon) playIcon.style.display = "";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("ready");
       timelineSlider.value = 0;
       timelineFill.style.width = "0%";
       updateTimeDisplay();
@@ -5669,10 +5653,7 @@ function initChatAudioPlayers() {
     audio.addEventListener("timeupdate", updateProgress);
     
     audio.addEventListener("error", () => {
-      player.setAttribute("data-state", "error");
-      if (loaderIcon) loaderIcon.style.display = "none";
-      if (playIcon) playIcon.style.display = "";
-      if (pauseIcon) pauseIcon.style.display = "none";
+      setChatAudioButtonState("error");
       timeDisplay.textContent = "Erro de audio";
     });
     
@@ -5688,8 +5669,10 @@ function initChatAudioPlayers() {
             otherAudio.pause();
           }
         });
+        setChatAudioButtonState("loading");
         audio.play().catch((err) => {
           console.warn("Falha ao reproduzir audio do chat:", err);
+          setChatAudioButtonState("error");
         });
       }
     });
@@ -6770,7 +6753,7 @@ function refreshChatConversationList() {
     ${!appState.chat.loading && !appState.chat.error && conversations.length ? conversations.map(chatConversationItemMarkup).join("") : ""}
     ${!appState.chat.loading && !appState.chat.error && !conversations.length ? chatEmptyInboxMarkup() : ""}
   `;
-  lucide.createIcons();
+  refreshPlayerIcons();
 }
 
 function captureChatVisualState() {
@@ -7394,7 +7377,7 @@ function communityAdMarkup() {
     <div class="community-ad-shade" aria-hidden="true"></div>
     <div class="community-ad-kicker"><span>Patrocinado</span><small>ANSEND Ads</small></div>
     <button class="community-ad-play" type="button" data-action="community-ad-play" data-ad-id="${htmlEscape(ad.id)}" aria-label="${isPlaying ? "Pausar" : "Ouvir"} beat ${htmlEscape(ad.title)}">
-      <i data-lucide="${isPlaying ? "pause" : "play"}"></i>
+      <span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup(isPlaying ? "pause" : "play")}</span>
     </button>
     <button class="community-ad-menu" type="button" aria-label="Mais opcoes do anuncio"><i data-lucide="more-horizontal"></i></button>
     <div class="community-ad-copy">
@@ -8529,7 +8512,7 @@ function updateFollowButton(profileUserId) {
     button.setAttribute("aria-pressed", state.isFollowing ? "true" : "false");
     button.innerHTML = `<i data-lucide="${state.isFollowing ? "user-check" : "user-plus"}"></i>${followButtonLabel(state)}`;
   });
-  lucide.createIcons();
+  refreshPlayerIcons();
 }
 
 function updateProfileFollowCounts(profileUserId) {
@@ -14877,7 +14860,7 @@ function renderProfileLegacy() {
         <div class="track-play-cell">
           <span class="track-number">${index + 1}</span>
           <button type="button" class="track-play-btn" data-action="play-catalog" data-id="${item.id}" aria-label="Tocar ${item.title}">
-            <i data-lucide="play"></i>
+            <span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup("play")}</span>
           </button>
         </div>
       </td>
@@ -15781,16 +15764,40 @@ function isAudioPauseEventSuppressed() {
   return Date.now() < suppressAudioPauseEventsUntil;
 }
 
-function setButtonLucideIcon(button, iconName) {
+function playerControlIconMarkup(iconName = "play") {
+  const icons = {
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.8v12.4c0 .8.9 1.3 1.6.9l9.8-6.2c.6-.4.6-1.4 0-1.8L9.6 4.9C8.9 4.5 8 5 8 5.8z" fill="currentColor"></path></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="5" width="3.8" height="14" rx="1.1" fill="currentColor"></rect><rect x="13.2" y="5" width="3.8" height="14" rx="1.1" fill="currentColor"></rect></svg>',
+    loading: '<svg class="player-state-spinner" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".28"></circle><path d="M20.5 12a8.5 8.5 0 0 0-8.5-8.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path></svg>',
+    "volume-x": '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path><path d="m18 9 4 4m0-4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+    "volume-1": '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path><path d="M16 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+    "volume-2": '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path><path d="M16 8a5.8 5.8 0 0 1 0 8M18.8 5.5a9.8 9.8 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+  };
+  return icons[iconName] || icons.play;
+}
+
+function setPlayerControlIcon(button, iconName, { label = "" } = {}) {
   if (!button || !iconName) return false;
-  if (button.dataset.playerIcon === iconName && button.querySelector("svg")) return false;
+  const changed = button.dataset.playerIcon !== iconName || !button.querySelector(".player-state-icon svg");
   button.dataset.playerIcon = iconName;
+  button.classList.toggle("is-loading", iconName === "loading");
+  if (label) button.setAttribute("aria-label", label);
+  if (changed) {
+    button.innerHTML = `<span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup(iconName)}</span>`;
+  }
+  return changed;
+}
+
+function setLucideIcon(button, iconName) {
+  if (!button || !iconName) return false;
+  if (button.dataset.lucideIcon === iconName && button.querySelector("svg")) return false;
+  button.dataset.lucideIcon = iconName;
   button.innerHTML = `<i data-lucide="${iconName}"></i>`;
   return true;
 }
 
-function refreshPlayerIcons(changed) {
-  if (changed && window.lucide?.createIcons) lucide.createIcons();
+function refreshPlayerIcons() {
+  if (window.lucide?.createIcons) lucide.createIcons();
 }
 
 function nextPlayerPlaybackRequest() {
@@ -16046,7 +16053,6 @@ function syncMiniPlayerState() {
   const loopButton = player.querySelector('[data-action="loop-beat"]');
   const volumeButton = player.querySelector('[data-action="volume"]');
   const miniButton = player.querySelector('[data-action="mini-play"]');
-  let iconsChanged = false;
   favoriteButton?.classList.toggle("is-active", appState.favorites.has(current?.id));
   loopButton?.classList.toggle("is-active", appState.player.loop);
   player.classList.toggle("is-looping", appState.player.loop);
@@ -16054,13 +16060,13 @@ function syncMiniPlayerState() {
   player.classList.toggle("has-error", appState.player.status === "error");
   player.classList.toggle("is-playing", appState.player.status === "playing");
   if (miniButton) {
-    const isPendingOrPlaying = appState.player.status === "playing" || (appState.player.status === "loading" && Boolean(current?.id));
-    iconsChanged = setButtonLucideIcon(miniButton, isPendingOrPlaying ? "pause" : "play") || iconsChanged;
-    miniButton.setAttribute("aria-label", isPendingOrPlaying ? "Pausar" : "Tocar");
+    const status = appState.player.status;
+    const icon = status === "loading" && current?.id ? "loading" : status === "playing" ? "pause" : "play";
+    setPlayerControlIcon(miniButton, icon, { label: icon === "pause" ? "Pausar" : "Tocar" });
   }
   if (volumeButton) {
     const icon = appState.player.volume <= .02 ? "volume-x" : appState.player.volume < .45 ? "volume-1" : "volume-2";
-    iconsChanged = setButtonLucideIcon(volumeButton, icon) || iconsChanged;
+    setLucideIcon(volumeButton, icon);
   }
   const volumePopover = document.querySelector(".player-volume-popover");
   if (volumePopover) {
@@ -16073,11 +16079,11 @@ function syncMiniPlayerState() {
     if (label) label.textContent = `${Math.round(safeVolume * 100)}%`;
     if (muteButton) {
       muteButton.setAttribute("aria-label", safeVolume <= .02 ? "Ativar som" : "Mutar");
-      iconsChanged = setButtonLucideIcon(muteButton, volumeIcon) || iconsChanged;
+      setLucideIcon(muteButton, volumeIcon);
     }
   }
   applyPlayerAudioSettings();
-  refreshPlayerIcons(iconsChanged);
+  refreshPlayerIcons();
 }
 
 function showMiniPlayer() {
@@ -16261,8 +16267,7 @@ function setTopBeatPlaying(isPlaying) {
   document.querySelector(".top-beat-card")?.classList.toggle("is-playing", isTopBeat && isPlaying);
   document.querySelectorAll('[data-action="hero-beat-play"]').forEach((button) => {
     const active = isTopBeat && isPlaying;
-    button.setAttribute("aria-label", active ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia");
-    button.innerHTML = `<i data-lucide="${active ? "pause" : "play"}"></i>`;
+    setPlayerControlIcon(button, active ? "pause" : "play", { label: active ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia" });
   });
   document.querySelectorAll(".community-ad-card[data-promoted-beat-id]").forEach((card) => {
     const active = String(card.dataset.promotedBeatId || "") === String(appState.playing || "") && isPlaying;
@@ -16270,8 +16275,7 @@ function setTopBeatPlaying(isPlaying) {
     const button = card.querySelector('[data-action="community-ad-play"]');
     if (button) {
       const title = card.getAttribute("aria-label")?.replace(/^Beat impulsionado:\s*/i, "") || "beat";
-      button.setAttribute("aria-label", `${active ? "Pausar" : "Ouvir"} ${title}`);
-      button.innerHTML = `<i data-lucide="${active ? "pause" : "play"}"></i>`;
+      setPlayerControlIcon(button, active ? "pause" : "play", { label: `${active ? "Pausar" : "Ouvir"} ${title}` });
     }
   });
 
@@ -16281,7 +16285,7 @@ function setTopBeatPlaying(isPlaying) {
   }
   const miniButton = document.querySelector('[data-action="mini-play"]');
   if (miniButton) {
-    miniButton.innerHTML = `<i data-lucide="${isPlaying ? "pause" : "play"}"></i>`;
+    setPlayerControlIcon(miniButton, isPlaying ? "pause" : "play", { label: isPlaying ? "Pausar" : "Tocar" });
   }
 
   // Sincronizar todos os botões de play/pause da página
@@ -16290,16 +16294,11 @@ function setTopBeatPlaying(isPlaying) {
     const isThisPlaying = id && String(id) === String(appState.playing) && isPlaying;
     
     // Procura por um ícone dentro do botão
-    const icon = button.querySelector('i[data-lucide], svg');
-    if (icon) {
-      icon.outerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
-    } else if (button.classList.contains("play-over") || button.classList.contains("profile-play-mini")) {
-      button.innerHTML = `<i data-lucide="${isThisPlaying ? "pause" : "play"}"></i>`;
-    }
+    setPlayerControlIcon(button, isThisPlaying ? "pause" : "play");
   });
 
   syncMiniPlayerState();
-  lucide.createIcons();
+  refreshPlayerIcons();
 }
 
 async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) {

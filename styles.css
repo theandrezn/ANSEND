@@ -2406,7 +2406,55 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   opacity: 1;
   transform: scale(1.05);
 }
+.play-over .player-state-icon {
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+}
 .play-over svg { width: 20px; fill: currentColor; margin-left: 2px; }
+.play-over .player-state-icon svg {
+  width: 100%;
+  height: 100%;
+  margin-left: 0;
+}
+.player-state-icon {
+  position: relative;
+  z-index: 2;
+  width: 1em;
+  height: 1em;
+  min-width: 1em;
+  min-height: 1em;
+  display: inline-grid;
+  place-items: center;
+  color: currentColor;
+  line-height: 1;
+  pointer-events: none;
+  visibility: visible;
+  opacity: 1;
+}
+.player-state-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  color: currentColor;
+  fill: none;
+  stroke: none;
+  overflow: visible;
+  visibility: visible;
+  opacity: 1;
+}
+.player-state-spinner {
+  animation: playerStateSpin .82s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes playerStateSpin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-state-spinner {
+    animation-duration: 1.8s;
+  }
+}
 .fav-over {
   width: 38px;
   height: 38px;
@@ -4269,6 +4317,11 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   width: 14px;
   height: 14px;
   fill: #ffffff;
+}
+
+.track-play-btn .player-state-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .profile-catalog-table tbody tr:hover .track-play-btn {
@@ -9356,12 +9409,27 @@ body.onboarding-open { overflow: hidden; }
   color: #fff;
   background: linear-gradient(135deg, var(--orange), #ff3d00);
   box-shadow: 0 0 30px rgba(255, 106, 0, .55);
+  display: grid;
+  place-items: center;
+  overflow: visible;
 }
 
 .top-beat-play svg {
   width: 18px;
   fill: currentColor;
   margin-left: 3px;
+}
+
+.top-beat-play .player-state-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: 3px;
+}
+
+.top-beat-play .player-state-icon svg {
+  width: 100%;
+  height: 100%;
+  margin-left: 0;
 }
 
 .top-beat-card.is-playing .top-beat-play {
@@ -10374,6 +10442,9 @@ body.modal-open {
   border-radius: 50%;
   color: #fff;
   background: transparent;
+  display: inline-grid;
+  place-items: center;
+  overflow: visible;
 }
 
 .mini-player button:hover {
@@ -10388,6 +10459,11 @@ body.modal-open {
 }
 
 .mini-player .mini-play-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.mini-player .mini-play-button .player-state-icon {
   width: 24px;
   height: 24px;
 }
@@ -28022,6 +28098,11 @@ body[data-route="comunidade"] .hiring-right-rail {
   height: 16px;
 }
 
+.community-ad-play .player-state-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .community-ad-play:hover,
 .community-ad-menu:hover {
   transform: scale(1.04);
@@ -30890,7 +30971,7 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
 .player-open .nexo-floating-assistant,
 body:has(.mini-player:not(.is-closed)) .nexo-button,
 body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
-  bottom: calc(var(--player-height) + 16px) !important;
+  bottom: calc(var(--player-height) + 18px) !important;
 }
 
 @media (max-width: 640px) {
@@ -30904,7 +30985,7 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
   .player-open .nexo-floating-assistant,
   body:has(.mini-player:not(.is-closed)) .nexo-button,
   body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
-    bottom: calc(var(--player-height) + 16px) !important;
+    bottom: calc(var(--player-height) + 18px) !important;
   }
 }
 
@@ -30934,9 +31015,10 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
 
 /* Play/Pause Button */
 .ansend-chat-audio-player .audio-play-btn {
-  display: flex;
+  display: grid;
   align-items: center;
   justify-content: center;
+  place-items: center;
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -30946,6 +31028,7 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
+  overflow: visible;
   transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -30966,8 +31049,14 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
   stroke: currentColor;
 }
 
-.ansend-chat-audio-player .audio-play-btn .icon-loader svg {
-  fill: none;
+.ansend-chat-audio-player .audio-play-btn .player-state-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ansend-chat-audio-player .audio-play-btn .player-state-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* Center Info Box */
@@ -31163,6 +31252,63 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
 }
 .chat-attachment-preview audio {
   display: none !important;
+}
+
+/* Stable audio play/pause glyphs: the circular button may re-render, but its icon slot never collapses. */
+.top-beat-play .player-state-icon,
+.play-over .player-state-icon,
+.track-play-btn .player-state-icon,
+.community-ad-play .player-state-icon,
+.mini-player .mini-play-button .player-state-icon,
+.ansend-chat-audio-player .audio-play-btn .player-state-icon {
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 auto !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+
+.top-beat-play .player-state-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.play-over .player-state-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.track-play-btn .player-state-icon,
+.community-ad-play .player-state-icon {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.mini-player .mini-play-button .player-state-icon {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.ansend-chat-audio-player .audio-play-btn .player-state-icon {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.top-beat-play .player-state-icon svg,
+.play-over .player-state-icon svg,
+.track-play-btn .player-state-icon svg,
+.community-ad-play .player-state-icon svg,
+.mini-player .mini-play-button .player-state-icon svg,
+.ansend-chat-audio-player .audio-play-btn .player-state-icon svg {
+  display: block !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  overflow: visible !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 
