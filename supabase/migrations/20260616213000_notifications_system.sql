@@ -689,14 +689,10 @@ grant execute on function public.mark_all_notifications_read() to authenticated;
 grant execute on function public.mark_notification_read(uuid) to authenticated;
 
 -- 16. Enable Supabase Realtime replication on public.notifications
-begin;
-  -- Remove if already exists to avoid errors, then add
-  alter publication supabase_realtime remove table public.notifications;
-exception when others then
-  -- Do nothing if publication/replication table relation did not exist
-end;
-commit;
-
-begin;
+do $$
+begin
   alter publication supabase_realtime add table public.notifications;
-commit;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;

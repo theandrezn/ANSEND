@@ -8284,16 +8284,18 @@ async function getFollowState(profileUserId) {
   };
 }
 
-async function refreshFollowState(profileUserId) {
+async function refreshFollowState(profileUserId, forceLoadingVisual = true) {
   const targetId = String(profileUserId || "");
   if (!targetId) return null;
-  setFollowState(targetId, { loading: true, error: "" });
+  if (forceLoadingVisual) {
+    setFollowState(targetId, { loading: true, error: "" });
+  }
   try {
     const state = await getFollowState(targetId);
-    return setFollowState(targetId, state);
+    return setFollowState(targetId, { ...state, actionLoading: false, loading: false });
   } catch (error) {
     console.error("[ANSEND follow] state failed", error);
-    return setFollowState(targetId, { loading: false, error: "Nao foi possivel carregar seguidores." });
+    return setFollowState(targetId, { loading: false, actionLoading: false, error: "Nao foi possivel carregar seguidores." });
   }
 }
 
@@ -8307,7 +8309,7 @@ async function followUser(profileUserId) {
     .from("user_follows")
     .upsert({ follower_id: followerId, following_id: followingId }, { onConflict: "follower_id,following_id", ignoreDuplicates: true });
   if (error) throw error;
-  return refreshFollowState(followingId);
+  return refreshFollowState(followingId, false);
 }
 
 async function unfollowUser(profileUserId) {
@@ -8321,28 +8323,37 @@ async function unfollowUser(profileUserId) {
     .eq("follower_id", followerId)
     .eq("following_id", followingId);
   if (error) throw error;
-  return refreshFollowState(followingId);
+  return refreshFollowState(followingId, false);
 }
 
 async function toggleFollow(profileUserId) {
   const targetId = String(profileUserId || "");
   if (!targetId) return;
-  const current = appState.followStates[targetId] || await refreshFollowState(targetId);
-  if (current?.actionLoading) return;
   const previous = appState.followStates[targetId] || defaultFollowState(targetId);
+  if (previous.actionLoading) return;
+  
+  const nextIsFollowing = !previous.isFollowing;
+  
   setFollowState(targetId, {
     actionLoading: true,
     error: "",
-    isFollowing: !previous.isFollowing,
-    followersCount: Math.max(0, (previous.followersCount || 0) + (previous.isFollowing ? -1 : 1)),
   });
   try {
-    await (previous.isFollowing ? unfollowUser(targetId) : followUser(targetId));
-    showToast(previous.isFollowing ? "Voce deixou de seguir este perfil." : "Agora voce esta seguindo este perfil.", previous.isFollowing ? "user-minus" : "user-plus");
+    const actionPromise = nextIsFollowing ? followUser(targetId) : unfollowUser(targetId);
+    await Promise.race([
+      actionPromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("A requisicao demorou muito. Tente novamente.")), 10000))
+    ]);
+    showToast(nextIsFollowing ? "Agora voce esta seguindo este perfil." : "Voce deixou de seguir este perfil.", nextIsFollowing ? "user-plus" : "user-minus");
   } catch (error) {
     console.error("[ANSEND follow] toggle failed", error);
     setFollowState(targetId, { ...previous, actionLoading: false, loading: false, error: error.message || "Nao foi possivel atualizar o follow." });
     showToast(error.message || "Nao foi possivel atualizar este perfil.", "triangle-alert");
+  } finally {
+    const current = appState.followStates[targetId];
+    if (current && current.actionLoading) {
+      setFollowState(targetId, { actionLoading: false });
+    }
   }
 }
 
@@ -8439,6 +8450,9 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
       </aside>` : ""}
     </main>
   </section>`;
+  if (!isOwner && profileUserId) {
+    requestAnimationFrame(() => refreshFollowState(profileUserId));
+  }
 }
 
 function renderProfile() {
@@ -9039,9 +9053,6 @@ function openProfileImagePicker(type = "avatar") {
   }
   updateProfileImageEditorPreview();
   lucide.createIcons();
-  if (!isOwner && profileUserId) {
-    requestAnimationFrame(() => refreshFollowState(profileUserId));
-  }
 }
 
 function closeProfileImagePicker() {

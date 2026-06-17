@@ -16,7 +16,7 @@ drop constraint if exists messages_type_check;
 
 alter table public.messages
 add constraint messages_type_check
-check (message_type in ('text', 'proposal', 'system'));
+check (message_type in ('text', 'proposal', 'system', 'attachment', 'gif', 'audio'));
 
 create index if not exists idx_conversations_community_post_id
 on public.conversations(community_post_id);
