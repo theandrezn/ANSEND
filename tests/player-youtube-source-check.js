@@ -35,10 +35,15 @@ const currentPlayingBeat = functionBody("currentPlayingBeat");
 assert(!/findBeat\(appState\.playing\)\s*\|\|\s*topBeatOfDay/.test(currentPlayingBeat), "currentPlayingBeat must not fallback to Top 1");
 
 const playBeat = script.slice(script.indexOf("async function playBeat"), script.indexOf("async function playTopBeat"));
-assert(/return playYouTubeBeat\(item/.test(playBeat), "YouTube beats route through playYouTubeBeat");
-assert(/appState\.player\.sourceType\s*=\s*"upload"/.test(playBeat), "Upload beats mark upload source type");
-assert(/appState\.player\.youtubeVideoId\s*=\s*""/.test(playBeat), "Upload beats clear YouTube video id");
+assert(/const beat = normalizePlayerBeat\(item\)/.test(playBeat), "playBeat stores a normalized full beat");
+assert(/return playYouTubeBeat\(beat/.test(playBeat), "YouTube beats route through playYouTubeBeat");
+assert(/PlayerStore\.setCurrent\(beat/.test(playBeat), "Upload beats store the full selected beat through PlayerStore");
+assert(/const audioUrl = beat\.audio_url/.test(playBeat), "Upload beats use normalized audio_url");
 assert(/if \(!audioUrl\)/.test(playBeat), "Upload beats validate audioUrl before playback");
+
+const playYouTubeBeat = script.slice(script.indexOf("async function playYouTubeBeat"), script.indexOf("function setTopBeatPlaying"));
+assert(/waitForYouTubePlaying\(\)/.test(playYouTubeBeat), "YouTube playback waits for the PLAYING state");
+assert(!/setTopBeatPlaying\(true\)/.test(playYouTubeBeat), "YouTube playback is not marked playing before API confirmation");
 
 ["playYouTubeBeat", "toggleBeatPlayback", "youtubeVideoIdForBeat", "ensureYouTubeBeatPlayer"].forEach((name) => {
   assert(script.includes(name), `${name} exists`);
