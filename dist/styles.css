@@ -21926,9 +21926,13 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   transform: translateY(calc(100% + 16px)) !important;
 }
 
-.mini-player .mini-close {
-  top: 10px !important;
-  right: 12px !important;
+.mini-player .mini-close,
+.player-close-button {
+  position: absolute !important;
+  top: 50% !important;
+  right: 16px !important;
+  transform: translateY(-50%) !important;
+  z-index: 10 !important;
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
@@ -21936,6 +21940,15 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   background: rgba(255, 255, 255, .04) !important;
   color: rgba(255, 255, 255, .72) !important;
 }
+
+@media (max-width: 1100px) {
+  .mini-player .mini-close,
+  .player-close-button {
+    top: 12px !important;
+    transform: none !important;
+  }
+}
+
 
 .mini-waveform {
   grid-column: 2 / 3 !important;
@@ -30727,4 +30740,46 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
   display: inline;
   color: #ff7b72;
 }
+
+/* NEXO IA Floating Button Positioning Overrides */
+:root {
+  --player-height: 86px;
+}
+
+@media (max-width: 1100px) {
+  :root {
+    --player-height: 138px;
+  }
+}
+
+.nexo-button,
+.nexo-floating-assistant {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  transition: bottom 0.25s ease !important;
+}
+
+.player-open .nexo-button,
+.player-open .nexo-floating-assistant,
+body:has(.mini-player:not(.is-closed)) .nexo-button,
+body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
+  bottom: calc(var(--player-height) + 16px) !important;
+}
+
+@media (max-width: 640px) {
+  .nexo-button,
+  .nexo-floating-assistant {
+    right: 18px;
+    bottom: 18px;
+  }
+  
+  .player-open .nexo-button,
+  .player-open .nexo-floating-assistant,
+  body:has(.mini-player:not(.is-closed)) .nexo-button,
+  body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
+    bottom: calc(var(--player-height) + 16px) !important;
+  }
+}
+
 

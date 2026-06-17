@@ -11270,7 +11270,7 @@ function renderNexoFloatingAssistant() {
   if (panelOpen && !appState.nexoChatHistoryLoading && !appState.nexoChatMessages.length && !appState.nexoChatConversationId) {
     window.setTimeout(() => loadNexoConversationHistory(), 0);
   }
-  const markup = `<div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant ${panelOpen ? "is-open" : ""} ${appState.nexoAssistant.expanded ? "is-expanded" : ""}">
+  const markup = `<div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant nexo-button ${panelOpen ? "is-open" : ""} ${appState.nexoAssistant.expanded ? "is-expanded" : ""}">
     ${panelOpen ? renderNexoAssistantPanel() : ""}
     <button type="button" class="nexo-floating-button" data-action="nexo-assistant-toggle" aria-label="Abrir NEXO IA">
       ${nexoIconMarkup("nexo-floating-icon")}
@@ -15467,6 +15467,7 @@ function showMiniPlayer() {
   player.removeAttribute("aria-hidden");
   player.classList.remove("is-closed");
   player.classList.add("is-active");
+  document.body.classList.add("player-open");
 }
 
 function closeMiniPlayer() {
@@ -15476,6 +15477,7 @@ function closeMiniPlayer() {
   pauseTopBeat({ quiet: true });
   player.classList.remove("is-active", "is-playing");
   player.classList.add("is-closed");
+  document.body.classList.remove("player-open");
   player.style.setProperty("opacity", "0", "important");
   player.style.setProperty("pointer-events", "none", "important");
   player.style.setProperty("transform", "translate3d(0, calc(100% + 18px), 0)", "important");
@@ -15556,6 +15558,7 @@ function updateMiniPlayer(item, show = true) {
   } else {
     player.classList.add("is-closed");
     player.classList.remove("is-active");
+    document.body.classList.remove("player-open");
   }
   player.dataset.currentBeat = beat.id;
   player.dataset.sourceType = beat.source_type || "";
