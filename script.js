@@ -6213,8 +6213,8 @@ function communityAdPlaceholderMarkup({ loading = false } = {}) {
       <span>${loading ? "ANSEND Ads" : "Patrocinado"}</span>
       <strong>${loading ? "Carregando destaque" : "Divulgue seu beat"}</strong>
       <p>${loading ? "Buscando campanhas ativas." : "Apareca para artistas e produtores na Comunidade."}</p>
+      <a class="community-ad-cta" href="#ofertas" data-route="ofertas">Criar anuncio</a>
     </div>
-    <a class="community-ad-cta" href="#ofertas" data-route="ofertas">Criar anuncio</a>
   </article>`;
 }
 
