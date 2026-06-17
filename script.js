@@ -11,6 +11,7 @@ const AUTH_CACHE_KEY = "ansend-auth-cache-v1";
 const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
 const AUTH_PAGE_STARTED_AT = Date.now();
 const AUTH_LOGOUT_EVENT_GRACE_MS = 2000;
+const AUTH_RESYNC_THROTTLE_MS = 1200;
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
@@ -1730,6 +1731,23 @@ function persistAuthCache() {
 
 function clearAuthCache() {
   localStorage.removeItem(AUTH_CACHE_KEY);
+}
+
+function isSupabaseAuthStorageKey(key) {
+  return Boolean(
+    key
+    && key.startsWith(`sb-${SUPABASE_PROJECT_REF}-`)
+    && key.includes("auth-token")
+  );
+}
+
+function hasStoredAuthSessionHint() {
+  if (cachedAuthState()?.user?.id) return true;
+  try {
+    return Object.keys(localStorage).some(isSupabaseAuthStorageKey);
+  } catch (_error) {
+    return false;
+  }
 }
 
 function authLogoutEventTimestamp(value) {
@@ -9467,6 +9485,54 @@ async function hydrateAuthenticatedUser(user, options = {}) {
   }
 }
 
+let authResyncPromise = null;
+let lastAuthResyncAt = 0;
+
+async function resyncAuthSession(reason = "manual", options = {}) {
+  if (!supabaseClient) return false;
+  const now = Date.now();
+  if (!options.force && authResyncPromise) return authResyncPromise;
+  if (!options.force && now - lastAuthResyncAt < AUTH_RESYNC_THROTTLE_MS) return Boolean(appState.authUser?.id);
+  lastAuthResyncAt = now;
+  authResyncPromise = (async () => {
+    debugAuth("auth_resync_start", { reason });
+    try {
+      const sessionResult = await withAuthTimeout(supabaseClient.auth.getSession(), `resync_${reason}_getSession`);
+      if (sessionResult.timedOut) {
+        debugAuth("auth_resync_timeout", { reason, stage: "getSession" });
+        return false;
+      }
+      const session = sessionResult.data?.session || null;
+      if (!session?.user) {
+        debugAuth("auth_resync_no_session", { reason, error: sessionResult.error?.message || null });
+        return false;
+      }
+      const userResult = await withAuthTimeout(supabaseClient.auth.getUser(), `resync_${reason}_getUser`);
+      const user = userResult.data?.user || session.user;
+      if (!user?.id) {
+        debugAuth("auth_resync_no_user", { reason, timedOut: Boolean(userResult.timedOut), error: userResult.error?.message || null });
+        return false;
+      }
+      const previousUserId = appState.authUser?.id || null;
+      appState.authSession = session;
+      await loadPublicPlatformDataSafe(`auth_resync_${reason}`);
+      await hydrateAuthenticatedUser(user, { touchLogin: false });
+      appState.authReady = true;
+      appState.authLoading = false;
+      syncAccountUi();
+      renderRoutePreservingAuthFocus(previousUserId !== user.id || options.forceRender);
+      debugAuth("auth_resync_success", { reason, userId: user.id });
+      return true;
+    } catch (error) {
+      debugAuth("auth_resync_failed", { reason, error: error?.message || String(error) });
+      return false;
+    } finally {
+      authResyncPromise = null;
+    }
+  })();
+  return authResyncPromise;
+}
+
 function clearAuthenticatedSession(reason = "no-session", options = {}) {
   const explicit = Boolean(options.explicit || reason.includes("signout") || reason.includes("logout") || reason.includes("SIGNED_OUT"));
   appState.authUser = null;
@@ -15839,17 +15905,34 @@ window.addEventListener("storage", (event) => {
     }
     return;
   }
-  if (event.key !== AUTH_CACHE_KEY || !event.newValue || appState.authUser) return;
-  const cached = cachedAuthState();
-  if (!cached?.user?.id) return;
-  appState.authUser = cached.user;
-  appState.profile = cached.profile || appState.profile;
-  appState.authReady = true;
-  appState.authLoading = false;
-  appState.profileLoading = false;
-  syncAccountUi();
-  renderRoutePreservingAuthFocus(true);
+  if (event.key === AUTH_CACHE_KEY && event.newValue && !appState.authUser) {
+    const cached = cachedAuthState();
+    if (!cached?.user?.id) return;
+    appState.profile = cached.profile || appState.profile;
+    appState.authLoading = true;
+    syncAccountUi();
+    resyncAuthSession("auth_cache_storage", { forceRender: true });
+    return;
+  }
+  if (isSupabaseAuthStorageKey(event.key) && event.newValue && !appState.authUser) {
+    appState.authLoading = true;
+    syncAccountUi();
+    resyncAuthSession("supabase_storage", { forceRender: true });
+  }
 });
+
+function resyncVisibleAuthSession(reason = "visible") {
+  if (!supabaseClient || appState.authUser || !hasStoredAuthSessionHint()) return;
+  appState.authLoading = true;
+  syncAccountUi();
+  resyncAuthSession(reason, { forceRender: true });
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") resyncVisibleAuthSession("visibility");
+});
+
+window.addEventListener("focus", () => resyncVisibleAuthSession("focus"));
 
 document.addEventListener("pointerdown", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();

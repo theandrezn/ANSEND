@@ -110,12 +110,18 @@ function supabaseMock() {
       window.supabase = {
         createClient(url, key, options) {
           window.__supabaseOptions = options;
+          let signedIn = localStorage.getItem("ansend-test-supabase-session") !== "signed-out";
+          window.__ansendTestSetSignedIn = (value) => { signedIn = Boolean(value); };
           return {
             auth: {
-              getSession: async () => ({ data: { session }, error: null }),
-              getUser: async () => ({ data: { user }, error: null }),
+              getSession: async () => ({ data: { session: signedIn ? session : null }, error: null }),
+              getUser: async () => ({ data: { user: signedIn ? user : null }, error: null }),
               onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
-              signOut: async () => ({ error: null }),
+              signOut: async () => {
+                signedIn = false;
+                localStorage.setItem("ansend-test-supabase-session", "signed-out");
+                return { error: null };
+              },
               signInWithOAuth: async () => ({ data: { url: "#" }, error: null })
             },
             from: tableApi,
@@ -156,6 +162,48 @@ async function run() {
   });
 
   try {
+    await context.addInitScript(() => localStorage.setItem("ansend-test-supabase-session", "signed-out"));
+    const delayed = await context.newPage();
+    await delayed.goto("/index.html#feed", { waitUntil: "domcontentloaded" });
+    await delayed.waitForFunction(() => document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent?.trim() === "Entrar", { timeout: 10000 });
+    await delayed.evaluate(() => {
+      window.__ansendTestSetSignedIn?.(true);
+      localStorage.setItem("ansend-test-supabase-session", "signed-in");
+      localStorage.setItem("ansend-auth-cache-v1", JSON.stringify({
+        user: {
+          id: "multi-tab-user",
+          email: "multi@ansend.test",
+          role: "authenticated",
+          aud: "authenticated",
+          app_metadata: { provider: "google" },
+          user_metadata: { full_name: "Sessao Multi Aba", display_name: "Sessao Multi Aba", username: "multiaba" }
+        },
+        profile: {
+          id: "multi-tab-user",
+          email: "multi@ansend.test",
+          full_name: "Sessao Multi Aba",
+          display_name: "Sessao Multi Aba",
+          username: "multiaba",
+          account_role: "artista",
+          avatar_url: "/assets/ansend-logo-icon.png",
+          music_styles: ["Trap"]
+        },
+        savedAt: new Date().toISOString()
+      }));
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "ansend-auth-cache-v1",
+        newValue: localStorage.getItem("ansend-auth-cache-v1"),
+        storageArea: localStorage
+      }));
+    });
+    await waitAuthenticated(delayed);
+    const delayedButton = await delayed.evaluate(() => document.querySelector(".navbar-auth-btn .auth-btn-text")?.textContent || "");
+    if (!delayedButton.includes("Sessao Multi Aba") && !delayedButton.includes("multiaba")) {
+      throw new Error(`A tab that started anonymous did not hydrate the shared authenticated session: ${delayedButton}`);
+    }
+    await delayed.close();
+    await context.addInitScript(() => localStorage.setItem("ansend-test-supabase-session", "signed-in"));
+
     const perfil = await context.newPage();
     const feed = await context.newPage();
     await Promise.all([
