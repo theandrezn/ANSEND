@@ -2,11 +2,59 @@ import { buildNexoDeveloperPrompt } from "./nexo/nexo-prompt.mjs";
 import { nexoDiagnosisSchema } from "./nexo/nexo-schema.mjs";
 import { validateNexoQuiz } from "./nexo/nexo-validation.mjs";
 
+const rateLimitStore = globalThis.__ANSEND_RATE_LIMITS || new Map();
+globalThis.__ANSEND_RATE_LIMITS = rateLimitStore;
+
+function securityHeadersFor(request, contentType = "") {
+  const url = new URL(request.url);
+  const isHttps = url.protocol === "https:";
+  const headers = new Headers({
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+    "X-Frame-Options": "DENY",
+  });
+  if (isHttps) headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  if (contentType.includes("text/html")) {
+    headers.set("Content-Security-Policy", [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://qxujynzqdursxaehchik.supabase.co https://i.ytimg.com",
+      "font-src 'self' data:",
+      "media-src 'self' blob: https://qxujynzqdursxaehchik.supabase.co",
+      "connect-src 'self' https://qxujynzqdursxaehchik.supabase.co wss://qxujynzqdursxaehchik.supabase.co",
+      "frame-src https://www.youtube-nocookie.com",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join("; "));
+  }
+  return headers;
+}
+
+function withSecurityHeaders(response, request) {
+  const headers = new Headers(response.headers);
+  const securityHeaders = securityHeadersFor(request, headers.get("content-type") || "");
+  securityHeaders.forEach((value, key) => {
+    if (!headers.has(key)) headers.set(key, value);
+  });
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function jsonResponse(payload, init = {}) {
   return Response.json(payload, {
     ...init,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "no-store",
       ...(init.headers || {}),
     },
   });
@@ -54,6 +102,56 @@ function supabaseServiceConfig(env) {
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY || "";
   const publishableKey = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || "";
   return { url: String(url).replace(/\/$/, ""), serviceKey, publishableKey };
+}
+
+function clientKey(request, userId = "anonymous") {
+  return [
+    userId,
+    request.headers.get("CF-Connecting-IP") || "",
+    request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() || "",
+    new URL(request.url).pathname,
+  ].filter(Boolean).join(":");
+}
+
+function checkRateLimit(request, { userId = "anonymous", limit = 20, windowMs = 60_000 } = {}) {
+  const key = clientKey(request, userId);
+  const now = Date.now();
+  const bucket = rateLimitStore.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return null;
+  }
+  bucket.count += 1;
+  if (bucket.count > limit) {
+    return jsonResponse({ success: false, error: "Muitas tentativas em pouco tempo. Aguarde um momento e tente novamente." }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))) },
+    });
+  }
+  return null;
+}
+
+async function requireAuthenticatedUser(request, env) {
+  const authHeader = request.headers.get("Authorization") || "";
+  if (!/^Bearer\s+[-._~+/=A-Za-z0-9]+$/i.test(authHeader)) {
+    return { ok: false, response: jsonResponse({ success: false, error: "Entre na sua conta ANSEND para continuar." }, { status: 401 }) };
+  }
+  const { url, publishableKey, serviceKey } = supabaseServiceConfig(env);
+  const key = publishableKey || serviceKey;
+  if (!url || !key) {
+    return { ok: false, response: jsonResponse({ success: false, error: "Autenticacao indisponivel no momento." }, { status: 503 }) };
+  }
+  const response = await fetch(`${url}/auth/v1/user`, {
+    headers: {
+      apikey: key,
+      Authorization: authHeader,
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.id) {
+    return { ok: false, response: jsonResponse({ success: false, error: "Sessao expirada. Faca login novamente." }, { status: 401 }) };
+  }
+  return { ok: true, authHeader, user: data };
 }
 
 function isUuid(value) {
@@ -147,6 +245,10 @@ async function handleEmbedContent(request, env) {
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 18, windowMs: 60_000 });
+  if (limited) return limited;
 
   let payload;
   try {
@@ -214,6 +316,10 @@ async function handleUpdateInterest(request, env) {
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 20, windowMs: 60_000 });
+  if (limited) return limited;
 
   let payload;
   try {
@@ -235,7 +341,7 @@ async function handleUpdateInterest(request, env) {
       p_budget_min: Number.isFinite(Number(payload.budgetMin)) ? Number(payload.budgetMin) : null,
       p_budget_max: Number.isFinite(Number(payload.budgetMax)) ? Number(payload.budgetMax) : null,
       p_intent_tags: cleanStringList(payload.intentTags, 12),
-    }, request.headers.get("Authorization") || "");
+    }, auth.authHeader);
     if (write.error) {
       return jsonResponse({ success: false, configured: write.configured, summary, error: write.error }, { status: write.configured ? 502 : 200 });
     }
@@ -267,6 +373,10 @@ async function handleNexoIntent(request, env) {
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 12, windowMs: 60_000 });
+  if (limited) return limited;
   let payload;
   try {
     payload = await request.json();
@@ -327,6 +437,10 @@ async function handleNexoChat(request, env) {
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 18000) {
@@ -410,7 +524,7 @@ async function handleNexoChat(request, env) {
     return jsonResponse({
       success: false,
       error: "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.",
-      details: failures.slice(0, 3).join(" | "),
+      ...(env.ANSEND_DEBUG_ERRORS === "true" ? { details: failures.slice(0, 3).join(" | ") } : {}),
     }, { status: 502 });
   } catch (error) {
     console.error("NEXO chat failed", error?.message || error);
@@ -426,6 +540,10 @@ async function handleNexoAnalysis(request, env) {
   if (request.method !== "POST") {
     return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 6, windowMs: 60_000 });
+  if (limited) return limited;
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 12000) {
@@ -522,7 +640,7 @@ async function handleNexoAnalysis(request, env) {
     return jsonResponse({
       success: false,
       error: "A NEXO IA nao conseguiu gerar o diagnostico agora.",
-      details: failures.slice(0, 3).join(" | "),
+      ...(env.ANSEND_DEBUG_ERRORS === "true" ? { details: failures.slice(0, 3).join(" | ") } : {}),
     }, { status: 502 });
   } catch (error) {
     console.error("NEXO analysis failed", error?.message || error);
@@ -536,25 +654,31 @@ async function handleNexoAnalysis(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    let response;
 
     if (url.pathname === "/api/nexo/analisar") {
-      return handleNexoAnalysis(request, env);
+      response = await handleNexoAnalysis(request, env);
+      return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/nexo/chat") {
-      return handleNexoChat(request, env);
+      response = await handleNexoChat(request, env);
+      return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/recommendations/embed-content") {
-      return handleEmbedContent(request, env);
+      response = await handleEmbedContent(request, env);
+      return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/recommendations/update-interest") {
-      return handleUpdateInterest(request, env);
+      response = await handleUpdateInterest(request, env);
+      return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/recommendations/nexo-intent") {
-      return handleNexoIntent(request, env);
+      response = await handleNexoIntent(request, env);
+      return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/geo") {
@@ -563,34 +687,37 @@ export default {
       const city = request.cf?.city || null;
       const locale = country === "BR" ? "pt-BR" : "en";
 
-      return Response.json({
+      response = Response.json({
         country,
         region,
         city,
         locale,
       });
+      return withSecurityHeaders(response, request);
     }
 
-    const response = await env.ASSETS.fetch(request);
+    response = await env.ASSETS.fetch(request);
     if (response.ok && url.pathname.startsWith("/assets/")) {
       const headers = new Headers(response.headers);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
-      return new Response(response.body, {
+      response = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers,
       });
+      return withSecurityHeaders(response, request);
     }
     const contentType = response.headers.get("content-type");
     if (contentType && (contentType.includes("text/html") || contentType.includes("javascript") || contentType.includes("text/css")) && !contentType.includes("charset")) {
       const newHeaders = new Headers(response.headers);
       newHeaders.set("content-type", `${contentType}; charset=utf-8`);
-      return new Response(response.body, {
+      response = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers: newHeaders,
       });
+      return withSecurityHeaders(response, request);
     }
-    return response;
+    return withSecurityHeaders(response, request);
   },
 };

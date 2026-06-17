@@ -1544,9 +1544,10 @@ function fallbackNexoIntelligence(prompt) {
 
 async function callNexoDiagnosis(quiz) {
   try {
+    const headers = await recommendationAuthHeaders();
     const response = await fetch("/api/nexo/analisar", {
       method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
+      headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
       body: JSON.stringify({ quiz }),
     });
     const data = await response.json();
@@ -1583,6 +1584,23 @@ function cssEscape(value) {
   return String(value ?? "").replace(/["\\\]]/g, "\\$&");
 }
 
+function safeUrl(value, { fallback = "#", allowHash = true, allowRelative = true } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) return fallback;
+  if (allowHash && /^#[A-Za-z0-9_-]+$/.test(raw)) return raw;
+  try {
+    const url = new URL(raw, window.location.origin);
+    const sameOrigin = url.origin === window.location.origin;
+    const allowedProtocols = new Set(["http:", "https:"]);
+    if (!allowedProtocols.has(url.protocol)) return fallback;
+    if (!allowRelative && sameOrigin && !/^https?:\/\//i.test(raw)) return fallback;
+    if (allowRelative && sameOrigin) return `${url.pathname}${url.search}${url.hash}`;
+    return url.href;
+  } catch (_error) {
+    return fallback;
+  }
+}
+
 function optimizedImageMarkup({
   src,
   alt = "",
@@ -1593,8 +1611,8 @@ function optimizedImageMarkup({
   fallbackSrc = IMAGE_FALLBACK_SRC,
   sizes = "",
 } = {}) {
-  const safeSrc = htmlEscape(src || fallbackSrc || IMAGE_FALLBACK_SRC);
-  const safeFallback = htmlEscape(fallbackSrc || IMAGE_FALLBACK_SRC);
+  const safeSrc = htmlEscape(safeUrl(src || fallbackSrc || IMAGE_FALLBACK_SRC, { fallback: fallbackSrc || IMAGE_FALLBACK_SRC }));
+  const safeFallback = htmlEscape(safeUrl(fallbackSrc || IMAGE_FALLBACK_SRC, { fallback: IMAGE_FALLBACK_SRC }));
   const attrs = [
     `src="${safeSrc}"`,
     `alt="${htmlEscape(alt)}"`,
@@ -5680,7 +5698,7 @@ function communityAdMarkup() {
   if (!ad) return communityAdPlaceholderMarkup();
   return `<article class="community-ad-card" data-promoted-ad-id="${htmlEscape(ad.id)}" aria-label="Beat impulsionado: ${htmlEscape(ad.title)}">
     <div class="community-ad-kicker"><span>Anuncio</span><small>Impulsionado</small></div>
-    <a class="community-ad-cover" href="${htmlEscape(ad.targetUrl)}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
+    <a class="community-ad-cover" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
       ${optimizedImageMarkup({ src: ad.cover, alt: `Capa de ${ad.title}`, width: 260, height: 320 })}
     </a>
     <div class="community-ad-copy">
@@ -5689,7 +5707,7 @@ function communityAdMarkup() {
       <p>${htmlEscape(ad.artist)}</p>
       ${ad.priceLabel ? `<em>${htmlEscape(ad.priceLabel)}</em>` : ""}
     </div>
-    <a class="community-ad-cta" href="${htmlEscape(ad.targetUrl)}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}">Ver beat</a>
+    <a class="community-ad-cta" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}">Ver beat</a>
   </article>`;
 }
 
@@ -5760,7 +5778,7 @@ async function loadCommunityPromotedAd({ render = false } = {}) {
 }
 
 async function trackCommunityAdEvent(kind, adId) {
-  if (!supabaseClient || !adId) return;
+  if (!supabaseClient || !appState.authUser || !adId) return;
   const rpcName = kind === "click" ? "increment_promoted_beat_click" : "increment_promoted_beat_impression";
   try {
     await supabaseClient.rpc(rpcName, { p_ad_id: adId });
@@ -9438,9 +9456,10 @@ function scrollNexoChatToBottom() {
 }
 
 async function callNexoChatApi(messages) {
+  const headers = await recommendationAuthHeaders();
   const response = await fetch("/api/nexo/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({
       messages: messages.map(({ role, content }) => ({ role, content })),
     }),
@@ -9455,9 +9474,10 @@ async function callNexoChatApi(messages) {
 async function extractNexoIntent(message) {
   if (!appState.authUser || !message) return null;
   try {
+    const headers = await recommendationAuthHeaders();
     const response = await fetch("/api/recommendations/nexo-intent", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ message }),
     });
     const data = await response.json().catch(() => ({}));
@@ -11925,7 +11945,7 @@ function renderProfileLegacy() {
         <section class="profile-sidebar-card">
           <div class="section-title"><i data-lucide="share-2"></i>Links e presença</div>
           <ul class="profile-links-list">
-            ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${url}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i><span>${label}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
+            ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${htmlEscape(safeUrl(url, { fallback: "#", allowHash: false, allowRelative: false }))}" target="_blank" rel="noopener noreferrer"><i data-lucide="${htmlEscape(icon)}"></i><span>${htmlEscape(label)}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
           </ul>
         </section>
       </div>
@@ -14722,7 +14742,7 @@ document.addEventListener("submit", async (event) => {
     const input = commentForm.querySelector("input");
     const message = input?.value.trim();
     if (message) {
-      document.querySelector(".comment-list")?.insertAdjacentHTML("beforeend", `<article><strong>Voce</strong><p>${message}</p></article>`);
+      document.querySelector(".comment-list")?.insertAdjacentHTML("beforeend", `<article><strong>Voce</strong><p>${htmlEscape(message)}</p></article>`);
       input.value = "";
       showToast("Comentario publicado no preview", "message-circle");
     }
@@ -15266,10 +15286,11 @@ function renderNotificationsList() {
   
   let html = notificationsState.list.map((item) => {
     const isUnread = !item.is_read ? " is-unread" : "";
+    const safeActionUrl = safeUrl(item.action_url || "", { fallback: "", allowHash: true, allowRelative: true });
     
     let avatarHtml = "";
     if (item.actor_avatar) {
-      avatarHtml = `<img class="app-optimized-image" src="${item.actor_avatar}" alt="Avatar" width="36" height="36" />`;
+      avatarHtml = `<img class="app-optimized-image" src="${htmlEscape(safeUrl(item.actor_avatar, { fallback: IMAGE_FALLBACK_SRC }))}" alt="Avatar" width="36" height="36" data-fallback-src="${htmlEscape(IMAGE_FALLBACK_SRC)}" />`;
     } else {
       let icon = "bell";
       if (item.type === "profile_follow") icon = "user-plus";
@@ -15291,13 +15312,13 @@ function renderNotificationsList() {
     }
     
     return `
-      <a class="notification-item${isUnread}" data-id="${item.id}" data-url="${item.action_url || ""}" role="menuitem">
+      <a class="notification-item${isUnread}" data-id="${htmlEscape(item.id)}" data-url="${htmlEscape(safeActionUrl)}" role="menuitem">
         <div class="notification-avatar-container">
           ${avatarHtml}
         </div>
         <div class="notification-content">
-          <p class="notification-text"><strong>${item.title}:</strong> ${item.body}</p>
-          <span class="notification-time">${formatRelativeTime(item.created_at)}</span>
+          <p class="notification-text"><strong>${htmlEscape(item.title || "Notificacao")}:</strong> ${htmlEscape(item.body || "")}</p>
+          <span class="notification-time">${htmlEscape(formatRelativeTime(item.created_at))}</span>
         </div>
       </a>
     `;
@@ -15369,7 +15390,7 @@ function subscribeRealtimeNotifications(userId) {
     supabaseClient?.removeChannel(notificationsState.realtimeChannel);
   }
   
-  if (!supabaseClient) return;
+  if (!supabaseClient?.channel || !supabaseClient?.removeChannel) return;
   
   const channel = supabaseClient
     .channel(`public:notifications:recipient_id=eq.${userId}`)
