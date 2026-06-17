@@ -5930,6 +5930,9 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
   const comments = appState.hiring.comments[post.id] || [];
   const ownerProposals = isOwner ? appState.hiring.proposals.filter((proposal) => proposal.post_id === post.id) : [];
   const profileAttrs = profileTargetAttrs({ id: author.id, username: author.username, title: author.name });
+  const title = String(post.title || "").trim();
+  const description = String(post.description || "").trim();
+  const shouldShowDescription = description && description.toLocaleLowerCase("pt-BR") !== title.toLocaleLowerCase("pt-BR");
   return `<article class="hiring-post ${detail ? "is-detail" : ""}" data-post-id="${htmlEscape(post.id)}">
     <header class="hiring-post-head">
       <button type="button" class="hiring-author-avatar" data-action="hiring-open-profile" ${profileAttrs}>${hiringAvatar(author)}</button>
@@ -5940,8 +5943,8 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
       <button type="button" class="hiring-icon-btn" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
     </header>
     <button type="button" class="hiring-post-body" data-action="hiring-open-post" data-post-id="${htmlEscape(post.id)}">
-      <h2>${htmlEscape(post.title)}</h2>
-      <p>${htmlEscape(post.description)}</p>
+      ${title ? `<h2>${htmlEscape(title)}</h2>` : ""}
+      ${shouldShowDescription ? `<p>${htmlEscape(description)}</p>` : ""}
       ${post.reference_links ? `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>` : ""}
     </button>
     <div class="hiring-tags"><span>${htmlEscape(hiringCategoryLabel(post.category))}</span><span>${htmlEscape(hiringBudgetLabel(post))}</span><span>${htmlEscape(hiringDeadlineLabel(post.deadline_type))}</span><span>${htmlEscape(hiringWorkModes[post.work_mode] || post.work_mode)}</span><span data-status="${htmlEscape(post.status)}">${htmlEscape(hiringStatusLabels[post.status] || post.status)}</span></div>
@@ -5951,11 +5954,11 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
       <button type="button" class="${post.viewer?.liked ? "is-active" : ""}" data-action="hiring-like" data-post-id="${htmlEscape(post.id)}" aria-label="Curtir"><i data-lucide="heart"></i><span>${post.metrics?.likes || 0}</span></button>
       <button type="button" class="${post.viewer?.saved ? "is-active" : ""}" data-action="hiring-save" data-post-id="${htmlEscape(post.id)}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>${post.metrics?.saves || 0}</span></button>
       <button type="button" data-action="hiring-share" data-post-id="${htmlEscape(post.id)}" aria-label="Compartilhar"><i data-lucide="share"></i></button>
+      <button type="button" class="hiring-chat-icon" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""} aria-label="Abrir chat"><i data-lucide="messages-square"></i></button>
     </div>
     <div class="hiring-professional-actions">
-      <button type="button" class="${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
-      <button type="button" class="${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
-      <button type="button" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="messages-square"></i>Abrir chat</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
       ${isOwner ? `<label class="hiring-status-select">Status<select data-action="hiring-status" data-post-id="${htmlEscape(post.id)}">${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${post.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>` : ""}
     </div>
     <section class="hiring-comments" ${detail ? "" : "hidden"}>
