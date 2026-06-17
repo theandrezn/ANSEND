@@ -6182,6 +6182,7 @@ function hiringEmptyMarkup(title = "Nenhuma publicacao ainda.", text = "Seja o p
 
 function normalizePromotedBeatAd(row = {}) {
   const targetUrl = row.target_url || (row.beat_id ? communityBeatUrl(row.beat_id) : "#catalogo");
+  const audioUrl = row.audio_url || row.preview_url || row.audio_preview_url || row.track_url || "";
   const priceLabel = row.price_label || (Number(row.price || 0)
     ? Number(row.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
         style: "currency",
@@ -6194,6 +6195,7 @@ function normalizePromotedBeatAd(row = {}) {
     title: row.title || "Beat impulsionado",
     artist: row.artist_name || row.producer_name || "Produtor ANSEND",
     cover: row.cover_url || row.youtube_thumbnail_url || "assets/ansend-logo-square.png",
+    audioUrl,
     priceLabel,
     tag: row.tagline || row.genre || "Beat em destaque",
     targetUrl,
@@ -6204,18 +6206,34 @@ function normalizePromotedBeatAd(row = {}) {
 
 function communityAdPlaceholderMarkup({ loading = false } = {}) {
   return `<article class="community-ad-card is-placeholder ${loading ? "is-loading" : ""}" aria-label="Espaco de anuncio da Comunidade ANSEND">
-    <div class="community-ad-kicker"><span>Anuncio</span><small>ANSEND Ads</small></div>
     <div class="community-ad-placeholder-art" aria-hidden="true">
-      <i data-lucide="audio-lines"></i>
-      <span></span>
-      <span></span>
+      <i data-lucide="${loading ? "loader-circle" : "megaphone"}"></i>
     </div>
     <div class="community-ad-copy">
-      <strong>${loading ? "Carregando destaque" : "Anuncie seu beat aqui"}</strong>
-      <p>${loading ? "Buscando campanhas ativas da comunidade." : "Impulsione seu beat para aparecer na Comunidade ANSEND."}</p>
+      <span>${loading ? "ANSEND Ads" : "Patrocinado"}</span>
+      <strong>${loading ? "Carregando destaque" : "Divulgue seu beat"}</strong>
+      <p>${loading ? "Buscando campanhas ativas." : "Apareca para artistas e produtores na Comunidade."}</p>
     </div>
     <a class="community-ad-cta" href="#ofertas" data-route="ofertas">Criar anuncio</a>
   </article>`;
+}
+
+function communityAdBeatItem(ad = {}) {
+  return {
+    id: ad.beatId || `promoted-${ad.id}`,
+    title: ad.title || "Beat impulsionado",
+    producer: ad.artist || "Produtor ANSEND",
+    cover: ad.cover || IMAGE_FALLBACK_SRC,
+    audio: ad.audioUrl || "",
+    audio_url: ad.audioUrl || "",
+    price: ad.priceLabel || "",
+    genre: ad.tag || "",
+    raw: {
+      audio_url: ad.audioUrl || "",
+      cover_url: ad.cover || "",
+      target_url: ad.targetUrl || "",
+    },
+  };
 }
 
 function communityAdMarkup() {
@@ -6223,18 +6241,26 @@ function communityAdMarkup() {
   if (adState.loading && !adState.item) return communityAdPlaceholderMarkup({ loading: true });
   const ad = adState.item;
   if (!ad) return communityAdPlaceholderMarkup();
-  return `<article class="community-ad-card" data-promoted-ad-id="${htmlEscape(ad.id)}" aria-label="Beat impulsionado: ${htmlEscape(ad.title)}">
-    <div class="community-ad-kicker"><span>Anuncio</span><small>Impulsionado</small></div>
-    <a class="community-ad-cover" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
-      ${optimizedImageMarkup({ src: ad.cover, alt: `Capa de ${ad.title}`, width: 260, height: 320 })}
+  const beatItem = communityAdBeatItem(ad);
+  const isPlaying = appState.playing === beatItem.id && !topBeatAudio()?.paused;
+  const safeTarget = htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }));
+  return `<article class="community-ad-card ${isPlaying ? "is-playing" : ""}" data-promoted-ad-id="${htmlEscape(ad.id)}" data-promoted-beat-id="${htmlEscape(beatItem.id)}" aria-label="Beat impulsionado: ${htmlEscape(ad.title)}">
+    <a class="community-ad-cover" href="${safeTarget}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
+      ${optimizedImageMarkup({ src: ad.cover, alt: `Capa de ${ad.title}`, width: 320, height: 420, sizes: "(max-width: 900px) 86vw, 238px" })}
     </a>
+    <div class="community-ad-shade" aria-hidden="true"></div>
+    <div class="community-ad-kicker"><span>Patrocinado</span><small>ANSEND Ads</small></div>
+    <button class="community-ad-play" type="button" data-action="community-ad-play" data-ad-id="${htmlEscape(ad.id)}" aria-label="${isPlaying ? "Pausar" : "Ouvir"} beat ${htmlEscape(ad.title)}">
+      <i data-lucide="${isPlaying ? "pause" : "play"}"></i>
+    </button>
+    <button class="community-ad-menu" type="button" aria-label="Mais opcoes do anuncio"><i data-lucide="more-horizontal"></i></button>
     <div class="community-ad-copy">
       <span>${htmlEscape(ad.tag)}</span>
       <strong>${htmlEscape(ad.title)}</strong>
       <p>${htmlEscape(ad.artist)}</p>
       ${ad.priceLabel ? `<em>${htmlEscape(ad.priceLabel)}</em>` : ""}
+      <a class="community-ad-cta" href="${safeTarget}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}"><i data-lucide="play"></i>Ouvir beat</a>
     </div>
-    <a class="community-ad-cta" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}">Ver beat</a>
   </article>`;
 }
 
@@ -6249,6 +6275,28 @@ function updateCommunityAdRail() {
   const rail = document.querySelector(".community-ad-rail");
   if (rail) rail.innerHTML = communityAdMarkup();
   hydrateView();
+}
+
+async function toggleCommunityAdPlayback(adId = "") {
+  const ad = appState.hiring.promotedAd.item;
+  if (!ad || String(ad.id) !== String(adId)) return false;
+  const item = communityAdBeatItem(ad);
+  const audio = topBeatAudio();
+  if (!item.audio && !item.audio_url) {
+    trackCommunityAdEvent("click", ad.id);
+    const targetUrl = safeUrl(ad.targetUrl, { fallback: "#marketplace" });
+    if (targetUrl.startsWith("#")) location.hash = targetUrl.slice(1);
+    else window.location.href = targetUrl;
+    return false;
+  }
+  if (appState.playing === item.id && audio && !audio.paused) {
+    audio.pause();
+    setTopBeatPlaying(false);
+    return true;
+  }
+  const played = await playBeat(item, { quiet: true, suppressErrorLog: false });
+  if (played) trackCommunityAdEvent("click", ad.id);
+  return played;
 }
 
 function validPromotedBeatWindow(row = {}) {
@@ -13807,6 +13855,16 @@ function setTopBeatPlaying(isPlaying) {
     button.setAttribute("aria-label", active ? "Pausar beat top 1 do dia" : "Tocar beat top 1 do dia");
     button.innerHTML = `<i data-lucide="${active ? "pause" : "play"}"></i>`;
   });
+  document.querySelectorAll(".community-ad-card[data-promoted-beat-id]").forEach((card) => {
+    const active = String(card.dataset.promotedBeatId || "") === String(appState.playing || "") && isPlaying;
+    card.classList.toggle("is-playing", active);
+    const button = card.querySelector('[data-action="community-ad-play"]');
+    if (button) {
+      const title = card.getAttribute("aria-label")?.replace(/^Beat impulsionado:\s*/i, "") || "beat";
+      button.setAttribute("aria-label", `${active ? "Pausar" : "Ouvir"} ${title}`);
+      button.innerHTML = `<i data-lucide="${active ? "pause" : "play"}"></i>`;
+    }
+  });
 
   const player = document.querySelector(".mini-player");
   if (player) {
@@ -14531,6 +14589,14 @@ document.addEventListener("click", (event) => {
 
   if (!event.target.closest(".hiring-composer-popover, [data-action='hiring-composer-popover']")) {
     closeHiringComposerPopovers(document);
+  }
+
+  const communityAdPlay = event.target.closest("[data-action='community-ad-play']");
+  if (communityAdPlay) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleCommunityAdPlayback(communityAdPlay.dataset.adId || communityAdPlay.closest("[data-promoted-ad-id]")?.dataset.promotedAdId || "");
+    return;
   }
 
   const communityAdLink = event.target.closest("[data-action='community-ad-open']");

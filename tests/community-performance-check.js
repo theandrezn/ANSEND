@@ -52,7 +52,7 @@ if (/await\s+loadCommunityPromotedAd/.test(renderBody)) {
 if (!/renderedCommunityEarly[\s\S]*currentRoute\(\) === COMMUNITY_ROUTE[\s\S]*renderRoute\(\)/.test(script)) {
   throw new Error("Community route must render before auth/public data boot completes");
 }
-if (/if \(route !== COMMUNITY_ROUTE\) PageTransition\(appView, route\);/.test(script) === false) {
+if (/if \(route !== COMMUNITY_ROUTE(?:\s*&&\s*route !== "chat")?\) PageTransition\(appView, route\);/.test(script) === false) {
   throw new Error("Community route should bypass section transition wrapper");
 }
 if (!/communityRouteEnter/.test(styles) || !/body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
