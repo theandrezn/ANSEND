@@ -788,7 +788,7 @@ async function handleNexoAnalysis(request, env) {
 
 async function handleChatGifs(request, env) {
   const auth = await requireAuthenticatedUser(request, env);
-  if (auth.error) return auth.error;
+  if (!auth.ok) return auth.response;
   const url = new URL(request.url);
   const query = cleanRecommendationText(url.searchParams.get("q") || "", 80);
   const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 16)));

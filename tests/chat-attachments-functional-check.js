@@ -26,6 +26,7 @@ for (const marker of [
   "TENOR_API_KEY",
   "GIPHY_API_KEY",
   "/api/chat/gifs",
+  "if (!auth.ok) return auth.response",
 ]) {
   if (!worker.includes(marker)) throw new Error(`Missing chat GIF worker marker: ${marker}`);
 }
