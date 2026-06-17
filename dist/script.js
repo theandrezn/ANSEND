@@ -8462,6 +8462,33 @@ const STORAGE_UPLOAD_LIMITS = {
     allowedExt: ["zip"],
     upsert: false,
   },
+  secure_mp3: {
+    label: "MP3 de Entrega",
+    bucket: "beat-secure-files",
+    folder: "beat-secure-files",
+    maxBytes: 150 * 1024 * 1024,
+    allowedMime: ["audio/mpeg", "audio/mp3"],
+    allowedExt: ["mp3"],
+    upsert: false,
+  },
+  secure_wav: {
+    label: "WAV de Entrega",
+    bucket: "beat-secure-files",
+    folder: "beat-secure-files",
+    maxBytes: 250 * 1024 * 1024,
+    allowedMime: ["audio/wav", "audio/x-wav"],
+    allowedExt: ["wav"],
+    upsert: false,
+  },
+  secure_stems: {
+    label: "Stems ZIP de Entrega",
+    bucket: "beat-secure-files",
+    folder: "beat-secure-files",
+    maxBytes: 500 * 1024 * 1024,
+    allowedMime: ["application/zip", "application/x-zip-compressed"],
+    allowedExt: ["zip"],
+    upsert: false,
+  },
   avatar: {
     label: "avatar",
     bucket: "profile-avatars",
@@ -10267,11 +10294,11 @@ function mapCatalogItemToBeat(item) {
 
 function splitCartEntry(entry = "") {
   const [beatId, licenseId = "premium"] = String(entry || "").split("::");
-  return { beatId, licenseId: licensePlans[licenseId] ? licenseId : "premium" };
+  return { beatId, licenseId };
 }
 
 function cartEntryKey(id, licenseId = "premium") {
-  return `${id}::${licensePlans[licenseId] ? licenseId : "premium"}`;
+  return `${id}::${licenseId}`;
 }
 
 function findBeat(id) {
@@ -10332,39 +10359,121 @@ function renderFavorites() {
   appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
 }
 
-function renderPurchases() {
-  const legacyOrders = appState.purchases
-    .filter((id) => !appState.orders.some((order) => order.beatId === id))
-    .map((id) => ({ id: `legacy-${id}`, beatId: id, license: "basic", status: "Disponivel", createdAt: new Date().toISOString() }));
-  const orders = [...appState.orders, ...legacyOrders];
-  const orderMarkup = orders.map((order) => {
-    const item = findBeat(order.beatId);
-    const license = licensePlans[order.license] || licensePlans.basic;
-    if (!item) {
-      return `<article>
-        <img src="assets/ansend-logo-square.png" alt="">
-        <div><strong>Beat indisponivel</strong><span>${license.label} - ${license.price}</span></div>
-        <span class="purchase-status">Indisponivel</span>
-      </article>`;
+async function renderPurchases() {
+  const pageHeader = pageIntro("compras");
+  
+  if (!supabaseClient || !appState.authUser) {
+    appView.innerHTML = `${pageHeader}${emptyState("shopping-bag", "Faça login para ver seus pedidos", "Conecte sua conta para acessar seu histórico de compras e downloads de beats.", "vendedor")}`;
+    return;
+  }
+
+  appView.innerHTML = `${pageHeader}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
+  lucide.createIcons();
+
+  try {
+    const orders = await loadUserOrders();
+    const orderItemsList = [];
+    orders.forEach(order => {
+      if (order.order_items && Array.isArray(order.order_items)) {
+        order.order_items.forEach(oi => {
+          orderItemsList.push({
+            orderId: order.id,
+            buyerName: order.buyer_name,
+            buyerEmail: order.buyer_email,
+            createdAt: order.created_at,
+            ...oi
+          });
+        });
+      }
+    });
+
+    if (orderItemsList.length === 0) {
+      appView.innerHTML = `${pageHeader}${emptyState("shopping-bag", "Nenhum pedido ainda", "Quando você comprar uma licença, os downloads e contratos aparecerão aqui.", "explorar")}`;
+      return;
     }
-    return `<article>
-      <img src="${item.cover}" alt="">
-      <div><strong>${item.title}</strong><span>${item.producer} - ${license.label} - ${license.price}</span></div>
-      <span class="purchase-status">${order.status || "Disponivel"}</span>
-      <button type="button" data-action="download" data-id="${item.id}"><i data-lucide="download"></i>Baixar</button>
-    </article>`;
-  }).join("");
-  const contractMarkup = appState.contracts.map((contract) => `<article>
-    ${professionalAvatarMarkup(findProfessional(contract.professional), "purchase-avatar")}
-    <div><strong>${contract.professional}</strong><span>${contract.service} - ${contract.price}</span></div>
-    <span class="purchase-status">${contract.status}</span>
-    <button type="button" data-action="producer" data-title="${contract.professional}"><i data-lucide="user-round"></i>Perfil</button>
-  </article>`).join("");
-  const hasItems = orderMarkup || contractMarkup;
-  const clearMarkup = hasItems
-    ? `<div class="purchase-actions"><button type="button" class="commerce-clear-btn" data-action="clear-purchases"><i data-lucide="trash-2"></i>Remover todos</button></div>`
-    : "";
-  appView.innerHTML = `${pageIntro("compras")}${hasItems ? `${clearMarkup}<section class="purchase-list">${orderMarkup}${contractMarkup}</section>` : emptyState("shopping-bag", "Nenhum pedido ainda", "Quando voce comprar uma licenca ou contratar um servico, ele aparecera aqui.")}`;
+
+    const orderMarkup = orderItemsList.map(oi => {
+      const beat = findBeat(oi.beat_id);
+      if (!beat) return "";
+      
+      const priceText = `R$ ${(oi.price_cents_snapshot / 100).toFixed(2)}`;
+      const dateString = new Date(oi.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+      const producerName = String(beat.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+      
+      const included = String(oi.files_included_snapshot || "").toUpperCase();
+      const hasMp3 = included.includes("MP3");
+      const hasWav = included.includes("WAV");
+      const hasStems = included.includes("STEMS") || included.includes("ZIP");
+
+      let downloadButtons = "";
+      if (hasMp3) {
+        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="mp3" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> MP3</button>`;
+      }
+      if (hasWav) {
+        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="wav" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> WAV</button>`;
+      }
+      if (hasStems) {
+        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="stems" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> Stems (ZIP)</button>`;
+      }
+
+      const royaltyBuyer = oi.buyer_royalty_snapshot || 50;
+      const royaltyProducer = oi.producer_royalty_snapshot || 50;
+      const filesLabel = oi.files_included_snapshot || "MP3";
+      
+      return `
+        <article class="purchase-item" style="display:flex; flex-direction:column; gap:12px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; margin-bottom:12px;">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <img src="${beat.cover}" style="width:60px; height:60px; border-radius:6px; object-fit:cover;">
+            <div style="flex:1;">
+              <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0 0 4px;">${htmlEscape(beat.title)}</h3>
+              <div style="font-size:12px; color:var(--beat-muted); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:4px;">
+                <span>Produtor: <strong>${htmlEscape(producerName)}</strong></span>
+                <span>Licença: <strong>${htmlEscape(oi.license_name_snapshot)}</strong></span>
+                <span>Preço: <strong>${priceText}</strong></span>
+              </div>
+              <small style="font-size:11px; color:var(--beat-dim);">Adquirido em ${dateString}</small>
+            </div>
+          </div>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid var(--beat-border-soft); padding-top:12px; margin-top:4px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              ${downloadButtons}
+            </div>
+            
+            <button type="button" class="an-primary" data-action="view-purchased-contract" 
+                    data-beat-title="${htmlEscape(beat.title)}"
+                    data-producer-name="${htmlEscape(producerName)}"
+                    data-buyer-name="${htmlEscape(oi.buyerName)}"
+                    data-license-name="${htmlEscape(oi.license_name_snapshot)}"
+                    data-royalty-buyer="${royaltyBuyer}"
+                    data-royalty-producer="${royaltyProducer}"
+                    data-files-included="${htmlEscape(filesLabel)}"
+                    data-date-string="${new Date(oi.created_at).toLocaleDateString('pt-BR')}"
+                    style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; font-size:12px; background:#fff; border:0; color:#000; font-weight:bold; border-radius:6px; cursor:pointer;">
+              <i data-lucide="scroll" style="width:14px; height:14px;"></i> Ver Contrato
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    const clearMarkup = `<div class="purchase-actions" style="margin-bottom:16px; display:flex; justify-content:flex-end;">
+      <button type="button" class="commerce-clear-btn" data-action="clear-purchases" style="display:flex; align-items:center; gap:6px; font-size:12px;"><i data-lucide="trash-2"></i>Remover todos os pedidos locais</button>
+    </div>`;
+
+    appView.innerHTML = `
+      ${pageHeader}
+      ${clearMarkup}
+      <section class="purchase-list" style="margin-top:8px;">
+        ${orderMarkup}
+      </section>
+    `;
+    lucide.createIcons();
+  } catch (error) {
+    console.error("Error rendering purchases:", error);
+    appView.innerHTML = `${pageHeader}<div class="empty-state"><p>Erro ao carregar seu histórico de compras.</p></div>`;
+  }
+
 }
 
 function addToCart(id, licenseId = "premium") {
@@ -10397,7 +10506,7 @@ function clearPurchases() {
   if (currentRoute() === "compras") renderPurchases();
 }
 
-function renderCart() {
+async function renderCart() {
   const hasItems = appState.cart.length > 0;
   
   if (!hasItems) {
@@ -10405,126 +10514,134 @@ function renderCart() {
     return;
   }
 
-  const items = appState.cart.map(id => {
-    const { beatId, licenseId } = splitCartEntry(id);
-    const beatItem = findBeat(beatId);
-    if (!beatItem) return null;
-    const license = licensePlans[licenseId] || licensePlans.premium;
-    const priceText = license.price || beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
-    const rawPrice = Number(beatItem.raw?.price || 0);
-    const normalizedPrice = String(priceText).replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-    const priceVal = rawPrice || Number.parseFloat(normalizedPrice) || 0;
-    return {
-      ...beatItem,
-      cartId: id,
-      licenseId,
-      licenseLabel: license.label,
-      priceVal,
-      priceText
-    };
-  }).filter(Boolean);
-
-  if (!items.length) {
-    appState.cart = [];
-    persistState();
-    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho estÃ¡ vazio", "Os beats salvos nao estao mais disponiveis no catalogo.")}`;
-    return;
-  }
-
-  const subtotal = items.reduce((sum, item) => sum + item.priceVal, 0);
-  const serviceFee = parseFloat((subtotal * 0.12).toFixed(2));
-  const total = subtotal + serviceFee;
-  const itemCountLabel = items.length === 1 ? t("cart.itemSingular") : t("cart.itemPlural");
-
-  const itemMarkup = items.map(item => `
-    <article class="cart-item" data-id="${item.id}" data-cart-id="${item.cartId}">
-      <img src="${item.cover}" alt="Capa de ${item.title}" class="cart-item-art">
-      <div class="cart-item-details">
-        <h3>${item.title}</h3>
-        <span>${item.licenseLabel} · Revisar licença</span>
-        <small class="cart-item-producer">${t("cart.byProducer")} ${item.producer}</small>
-      </div>
-      <div class="cart-item-price">${item.priceText}</div>
-      <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.cartId}">
-        <i data-lucide="x"></i>
-      </button>
-    </article>
-  `).join("");
-
-  const promotedBeatsHtml = preferredBeats(6).map(item => `
-    <div class="promoted-beat-card" data-beat-id="${htmlEscape(item.id)}">
-      ${adminDeleteButton("beat", item, "admin-delete-beat-mini")}
-      <img src="${item.cover}" alt="${item.title}">
-      <div class="promoted-beat-info">
-        <strong>${item.title}</strong>
-        <span>${item.producer}</span>
-      </div>
-      <button type="button" data-action="buy" data-id="${item.id}">
-        <i data-lucide="shopping-cart"></i>
-        <span>${item.price || "$35.00"}</span>
-      </button>
-    </div>
-  `).join("");
-
-  const contentMarkup = `
-    <section class="cart-page-layout">
-      <div class="cart-left-col">
-        <div class="cart-billing-header">
-          <span>${t("cart.billing")}</span>
-          <div class="cart-header-actions">
-            <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
-            <button type="button" class="commerce-clear-btn" data-action="clear-cart"><i data-lucide="trash-2"></i> Limpar carrinho</button>
-          </div>
-        </div>
-        <div class="cart-items-list">
-          ${itemMarkup}
-        </div>
-        <div class="cart-discount-banner">
-          ${t("cart.discount")}
-        </div>
-      </div>
-      
-      <div class="cart-right-col">
-        <div class="cart-summary-card">
-          <div class="cart-summary-head">
-            <h3>${t("cart.summary")}</h3>
-            <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> ${t("cart.share")}</button>
-          </div>
-          <div class="cart-summary-row">
-            <span>${t("cart.itemsTotal")}</span>
-            <strong>$${subtotal.toFixed(2)}</strong>
-          </div>
-          <div class="cart-summary-row">
-            <span>${t("cart.serviceFee")}</span>
-            <strong>$${serviceFee.toFixed(2)}</strong>
-          </div>
-          <div class="cart-summary-row cart-total-row">
-            <span>${t("cart.subtotal")} (${items.length} ${itemCountLabel})</span>
-            <strong>$${total.toFixed(2)}</strong>
-          </div>
-          <div class="cart-auth-hint">
-            ${t("cart.authHint")} <a href="#vendedor">${t("cart.signIn")}</a> ${t("cart.or")} <a href="#vendedor">${t("cart.signUp")}</a>
-          </div>
-          <button class="cart-checkout-btn" type="button" data-action="finalize-cart">
-            ${t("cart.checkout")}
-          </button>
-          <div class="cart-terms-hint">
-            ${t("cart.terms")}
-          </div>
-        </div>
-      </div>
-    </section>
-    
-    <section class="cart-promoted-section">
-      <h3>${t("cart.promoted")}</h3>
-      <div class="cart-promoted-grid">
-        ${promotedBeatsHtml}
-      </div>
-    </section>
-  `;
-
-  appView.innerHTML = `${pageIntro("carrinho")}${contentMarkup}`;
+  appView.innerHTML = `${pageIntro("carrinho")}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
   lucide.createIcons();
+
+
+  try {
+    const items = [];
+    for (const entry of appState.cart) {
+      const { beatId, licenseId } = splitCartEntry(entry);
+      const beatItem = findBeat(beatId);
+      if (!beatItem) continue;
+      const licenses = await fetchBeatLicenses(beatId);
+      const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                      generateDefaultLicensesForBeat(beatItem).find(l => l.id === licenseId || l.license_key === licenseId);
+      if (license) {
+        items.push({
+          beat: beatItem,
+          cartId: entry,
+          licenseId: license.id,
+          licenseLabel: license.name,
+          priceValCents: license.price_cents,
+          priceText: `R$ ${(license.price_cents / 100).toFixed(2)}`
+        });
+      }
+    }
+
+    if (!items.length) {
+      appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho está vazio", "Adicione beats ou serviços ao carrinho para finalizar seu pedido.")}`;
+      return;
+    }
+
+    const subtotalCents = items.reduce((sum, item) => sum + item.priceValCents, 0);
+    const serviceFeeCents = Math.round(subtotalCents * 0.12);
+    const totalCents = subtotalCents + serviceFeeCents;
+    const itemCountLabel = items.length === 1 ? t("cart.itemSingular") : t("cart.itemPlural");
+
+    const itemMarkup = items.map(item => `
+      <article class="cart-item" data-id="${item.beat.id}" data-cart-id="${item.cartId}">
+        <img src="${item.beat.cover}" alt="Capa de ${item.beat.title}" class="cart-item-art">
+        <div class="cart-item-details">
+          <h3>${htmlEscape(item.beat.title)}</h3>
+          <span>${htmlEscape(item.licenseLabel)} · <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.beat.id}" data-license-id="${item.licenseId}" style="color:var(--beat-blue); text-decoration:underline;">Revisar licença</a></span>
+          <small class="cart-item-producer">${t("cart.byProducer")} ${htmlEscape(item.beat.producer)}</small>
+        </div>
+        <div class="cart-item-price">${item.priceText}</div>
+        <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.cartId}">
+          <i data-lucide="x"></i>
+        </button>
+      </article>
+    `).join("");
+
+    const promotedBeatsHtml = preferredBeats(6).map(item => `
+      <div class="promoted-beat-card" data-beat-id="${htmlEscape(item.id)}">
+        ${adminDeleteButton("beat", item, "admin-delete-beat-mini")}
+        <img src="${item.cover}" alt="${item.title}">
+        <div class="promoted-beat-info">
+          <strong>${item.title}</strong>
+          <span>${item.producer}</span>
+        </div>
+        <button type="button" data-action="buy" data-id="${item.id}">
+          <i data-lucide="shopping-cart"></i>
+          <span>${item.price || "$35.00"}</span>
+        </button>
+      </div>
+    `).join("");
+
+    const contentMarkup = `
+      <section class="cart-page-layout">
+        <div class="cart-left-col">
+          <div class="cart-billing-header">
+            <span>${t("cart.billing")}</span>
+            <div class="cart-header-actions">
+              <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
+              <button type="button" class="commerce-clear-btn" data-action="clear-cart"><i data-lucide="trash-2"></i> Limpar carrinho</button>
+            </div>
+          </div>
+          <div class="cart-items-list">
+            ${itemMarkup}
+          </div>
+          <div class="cart-discount-banner">
+            ${t("cart.discount")}
+          </div>
+        </div>
+        
+        <div class="cart-right-col">
+          <div class="cart-summary-card">
+            <div class="cart-summary-head">
+              <h3>${t("cart.summary")}</h3>
+              <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> ${t("cart.share")}</button>
+            </div>
+            <div class="cart-summary-row">
+              <span>${t("cart.itemsTotal")}</span>
+              <strong>R$ ${(subtotalCents / 100).toFixed(2)}</strong>
+            </div>
+            <div class="cart-summary-row">
+              <span>${t("cart.serviceFee")}</span>
+              <strong>R$ ${(serviceFeeCents / 100).toFixed(2)}</strong>
+            </div>
+            <div class="cart-summary-row cart-total-row">
+              <span>${t("cart.subtotal")} (${items.length} ${itemCountLabel})</span>
+              <strong>R$ ${(totalCents / 100).toFixed(2)}</strong>
+            </div>
+            <div class="cart-auth-hint">
+              ${t("cart.authHint")} <a href="#vendedor">${t("cart.signIn")}</a> ${t("cart.or")} <a href="#vendedor">${t("cart.signUp")}</a>
+            </div>
+            <button class="cart-checkout-btn" type="button" data-action="finalize-cart">
+              ${t("cart.checkout")}
+            </button>
+            <div class="cart-terms-hint">
+              ${t("cart.terms")}
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="cart-promoted-section">
+        <h3>${t("cart.promoted")}</h3>
+        <div class="cart-promoted-grid">
+          ${promotedBeatsHtml}
+        </div>
+      </section>
+    `;
+
+    appView.innerHTML = `${pageIntro("carrinho")}${contentMarkup}`;
+    lucide.createIcons();
+  } catch (error) {
+    console.error("Error rendering cart:", error);
+    appView.innerHTML = `${pageIntro("carrinho")}<div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>`;
+  }
 }
 
 function renderLibraryLegacy() {
@@ -11310,8 +11427,35 @@ function beatDetailMiniCard(beat, context = "related") {
   </article>`;
 }
 
-function licenseTermsMarkup(plan) {
-  const terms = plan.rights || [];
+function licenseTermsMarkup(lic) {
+  const terms = [];
+  if (lic.included_mp3) terms.push("MP3 incluso");
+  if (lic.included_wav) terms.push("WAV incluso");
+  if (lic.included_stems) terms.push("Stems ZIP inclusos");
+  if (lic.commercial_use) terms.push("Uso comercial permitido");
+  if (lic.monetization_allowed) terms.push("Monetização permitida");
+  if (lic.live_performance_allowed) terms.push("Apresentação ao vivo permitida");
+  if (lic.content_id_allowed) {
+    terms.push("Registro Content ID permitido");
+  } else {
+    terms.push("Registro Content ID não permitido");
+  }
+  if (lic.unlimited_streams) {
+    terms.push("Streams ilimitados");
+  } else if (lic.stream_limit) {
+    terms.push(`Até ${lic.stream_limit.toLocaleString("pt-BR")} streams`);
+  }
+  if (lic.unlimited_music_videos) {
+    terms.push("Videoclipes ilimitados");
+  } else if (lic.music_video_limit) {
+    terms.push(`Até ${lic.music_video_limit} videoclipe${lic.music_video_limit > 1 ? "s" : ""} oficial${lic.music_video_limit > 1 ? "is" : ""}`);
+  }
+  if (lic.credit_required) {
+    terms.push(lic.credit_text || "Crédito obrigatório ao produtor");
+  }
+  if (lic.duration) terms.push(`Duração: ${lic.duration}`);
+  if (lic.territory) terms.push(`Território: ${lic.territory}`);
+  
   return terms.map((term) => `<span><i data-lucide="check-circle-2"></i>${htmlEscape(term)}</span>`).join("");
 }
 
@@ -11326,8 +11470,11 @@ function renderBeatDetail() {
   const ownerProfile = profileForUserId(item.user_id || item.raw?.user_id);
   const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
   const producerName = String(item.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+  
   const selectedLicense = "premium";
-  const selectedPlan = licensePlans[selectedLicense];
+  const defaultLicenses = generateDefaultLicensesForBeat(item);
+  const selectedPlan = defaultLicenses.find(l => l.license_key === "premium") || defaultLicenses[0];
+  
   const catalog = marketplaceBeats();
   const sameProducer = catalog
     .filter((beatItem) => beatItem.id !== item.id && ((item.user_id && beatItem.user_id === item.user_id) || beatItem.producer === item.producer))
@@ -11359,17 +11506,21 @@ function renderBeatDetail() {
         <img src="${htmlEscape(item.cover)}" alt="Capa do beat ${htmlEscape(item.title)}">
         <span><i data-lucide="play"></i></span>
       </button>`;
-  const licenseCards = Object.entries(licensePlans).map(([keyId, plan]) => `<button class="beat-license-card ${keyId === selectedLicense ? "is-selected" : ""}" type="button" data-action="select-beat-license" data-license="${keyId}" data-price="${htmlEscape(plan.price)}" aria-pressed="${keyId === selectedLicense ? "true" : "false"}">
-    <span>${htmlEscape(plan.label)}</span>
-    <strong>${htmlEscape(plan.price)}</strong>
-    <small>${htmlEscape(plan.summary)}</small>
+      
+  const licenseCards = defaultLicenses.map((plan) => `<button class="beat-license-card ${plan.id === selectedLicense ? "is-selected" : ""}" type="button" data-action="select-beat-license" data-license="${plan.id}" data-price="R$ ${(plan.price_cents/100).toFixed(2)}" aria-pressed="${plan.id === selectedLicense ? "true" : "false"}">
+    <span>${htmlEscape(plan.name)}</span>
+    <strong>R$ ${(plan.price_cents/100).toFixed(2)}</strong>
+    <small>${htmlEscape(plan.description)}</small>
   </button>`).join("");
+
   const sameProducerMarkup = sameProducer.length
     ? sameProducer.map((beat) => beatDetailMiniCard(beat, "producer")).join("")
     : `<div class="beat-detail-empty">Nenhum outro beat publicado ainda.</div>`;
   const relatedMarkup = related.length
     ? related.map((beat) => beatDetailMiniCard(beat, "related")).join("")
     : `<div class="beat-detail-empty">Sem relacionados por enquanto.</div>`;
+
+  const fallbackPriceText = `R$ ${(selectedPlan.price_cents / 100).toFixed(2)}`;
 
   appView.innerHTML = `
     <main class="beat-detail-page beat-market-detail" data-beat-id="${htmlEscape(item.id)}" data-selected-license="${selectedLicense}">
@@ -11408,7 +11559,7 @@ function renderBeatDetail() {
               </div>
               <div class="beat-license-total">
                 <small>Total</small>
-                <strong data-license-total>${htmlEscape(selectedPlan.price)}</strong>
+                <strong data-license-total>${fallbackPriceText}</strong>
               </div>
               <button class="beat-cart-cta" type="button" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Adicionar ao carrinho</button>
               <button class="beat-buy-cta" type="button" data-action="detail-buy-now" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Comprar agora</button>
@@ -11448,6 +11599,20 @@ function renderBeatDetail() {
         ${ownerProfessional ? `<button type="button" data-action="producer" ${profileTargetAttrs({ id: ownerProfile?.id, username: ownerProfile?.username, title: producerName })}>Ver perfil do produtor</button>` : ""}
       </section>
     </main>`;
+    
+  lucide.createIcons();
+  
+  const licPanel = appView.querySelector(".beat-licensing-panel");
+  if (licPanel) {
+    if (item.sold_exclusively || item.raw?.sold_exclusively) {
+      updateBeatDetailLicensingPanel(licPanel, item, []);
+    } else {
+      fetchBeatLicenses(item.id).then((licenses) => {
+        updateBeatDetailLicensingPanel(licPanel, item, licenses);
+      });
+    }
+  }
+}
 }
 
 function renderSettings() {
@@ -11946,27 +12111,63 @@ function validateReleaseStep(step) {
   }
   
   if (step === 2) {
-    if (isReleaseUploadInProgress("audio", form)) {
-      showToast("Aguarde o upload do audio terminar.", "upload-cloud");
+    if (isReleaseUploadInProgress("audio", form) || isReleaseUploadInProgress("secure_mp3", form) || isReleaseUploadInProgress("secure_wav", form) || isReleaseUploadInProgress("secure_stems", form)) {
+      showToast("Aguarde o término do envio dos arquivos.", "upload-cloud");
       return false;
     }
     const audioUrl = form.elements.audio_url?.value;
     if (!audioUrl) {
-      showToast("Por favor, envie o arquivo de áudio principal", "alert-triangle");
+      showToast("Por favor, envie o áudio de preview público.", "alert-triangle");
       return false;
+    }
+    const mp3Url = form.elements.mp3_url?.value;
+    if (!mp3Url) {
+      showToast("Por favor, envie o arquivo MP3 seguro de entrega.", "alert-triangle");
+      return false;
+    }
+    const premiumActive = appState.releaseLicenses?.find(l => l.license_key === "premium")?.is_active;
+    if (premiumActive) {
+      const wavUrl = form.elements.wav_url?.value;
+      if (!wavUrl) {
+        showToast("A licença Lease Premium está ativa. Envie o arquivo WAV de entrega correspondente.", "alert-triangle");
+        return false;
+      }
+    }
+    const exclusiveActive = appState.releaseLicenses?.find(l => l.license_key === "exclusive")?.is_active;
+    if (exclusiveActive) {
+      const wavUrl = form.elements.wav_url?.value;
+      const stemsUrl = form.elements.stems_url?.value;
+      if (!wavUrl) {
+        showToast("A licença Exclusiva está ativa. Envie o arquivo WAV de entrega correspondente.", "alert-triangle");
+        return false;
+      }
+      if (!stemsUrl) {
+        showToast("A licença Exclusiva está ativa. Envie o arquivo ZIP de Stems de entrega correspondente.", "alert-triangle");
+        return false;
+      }
     }
   }
   
   if (step === 3) {
-    const price = form.elements.price?.value;
-    const licenseType = form.elements.license_type?.value;
-    if (!licenseType) {
-      showToast("Selecione um tipo de licença", "alert-triangle");
+    const activeLics = appState.releaseLicenses ? appState.releaseLicenses.filter(l => l.is_active) : [];
+    if (activeLics.length === 0) {
+      showToast("Pelo menos uma licença precisa estar ativa.", "alert-triangle");
       return false;
     }
-    if (licenseType !== "free" && (!price || Number(price) <= 0)) {
-      showToast("Preço é obrigatório", "alert-triangle");
-      return false;
+    for (const lic of activeLics) {
+      if (lic.price_cents === undefined || lic.price_cents === null || lic.price_cents <= 0) {
+        showToast(`Por favor, defina um preço válido para a licença: ${lic.name}.`, "alert-triangle");
+        return false;
+      }
+      if (lic.price_cents < 500) {
+        showToast(`O preço mínimo para a licença "${lic.name}" é R$ 5,00.`, "alert-triangle");
+        return false;
+      }
+      const sum = Number(lic.buyer_royalty_percentage) + Number(lic.producer_royalty_percentage);
+      if (sum !== 100) {
+        showToast(`Os royalties para a licença "${lic.name}" devem somar exatamente 100%.`, "alert-triangle");
+        return false;
+      }
     }
   }
   
@@ -12390,54 +12591,7 @@ function setupMusicUploadEventListeners() {
   document.addEventListener("click", () => {
     form.querySelectorAll(".custom-select").forEach(s => s.classList.remove("is-open"));
   });
-  
-  // License Card selection
-  const licenseCards = form.querySelectorAll(".license-info-card");
-  licenseCards.forEach((card) => {
-    card.addEventListener("click", () => {
-      licenseCards.forEach(c => c.classList.remove("is-selected"));
-      card.classList.add("is-selected");
-      
-      const licenseVal = card.dataset.license;
-      form.elements.license_type.value = licenseVal;
-      
-      // Automatically adjust pricing input based on selected license
-      const priceInput = form.elements.price;
-      if (priceInput) {
-        if (licenseVal === "basic") {
-          priceInput.value = "49.90";
-          priceInput.disabled = false;
-        } else if (licenseVal === "premium") {
-          priceInput.value = "99.90";
-          priceInput.disabled = false;
-        } else if (licenseVal === "exclusive") {
-          priceInput.value = "499.90";
-          priceInput.disabled = false;
-        } else if (licenseVal === "free") {
-          priceInput.value = "0.00";
-          priceInput.disabled = true;
-        }
-      }
-      
-      // If exclusive, set max_sales to 1 and disable
-      const maxSalesInput = form.elements.max_sales;
-      if (maxSalesInput) {
-        if (licenseVal === "exclusive") {
-          maxSalesInput.value = "1";
-          maxSalesInput.disabled = true;
-        } else if (licenseVal === "free") {
-          maxSalesInput.value = "";
-          maxSalesInput.disabled = true;
-        } else {
-          maxSalesInput.value = "50";
-          maxSalesInput.disabled = false;
-        }
-      }
-      
-      syncReleaseForm(form);
-    });
-  });
-  
+
   // File inputs click handlers (removals)
   const removeCover = form.querySelector('[data-action="remove-cover"]');
   if (removeCover) {
@@ -12482,21 +12636,155 @@ function setupMusicUploadEventListeners() {
       syncReleaseForm(form);
     });
   }
-  
-  const removeStems = form.querySelector('[data-action="remove-stems"]');
-  if (removeStems) {
-    removeStems.addEventListener("click", () => {
+
+  // Real-time currency price inputs formatting
+  form.addEventListener("input", (e) => {
+    if (e.target.classList.contains("license-price-formatter")) {
+      const rawCents = parsePriceCents(e.target.value);
+      e.target.value = formatPriceBRL(rawCents);
+      const idx = Number(e.target.closest("[data-license-index]")?.dataset.licenseIndex);
+      if (!isNaN(idx) && appState.releaseLicenses?.[idx]) {
+        appState.releaseLicenses[idx].price_cents = rawCents;
+      }
+    }
+    if (e.target.classList.contains("custom-license-price-formatter")) {
+      e.target.value = formatPriceBRL(parsePriceCents(e.target.value));
+    }
+    syncReleaseForm(form);
+  });
+
+  // Real-time active status check toggles
+  form.addEventListener("change", (e) => {
+    if (e.target.classList.contains("license-active-toggle")) {
+      const idx = Number(e.target.closest("[data-license-index]")?.dataset.licenseIndex);
+      if (!isNaN(idx) && appState.releaseLicenses?.[idx]) {
+        appState.releaseLicenses[idx].is_active = e.target.checked;
+      }
+    }
+  });
+
+  // License interactions and secure file upload copy options
+  form.addEventListener("click", (e) => {
+    const cardEl = e.target.closest("[data-license-index]");
+    const idx = cardEl ? Number(cardEl.dataset.licenseIndex) : null;
+    
+    if (e.target.closest(".license-delete-btn")) {
+      if (idx !== null && appState.releaseLicenses?.[idx]) {
+        appState.releaseLicenses.splice(idx, 1);
+        refreshReleaseLicensesUI();
+      }
+      return;
+    }
+    
+    if (e.target.closest(".license-duplicate-btn")) {
+      if (idx !== null && appState.releaseLicenses?.[idx]) {
+        const copy = { ...appState.releaseLicenses[idx], id: generateUUID(), is_default: false, is_custom: true };
+        copy.name = `${copy.name} (Cópia)`;
+        appState.releaseLicenses.splice(idx + 1, 0, copy);
+        refreshReleaseLicensesUI();
+      }
+      return;
+    }
+    
+    if (e.target.closest(".license-move-up")) {
+      if (idx !== null && idx > 0) {
+        const temp = appState.releaseLicenses[idx];
+        appState.releaseLicenses[idx] = appState.releaseLicenses[idx - 1];
+        appState.releaseLicenses[idx - 1] = temp;
+        refreshReleaseLicensesUI();
+      }
+      return;
+    }
+    
+    if (e.target.closest(".license-move-down")) {
+      if (idx !== null && idx < appState.releaseLicenses.length - 1) {
+        const temp = appState.releaseLicenses[idx];
+        appState.releaseLicenses[idx] = appState.releaseLicenses[idx + 1];
+        appState.releaseLicenses[idx + 1] = temp;
+        refreshReleaseLicensesUI();
+      }
+      return;
+    }
+    
+    if (e.target.closest(".license-edit-terms-btn")) {
+      if (idx !== null) {
+        openLicenseTermsEditModal(idx);
+      }
+      return;
+    }
+    
+    if (e.target.closest(".add-custom-license-btn")) {
+      openLicenseTermsEditModal();
+      return;
+    }
+
+    const usePreviewBtn = e.target.closest(".use-preview-as-delivery-btn");
+    if (usePreviewBtn) {
+      const targetType = usePreviewBtn.dataset.target;
+      if (targetType === "secure_mp3") {
+        if (!form.elements.audio_url.value) {
+          showToast("Faça upload do Áudio de Preview primeiro.", "alert-triangle");
+          return;
+        }
+        form.elements.mp3_url.value = form.elements.audio_url.value;
+        form.elements.mp3_path.value = form.elements.audio_path.value;
+        const preview = form.querySelector(".secure-mp3-preview");
+        const nameNode = form.querySelector("[data-secure-mp3-name]");
+        if (nameNode) nameNode.textContent = form.querySelector("[data-audio-name]")?.textContent || "Mesmo do Preview";
+        if (preview) preview.style.display = "block";
+        form.querySelector(".release-secure-mp3-drop")?.classList.add("has-file");
+        showToast("Usando áudio de preview para entrega do MP3.", "check-circle");
+      } else if (targetType === "secure_wav") {
+        if (!form.elements.audio_url.value) {
+          showToast("Faça upload do Áudio de Preview primeiro.", "alert-triangle");
+          return;
+        }
+        const audioName = form.querySelector("[data-audio-name]")?.textContent || "";
+        if (!audioName.toLowerCase().endsWith(".wav") && !audioName.toLowerCase().endsWith(".flac")) {
+          showToast("O arquivo de preview não parece ser um WAV/FLAC. Faça upload de um arquivo WAV real.", "alert-triangle");
+          return;
+        }
+        form.elements.wav_url.value = form.elements.audio_url.value;
+        form.elements.wav_path.value = form.elements.audio_path.value;
+        const preview = form.querySelector(".secure-wav-preview");
+        const nameNode = form.querySelector("[data-secure-wav-name]");
+        if (nameNode) nameNode.textContent = audioName || "Mesmo do Preview";
+        if (preview) preview.style.display = "block";
+        form.querySelector(".release-secure-wav-drop")?.classList.add("has-file");
+        showToast("Usando áudio de preview para entrega do WAV.", "check-circle");
+      }
+      return;
+    }
+
+    if (e.target.closest('[data-action="remove-secure-mp3"]')) {
+      form.elements.mp3_url.value = "";
+      form.elements.mp3_path.value = "";
+      const preview = form.querySelector(".secure-mp3-preview");
+      if (preview) preview.style.display = "none";
+      form.querySelector(".release-secure-mp3-drop")?.classList.remove("has-file");
+      showToast("MP3 seguro removido.", "info");
+      return;
+    }
+
+    if (e.target.closest('[data-action="remove-secure-wav"]')) {
+      form.elements.wav_url.value = "";
+      form.elements.wav_path.value = "";
+      const preview = form.querySelector(".secure-wav-preview");
+      if (preview) preview.style.display = "none";
+      form.querySelector(".release-secure-wav-drop")?.classList.remove("has-file");
+      showToast("WAV seguro removido.", "info");
+      return;
+    }
+
+    if (e.target.closest('[data-action="remove-secure-stems"]')) {
       form.elements.stems_url.value = "";
       form.elements.stems_path.value = "";
-      form.querySelector(".stems-preview").style.display = "none";
-      form.querySelector(".release-stems-drop")?.classList.remove("has-file");
-      void persistReleaseUploadDraft({ stems_url: null, stems_path: null }, form);
-    });
-  }
-  
-  // Real-time synchronization of title, artist, etc. on input/change
-  form.addEventListener("input", () => {
-    syncReleaseForm(form);
+      const preview = form.querySelector(".secure-stems-preview");
+      if (preview) preview.style.display = "none";
+      form.querySelector(".release-secure-stems-drop")?.classList.remove("has-file");
+      showToast("Stems ZIP seguro removido.", "info");
+      return;
+    }
   });
 }
 
@@ -12524,6 +12812,9 @@ async function saveBeatRelease(status = "published") {
   const tagsStr = form.elements.release_tags?.value || "";
   const tags = tagsStr.split(",").map(t => t.trim()).filter(Boolean);
   
+  const activeLics = appState.releaseLicenses ? appState.releaseLicenses.filter(l => l.is_active) : [];
+  const cheapestPrice = activeLics.length ? Math.min(...activeLics.map(l => l.price_cents)) / 100 : 0;
+
   const payload = {
     title: form.elements.title?.value?.trim() || "Sem título",
     producer_name: form.elements.producer_name?.value?.trim() || activeProfile()?.artistic_name || activeProfile()?.full_name || "ANSEND",
@@ -12536,20 +12827,24 @@ async function saveBeatRelease(status = "published") {
     description: form.elements.description?.value?.trim() || null,
     already_released: form.elements.already_released?.value === "true",
     license_type: form.elements.license_type?.value || "premium",
-    price: form.elements.price?.value ? Number(form.elements.price.value) : 0,
+    price: cheapestPrice,
     allow_tagged_download: form.elements.allow_tagged_download?.value === "true",
     allow_commercial_use: form.elements.allow_commercial_use?.value === "true",
     max_sales: form.elements.max_sales?.value ? Number(form.elements.max_sales.value) : null,
     license_terms: form.elements.license_terms?.value?.trim() || null,
-    delivery_mp3: form.elements.delivery_mp3?.checked || false,
-    delivery_wav: form.elements.delivery_wav?.checked || false,
-    delivery_stems: form.elements.delivery_stems?.checked || false,
-    delivery_contract: form.elements.delivery_contract?.checked || false,
+    delivery_mp3: form.elements.mp3_url?.value ? true : false,
+    delivery_wav: form.elements.wav_url?.value ? true : false,
+    delivery_stems: form.elements.stems_url?.value ? true : false,
+    delivery_contract: true,
     delivery_notes: form.elements.delivery_notes?.value?.trim() || null,
     cover_url: form.elements.cover_url?.value || null,
     cover_path: form.elements.cover_path?.value || null,
     audio_url: form.elements.audio_url?.value || null,
     audio_path: form.elements.audio_path?.value || null,
+    mp3_url: form.elements.mp3_url?.value || null,
+    mp3_path: form.elements.mp3_path?.value || null,
+    wav_url: form.elements.wav_url?.value || null,
+    wav_path: form.elements.wav_path?.value || null,
     stems_url: form.elements.stems_url?.value || null,
     stems_path: form.elements.stems_path?.value || null,
     duration_seconds: form.elements.duration_seconds?.value ? Number(form.elements.duration_seconds.value) : null,
@@ -12592,6 +12887,63 @@ async function saveBeatRelease(status = "published") {
     showToast(error.message || "Erro ao salvar no Supabase", "triangle-alert");
     console.error(error);
     return;
+  }
+
+  // Save beat licenses
+  if (supabaseClient) {
+    const licensesToSave = appState.releaseLicenses.map((lic, idx) => {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lic.id);
+      return {
+        beat_id: beatId,
+        license_key: lic.license_key,
+        name: lic.name,
+        description: lic.description || null,
+        price_cents: lic.price_cents || 0,
+        currency: lic.currency || 'BRL',
+        is_default: lic.is_default || false,
+        is_custom: lic.is_custom || false,
+        is_active: lic.is_active,
+        is_exclusive: lic.is_exclusive || false,
+        included_mp3: lic.included_mp3 || false,
+        included_wav: lic.included_wav || false,
+        included_stems: lic.included_stems || false,
+        buyer_royalty_percentage: lic.buyer_royalty_percentage || 50,
+        producer_royalty_percentage: lic.producer_royalty_percentage || 50,
+        stream_limit: lic.stream_limit || null,
+        unlimited_streams: lic.unlimited_streams || false,
+        music_video_limit: lic.music_video_limit || null,
+        unlimited_music_videos: lic.unlimited_music_videos || false,
+        commercial_use: lic.commercial_use !== false,
+        monetization_allowed: lic.monetization_allowed !== false,
+        live_performance_allowed: lic.live_performance_allowed !== false,
+        content_id_allowed: lic.content_id_allowed || false,
+        credit_required: lic.credit_required !== false,
+        credit_text: lic.credit_text || `Prod. por ${dbPayload.producer_name}`,
+        duration: lic.duration || 'lifetime',
+        territory: lic.territory || 'worldwide',
+        custom_terms: lic.custom_terms || null,
+        sort_order: idx,
+        ...(isUUID ? { id: lic.id } : {})
+      };
+    });
+    
+    const { error: deleteError } = await supabaseClient
+      .from("beat_licenses")
+      .delete()
+      .eq("beat_id", beatId);
+      
+    if (deleteError) {
+      console.error("Error clearing old licenses:", deleteError);
+    }
+    
+    const { error: insertError } = await supabaseClient
+      .from("beat_licenses")
+      .insert(licensesToSave);
+      
+    if (insertError) {
+      console.error("Error inserting licenses:", insertError);
+      showToast("Erro ao salvar configurações de licenças.", "triangle-alert");
+    }
   }
   
   // Add source_table property
@@ -13413,33 +13765,12 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
       <section class="release-fallback-page" aria-label="Acesso Negado" style="max-width:600px; margin:80px auto; padding:40px 32px; background:#080808; border:1px solid #1F1F1F; border-radius:16px; text-align:center;">
         <div class="release-fallback-head" style="margin-bottom:32px;">
           <i data-lucide="shield-alert" style="width:48px; height:48px; color:#71717A; margin:0 auto 16px;"></i>
-          <h2 style="font-size:24px; color:#fff; font-weight:700; margin-top:8px; letter-spacing:-0.02em;">Autenticação Necessária</h2>
-          <p style="color:#A1A1AA; font-size:14px; margin-top:12px; line-height:1.5;">Você precisa criar uma conta ou fazer login para lançar suas músicas e beats na plataforma.</p>
-        </div>
-        <a href="#vendedor" data-route="vendedor" class="an-primary" style="background:#ffffff; border:none; color:#000000; font-weight:600; padding:12px 28px; border-radius:8px; cursor:pointer; text-decoration:none; display:inline-block; font-size:14px; transition: opacity 0.2s ease;">Entrar / Criar Conta</a>
-      </section>`;
-    applyLocaleTextOverrides(appView);
-    lucide.createIcons();
-    return;
-  }
-  if (mode === "selector") {
-    appState.releaseMode = "";
-    renderReleaseModeSelector();
-    return;
-  }
-  if (mode === "youtube") {
-    renderYouTubeBeatUpload();
-    return;
-  }
-  if (mode === "catalog") {
-    renderCatalogImportPage();
-    return;
-  }
-  const profile = activeProfile();
+          <h2 style="font-size:24px; color:#fff; font-weight:700; margin-  const profile = activeProfile();
   const display = profileDisplayData(profile);
   const releaseProducerName = display.name || profile?.artistic_name || profile?.full_name || profile?.username || appState.authUser?.email?.split("@")[0] || "ANSEND";
   const beatId = generateUUID();
-  const stepLabels = ["Detalhes","Capa","Faixa","Preço","Entrega","Revisão"];
+  initializeDefaultReleaseLicenses(beatId);
+  const stepLabels = ["Detalhes", "Capa", "Arquivos", "Licenças", "Revisão"];
   const genreList = ["Trap","Funk","Drill","R&B","Boom Bap","Afrobeat","Gospel Trap","Pop","Lo-Fi","Piseiro","Sertanejo","Reggaeton"];
   const noteList = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
   const keyOptions = noteList.flatMap(n => [
@@ -13458,6 +13789,8 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<input type="hidden" name="kind" value="beat"><input type="hidden" name="status" value="draft">'
     + '<input type="hidden" name="cover_url"><input type="hidden" name="cover_path">'
     + '<input type="hidden" name="audio_url"><input type="hidden" name="audio_path">'
+    + '<input type="hidden" name="mp3_url"><input type="hidden" name="mp3_path">'
+    + '<input type="hidden" name="wav_url"><input type="hidden" name="wav_path">'
     + '<input type="hidden" name="stems_url"><input type="hidden" name="stems_path">'
     + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
     + '<input type="hidden" name="tags">'
@@ -13472,7 +13805,7 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<div class="release-field"><span class="release-label">Gênero *</span><div class="custom-select" data-select-id="genre"><input type="hidden" name="genre" required><button type="button" class="custom-select-trigger"><span>Selecione o gênero</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + genreOptions + '</div></div></div>'
     + '<label class="release-field"><span class="release-label">Subgênero</span><input name="subgenre" type="text" placeholder="Ex: Dark Trap, Guitar Trap"></label>'
     + '<label class="release-field"><span class="release-label">BPM *</span><input name="bpm" type="number" min="40" max="240" placeholder="Ex: 140" required></label>'
-    + '<div class="release-field"><span class="release-label">Tom musical / Key *</span><div class="custom-select" data-select-id="musical_key"><input type="hidden" name="musical_key" required><button type="button" class="custom-select-trigger"><span>Selecione o tom</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + keyOptions + '</div></div></div>'
+    + '<div class="release-field"><span class="release-label">Tom / Key *</span><div class="custom-select" data-select-id="musical_key"><input type="hidden" name="musical_key" required><button type="button" class="custom-select-trigger"><span>Selecione o tom</span><i data-lucide="chevron-down"></i></button><div class="custom-select-options">' + keyOptions + '</div></div></div>'
     + '<label class="release-field"><span class="release-label">Mood / vibe</span><input name="mood" type="text" placeholder="Ex: Enérgico, Melancólico"></label>'
     + '<label class="release-field release-wide"><span class="release-label">Tags (separadas por vírgula)</span><input name="release_tags" type="text" placeholder="Ex: trap, melódico, piano, sombrio"></label>'
     + '<label class="release-field release-wide"><span class="release-label">Descrição curta</span><textarea name="description" rows="3" placeholder="Escreva uma breve descrição para o catálogo."></textarea></label>'
@@ -13487,48 +13820,133 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<div class="release-requirements"><strong>Recomendações</strong><ul><li>Imagem quadrada perfeita (1:1)</li><li>Mínimo 1400x1400px (ideal 3000x3000px)</li><li>Sem textos pequenos ou logos adicionais</li><li>Sem imagens borradas ou pixeladas</li></ul><div class="cover-actions-container" style="display:none;margin-top:16px;"><button type="button" class="release-remove-btn" data-action="remove-cover"><i data-lucide="trash-2"></i> Remover / Trocar</button></div></div>'
     + '</div></section>'
 
-    // STEP 2 — Faixa
+    // STEP 2 — Arquivos
     + '<section class="release-panel" data-panel="2">'
-    + '<div class="release-panel-header"><h2>Arquivo de Áudio</h2><p>Suba o arquivo de áudio do beat (MP3, WAV ou FLAC).</p></div>'
-    + '<div class="release-upload-layout">'
-    + '<div class="release-dropzone release-audio-drop" data-upload-drop="audio"><input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio"><div class="release-upload-icon"><i data-lucide="music"></i></div><strong>Arraste ou selecione o áudio</strong><small>MP3, WAV ou FLAC de alta qualidade</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando áudio...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div>'
-    + '<div class="release-requirements"><strong>Áudio Preview</strong><div class="release-audio-preview" style="display:none;"><div class="release-audio-preview-header"><span>Preview Pronto</span><button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button></div><div class="release-audio-info"><i data-lucide="file-audio" style="width:24px;height:24px;"></i><div class="release-audio-meta"><strong data-audio-name>Nome do arquivo.wav</strong><small data-audio-size>0 MB · 0:00</small></div></div><audio class="release-audio-player" controls preload="metadata"></audio></div></div>'
+    + '<div class="release-panel-header"><h2>Upload de Arquivos</h2><p>Envie o áudio de preview e os arquivos correspondentes para entrega segura.</p></div>'
+    + '<div class="release-upload-layout" style="display: flex; flex-direction: column; gap: 20px;">'
+    + '  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">'
+    + '    <div class="release-dropzone release-audio-drop" data-upload-drop="audio" style="min-height: 140px;">'
+    + '      <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio">'
+    + '      <div class="release-upload-icon"><i data-lucide="music"></i></div>'
+    + '      <strong>Áudio de Preview (Público) *</strong>'
+    + '      <small>MP3, WAV ou FLAC com tag (opcional)</small>'
+    + '      <p class="release-upload-error" hidden></p>'
+    + '      <div class="upload-progress-container" style="display:none;">'
+    + '        <div class="upload-progress-header"><span>Enviando preview...</span><span class="upload-progress-percent">0%</span></div>'
+    + '        <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div class="release-requirements">'
+    + '      <strong>Áudio Preview</strong>'
+    + '      <div class="release-audio-preview" style="display:none; flex-direction: column; gap: 8px;">'
+    + '        <div class="release-audio-preview-header" style="display:flex; justify-content:space-between; align-items:center;">'
+    + '          <span style="color:#22c55e; font-weight:bold; font-size:12px;">Pronto</span>'
+    + '          <button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button>'
+    + '        </div>'
+    + '        <div class="release-audio-info" style="display:flex; gap:8px; align-items:center;">'
+    + '          <i data-lucide="file-audio" style="width:24px;height:24px;"></i>'
+    + '          <div class="release-audio-meta">'
+    + '            <strong data-audio-name style="font-size:12px; display:block; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Nome do arquivo.wav</strong>'
+    + '            <small data-audio-size style="font-size:10px; color:var(--beat-muted);">0 MB · 0:00</small>'
+    + '          </div>'
+    + '        </div>'
+    + '        <audio class="release-audio-player" controls preload="metadata" style="width:100%; height:32px;"></audio>'
+    + '      </div>'
+    + '      <p style="font-size:11px; color:var(--beat-muted); margin-top:8px;">Este arquivo ficará acessível publicamente no player da página do beat. Se desejar, adicione tags de voz (tagged) para proteger sua criação.</p>'
+    + '    </div>'
+    + '  </div>'
+    + '  <div style="border-top: 1px solid var(--beat-border); margin: 10px 0;"></div>'
+    + '  <h3 style="font-size: 15px; font-weight: 600; color: #fff; margin: 0 0 10px;">Arquivos de Entrega Segura (Privados)</h3>'
+    + '  <div style="display: flex; flex-direction: column; gap: 16px;">'
+    + '    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: center;">'
+    + '      <div class="release-dropzone release-secure-mp3-drop" data-upload-drop="secure_mp3" style="min-height: 100px;">'
+    + '        <input class="release-file-input" type="file" accept="audio/mpeg,audio/mp3" data-upload-type="secure_mp3">'
+    + '        <div class="release-upload-icon"><i data-lucide="shield-check"></i></div>'
+    + '        <strong>MP3 de Alta Qualidade *</strong>'
+    + '        <small>Arquivo limpo (sem tags) para o comprador</small>'
+    + '        <p class="release-upload-error" hidden></p>'
+    + '        <div class="upload-progress-container" style="display:none;">'
+    + '          <div class="upload-progress-header"><span>Enviando MP3 seguro...</span><span class="upload-progress-percent">0%</span></div>'
+    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
+    + '        </div>'
+    + '      </div>'
+    + '      <div>'
+    + '        <div class="secure-mp3-preview" style="display:none; background:#0f0f0f; border:1px solid var(--beat-border); border-radius:6px; padding:10px; font-size:12px;">'
+    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">'
+    + '            <strong style="color:#22c55e;">Enviado</strong>'
+    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-mp3" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>'
+    + '          </div>'
+    + '          <span data-secure-mp3-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff;">mp3-seguro.mp3</span>'
+    + '        </div>'
+    + '        <button type="button" class="an-secondary use-preview-as-delivery-btn" data-target="secure_mp3" style="font-size:11px; padding:6px 12px; height:auto; margin-top:4px;">Usar o mesmo arquivo do Preview</button>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: center;">'
+    + '      <div class="release-dropzone release-secure-wav-drop" data-upload-drop="secure_wav" style="min-height: 100px;">'
+    + '        <input class="release-file-input" type="file" accept="audio/wav,audio/x-wav" data-upload-type="secure_wav">'
+    + '        <div class="release-upload-icon"><i data-lucide="shield-check"></i></div>'
+    + '        <strong>WAV Masterizado (Obrigatório se Lease Premium ativa)</strong>'
+    + '        <small>WAV de alta fidelidade sem perda</small>'
+    + '        <p class="release-upload-error" hidden></p>'
+    + '        <div class="upload-progress-container" style="display:none;">'
+    + '          <div class="upload-progress-header"><span>Enviando WAV seguro...</span><span class="upload-progress-percent">0%</span></div>'
+    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
+    + '        </div>'
+    + '      </div>'
+    + '      <div>'
+    + '        <div class="secure-wav-preview" style="display:none; background:#0f0f0f; border:1px solid var(--beat-border); border-radius:6px; padding:10px; font-size:12px;">'
+    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">'
+    + '            <strong style="color:#22c55e;">Enviado</strong>'
+    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-wav" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>'
+    + '          </div>'
+    + '          <span data-secure-wav-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff;">wav-seguro.wav</span>'
+    + '        </div>'
+    + '        <button type="button" class="an-secondary use-preview-as-delivery-btn" data-target="secure_wav" style="font-size:11px; padding:6px 12px; height:auto; margin-top:4px;">Usar o mesmo arquivo do Preview</button>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: center;">'
+    + '      <div class="release-dropzone release-secure-stems-drop" data-upload-drop="secure_stems" style="min-height: 100px;">'
+    + '        <input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="secure_stems">'
+    + '        <div class="release-upload-icon"><i data-lucide="archive"></i></div>'
+    + '        <strong>ZIP de Stems (Obrigatório se Exclusiva ativa)</strong>'
+    + '        <small>Pistas individuais do beat em formato ZIP</small>'
+    + '        <p class="release-upload-error" hidden></p>'
+    + '        <div class="upload-progress-container" style="display:none;">'
+    + '          <div class="upload-progress-header"><span>Enviando Stems ZIP...</span><span class="upload-progress-percent">0%</span></div>'
+    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
+    + '        </div>'
+    + '      </div>'
+    + '      <div>'
+    + '        <div class="secure-stems-preview" style="display:none; background:#0f0f0f; border:1px solid var(--beat-border); border-radius:6px; padding:10px; font-size:12px;">'
+    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">'
+    + '            <strong style="color:#22c55e;">Enviado</strong>'
+    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-stems" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>'
+    + '          </div>'
+    + '          <span data-secure-stems-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff;">stems.zip</span>'
+    + '        </div>'
+    + '      </div>'
+    + '    </div>'
+    + '  </div>'
     + '</div></section>'
 
-    // STEP 3 — Preço
+    // STEP 3 — Licenças
     + '<section class="release-panel" data-panel="3">'
-    + '<div class="release-panel-header"><h2>Licença e Preço</h2><p>Defina o tipo de licença e o valor do beat.</p></div>'
-    + '<input type="hidden" name="license_type" value="premium">'
-    + '<div class="license-cards-grid">'
-    + '<div class="license-info-card" data-license="free"><strong>Free</strong><span class="license-price">Grátis</span><ul><li>MP3 com tag</li><li>Até 500 streams</li><li>Uso não-comercial</li></ul></div>'
-    + '<div class="license-info-card" data-license="basic"><strong>Básica</strong><span class="license-price">R$ 49,90</span><ul><li>MP3 enviado</li><li>Até 2.000 streams</li><li>Uso não-comercial</li></ul></div>'
-    + '<div class="license-info-card is-selected" data-license="premium"><strong>Premium</strong><span class="license-price">R$ 99,90</span><ul><li>MP3 + WAV</li><li>Até 10.000 streams</li><li>Uso comercial limitado</li></ul></div>'
-    + '<div class="license-info-card" data-license="exclusive"><strong>Exclusiva</strong><span class="license-price">R$ 499,90</span><ul><li>WAV + Stems</li><li>Streams ilimitados</li><li>Posse total de direitos</li></ul></div>'
+    + '<div class="release-panel-header"><h2>Licenças e Valores</h2><p>Defina individualmente os valores e ative ou configure os termos de cada licença.</p></div>'
+    + '<div class="release-licenses-container"></div>'
+    + '<div style="margin-top: 16px;">'
+    + '  <button type="button" class="an-secondary add-custom-license-btn" style="width:100%; border-style:dashed; height:45px; display:flex; justify-content:center; align-items:center; gap:8px;">'
+    + '    <i data-lucide="plus-circle" style="width:18px; height:18px;"></i>'
+    + '    + Adicionar outro tipo de licença'
+    + '  </button>'
     + '</div>'
-    + '<div class="release-form-grid" style="margin-top:32px;">'
-    + '<label class="release-field"><span class="release-label">Preço do Beat (R$) *</span><input name="price" type="number" min="0" step="0.01" value="99.90" required></label>'
-    + '<label class="release-field"><span class="release-label">Vendas máximas</span><input name="max_sales" type="number" min="1" value="50" placeholder="Ex: 50"></label>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Download com tag de voz (Tagged)?</legend><div class="release-radio-options"><label><input type="radio" name="allow_tagged_download" value="true" checked> Sim</label><label><input type="radio" name="allow_tagged_download" value="false"> Não</label></div></fieldset>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Permitir uso comercial básico?</legend><div class="release-radio-options"><label><input type="radio" name="allow_commercial_use" value="true" checked> Sim</label><label><input type="radio" name="allow_commercial_use" value="false"> Não</label></div></fieldset>'
-    + '<label class="release-field release-wide"><span class="release-label">Termos da licença (opcional)</span><textarea name="license_terms" rows="3" placeholder="Termos de uso personalizados..."></textarea></label>'
-    + '</div></section>'
+    + '</section>'
 
-    // STEP 4 - Entrega
+    // STEP 4 - Revisão
     + '<section class="release-panel" data-panel="4">'
-    + '<div class="release-panel-header"><h2>Entrega do Beat</h2><p>Especifique os arquivos que o comprador receberá.</p></div>'
-    + '<div class="delivery-options-grid"><div>'
-    + '<fieldset class="release-radio-group release-wide"><legend>Arquivos incluídos na compra *</legend><div class="delivery-checklist"><label><input type="checkbox" name="delivery_mp3" checked> MP3 de Alta Qualidade</label><label><input type="checkbox" name="delivery_wav" checked> WAV Masterizado</label><label><input type="checkbox" name="delivery_stems"> Stems / Pistas separadas</label><label><input type="checkbox" name="delivery_contract" checked> Contrato assinado</label></div></fieldset>'
-    + '<div class="release-form-grid" style="margin-top:20px;"><label class="release-field release-wide"><span class="release-label">Observações para o comprador</span><textarea name="delivery_notes" rows="3" placeholder="Ex: Obrigado pela compra! Qualquer dúvida, entre em contato."></textarea></label></div>'
-    + '</div><div>'
-    + '<div class="release-field"><span class="release-label">Upload de Stems (opcional)</span><div class="release-dropzone release-stems-drop" data-upload-drop="stems" style="min-height:190px;"><input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="stems"><div class="release-upload-icon"><i data-lucide="archive"></i></div><strong>Selecione o ZIP de Stems</strong><small>Pistas individuais do beat</small><p class="release-upload-error" hidden></p><div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando Stems...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div></div><div class="stems-preview" style="display:none;margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><span data-stems-name>stems.zip</span><button type="button" class="release-remove-btn" data-action="remove-stems">Remover</button></div></div></div>'
-    + '</div></div></section>'
-
-    // STEP 5 - Revisão
-    + '<section class="release-panel" data-panel="5">'
-    + '<div class="release-panel-header"><h2>Revisão Final</h2><p>Confira todas as informações antes de publicar.</p></div>'
+    + '<div class="release-panel-header"><h2>Revisão Final</h2><p>Confira todas as informações e licenças ativas antes de publicar.</p></div>'
     + '<div class="review-grid"><div class="review-left"><div class="review-cover-wrapper"><img class="review-cover-img" src="assets/ansend-logo-square.png" alt="Capa do beat"></div><div class="review-audio-section"><audio class="review-audio-player" controls preload="metadata"></audio></div></div>'
     + '<div class="review-details"><div class="review-header-info"><h3 data-review-title>Sem título</h3><p data-review-producer>por Produtor ANSEND</p></div>'
-    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>-</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>-</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>-</dd></div><div class="review-meta-item"><dt>Preço</dt><dd data-review-price>R$ 0,00</dd></div><div class="review-meta-item"><dt>Licença</dt><dd data-review-license>Premium</dd></div><div class="review-meta-item"><dt>Arquivos</dt><dd data-review-files>MP3, WAV, Contrato</dd></div></dl>'
+    + '<dl class="review-meta-grid"><div class="review-meta-item"><dt>Gênero</dt><dd data-review-genre>-</dd></div><div class="review-meta-item"><dt>BPM</dt><dd data-review-bpm>-</dd></div><div class="review-meta-item"><dt>Tom / Key</dt><dd data-review-key>-</dd></div><div class="review-meta-item"><dt>Licenças ativas e preços</dt><dd data-review-price>Nenhuma licença ativa</dd></div><div class="review-meta-item"><dt>Lista de licenças</dt><dd data-review-license>-</dd></div><div class="review-meta-item"><dt>Arquivos enviados</dt><dd data-review-files>-</dd></div></dl>'
     + '<div class="review-description"><h4>Descrição</h4><p data-review-desc>Sem descrição fornecida.</p></div></div></div></section>'
 
     + '</form></div>'
@@ -13541,6 +13959,7 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
 
   hydrateReleaseDetailsStep(releaseFormElement(), releaseProducerName, genreOptions, keyOptions);
   setupMusicUploadEventListeners();
+  refreshReleaseLicensesUI();
   void restoreReleaseCoverDraft();
   syncReleaseForm();
   applyLocaleTextOverrides(appView);
@@ -14190,26 +14609,94 @@ function openProfessionalContract(name) {
   </form>`);
 }
 
-function openCheckout(id, selectedPlan = "premium") {
-  const item = findBeat(id);
-  if (!item) {
-    showToast("Beat nao encontrado para checkout.", "alert-triangle");
-    return;
+async function openCheckout(id, selectedPlan = "premium") {
+  openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
+  lucide.createIcons();
+
+  try {
+    const item = findBeat(id) || topBeatOfDay;
+    const licenses = await fetchBeatLicenses(id);
+    const selectedLicense = licenses.find(l => l.id === selectedPlan || l.license_key === selectedPlan) || 
+                            generateDefaultLicensesForBeat(item).find(l => l.id === selectedPlan || l.license_key === selectedPlan);
+    
+    if (!selectedLicense) {
+      showToast("Erro ao carregar os termos da licença.", "alert-triangle");
+      closeModal();
+      return;
+    }
+
+    const subtotalCents = selectedLicense.price_cents || 0;
+    const serviceFeeCents = Math.round(subtotalCents * 0.12);
+    const totalCents = subtotalCents + serviceFeeCents;
+
+    const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
+    const prefillEmail = appState.authUser?.email || "";
+
+    const card = `<div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; gap:10px; align-items:center;">
+      <img src="${item.cover}" style="width:48px; height:48px; border-radius:4px; object-fit:cover;">
+      <div style="flex:1;">
+        <strong style="font-size:14px; color:#fff; display:block;">${htmlEscape(item.title)}</strong>
+        <span style="font-size:11px; color:var(--beat-muted);">${htmlEscape(selectedLicense.name)}</span>
+      </div>
+      <strong style="font-size:14px; color:#fff;">R$ ${(subtotalCents / 100).toFixed(2)}</strong>
+    </div>`;
+
+    openModal(`
+      <form class="checkout-form" data-beat-id="${item.id}" data-is-cart="false">
+        <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
+        <h2 style="font-size:18px; margin: 10px 0 4px; color:#fff;">Finalizar Compra</h2>
+        <p style="font-size:12px; color:var(--beat-muted); margin-bottom:14px;">Preencha seus dados e concorde com os termos da licença.</p>
+        
+        ${card}
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:11px; color:var(--beat-muted);">Seu Nome *</span>
+            <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:11px; color:var(--beat-muted);">Seu E-mail *</span>
+            <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
+          </label>
+        </div>
+
+        <div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; font-size:12px;">
+          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
+            <span>Subtotal:</span>
+            <span>R$ ${(subtotalCents / 100).toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
+            <span>Taxa de serviço (12%):</span>
+            <span>R$ ${(serviceFeeCents / 100).toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; color:#fff; font-weight:bold; font-size:14px; border-top:1px solid var(--beat-border-soft); padding-top:6px; margin-top:4px;">
+            <span>Total:</span>
+            <span>R$ ${(totalCents / 100).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--beat-muted); cursor:pointer;">
+            <input type="checkbox" name="accept_terms" required style="margin-top:2px;">
+            <span>Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.id}" data-license-id="${selectedLicense.id}" style="color:var(--beat-blue); text-decoration:underline;">termos e contrato de licença</a> correspondentes a esta compra.</span>
+          </label>
+        </div>
+
+        <button class="seller-submit" type="submit" style="width:100%; height:42px; display:flex; justify-content:center; align-items:center; font-size:14px;">
+          Finalizar pagamento <i data-lucide="arrow-right" style="width:16px; height:16px; margin-left:6px;"></i>
+        </button>
+      </form>
+    `);
+    const formEl = document.querySelector(".checkout-form");
+    if (formEl) {
+      formEl.dataset.cartItems = JSON.stringify([{ beat_id: item.id, license_id: selectedLicense.id }]);
+    }
+  } catch (error) {
+    console.error("Error opening single checkout:", error);
+    showToast("Erro ao abrir checkout.", "alert-triangle");
+    closeModal();
   }
-  const cards = Object.entries(licensePlans).map(([key, plan]) => `<label class="checkout-plan ${key === selectedPlan ? "is-selected" : ""}">
-    <input type="radio" name="license" value="${key}" ${key === selectedPlan ? "checked" : ""}>
-    <span>${plan.label}</span>
-    <strong>${plan.price}</strong>
-    <small>${plan.summary}</small>
-  </label>`).join("");
-  openModal(`<form class="checkout-form" data-beat-id="${item.id}">
-    <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
-    <h2>${item.title}</h2>
-    <p>${item.producer} / ${(item.tags || ["Top beat"]).join(" / ")}</p>
-    <div class="checkout-product"><img src="${item.cover}" alt="Capa de ${item.title}"><div><strong>Contrato digital</strong><small>Pagamento simulado em ambiente preview. Pedido fica salvo na aba Pedidos.</small></div></div>
-    <div class="checkout-plans">${cards}</div>
-    <button class="seller-submit" type="submit">Finalizar pedido<i data-lucide="arrow-right"></i></button>
-  </form>`);
+
 }
 
 function playerActionBeat() {
@@ -16349,24 +16836,108 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "finalize-cart") {
-    if (appState.cart.length === 0) return;
-    appState.cart.forEach(entry => {
-      const { beatId, licenseId } = splitCartEntry(entry);
-      if (!appState.purchases.includes(beatId)) {
-        appState.purchases.unshift(beatId);
-      }
-      appState.orders.unshift({
-        id: `order-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        beatId,
-        license: licenseId,
-        status: "Disponivel",
-        createdAt: new Date().toISOString(),
+    openCartCheckout();
+    return;
+  }
+  if (action === "download-secure-file") {
+    const beatId = target.dataset.beatId;
+    const fileType = target.dataset.fileType;
+    downloadPurchasedFile(beatId, fileType);
+    return;
+  }
+  if (action === "view-purchased-contract") {
+    const text = generateContractText(
+      target.dataset.beatTitle,
+      target.dataset.producerName,
+      target.dataset.buyerName,
+      target.dataset.licenseName,
+      target.dataset.royaltyBuyer,
+      target.dataset.royaltyProducer,
+      "Ilimitados",
+      target.dataset.filesIncluded,
+      target.dataset.dateString
+    );
+    openContractModal(text);
+    return;
+  }
+  if (action === "view-contract-modal-trigger") {
+    event.preventDefault();
+    if (target.dataset.isCart === "true") {
+      (async () => {
+        openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
+        lucide.createIcons();
+        try {
+          let combinedText = "";
+          for (const entry of appState.cart) {
+            const { beatId, licenseId } = splitCartEntry(entry);
+            const beat = findBeat(beatId);
+            if (!beat) continue;
+            const licenses = await fetchBeatLicenses(beatId);
+            const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                            generateDefaultLicensesForBeat(beat).find(l => l.id === licenseId || l.license_key === licenseId);
+            if (license) {
+              const streamLimit = license.unlimited_streams ? "Ilimitados" : (license.stream_limit ? license.stream_limit.toLocaleString("pt-BR") : "50.000");
+              const includedFiles = [
+                license.included_mp3 ? "MP3" : "",
+                license.included_wav ? "WAV" : "",
+                license.included_stems ? "Stems" : ""
+              ].filter(Boolean).join(" + ");
+              const producerName = String(beat.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+              const buyerName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "LICENCIADO";
+              const dateString = new Date().toLocaleDateString("pt-BR");
+              combinedText += generateContractText(
+                beat.title,
+                producerName,
+                buyerName,
+                license.name,
+                license.buyer_royalty_percentage,
+                license.producer_royalty_percentage,
+                streamLimit,
+                includedFiles,
+                dateString
+              ) + "\n\n==================================================\n\n";
+            }
+          }
+          closeModal();
+          openContractModal(combinedText || "Nenhum contrato disponível no momento.");
+        } catch (err) {
+          console.error("Error loading contracts:", err);
+          closeModal();
+          showToast("Erro ao carregar contratos.", "alert-triangle");
+        }
+      })();
+    } else {
+      const beatId = target.dataset.beatId;
+      const licenseId = target.dataset.licenseId;
+      const beat = findBeat(beatId);
+      const producerName = String(beat.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+      const buyerName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "LICENCIADO";
+      fetchBeatLicenses(beatId).then(licenses => {
+        const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                        generateDefaultLicensesForBeat(beat).find(l => l.id === licenseId || l.license_key === licenseId);
+        if (license) {
+          const streamLimit = license.unlimited_streams ? "Ilimitados" : (license.stream_limit ? license.stream_limit.toLocaleString("pt-BR") : "50.000");
+          const includedFiles = [
+            license.included_mp3 ? "MP3" : "",
+            license.included_wav ? "WAV" : "",
+            license.included_stems ? "Stems" : ""
+          ].filter(Boolean).join(" + ");
+          const dateString = new Date().toLocaleDateString("pt-BR");
+          const text = generateContractText(
+            beat.title,
+            producerName,
+            buyerName,
+            license.name,
+            license.buyer_royalty_percentage,
+            license.producer_royalty_percentage,
+            streamLimit,
+            includedFiles,
+            dateString
+          );
+          openContractModal(text);
+        }
       });
-    });
-    clearCart();
-    persistState();
-    location.hash = "compras";
-    showToast("Pedido finalizado com sucesso!", "check-circle");
+    }
     return;
   }
   if (action === "play") {
@@ -17108,25 +17679,98 @@ document.addEventListener("submit", async (event) => {
   const checkoutForm = event.target.closest(".checkout-form");
   if (checkoutForm) {
     event.preventDefault();
-    const beatId = checkoutForm.dataset.beatId;
-    const license = checkoutForm.querySelector('input[name="license"]:checked')?.value || "premium";
-    const item = findBeat(beatId);
-    if (!item) {
-      showToast("Beat nao encontrado para finalizar pedido.", "alert-triangle");
+    const cartItemsStr = checkoutForm.dataset.cartItems;
+    const buyerName = checkoutForm.querySelector('[name="buyer_name"]')?.value || "";
+    const buyerEmail = checkoutForm.querySelector('[name="buyer_email"]')?.value || "";
+    
+    let cartItems;
+    try {
+      cartItems = JSON.parse(cartItemsStr);
+    } catch (e) {
+      cartItems = null;
+    }
+    
+    if (cartItems && cartItems.length) {
+      submitCheckout(cartItems, buyerName, buyerEmail);
+    } else {
+      showToast("Erro: Itens inválidos no checkout.", "alert-triangle");
+    }
+    return;
+  }
+  const customLicenseForm = event.target.closest(".custom-license-form");
+  if (customLicenseForm) {
+    event.preventDefault();
+    const isEditing = customLicenseForm.dataset.editingIndex !== undefined;
+    const editingIdx = isEditing ? Number(customLicenseForm.dataset.editingIndex) : null;
+    
+    const royaltyBuyer = Number(customLicenseForm.elements.buyer_royalty_percentage.value || 0);
+    const royaltyProducer = Number(customLicenseForm.elements.producer_royalty_percentage.value || 0);
+    
+    if (royaltyBuyer + royaltyProducer !== 100) {
+      showToast("A soma das porcentagens de royalties deve ser exatamente 100%.", "alert-triangle");
       return;
     }
-    appState.orders.unshift({
-      id: `order-${Date.now()}`,
-      beatId,
-      license,
-      status: "Disponivel",
-      createdAt: new Date().toISOString(),
-    });
-    if (!appState.purchases.includes(beatId)) appState.purchases.unshift(beatId);
-    persistState();
+
+    const priceCents = parsePriceCents(customLicenseForm.elements.price_formatted.value);
+    if (priceCents < 500) {
+      showToast("Preço mínimo permitido é R$ 5,00.", "alert-triangle");
+      return;
+    }
+
+    const includedMp3 = customLicenseForm.elements.included_mp3.checked;
+    const includedWav = customLicenseForm.elements.included_wav.checked;
+    const includedStems = customLicenseForm.elements.included_stems.checked;
+
+    if (!includedMp3 && !includedWav && !includedStems) {
+      showToast("Selecione pelo menos um arquivo incluído para esta licença.", "alert-triangle");
+      return;
+    }
+
+    const licenseData = {
+      id: isEditing ? appState.releaseLicenses[editingIdx].id : crypto.randomUUID(),
+      beat_id: releaseFormElement()?.dataset.beatId,
+      license_key: isEditing ? appState.releaseLicenses[editingIdx].license_key : `custom-${Date.now()}`,
+      name: customLicenseForm.elements.name.value.trim(),
+      description: customLicenseForm.elements.description.value.trim(),
+      price_cents: priceCents,
+      currency: "BRL",
+      is_default: isEditing ? appState.releaseLicenses[editingIdx].is_default : false,
+      is_custom: true,
+      is_active: isEditing ? appState.releaseLicenses[editingIdx].is_active : true,
+      is_exclusive: customLicenseForm.elements.is_exclusive.checked,
+      included_mp3: includedMp3,
+      included_wav: includedWav,
+      included_stems: includedStems,
+      buyer_royalty_percentage: royaltyBuyer,
+      producer_royalty_percentage: royaltyProducer,
+      stream_limit: customLicenseForm.elements.unlimited_streams.checked ? null : (Number(customLicenseForm.elements.stream_limit.value) || null),
+      unlimited_streams: customLicenseForm.elements.unlimited_streams.checked,
+      music_video_limit: customLicenseForm.elements.unlimited_music_videos.checked ? null : (Number(customLicenseForm.elements.music_video_limit.value) || null),
+      unlimited_music_videos: customLicenseForm.elements.unlimited_music_videos.checked,
+      commercial_use: customLicenseForm.elements.commercial_use.checked,
+      monetization_allowed: customLicenseForm.elements.monetization_allowed.checked,
+      live_performance_allowed: customLicenseForm.elements.live_performance_allowed.checked,
+      content_id_allowed: customLicenseForm.elements.content_id_allowed.checked,
+      credit_required: customLicenseForm.elements.credit_required.checked,
+      credit_text: isEditing ? appState.releaseLicenses[editingIdx].credit_text : "",
+      duration: customLicenseForm.elements.duration.value.trim() || "lifetime",
+      territory: customLicenseForm.elements.territory.value.trim() || "worldwide",
+      custom_terms: customLicenseForm.elements.custom_terms.value.trim(),
+      sort_order: isEditing ? appState.releaseLicenses[editingIdx].sort_order : appState.releaseLicenses.length
+    };
+
+    if (isEditing) {
+      appState.releaseLicenses[editingIdx] = licenseData;
+      showToast("Licença atualizada com sucesso.", "check-circle");
+    } else {
+      appState.releaseLicenses.push(licenseData);
+      showToast("Licença adicionada com sucesso.", "check-circle");
+    }
+
+
     closeModal();
-    showToast(`${licensePlans[license].label} liberada para ${item.title}`, "shopping-bag");
-    if (currentRoute() === "compras") renderRoute();
+    refreshReleaseLicensesUI();
+    syncReleaseForm(releaseFormElement());
     return;
   }
   const contractForm = event.target.closest(".contract-form");
@@ -17718,6 +18362,746 @@ function formatRelativeTime(dateString) {
   if (diffDays < 7) return `${diffDays} dias`;
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
+
+/* === BEGIN ANSEND BEAT LICENSING SYSTEM HELPERS === */
+function initializeDefaultReleaseLicenses(beatId) {
+  appState.releaseLicenses = [
+    {
+      id: "basic",
+      beat_id: beatId,
+      license_key: "basic",
+      name: "Lease Básica — MP3",
+      description: "Ideal para artistas que estão começando ou desejam testar o lançamento. Inclui o arquivo MP3 em alta qualidade, autorização para uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      price_cents: 0,
+      is_default: true,
+      is_custom: false,
+      is_active: true,
+      is_exclusive: false,
+      included_mp3: true,
+      included_wav: false,
+      included_stems: false,
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: 50000,
+      unlimited_streams: false,
+      music_video_limit: 1,
+      unlimited_music_videos: false,
+      commercial_use: true,
+      monetization_allowed: true,
+      live_performance_allowed: true,
+      content_id_allowed: false,
+      credit_required: true,
+      credit_text: "Prod. por [Produtor]",
+      duration: "lifetime",
+      territory: "worldwide",
+      custom_terms: ""
+    },
+    {
+      id: "premium",
+      beat_id: beatId,
+      license_key: "premium",
+      name: "Lease Premium — WAV",
+      description: "Licença indicada para lançamentos profissionais. Inclui arquivos MP3 e WAV em alta qualidade, maior limite de streams, uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      price_cents: 0,
+      is_default: true,
+      is_custom: false,
+      is_active: true,
+      is_exclusive: false,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: false,
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: 250000,
+      unlimited_streams: false,
+      music_video_limit: 2,
+      unlimited_music_videos: false,
+      commercial_use: true,
+      monetization_allowed: true,
+      live_performance_allowed: true,
+      content_id_allowed: false,
+      credit_required: true,
+      credit_text: "Prod. por [Produtor]",
+      duration: "lifetime",
+      territory: "worldwide",
+      custom_terms: ""
+    },
+    {
+      id: "exclusive",
+      beat_id: beatId,
+      license_key: "exclusive",
+      name: "Licença Exclusiva — WAV + Stems",
+      description: "Licença para lançamentos de maior escala. Inclui MP3, WAV e todas as faixas separadas do beat. O artista recebe 90% dos royalties e o produtor mantém 10%. Após a compra, o beat deixa de ser vendido para novos clientes.",
+      price_cents: 0,
+      is_default: true,
+      is_custom: false,
+      is_active: true,
+      is_exclusive: true,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: true,
+      buyer_royalty_percentage: 90,
+      producer_royalty_percentage: 10,
+      stream_limit: null,
+      unlimited_streams: true,
+      music_video_limit: null,
+      unlimited_music_videos: true,
+      commercial_use: true,
+      monetization_allowed: true,
+      live_performance_allowed: true,
+      content_id_allowed: true,
+      credit_required: true,
+      credit_text: "Prod. por [Produtor]",
+      duration: "lifetime",
+      territory: "worldwide",
+      custom_terms: ""
+    }
+  ];
+}
+
+function refreshReleaseLicensesUI() {
+  const container = document.querySelector(".release-licenses-container");
+  if (!container) return;
+  
+  container.innerHTML = appState.releaseLicenses.map((lic, idx) => {
+    const priceText = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
+    const filesLabel = [
+      lic.included_mp3 ? "MP3" : "",
+      lic.included_wav ? "WAV" : "",
+      lic.included_stems ? "Stems" : ""
+    ].filter(Boolean).join(" + ");
+    
+    const isDefault = lic.is_default;
+    
+    return `
+      <div class="release-license-editor-card" data-license-index="${idx}" style="border: 1px solid var(--beat-border); border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #0c0c0c; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <strong style="font-size: 15px; color: #fff;">${htmlEscape(lic.name)}</strong>
+            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${lic.is_exclusive ? "#ff3b30" : "#0a84ff"}; color: #fff; text-transform: uppercase;">
+              ${lic.is_exclusive ? "Exclusiva" : "Lease"}
+            </span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="display: flex; gap: 6px; align-items: center; cursor: pointer; font-size: 12px; color: var(--beat-muted);">
+              <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""}>
+              <span>Ativa</span>
+            </label>
+            ${!isDefault ? `
+              <button type="button" class="license-delete-btn" style="background: transparent; border: 0; color: #ff3b30; cursor: pointer; padding: 4px;" title="Excluir"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
+            ` : ""}
+            <button type="button" class="license-duplicate-btn" style="background: transparent; border: 0; color: #a3a3a3; cursor: pointer; padding: 4px;" title="Duplicar"><i data-lucide="copy" style="width: 16px; height: 16px;"></i></button>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              ${idx > 0 ? `<button type="button" class="license-move-up" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Subir">▲</button>` : ""}
+              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Descer">▼</button>` : ""}
+            </div>
+          </div>
+        </div>
+        
+        <div style="font-size: 12px; color: var(--beat-muted); line-height: 1.45;">
+          ${htmlEscape(lic.description)}
+        </div>
+        
+        <div style="display: flex; gap: 12px; font-size: 11px; color: var(--beat-dim);">
+          <span><strong>Arquivos:</strong> ${filesLabel || "Nenhum"}</span>
+          <span><strong>Royalties:</strong> Artista ${lic.buyer_royalty_percentage}% / Produtor ${lic.producer_royalty_percentage}%</span>
+          <span><strong>Limite:</strong> ${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0} streams`}</span>
+        </div>
+
+        <div style="display: flex; gap: 14px; align-items: center; margin-top: 4px;">
+          <label style="display: flex; flex-direction: column; gap: 4px; width: 140px;">
+            <span style="font-size: 11px; color: var(--beat-muted);">Preço (R$) *</span>
+            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; font-weight: bold;">
+          </label>
+          <button type="button" class="an-secondary license-edit-terms-btn" style="height: 35px; margin-top: 15px; font-size: 11px; padding: 0 12px;">
+            Ver e editar termos
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+  lucide.createIcons();
+}
+
+function openLicenseTermsEditModal(idx = null) {
+  const isEditing = idx !== null;
+  const lic = isEditing ? appState.releaseLicenses[idx] : {
+    name: "",
+    description: "",
+    price_cents: 0,
+    is_exclusive: false,
+    included_mp3: true,
+    included_wav: false,
+    included_stems: false,
+    buyer_royalty_percentage: 50,
+    producer_royalty_percentage: 50,
+    stream_limit: 50000,
+    unlimited_streams: false,
+    music_video_limit: 1,
+    unlimited_music_videos: false,
+    commercial_use: true,
+    monetization_allowed: true,
+    live_performance_allowed: true,
+    content_id_allowed: false,
+    credit_required: true,
+    duration: "lifetime",
+    territory: "worldwide",
+    custom_terms: ""
+  };
+
+  const priceFormatted = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
+
+  const markup = `
+    <form class="custom-license-form" ${isEditing ? `data-editing-index="${idx}"` : ""} style="display: flex; flex-direction: column; gap: 14px; padding: 8px 4px; max-height: 85vh; overflow-y: auto;">
+      <span style="font-size: 11px; color: var(--beat-muted); text-transform: uppercase;"><i data-lucide="${isEditing ? "edit" : "plus-circle"}" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>${isEditing ? "Editar Termos" : "Nova Licença"}</span>
+      <h2 style="font-size: 20px; font-weight: bold; color: #fff; margin: 0;">${isEditing ? "Editar Termos da Licença" : "Criar Tipo de Licença"}</h2>
+      
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Nome da licença *</span>
+          <input name="name" type="text" value="${htmlEscape(lic.name)}" placeholder="Ex: Lease Básica — MP3" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Preço *</span>
+          <input name="price_formatted" class="custom-license-price-formatter" type="text" value="${priceFormatted}" placeholder="R$ 0,00" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; font-weight: bold;">
+        </label>
+      </div>
+
+      <label style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 11px; color: var(--beat-muted);">Descrição resumida</span>
+        <textarea name="description" rows="2" placeholder="Descreva esta licença..." style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; resize: none;">${htmlEscape(lic.description)}</textarea>
+      </label>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;">
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 12px; color: #fff; cursor: pointer;">
+          <input name="is_exclusive" type="checkbox" value="true" ${lic.is_exclusive ? "checked" : ""}>
+          <span>Esta licença é exclusiva?</span>
+        </label>
+        <div style="font-size: 11px; color: var(--beat-dim);">Licença exclusiva remove o beat do catálogo após a compra.</div>
+      </div>
+
+      <fieldset style="border: 1px solid var(--beat-border); border-radius: 6px; padding: 10px 12px;">
+        <legend style="font-size: 11px; color: var(--beat-muted); padding: 0 6px;">Arquivos incluídos *</legend>
+        <div style="display: flex; gap: 16px; font-size: 12px; color: #fff;">
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_mp3" type="checkbox" ${lic.included_mp3 ? "checked" : ""}> MP3</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_wav" type="checkbox" ${lic.included_wav ? "checked" : ""}> WAV</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_stems" type="checkbox" ${lic.included_stems ? "checked" : ""}> Stems (ZIP)</label>
+        </div>
+      </fieldset>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Royalties do Artista (%) *</span>
+          <input name="buyer_royalty_percentage" type="number" min="0" max="100" value="${lic.buyer_royalty_percentage}" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Royalties do Produtor (%) *</span>
+          <input name="producer_royalty_percentage" type="number" min="0" max="100" value="${lic.producer_royalty_percentage}" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+        </label>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: var(--beat-muted);">Limite de streams</span>
+            <input name="stream_limit" type="number" value="${lic.stream_limit || ""}" placeholder="Ex: 100000" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+          </label>
+          <label style="display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--beat-muted); cursor: pointer; margin-top: 2px;">
+            <input name="unlimited_streams" type="checkbox" ${lic.unlimited_streams ? "checked" : ""}> <span>Streams ilimitados</span>
+          </label>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 11px; color: var(--beat-muted);">Limite de videoclipes</span>
+            <input name="music_video_limit" type="number" value="${lic.music_video_limit || ""}" placeholder="Ex: 2" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+          </label>
+          <label style="display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--beat-muted); cursor: pointer; margin-top: 2px;">
+            <input name="unlimited_music_videos" type="checkbox" ${lic.unlimited_music_videos ? "checked" : ""}> <span>Videoclipes ilimitados</span>
+          </label>
+        </div>
+      </div>
+
+      <fieldset style="border: 1px solid var(--beat-border); border-radius: 6px; padding: 10px 12px;">
+        <legend style="font-size: 11px; color: var(--beat-muted); padding: 0 6px;">Direitos e Usos</legend>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 11px; color: #fff;">
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="commercial_use" type="checkbox" ${lic.commercial_use ? "checked" : ""}> Uso Comercial</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="monetization_allowed" type="checkbox" ${lic.monetization_allowed ? "checked" : ""}> Monetização permitida</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="live_performance_allowed" type="checkbox" ${lic.live_performance_allowed ? "checked" : ""}> Apresentação ao vivo</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="content_id_allowed" type="checkbox" ${lic.content_id_allowed ? "checked" : ""}> Registro Content ID permitido</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="credit_required" type="checkbox" ${lic.credit_required ? "checked" : ""}> Crédito obrigatório</label>
+        </div>
+      </fieldset>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Duração do contrato</span>
+          <input name="duration" type="text" value="${htmlEscape(lic.duration)}" placeholder="Ex: lifetime, 5 anos" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 11px; color: var(--beat-muted);">Território</span>
+          <input name="territory" type="text" value="${htmlEscape(lic.territory)}" placeholder="Ex: worldwide, Brasil" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
+        </label>
+      </div>
+
+      <label style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 11px; color: var(--beat-muted);">Termos / Cláusulas personalizadas</span>
+        <textarea name="custom_terms" rows="2" placeholder="Termos adicionais..." style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; resize: none;">${htmlEscape(lic.custom_terms || "")}</textarea>
+      </label>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+        <button type="button" class="an-secondary" data-action="close-modal" style="height: 38px; padding: 0 16px;">Cancelar</button>
+        <button type="submit" class="an-primary" style="background: #fff; border: 0; color: #000; font-weight: bold; height: 38px; padding: 0 20px; border-radius: 6px; cursor: pointer;">${isEditing ? "Salvar Termos" : "Criar Licença"}</button>
+      </div>
+    </form>
+  `;
+  openModal(markup);
+}
+
+async function fetchBeatLicenses(beatId) {
+  if (appState.loadedBeatLicenses?.[beatId] && appState.loadedBeatLicenses[beatId].length) {
+    return appState.loadedBeatLicenses[beatId];
+  }
+  appState.loadedBeatLicenses = appState.loadedBeatLicenses || {};
+  if (!supabaseClient) {
+    const fallback = generateDefaultLicensesForBeat({ id: beatId });
+    appState.loadedBeatLicenses[beatId] = fallback;
+    return fallback;
+  }
+  const { data, error } = await supabaseClient
+    .from("beat_licenses")
+    .select("*")
+    .eq("beat_id", beatId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  if (error || !data || !data.length) {
+    const beat = searchableBeatPool().find(b => b.id === beatId) || { id: beatId };
+    const fallback = generateDefaultLicensesForBeat(beat);
+    appState.loadedBeatLicenses[beatId] = fallback;
+    return fallback;
+  }
+  appState.loadedBeatLicenses[beatId] = data;
+  return data;
+}
+
+function generateDefaultLicensesForBeat(beat) {
+  const basePrice = Number(beat?.raw?.price || beat?.price || 179);
+  const basicPrice = Math.max(49, Math.round(basePrice * 0.45));
+  const premiumPrice = basePrice;
+  const exclusivePrice = Math.max(499, Math.round(basePrice * 4.5));
+
+  return [
+    {
+      id: "basic",
+      beat_id: beat?.id,
+      license_key: "basic",
+      name: "Lease Básica — MP3",
+      price_cents: basicPrice * 100,
+      description: "Ideal para artistas que estão começando ou desejam testar o lançamento. Inclui o arquivo MP3 em alta qualidade, autorização para uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: 50000,
+      unlimited_streams: false,
+      music_video_limit: 1,
+      unlimited_music_videos: false,
+      included_mp3: true,
+      included_wav: false,
+      included_stems: false,
+      is_exclusive: false,
+    },
+    {
+      id: "premium",
+      beat_id: beat?.id,
+      license_key: "premium",
+      name: "Lease Premium — WAV",
+      price_cents: premiumPrice * 100,
+      description: "Licença indicada para lançamentos profissionais. Inclui arquivos MP3 e WAV em alta qualidade, maior limite de streams, uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: 250000,
+      unlimited_streams: false,
+      music_video_limit: 2,
+      unlimited_music_videos: false,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: false,
+      is_exclusive: false,
+    },
+    {
+      id: "exclusive",
+      beat_id: beat?.id,
+      license_key: "exclusive",
+      name: "Licença Exclusiva — WAV + Stems",
+      price_cents: exclusivePrice * 100,
+      description: "Licença para lançamentos de maior escala. Inclui MP3, WAV e todas as faixas separadas do beat. O artista recebe 90% dos royalties e o produtor mantém 10%. Após a compra, o beat deixa de ser vendido para novos clientes.",
+      buyer_royalty_percentage: 90,
+      producer_royalty_percentage: 10,
+      stream_limit: null,
+      unlimited_streams: true,
+      music_video_limit: null,
+      unlimited_music_videos: true,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: true,
+      is_exclusive: true,
+    }
+  ];
+}
+
+function renderBeatLicenseCards(licenses, selectedLicenseId) {
+  return licenses.map((license) => {
+    const isSelected = license.id === selectedLicenseId || license.license_key === selectedLicenseId;
+    const priceText = `R$ ${(license.price_cents / 100).toFixed(2)}`;
+    const filesLabel = [
+      license.included_mp3 ? "MP3" : "",
+      license.included_wav ? "WAV" : "",
+      license.included_stems ? "Stems" : ""
+    ].filter(Boolean).join(" + ");
+    
+    return `
+      <button class="beat-license-card ${isSelected ? "is-selected" : ""}" 
+              type="button" 
+              data-action="select-beat-license" 
+              data-license="${license.id}" 
+              data-price="${priceText}" 
+              aria-pressed="${isSelected ? "true" : "false"}">
+        <span>${htmlEscape(license.name)}</span>
+        <strong>${priceText}</strong>
+        <small>${htmlEscape(license.description || filesLabel)}</small>
+      </button>
+    `;
+  }).join("");
+}
+
+function updateBeatDetailLicensingPanel(container, beat, licenses) {
+  if (beat.sold_exclusively || beat.raw?.sold_exclusively) {
+    const mainContent = container.closest(".beat-main-content") || container;
+    const panel = mainContent.querySelector(".beat-licensing-panel");
+    if (panel) {
+      panel.innerHTML = `
+        <div style="text-align:center; padding:32px 16px; background:#0f0f0f; border-radius:8px; border:1px solid var(--beat-border);">
+          <i data-lucide="shield-alert" style="width:40px; height:40px; color:#ff3b30; margin:0 auto 12px; display:block;"></i>
+          <h2 style="font-size:18px; color:#fff; font-weight:bold; margin-bottom:8px;">Vendido Exclusivamente</h2>
+          <p style="font-size:12px; color:var(--beat-muted); margin:0;">Este beat já foi adquirido sob licença exclusiva e não está mais disponível para novos licenciamentos.</p>
+        </div>
+      `;
+    }
+    const termsPanel = mainContent.querySelector(".beat-terms-panel");
+    if (termsPanel) termsPanel.style.display = "none";
+    
+    document.querySelectorAll(".mini-buy").forEach(btn => btn.style.display = "none");
+    lucide.createIcons();
+    return;
+  }
+
+  if (!licenses.length) {
+    licenses = generateDefaultLicensesForBeat(beat);
+  }
+  
+  let selectedId = container.dataset.selectedLicense || "premium";
+  let selectedLicense = licenses.find(l => l.id === selectedId || l.license_key === selectedId);
+  if (!selectedLicense) {
+    selectedLicense = licenses.find(l => l.license_key === "premium") || licenses[0];
+  }
+  
+  selectedId = selectedLicense.id;
+  container.dataset.selectedLicense = selectedId;
+  
+  const priceFormatted = `R$ ${(selectedLicense.price_cents / 100).toFixed(2)}`;
+  
+  container.querySelector("[data-license-total]").textContent = priceFormatted;
+  
+  container.querySelectorAll("[data-action='detail-add-cart'], [data-action='detail-buy-now']").forEach(btn => {
+    btn.dataset.license = selectedId;
+  });
+  
+  const cardsHtml = renderBeatLicenseCards(licenses, selectedId);
+  container.querySelector(".beat-license-grid").innerHTML = cardsHtml;
+  
+  container.querySelector("[data-license-terms]").innerHTML = licenseTermsMarkup(selectedLicense);
+  
+  const termsHeader = container.querySelector(".beat-terms-panel header");
+  if (termsHeader) {
+    termsHeader.innerHTML = `
+      <h3>Termos de uso</h3>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <a href="#" class="view-contract-modal-trigger" data-beat-id="${beat.id}" data-license-id="${selectedId}" style="font-size:11px; color:var(--beat-blue); text-decoration:underline; font-weight:bold;">Ver termos completos</a>
+        <button type="button" aria-label="Expandir termos"><i data-lucide="chevron-up"></i></button>
+      </div>
+    `;
+  }
+  lucide.createIcons();
+}
+
+async function submitCheckout(cartItems, buyerName, buyerEmail) {
+  const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
+  if (!session) {
+    showToast("Você precisa estar autenticado para finalizar a compra.", "triangle-alert");
+    return;
+  }
+  showToast("Processando pagamento...", "loader");
+  try {
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        cart_items: cartItems,
+        buyer_name: buyerName,
+        buyer_email: buyerEmail
+      })
+    });
+    
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      showToast(result.error || "Erro no checkout.", "alert-triangle");
+      return;
+    }
+    
+    clearCart();
+    await loadCatalogItems();
+    closeModal();
+    location.hash = "compras";
+    showToast("Compra finalizada com sucesso!", "check-circle");
+    renderPurchases();
+  } catch (error) {
+    console.error("Checkout submit error:", error);
+    showToast("Erro de rede ao processar checkout.", "alert-triangle");
+  }
+}
+
+async function openCartCheckout() {
+  if (appState.cart.length === 0) return;
+  
+  openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
+  lucide.createIcons();
+
+  try {
+    const items = [];
+    const cartItemsPayload = [];
+    
+    for (const entry of appState.cart) {
+      const { beatId, licenseId } = splitCartEntry(entry);
+      const beat = findBeat(beatId);
+      const licenses = await fetchBeatLicenses(beatId);
+      const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                      generateDefaultLicensesForBeat(beat).find(l => l.id === licenseId || l.license_key === licenseId);
+      
+      if (beat && license) {
+        items.push({ beat, license });
+        cartItemsPayload.push({ beat_id: beatId, license_id: license.id });
+      }
+    }
+    
+    if (!items.length) {
+      showToast("Erro ao carregar itens do carrinho.", "alert-triangle");
+      closeModal();
+      return;
+    }
+    
+    const subtotalCents = items.reduce((sum, item) => sum + (item.license.price_cents || 0), 0);
+    const serviceFeeCents = Math.round(subtotalCents * 0.12);
+    const totalCents = subtotalCents + serviceFeeCents;
+    
+    const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
+    const prefillEmail = appState.authUser?.email || "";
+    
+    const itemsHtml = items.map(item => `
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--beat-border-soft); padding-bottom:8px;">
+        <img src="${item.beat.cover}" style="width:40px; height:40px; border-radius:4px; object-fit:cover;">
+        <div style="flex:1;">
+          <strong style="font-size:13px; color:#fff; display:block;">${htmlEscape(item.beat.title)}</strong>
+          <span style="font-size:11px; color:var(--beat-muted);">${htmlEscape(item.license.name)}</span>
+        </div>
+        <strong style="font-size:13px; color:#fff;">R$ ${(item.license.price_cents / 100).toFixed(2)}</strong>
+      </div>
+    `).join("");
+    
+    openModal(`
+      <form class="checkout-form" data-is-cart="true">
+        <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
+        <h2 style="font-size:18px; margin: 10px 0 4px; color:#fff;">Finalizar Compra</h2>
+        <p style="font-size:12px; color:var(--beat-muted); margin-bottom:14px;">Preencha seus dados e concorde com os termos das licenças.</p>
+        
+        <div style="margin-bottom:14px; max-height:180px; overflow-y:auto; background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:10px;">
+          ${itemsHtml}
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:11px; color:var(--beat-muted);">Seu Nome *</span>
+            <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:11px; color:var(--beat-muted);">Seu E-mail *</span>
+            <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
+          </label>
+        </div>
+
+        <div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; font-size:12px;">
+          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
+            <span>Subtotal:</span>
+            <span>R$ ${(subtotalCents / 100).toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
+            <span>Taxa de serviço (12%):</span>
+            <span>R$ ${(serviceFeeCents / 100).toFixed(2)}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; color:#fff; font-weight:bold; font-size:14px; border-top:1px solid var(--beat-border-soft); padding-top:6px; margin-top:4px;">
+            <span>Total:</span>
+            <span>R$ ${(totalCents / 100).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--beat-muted); cursor:pointer;">
+            <input type="checkbox" name="accept_terms" required style="margin-top:2px;">
+            <span>Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-is-cart="true" style="color:var(--beat-blue); text-decoration:underline;">termos e contratos de licença</a> correspondentes a cada beat selecionado.</span>
+          </label>
+        </div>
+
+        <button class="seller-submit" type="submit" style="width:100%; height:42px; display:flex; justify-content:center; align-items:center; font-size:14px;">
+          Finalizar pagamento <i data-lucide="arrow-right" style="width:16px; height:16px; margin-left:6px;"></i>
+        </button>
+      </form>
+    `);
+    
+    const formEl = document.querySelector(".checkout-form");
+    if (formEl) {
+      formEl.dataset.cartItems = JSON.stringify(cartItemsPayload);
+    }
+  } catch (error) {
+    console.error("Error opening cart checkout:", error);
+    showToast("Erro ao abrir checkout.", "alert-triangle");
+    closeModal();
+  }
+}
+
+function openContractModal(text) {
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="app-modal contract-overlay-modal" role="dialog" aria-modal="true" style="z-index: 10000;">
+      <div class="app-modal-backdrop" onclick="this.parentNode.remove()"></div>
+      <div class="app-modal-panel" style="max-width: 600px;">
+        <button class="app-modal-close" type="button" onclick="this.parentNode.parentNode.remove()" aria-label="Fechar"><i data-lucide="x"></i></button>
+        <div style="padding:10px 4px; display:flex; flex-direction:column; gap:12px;">
+          <span style="font-size:11px; color:var(--beat-muted); text-transform:uppercase;"><i data-lucide="scroll" style="width:14px; height:14px; margin-right:4px; vertical-align:middle;"></i>Contrato Legal</span>
+          <h2 style="font-size:18px; font-weight:bold; color:#fff; margin:0;">Visualizar Contrato</h2>
+          <pre style="background:#050505; border:1px solid var(--beat-border); color:var(--beat-muted); padding:12px; border-radius:6px; font-family:monospace; font-size:11px; line-height:1.5; white-space:pre-wrap; max-height:300px; overflow-y:auto; margin:8px 0;">${htmlEscape(text)}</pre>
+          <button type="button" class="an-primary" onclick="this.parentNode.parentNode.parentNode.remove()" style="background:#fff; border:0; color:#000; font-weight:bold; height:38px; width:100%; border-radius:6px; cursor:pointer;">Fechar Visualização</button>
+        </div>
+      </div>
+    </div>
+  `);
+  lucide.createIcons();
+}
+
+async function downloadPurchasedFile(beatId, fileType) {
+  const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
+  if (!session) {
+    showToast("Você precisa estar logado para baixar arquivos.", "triangle-alert");
+    return;
+  }
+  showToast("Gerando link de download seguro...", "loader");
+  try {
+    const response = await fetch(`/api/orders/download?beat_id=${beatId}&file_type=${fileType}`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      showToast(result.error || "Erro ao obter link de download.", "alert-triangle");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = result.download_url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast("Download iniciado!", "check-circle");
+  } catch (error) {
+    console.error("Download error:", error);
+    showToast("Falha na conexão com o servidor.", "alert-triangle");
+  }
+}
+
+async function loadUserOrders() {
+  if (!supabaseClient || !appState.authUser) return [];
+  const { data, error } = await supabaseClient
+    .from("orders")
+    .select(\`
+      id,
+      total_cents,
+      status,
+      buyer_name,
+      buyer_email,
+      created_at,
+      order_items (
+        id,
+        beat_id,
+        license_id,
+        license_name_snapshot,
+        license_terms_snapshot,
+        price_cents_snapshot,
+        buyer_royalty_snapshot,
+        producer_royalty_snapshot,
+        files_included_snapshot,
+        accepted_contract_at,
+        accepted_contract_version
+      )
+    \`)
+    .eq("buyer_id", appState.authUser.id)
+    .eq("status", "completed")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Error loading user orders:", error);
+    return [];
+  }
+  return data || [];
+}
+
+function generateContractText(beatTitle, producerName, buyerName, licenseName, royaltyBuyer, royaltyProducer, streamLimit, includedFiles, dateString) {
+  return \`CONTRATO DE LICENÇA DE USO DE BEAT/PRODUÇÃO MUSICAL
+
+Este contrato regula a licença de exploração comercial do Beat intitulado "\${beatTitle}", produzido por \${producerName}, doravante denominado "PRODUTOR", adquirido por \${buyerName}, doravante denominado "LICENCIADO", nas condições estabelecidas sob a licença "\${licenseName}".
+
+1. CONCESSÃO E USO
+1.1. O PRODUTOR concede ao LICENCIADO uma licença de uso do Beat para fins de reprodução, distribuição, apresentações ao vivo e monetização em plataformas de streaming e digitais.
+1.2. Esta licença é outorgada em caráter \${licenseName.includes("Exclusiva") ? "EXCLUSIVO" : "NÃO EXCLUSIVO"}.
+
+2. LIMITES E ROYALTIES
+2.1. Royalties da Composição/Master: As partes concordam com a divisão de royalties estabelecida em \${royaltyBuyer}% para o LICENCIADO (Artista/Comprador) e \${royaltyProducer}% para o PRODUTOR.
+2.2. Streams Digitais: O limite de reproduções acumuladas nas plataformas é de \${streamLimit}.
+2.3. Videoclipes Oficiais: Fica permitida a gravação e veiculação de clipes promocionais/oficiais nas plataformas de compartilhamento de vídeo.
+
+3. ARQUIVOS ENTREGUES
+O PRODUTOR entrega os arquivos: \${includedFiles}.
+
+4. DECLARAÇÃO DE ACEITE
+O LICENCIADO declara ter lido, compreendido e aceitado todos os termos deste contrato em \${dateString}.
+
+Identificador do Pedido: Gerado eletronicamente na confirmação do pagamento pela ANSEND.\`;
+}
+
+function formatPriceBRL(value) {
+  const cleanValue = String(value).replace(/\\D/g, "");
+  if (!cleanValue) return "";
+  const cents = parseInt(cleanValue, 10);
+  const formatter = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+  return formatter.format(cents / 100);
+}
+
+function parsePriceCents(formattedValue) {
+  const cleanValue = String(formattedValue).replace(/\\D/g, "");
+  return parseInt(cleanValue, 10) || 0;
+}
+/* === END ANSEND BEAT LICENSING SYSTEM HELPERS === */
 
 setLocale(detectLocale(), { manual: false });
 detectLocaleWithGeo()
