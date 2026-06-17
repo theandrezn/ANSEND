@@ -8085,6 +8085,20 @@ function publicProfileRouteFromTarget(target) {
   return title && title !== "ansend" ? `perfil-${title}` : "";
 }
 
+function isInteractiveProfessionalCardTarget(target) {
+  return Boolean(target?.closest("button, a, input, select, textarea, label, [role='button'], [data-card-action]"));
+}
+
+function openProfessionalCardProfile(card, source = "professional-card") {
+  if (!card) return false;
+  const route = publicProfileRouteFromTarget(card);
+  if (!route) return false;
+  const profileId = card.dataset.profileId || card.dataset.id || "";
+  trackUserEvent("click", "professional", profileId, { source, title: card.dataset.title || "" });
+  location.hash = route;
+  return true;
+}
+
 function profileAvatarMarkup(display, className = "profile-avatar") {
   const avatar = display?.avatar || "";
   if (avatar && !avatar.includes("undefined")) {
@@ -11395,20 +11409,21 @@ function professionalCard(profile) {
   const isFavorited = appState.favorites.has(profile.id);
   const favoriteClass = isFavorited ? "is-favorite" : "";
   const isSelf = profile.id === appState.authUser?.id;
+  const profileAttrs = profileTargetAttrs({ id: profile.id, username: profile.username, title: profile.name });
   const adminDeleteButton = appState.isAdmin
-    ? `<button type="button" class="professional-card-admin-delete" data-action="admin-delete-profile" data-user-id="${profile.id}" aria-label="${isSelf ? "Sua conta admin protegida" : `Remover perfil ${htmlEscape(profile.name)}`}" title="${isSelf ? "Sua conta admin protegida" : "Remover perfil"}" ${isSelf ? "disabled" : ""}>
+    ? `<button type="button" class="professional-card-admin-delete" data-card-action data-action="admin-delete-profile" data-user-id="${profile.id}" aria-label="${isSelf ? "Sua conta admin protegida" : `Remover perfil ${htmlEscape(profile.name)}`}" title="${isSelf ? "Sua conta admin protegida" : "Remover perfil"}" ${isSelf ? "disabled" : ""}>
         <i data-lucide="${isSelf ? "shield-check" : "x"}"></i>
       </button>`
     : "";
 
-  return `<article class="professional-card spotlight-card" data-category="${profile.category}" data-id="${profile.id}">
+  return `<article class="professional-card spotlight-card" data-action="professional-card-open" data-category="${htmlEscape(profile.category)}" data-id="${htmlEscape(profile.id)}" ${profileAttrs} role="link" tabindex="0" aria-label="Abrir perfil de ${htmlEscape(profile.name)}">
     ${adminDeleteButton}
 
     <!-- Top Banner -->
     <div class="professional-card-banner" style="${bannerStyle}"></div>
     
     <!-- Contratar + Button on banner -->
-    <button type="button" class="professional-card-hire-btn" data-action="professional-contact" data-title="${htmlEscape(profile.name)}">Contratar +</button>
+    <button type="button" class="professional-card-hire-btn" data-card-action data-action="professional-contact" ${profileAttrs}>Contratar +</button>
     
     <!-- Avatar -->
     <div class="professional-card-avatar-container">
@@ -11443,13 +11458,13 @@ function professionalCard(profile) {
     
     <!-- Footer Actions -->
     <footer class="professional-card-footer">
-      <button type="button" class="professional-card-footer-btn" data-action="producer" data-title="${htmlEscape(profile.name)}" aria-label="Ver perfil">
+      <button type="button" class="professional-card-footer-btn" data-card-action data-action="producer" ${profileAttrs} aria-label="Ver perfil">
         <i data-lucide="user-round"></i>
       </button>
-      <button type="button" class="professional-card-footer-btn" data-action="professional-contact" data-title="${htmlEscape(profile.name)}" aria-label="Contratar">
+      <button type="button" class="professional-card-footer-btn" data-card-action data-action="professional-contact" ${profileAttrs} aria-label="Contratar">
         <i data-lucide="handshake"></i>
       </button>
-      <button type="button" class="professional-card-footer-btn ${favoriteClass}" data-action="favorite" data-id="${profile.id}" aria-label="Favoritar">
+      <button type="button" class="professional-card-footer-btn ${favoriteClass}" data-card-action data-action="favorite" data-id="${htmlEscape(profile.id)}" aria-label="Favoritar">
         <i data-lucide="heart"></i>
       </button>
     </footer>
@@ -16420,6 +16435,7 @@ document.addEventListener("click", (event) => {
 
   const clickedBeatCard = event.target.closest(".beat-card");
   const target = event.target.closest("button, a");
+  const clickedProfessionalCard = event.target.closest(".professional-card[data-action='professional-card-open']");
   if (!event.target.closest(".player-more-dropdown") && !event.target.closest('[data-action="more-player"]')) {
     closePlayerMoreMenu();
   }
@@ -16433,9 +16449,26 @@ document.addEventListener("click", (event) => {
     location.hash = `beat-${clickedBeatCard.dataset.beatId}`;
     return;
   }
+  if (clickedProfessionalCard) {
+    if (target && clickedProfessionalCard.contains(target)) {
+      event.stopPropagation();
+    } else if (!isInteractiveProfessionalCardTarget(event.target)) {
+      event.preventDefault();
+      openProfessionalCardProfile(clickedProfessionalCard);
+      return;
+    }
+  }
   if (!target) return;
   const action = target.dataset.action;
   const isPlayerDropdownAction = Boolean(target.closest(".player-more-dropdown"));
+  if (target.closest(".professional-card[data-action='professional-card-open']")) {
+    event.stopPropagation();
+  }
+  if (action === "professional-card-open") {
+    event.preventDefault();
+    openProfessionalCardProfile(target);
+    return;
+  }
   if (action === "release-mode-choice") {
     event.preventDefault();
     const mode = target.dataset.mode || "selector";
@@ -18129,6 +18162,10 @@ document.addEventListener("keydown", (event) => {
   if ((event.key === "Enter" || event.key === " ") && event.target.matches(".beat-card")) {
     event.preventDefault();
     location.hash = `beat-${event.target.dataset.beatId}`;
+  }
+  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".professional-card[data-action='professional-card-open']")) {
+    event.preventDefault();
+    openProfessionalCardProfile(event.target, "professional-card-keyboard");
   }
 });
 

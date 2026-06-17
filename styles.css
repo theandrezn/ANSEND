@@ -22355,14 +22355,27 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   position: relative;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
-.professional-card:hover {
+.professional-card:hover,
+.professional-card:focus-visible {
   transform: translateY(-6px);
   border-color: rgba(255,255,255,0.14);
   box-shadow:
     0 34px 90px rgba(0,0,0,0.68),
     inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.professional-card:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.72);
+  outline-offset: 4px;
+}
+
+.professional-card button,
+.professional-card a,
+.professional-card [data-card-action] {
+  cursor: pointer;
 }
 
 .professional-card-banner {
