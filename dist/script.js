@@ -1316,12 +1316,39 @@ const appState = {
       trackedImpressionId: "",
     },
   },
+  chat: {
+    conversations: [],
+    participants: {},
+    messages: {},
+    profiles: {},
+    activeConversationId: "",
+    search: "",
+    userSearch: "",
+    userResults: [],
+    loading: false,
+    messagesLoading: false,
+    sending: false,
+    newChatOpen: false,
+    error: "",
+    realtimeChannels: [],
+    searchTimer: null,
+  },
   isAdmin: false,
   adminProfiles: [],
   aiPlan: JSON.parse(localStorage.getItem("ansend-ai-plan") || "null"),
   nexoChatMessages: [],
   nexoChatLoading: false,
   nexoChatError: "",
+  nexoChatConversationId: "",
+  nexoChatHistoryLoading: false,
+  nexoAssistant: {
+    open: false,
+    expanded: false,
+    minimized: false,
+    unread: false,
+    initialized: false,
+    abortController: null,
+  },
   recommendations: { professionals: [], feed: [], updatedAt: 0 },
   recommendationsLoading: false,
   recommendationImpressions: new Set(),
@@ -3785,6 +3812,7 @@ function currentRouteFromHash() {
     "explorar",
     "favoritos",
     "compras",
+    "chat",
     "biblioteca",
     "ia",
     "produtores",
@@ -4227,6 +4255,7 @@ const routeTitles = {
 routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendações e próximos passos."];
 routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais e soluções recomendadas."];
 routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços contratados."];
+routeTitles.chat = ["Bate-papo", "Mensagens diretas entre perfis da ANSEND."];
 routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.comunidade = [COMMUNITY_TITLE, COMMUNITY_SUBTITLE];
@@ -5246,6 +5275,504 @@ function hiringAuthorDisplay(userId) {
     verified: Boolean(profile?.is_verified || profile?.verified || profile?.verified_at),
     roleLabel: display.roleLabel || accountRoleLabel(profile?.account_role),
   };
+}
+
+function chatRequireAuth() {
+  if (appState.authLoading && !appState.authReady) {
+    showToast("Validando sua sessao...", "loader-2");
+    return false;
+  }
+  if (supabaseClient && appState.authUser?.id) return true;
+  showToast("Faca login para acessar o bate-papo.", "log-in");
+  location.hash = "vendedor";
+  return false;
+}
+
+function chatProfile(userId) {
+  if (!userId) return null;
+  if (appState.chat.profiles[userId]) return appState.chat.profiles[userId];
+  return profileForUserId(userId);
+}
+
+function chatDisplayForUser(userId) {
+  const profile = chatProfile(userId);
+  const display = profileDisplayData(profile);
+  const fallbackHandle = String(userId || "").slice(0, 8);
+  const name = display.name && display.name !== "Perfil ANSEND" ? display.name : "Usuario ANSEND";
+  const username = display.username || sanitizeHandle(profile?.username || name || fallbackHandle);
+  return {
+    id: userId,
+    name,
+    username,
+    handle: username ? `@${username}` : "",
+    avatar: display.avatar,
+    verified: Boolean(profile?.is_verified || profile?.verified || profile?.verified_at),
+  };
+}
+
+function chatRelativeDate(value) {
+  return hiringRelativeDate(value);
+}
+
+function chatPreviewText(message) {
+  if (!message?.body) return "Nenhuma mensagem ainda";
+  return String(message.body || "").replace(/\s+/g, " ").trim().slice(0, 140);
+}
+
+function chatOtherParticipant(conversation) {
+  const ids = appState.chat.participants[conversation.id] || [];
+  return ids.find((id) => id !== appState.authUser?.id) || conversation.created_by || "";
+}
+
+function sanitizeChatMessage(value = "") {
+  return String(value || "").replace(/\u0000/g, "").trim().slice(0, 2000);
+}
+
+async function fetchChatProfiles(userIds = []) {
+  const ids = [...new Set(userIds.filter(Boolean))].filter((id) => !appState.chat.profiles[id]);
+  if (!ids.length || !supabaseClient) return;
+  const { data, error } = await supabaseClient
+    .from("public_profiles")
+    .select(HIRING_PROFILE_SELECT)
+    .in("id", ids)
+    .limit(ids.length);
+  if (error) throw error;
+  (data || []).forEach((profile) => {
+    appState.chat.profiles[profile.id] = profile;
+  });
+  if (appState.profile?.id) appState.chat.profiles[appState.profile.id] = appState.profile;
+}
+
+function sortChatConversations(conversations = []) {
+  return [...conversations].sort((a, b) => new Date(b.last_message_at || b.updated_at || b.created_at || 0) - new Date(a.last_message_at || a.updated_at || a.created_at || 0));
+}
+
+function filteredChatConversations() {
+  const query = appState.chat.search.trim().toLowerCase();
+  const conversations = sortChatConversations(appState.chat.conversations);
+  if (!query) return conversations;
+  return conversations.filter((conversation) => {
+    const other = chatDisplayForUser(chatOtherParticipant(conversation));
+    const lastMessage = chatPreviewText(conversation.lastMessage).toLowerCase();
+    return [other.name, other.username, other.handle, lastMessage].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+}
+
+async function loadChatConversations({ render = false } = {}) {
+  if (!supabaseClient || !appState.authUser?.id) return [];
+  appState.chat.loading = true;
+  appState.chat.error = "";
+  if (render) renderChatPage({ preserveActive: true });
+  try {
+    const userId = appState.authUser.id;
+    const { data: ownRows, error: ownError } = await supabaseClient
+      .from("conversation_participants")
+      .select("conversation_id,last_read_at")
+      .eq("user_id", userId)
+      .limit(80);
+    if (ownError) throw ownError;
+    const conversationIds = [...new Set((ownRows || []).map((row) => row.conversation_id).filter(Boolean))];
+    if (!conversationIds.length) {
+      appState.chat.conversations = [];
+      appState.chat.participants = {};
+      appState.chat.loading = false;
+      if (render) renderChatPage({ preserveActive: true });
+      return [];
+    }
+
+    const [{ data: conversations, error: conversationsError }, { data: participants, error: participantsError }, { data: messages, error: messagesError }] = await Promise.all([
+      supabaseClient.from("conversations").select("*").in("id", conversationIds).order("last_message_at", { ascending: false }).limit(80),
+      supabaseClient.from("conversation_participants").select("conversation_id,user_id,last_read_at").in("conversation_id", conversationIds).limit(200),
+      supabaseClient.from("messages").select("*").in("conversation_id", conversationIds).order("created_at", { ascending: false }).limit(Math.max(80, conversationIds.length * 3)),
+    ]);
+    if (conversationsError) throw conversationsError;
+    if (participantsError) throw participantsError;
+    if (messagesError) throw messagesError;
+
+    const participantsByConversation = {};
+    (participants || []).forEach((row) => {
+      participantsByConversation[row.conversation_id] = participantsByConversation[row.conversation_id] || [];
+      participantsByConversation[row.conversation_id].push(row.user_id);
+    });
+    appState.chat.participants = participantsByConversation;
+    await fetchChatProfiles((participants || []).map((row) => row.user_id));
+
+    const lastMessageByConversation = {};
+    (messages || []).forEach((message) => {
+      if (!lastMessageByConversation[message.conversation_id]) lastMessageByConversation[message.conversation_id] = message;
+    });
+    const readMap = Object.fromEntries((ownRows || []).map((row) => [row.conversation_id, row.last_read_at]));
+    appState.chat.conversations = sortChatConversations((conversations || []).map((conversation) => {
+      const lastReadAt = readMap[conversation.id] || null;
+      const unreadCount = (messages || []).filter((message) => (
+        message.conversation_id === conversation.id
+        && message.sender_id !== userId
+        && (!lastReadAt || new Date(message.created_at) > new Date(lastReadAt))
+      )).length;
+      return {
+        ...conversation,
+        lastMessage: lastMessageByConversation[conversation.id] || null,
+        lastReadAt,
+        unreadCount,
+      };
+    }));
+  } catch (error) {
+    console.error("[ANSEND chat] load conversations failed", error);
+    appState.chat.error = "Nao foi possivel carregar suas conversas.";
+  } finally {
+    appState.chat.loading = false;
+    if (render) renderChatPage({ preserveActive: true });
+  }
+  return appState.chat.conversations;
+}
+
+async function loadChatMessages(conversationId, { render = false } = {}) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId) return [];
+  appState.chat.messagesLoading = true;
+  if (render) renderChatPage({ preserveActive: true });
+  try {
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    appState.chat.messages[conversationId] = [...(data || [])].reverse();
+    await markChatConversationRead(conversationId);
+  } catch (error) {
+    console.error("[ANSEND chat] load messages failed", error);
+    showToast("Nao foi possivel carregar a conversa.", "message-circle-warning");
+  } finally {
+    appState.chat.messagesLoading = false;
+    if (render) renderChatPage({ preserveActive: true });
+  }
+  return appState.chat.messages[conversationId] || [];
+}
+
+async function markChatConversationRead(conversationId) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId) return;
+  const { error } = await supabaseClient
+    .from("conversation_participants")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", appState.authUser.id);
+  if (error) console.warn("[ANSEND chat] read state failed", error);
+  appState.chat.conversations = appState.chat.conversations.map((conversation) => (
+    conversation.id === conversationId ? { ...conversation, lastReadAt: new Date().toISOString(), unreadCount: 0 } : conversation
+  ));
+}
+
+function appendChatMessage(message) {
+  if (!message?.conversation_id) return;
+  const list = appState.chat.messages[message.conversation_id] || [];
+  if (list.some((item) => item.id === message.id)) return;
+  appState.chat.messages[message.conversation_id] = [...list, message].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+async function openChatConversation(conversationId, { render = true } = {}) {
+  if (!conversationId) return;
+  appState.chat.activeConversationId = conversationId;
+  if (render) renderChatPage({ preserveActive: true });
+  await loadChatMessages(conversationId, { render: true });
+  queueChatScrollToBottom();
+}
+
+async function openOrCreateDirectConversation(otherUserId) {
+  if (!chatRequireAuth() || !otherUserId) return;
+  if (otherUserId === appState.authUser.id) {
+    showToast("Voce nao pode iniciar conversa consigo mesmo.", "user-x");
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient.rpc("get_or_create_direct_conversation", { p_other_user_id: otherUserId });
+    if (error) throw error;
+    appState.chat.newChatOpen = false;
+    await loadChatConversations({ render: false });
+    await openChatConversation(data, { render: true });
+  } catch (error) {
+    console.error("[ANSEND chat] create direct failed", error);
+    showToast("Nao foi possivel iniciar o chat.", "message-circle-warning");
+  }
+}
+
+async function sendChatMessage(form) {
+  if (!chatRequireAuth() || appState.chat.sending) return;
+  const conversationId = form?.dataset.conversationId || appState.chat.activeConversationId;
+  const textarea = form?.querySelector("textarea[name='body']");
+  const body = sanitizeChatMessage(textarea?.value || "");
+  if (!conversationId || !body) return;
+  appState.chat.sending = true;
+  renderChatPage({ preserveActive: true });
+  try {
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .insert({ conversation_id: conversationId, sender_id: appState.authUser.id, body, message_type: "text", metadata: {} })
+      .select()
+      .single();
+    if (error) throw error;
+    appendChatMessage(data);
+    if (textarea) textarea.value = "";
+    await loadChatConversations({ render: false });
+  } catch (error) {
+    console.error("[ANSEND chat] send failed", error);
+    showToast("Nao foi possivel enviar a mensagem.", "send-x");
+  } finally {
+    appState.chat.sending = false;
+    renderChatPage({ preserveActive: true });
+    queueChatScrollToBottom();
+  }
+}
+
+function escapeSupabaseLike(value = "") {
+  return String(value || "").replace(/[%_]/g, "\\$&").replace(/,/g, " ");
+}
+
+async function searchChatUsers(query) {
+  if (!supabaseClient || !appState.authUser?.id) return [];
+  const term = escapeSupabaseLike(query.trim());
+  if (term.length < 2) {
+    appState.chat.userResults = [];
+    renderChatPage({ preserveActive: true });
+    return [];
+  }
+  try {
+    const pattern = `%${term}%`;
+    const { data, error } = await supabaseClient
+      .from("public_profiles")
+      .select(HIRING_PROFILE_SELECT)
+      .or(`display_name.ilike.${pattern},username.ilike.${pattern},full_name.ilike.${pattern},artistic_name.ilike.${pattern}`)
+      .neq("id", appState.authUser.id)
+      .limit(12);
+    if (error) throw error;
+    appState.chat.userResults = data || [];
+    (data || []).forEach((profile) => {
+      appState.chat.profiles[profile.id] = profile;
+    });
+  } catch (error) {
+    console.error("[ANSEND chat] search users failed", error);
+    appState.chat.userResults = [];
+  }
+  renderChatPage({ preserveActive: true });
+  return appState.chat.userResults;
+}
+
+function cleanupChatRealtime() {
+  if (!supabaseClient || !appState.chat.realtimeChannels.length) return;
+  appState.chat.realtimeChannels.forEach((channel) => {
+    try {
+      supabaseClient.removeChannel(channel);
+    } catch (error) {
+      console.warn("[ANSEND chat] channel cleanup failed", error);
+    }
+  });
+  appState.chat.realtimeChannels = [];
+}
+
+function subscribeChatRealtime() {
+  if (!supabaseClient || !appState.authUser?.id || appState.chat.realtimeChannels.length) return;
+  const userId = appState.authUser.id;
+  const messagesChannel = supabaseClient
+    .channel(`ansend-chat-messages-${userId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
+      const message = payload.new;
+      const participantIds = appState.chat.participants[message.conversation_id] || [];
+      if (!participantIds.includes(userId)) {
+        await loadChatConversations({ render: currentRoute() === "chat" });
+        return;
+      }
+      appendChatMessage(message);
+      await loadChatConversations({ render: false });
+      if (message.conversation_id === appState.chat.activeConversationId && message.sender_id !== userId) {
+        await markChatConversationRead(message.conversation_id);
+      }
+      if (currentRoute() === "chat") {
+        renderChatPage({ preserveActive: true });
+        queueChatScrollToBottom();
+      }
+    })
+    .subscribe();
+
+  const participantChannel = supabaseClient
+    .channel(`ansend-chat-participants-${userId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "conversation_participants", filter: `user_id=eq.${userId}` }, async () => {
+      await loadChatConversations({ render: currentRoute() === "chat" });
+    })
+    .subscribe();
+
+  appState.chat.realtimeChannels = [messagesChannel, participantChannel];
+}
+
+function queueChatScrollToBottom() {
+  window.requestAnimationFrame(() => {
+    const list = document.querySelector(".chat-thread-messages");
+    if (list) list.scrollTop = list.scrollHeight;
+  });
+}
+
+function chatConversationItemMarkup(conversation) {
+  const otherId = chatOtherParticipant(conversation);
+  const display = chatDisplayForUser(otherId);
+  const lastMessage = conversation.lastMessage;
+  const isActive = appState.chat.activeConversationId === conversation.id;
+  return `<button type="button" class="chat-conversation-item ${isActive ? "is-active" : ""}" data-action="chat-open-conversation" data-conversation-id="${htmlEscape(conversation.id)}">
+    ${profileAvatarMarkup(display, "chat-avatar")}
+    <span class="chat-conversation-copy">
+      <span class="chat-conversation-head">
+        <strong>${htmlEscape(display.name)}${display.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
+        <small>${htmlEscape(chatRelativeDate(lastMessage?.created_at || conversation.last_message_at || conversation.updated_at))}</small>
+      </span>
+      <span class="chat-conversation-meta">${htmlEscape(display.handle || display.username || "")}</span>
+      <span class="chat-conversation-preview">${lastMessage?.sender_id === appState.authUser?.id ? "Voce: " : ""}${htmlEscape(chatPreviewText(lastMessage))}</span>
+    </span>
+    ${conversation.unreadCount ? `<span class="chat-unread-dot" aria-label="${conversation.unreadCount} nao lidas"></span>` : ""}
+  </button>`;
+}
+
+function chatEmptyInboxMarkup() {
+  return `<section class="chat-empty-list">
+    <i data-lucide="message-circle"></i>
+    <h2>Caixa de entrada vazia</h2>
+    <p>Envie uma mensagem para alguem</p>
+  </section>`;
+}
+
+function chatThreadEmptyMarkup() {
+  return `<section class="chat-thread-empty">
+    <span class="chat-empty-icon"><i data-lucide="message-circle"></i></span>
+    <h2>Iniciar conversa</h2>
+    <p>Escolha entre as conversas existentes ou inicie uma nova.</p>
+    <button type="button" data-action="chat-new-open">Novo chat</button>
+  </section>`;
+}
+
+function chatMessageMarkup(message) {
+  const mine = message.sender_id === appState.authUser?.id;
+  return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
+    <div class="chat-message-bubble">
+      <p>${htmlEscape(message.body)}</p>
+      <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+    </div>
+  </div>`;
+}
+
+function renderChatThread() {
+  const conversationId = appState.chat.activeConversationId;
+  const conversation = appState.chat.conversations.find((item) => item.id === conversationId);
+  if (!conversationId || !conversation) return chatThreadEmptyMarkup();
+  const other = chatDisplayForUser(chatOtherParticipant(conversation));
+  const messages = appState.chat.messages[conversationId] || [];
+  return `<section class="chat-thread ${messages.length ? "has-messages" : ""}">
+    <header class="chat-thread-header">
+      <button type="button" class="chat-back-button" data-action="chat-back-list" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+      ${profileAvatarMarkup(other, "chat-avatar")}
+      <button type="button" class="chat-thread-profile" data-action="chat-open-profile" data-profile-id="${htmlEscape(other.id)}">
+        <strong>${htmlEscape(other.name)}${other.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
+        <span>${htmlEscape(other.handle || other.username || "")}</span>
+      </button>
+    </header>
+    <div class="chat-thread-messages">
+      ${appState.chat.messagesLoading ? `<div class="chat-message-skeleton"><span></span><span></span><span></span></div>` : ""}
+      ${!appState.chat.messagesLoading && !messages.length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : messages.map(chatMessageMarkup).join("")}
+    </div>
+    <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}">
+      <textarea name="body" rows="1" maxlength="2000" placeholder="Comece uma nova mensagem" aria-label="Mensagem"></textarea>
+      <button type="submit" ${appState.chat.sending ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
+    </form>
+  </section>`;
+}
+
+function renderNewChatModal() {
+  if (!appState.chat.newChatOpen) return "";
+  const query = appState.chat.userSearch.trim();
+  const results = appState.chat.userResults || [];
+  return `<div class="chat-new-modal" role="dialog" aria-modal="true" aria-label="Novo chat">
+    <div class="chat-new-backdrop" data-action="chat-new-close"></div>
+    <section class="chat-new-panel">
+      <header>
+        <button type="button" data-action="chat-new-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+        <h2>Nova mensagem</h2>
+      </header>
+      <label class="chat-user-search">
+        <i data-lucide="search"></i>
+        <input type="search" value="${htmlEscape(query)}" placeholder="Buscar pessoas" data-chat-user-search autocomplete="off">
+      </label>
+      <div class="chat-user-results">
+        ${!query ? `<p class="chat-user-empty">Busque por nome, usuario ou artista.</p>` : ""}
+        ${query && !results.length ? `<p class="chat-user-empty">Nenhum perfil encontrado.</p>` : ""}
+        ${results.map((profile) => {
+          const display = profileDisplayData(profile);
+          return `<button type="button" data-action="chat-select-user" data-user-id="${htmlEscape(profile.id)}">
+            ${profileAvatarMarkup(display, "chat-avatar")}
+            <span><strong>${htmlEscape(display.name)}</strong><small>${htmlEscape(display.handle || display.username || "")}</small></span>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>
+  </div>`;
+}
+
+function refreshChatConversationList() {
+  const list = document.querySelector(".chat-conversation-list");
+  if (!list) return;
+  const conversations = filteredChatConversations();
+  list.innerHTML = `
+    ${appState.chat.loading ? `<div class="chat-list-skeleton"><span></span><span></span><span></span></div>` : ""}
+    ${!appState.chat.loading && appState.chat.error ? `<p class="chat-load-error">${htmlEscape(appState.chat.error)}</p>` : ""}
+    ${!appState.chat.loading && !appState.chat.error && conversations.length ? conversations.map(chatConversationItemMarkup).join("") : ""}
+    ${!appState.chat.loading && !appState.chat.error && !conversations.length ? chatEmptyInboxMarkup() : ""}
+  `;
+  lucide.createIcons();
+}
+
+function renderChatPage({ preserveActive = false } = {}) {
+  if (!chatRequireAuth()) return;
+  document.body.classList.add("chat-dm-mode");
+  subscribeChatRealtime();
+  if (!preserveActive && !appState.chat.loading && !appState.chat.conversations.length) {
+    void loadChatConversations({ render: true });
+  }
+  const conversations = filteredChatConversations();
+  appView.innerHTML = `<main class="chat-dm-page ${appState.chat.activeConversationId ? "has-active-thread" : ""}">
+    <aside class="chat-x-rail" aria-label="Navegacao rapida">
+      <a href="#feed" data-route="feed" aria-label="Inicio"><i data-lucide="home"></i></a>
+      <a href="#nexo-feed" data-route="nexo-feed" aria-label="Feed"><i data-lucide="search"></i></a>
+      <a href="#comunidade" data-route="comunidade" aria-label="Comunidade"><i data-lucide="bell"></i></a>
+      <a href="#produtores" data-route="produtores" aria-label="Profissionais"><i data-lucide="user-plus"></i></a>
+      <a href="#chat" data-route="chat" class="is-active" aria-label="Bate-papo"><i data-lucide="message-circle"></i></a>
+      <a href="#biblioteca" data-route="biblioteca" aria-label="Biblioteca"><i data-lucide="bookmark"></i></a>
+      <a href="#cadastrar" data-route="cadastrar" class="chat-compose-route" aria-label="Publicar"><i data-lucide="square-pen"></i></a>
+      <a href="#perfil" data-route="perfil" class="chat-rail-avatar" aria-label="Perfil">${profileAvatarMarkup(profileDisplayData(activeProfile()), "chat-avatar")}</a>
+    </aside>
+    <section class="chat-list-column">
+      <header class="chat-list-header">
+        <h1>Bate-papo</h1>
+        <div>
+          <button type="button" class="chat-filter-pill">Tudo <i data-lucide="chevron-down"></i></button>
+          <button type="button" aria-label="Configuracoes"><i data-lucide="inbox"></i></button>
+          <button type="button" data-action="chat-new-open" aria-label="Novo chat"><i data-lucide="message-circle-plus"></i></button>
+        </div>
+      </header>
+      <label class="chat-search-field">
+        <i data-lucide="search"></i>
+        <input type="search" value="${htmlEscape(appState.chat.search)}" placeholder="Buscar" data-chat-search autocomplete="off">
+      </label>
+      <div class="chat-conversation-list">
+        ${appState.chat.loading ? `<div class="chat-list-skeleton"><span></span><span></span><span></span></div>` : ""}
+        ${!appState.chat.loading && appState.chat.error ? `<p class="chat-load-error">${htmlEscape(appState.chat.error)}</p>` : ""}
+        ${!appState.chat.loading && !appState.chat.error && conversations.length ? conversations.map(chatConversationItemMarkup).join("") : ""}
+        ${!appState.chat.loading && !appState.chat.error && !conversations.length ? chatEmptyInboxMarkup() : ""}
+      </div>
+    </section>
+    <section class="chat-thread-column">
+      ${renderChatThread()}
+    </section>
+    ${renderNewChatModal()}
+  </main>`;
+  applyLocaleTextOverrides(appView);
+  lucide.createIcons();
+  queueChatScrollToBottom();
 }
 
 function hiringAvatar(display, className = "hiring-avatar") {
@@ -6964,6 +7491,7 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>
        <button type="button" class="profile-action" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>`
     : `<button type="button" class="profile-action is-primary ${followState.isFollowing ? "is-following" : ""}" data-action="follow-producer" data-profile-id="${htmlEscape(profileUserId)}" aria-pressed="${followState.isFollowing ? "true" : "false"}" ${followState.loading || followState.actionLoading ? "disabled" : ""}><i data-lucide="${followState.isFollowing ? "user-check" : "user-plus"}"></i>${followButtonLabel(followState)}</button>
+       <button type="button" class="profile-action" data-action="chat-start-profile" data-profile-id="${htmlEscape(profileUserId)}"><i data-lucide="message-circle"></i>Mensagem</button>
        <button type="button" class="profile-action" data-action="professional-contact" data-profile-id="${htmlEscape(profileUserId)}" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
   const linksMarkup = profileSocialLinks(display);
@@ -8117,7 +8645,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return ["compras", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
+  return ["compras", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
 function renderReleaseAuthRequired(reason = "missing-session") {
@@ -9379,6 +9907,17 @@ function nexoChatId(prefix = "msg") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function nexoIconMarkup(className = "nexo-orbit-icon") {
+  return `<span class="${className}" aria-hidden="true">
+    <svg viewBox="0 0 48 48" focusable="false">
+      <circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".9"></circle>
+      <path d="M10 34C22 33 31 24 34 10" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
+      <path d="M38 14C26 15 17 24 14 38" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
+      <circle cx="24" cy="24" r="4.4" fill="currentColor"></circle>
+    </svg>
+  </span>`;
+}
+
 function nexoFormatMessage(content = "") {
   return htmlEscape(content)
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
@@ -9454,13 +9993,235 @@ function scrollNexoChatToBottom() {
   thread.scrollTop = thread.scrollHeight;
 }
 
-async function callNexoChatApi(messages) {
+function nexoAssistantCanRender(route = currentRoute()) {
+  if (!hasAccountAccess()) return false;
+  if (["vendedor", "confirmar-email", "email-confirmed", "admin"].includes(route)) return false;
+  return true;
+}
+
+function readNexoAssistantPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem("ansend-nexo-assistant") || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeNexoAssistantPrefs() {
+  localStorage.setItem("ansend-nexo-assistant", JSON.stringify({
+    open: Boolean(appState.nexoAssistant.open),
+    expanded: Boolean(appState.nexoAssistant.expanded),
+    minimized: Boolean(appState.nexoAssistant.minimized),
+  }));
+}
+
+function nexoContextPayload() {
+  const profile = activeProfile();
+  const display = profileDisplayData(profile);
+  return {
+    route: currentRoute(),
+    userId: appState.authUser?.id || "",
+    profile: profile ? {
+      name: display.name,
+      username: display.username,
+      role: display.role,
+      bio: display.bio,
+      styles: display.styles,
+    } : null,
+    catalogCount: visibleCatalogItems().length,
+    publicCatalogCount: publishedCatalogItems().filter((item) => item.user_id === appState.authUser?.id).length,
+  };
+}
+
+function syncNexoAssistantPrefsFromStorage() {
+  if (appState.nexoAssistant.initialized) return;
+  const prefs = readNexoAssistantPrefs();
+  appState.nexoAssistant.open = Boolean(prefs.open);
+  appState.nexoAssistant.expanded = Boolean(prefs.expanded);
+  appState.nexoAssistant.minimized = Boolean(prefs.minimized);
+  appState.nexoAssistant.initialized = true;
+}
+
+async function loadNexoConversationHistory() {
+  if (!supabaseClient || !appState.authUser?.id || appState.nexoChatHistoryLoading) return;
+  appState.nexoChatHistoryLoading = true;
+  renderNexoFloatingAssistant();
+  try {
+    const { data: conversations, error } = await supabaseClient
+      .from("nexo_conversations")
+      .select("*")
+      .eq("user_id", appState.authUser.id)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const conversation = conversations?.[0] || null;
+    if (!conversation) {
+      appState.nexoChatConversationId = "";
+      appState.nexoChatMessages = [];
+      return;
+    }
+    appState.nexoChatConversationId = conversation.id;
+    const { data: messages, error: messageError } = await supabaseClient
+      .from("nexo_messages")
+      .select("id,role,content,created_at")
+      .eq("conversation_id", conversation.id)
+      .order("created_at", { ascending: true })
+      .limit(80);
+    if (messageError) throw messageError;
+    appState.nexoChatMessages = (messages || []).map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: message.created_at,
+    }));
+  } catch (error) {
+    console.warn("[ANSEND NEXO] history load failed", error?.message || error);
+    appState.nexoChatError = "Nao foi possivel carregar o historico da NEXO agora.";
+  } finally {
+    appState.nexoChatHistoryLoading = false;
+    renderNexoFloatingAssistant();
+    scrollNexoAssistantToBottom();
+  }
+}
+
+async function ensureNexoConversation(firstMessage = "") {
+  if (!supabaseClient || !appState.authUser?.id) return "";
+  if (appState.nexoChatConversationId) return appState.nexoChatConversationId;
+  const title = String(firstMessage || "Conversa com NEXO IA").replace(/\s+/g, " ").trim().slice(0, 80);
+  const { data, error } = await supabaseClient
+    .from("nexo_conversations")
+    .insert({ user_id: appState.authUser.id, title })
+    .select("id")
+    .single();
+  if (error) throw error;
+  appState.nexoChatConversationId = data.id;
+  return data.id;
+}
+
+async function saveNexoMessage(role, content, conversationId = appState.nexoChatConversationId) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId || !content) return null;
+  const { data, error } = await supabaseClient
+    .from("nexo_messages")
+    .insert({ conversation_id: conversationId, user_id: appState.authUser.id, role, content: String(content).slice(0, 12000) })
+    .select("id,created_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+function renderNexoAssistantWelcome() {
+  const suggestions = [
+    "Encontrar um beatmaker",
+    "Melhorar meu lancamento",
+    "Analisar meu perfil",
+    "Criar estrategia de divulgacao",
+    "Recomendar profissionais",
+    "Tirar duvida sobre a ANSEND",
+  ];
+  return `<section class="nexo-assistant-welcome">
+    <h2>Como posso ajudar voce hoje?</h2>
+    <p>Pergunte sobre beats, carreira, lancamentos, profissionais, contratos, divulgacao ou qualquer recurso da ANSEND.</p>
+    <div class="nexo-assistant-chips">
+      ${suggestions.map((prompt) => `<button type="button" data-action="nexo-assistant-suggestion" data-prompt="${htmlEscape(prompt)}">${htmlEscape(prompt)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderNexoAssistantMessage(message) {
+  const isUser = message.role === "user";
+  return `<article class="nexo-assistant-message ${isUser ? "is-user" : "is-assistant"}">
+    ${isUser ? "" : nexoIconMarkup("nexo-assistant-message-icon")}
+    <div class="nexo-assistant-bubble"><p>${nexoFormatMessage(message.content || "")}</p></div>
+  </article>`;
+}
+
+function renderNexoAssistantPanel() {
+  const messages = nexoChatMessages();
+  const isLoading = Boolean(appState.nexoChatLoading);
+  return `<section class="nexo-assistant-panel ${appState.nexoAssistant.expanded ? "is-expanded" : ""}" role="dialog" aria-label="NEXO IA">
+    <header class="nexo-assistant-header">
+      <div class="nexo-assistant-title">
+        ${nexoIconMarkup("nexo-assistant-logo")}
+        <span><strong>NEXO IA</strong><small>Assistente inteligente da ANSEND</small></span>
+        <em>Online</em>
+      </div>
+      <div class="nexo-assistant-header-actions">
+        <button type="button" data-action="nexo-assistant-minimize" aria-label="Minimizar"><i data-lucide="minus"></i></button>
+        <button type="button" data-action="nexo-assistant-expand" aria-label="Expandir"><i data-lucide="${appState.nexoAssistant.expanded ? "minimize-2" : "maximize-2"}"></i></button>
+        <button type="button" data-action="nexo-assistant-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </div>
+    </header>
+    <div class="nexo-assistant-messages" id="nexoAssistantThread">
+      ${appState.nexoChatHistoryLoading ? `<div class="nexo-assistant-skeleton"><span></span><span></span><span></span></div>` : ""}
+      ${!appState.nexoChatHistoryLoading && messages.length ? messages.map(renderNexoAssistantMessage).join("") : ""}
+      ${!appState.nexoChatHistoryLoading && !messages.length ? renderNexoAssistantWelcome() : ""}
+      ${isLoading ? `<article class="nexo-assistant-message is-assistant is-typing">
+        ${nexoIconMarkup("nexo-assistant-message-icon")}
+        <div class="nexo-assistant-bubble"><p>NEXO esta pensando<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
+      </article>` : ""}
+    </div>
+    ${appState.nexoChatError ? `<p class="nexo-assistant-error"><i data-lucide="circle-alert"></i>${htmlEscape(appState.nexoChatError)}</p>` : ""}
+    <form class="nexo-assistant-form" autocomplete="off">
+      <div class="nexo-assistant-input">
+        <textarea name="message" rows="1" maxlength="4000" ${isLoading ? "disabled" : ""} placeholder="Pergunte ao NEXO"></textarea>
+        <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar para NEXO"><i data-lucide="${isLoading ? "loader-2" : "arrow-up"}"></i></button>
+      </div>
+    </form>
+  </section>`;
+}
+
+function renderNexoFloatingAssistant() {
+  syncNexoAssistantPrefsFromStorage();
+  const existing = document.querySelector("#nexoFloatingAssistantRoot");
+  if (!nexoAssistantCanRender()) {
+    existing?.remove();
+    return;
+  }
+  const panelOpen = appState.nexoAssistant.open && !appState.nexoAssistant.minimized;
+  if (panelOpen && !appState.nexoChatHistoryLoading && !appState.nexoChatMessages.length && !appState.nexoChatConversationId) {
+    window.setTimeout(() => loadNexoConversationHistory(), 0);
+  }
+  const markup = `<div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant ${panelOpen ? "is-open" : ""} ${appState.nexoAssistant.expanded ? "is-expanded" : ""}">
+    ${panelOpen ? renderNexoAssistantPanel() : ""}
+    <button type="button" class="nexo-floating-button" data-action="nexo-assistant-toggle" aria-label="Abrir NEXO IA">
+      ${nexoIconMarkup("nexo-floating-icon")}
+      ${appState.nexoAssistant.unread ? `<span class="nexo-floating-badge" aria-hidden="true"></span>` : ""}
+      <span class="nexo-floating-tooltip">Abrir NEXO IA</span>
+    </button>
+  </div>`;
+  if (existing) existing.outerHTML = markup;
+  else document.body.insertAdjacentHTML("beforeend", markup);
+  lucide.createIcons();
+}
+
+function scrollNexoAssistantToBottom(force = true) {
+  const thread = document.querySelector("#nexoAssistantThread");
+  if (!thread) return;
+  const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 96;
+  if (force || nearBottom) thread.scrollTop = thread.scrollHeight;
+}
+
+function updateNexoSurfaces({ forceScroll = true } = {}) {
+  if (currentRoute() === "ia") {
+    renderAiWorkspace();
+  }
+  renderNexoFloatingAssistant();
+  requestAnimationFrame(() => {
+    scrollNexoChatToBottom();
+    scrollNexoAssistantToBottom(forceScroll);
+  });
+}
+
+async function callNexoChatApi(messages, { signal } = {}) {
   const headers = await recommendationAuthHeaders();
   const response = await fetch("/api/nexo/chat", {
     method: "POST",
+    signal,
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({
       messages: messages.map(({ role, content }) => ({ role, content })),
+      conversationId: appState.nexoChatConversationId || null,
+      context: nexoContextPayload(),
     }),
   });
   const data = await response.json().catch(() => ({}));
@@ -9500,28 +10261,42 @@ async function extractNexoIntent(message) {
 async function sendNexoChatMessage(rawMessage) {
   const content = String(rawMessage || "").trim();
   if (!content || appState.nexoChatLoading) return;
+  if (!appState.authUser?.id) {
+    showToast("Entre para conversar com a NEXO IA.", "log-in");
+    location.hash = "vendedor";
+    return;
+  }
   const messages = nexoChatMessages();
-  messages.push({ id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() });
+  const userMessage = { id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() };
+  messages.push(userMessage);
   appState.nexoChatLoading = true;
   appState.nexoChatError = "";
-  renderAiWorkspace();
-  hydrateView();
+  appState.nexoAssistant.unread = false;
+  appState.nexoAssistant.abortController?.abort?.();
+  appState.nexoAssistant.abortController = new AbortController();
+  updateNexoSurfaces();
 
   try {
+    const conversationId = await ensureNexoConversation(content);
+    saveNexoMessage("user", content, conversationId).catch((error) => console.warn("[ANSEND NEXO] user message persist failed", error?.message || error));
     extractNexoIntent(content);
-    const answer = await callNexoChatApi(messages);
-    messages.push({
+    const answer = await callNexoChatApi(messages, { signal: appState.nexoAssistant.abortController.signal });
+    const assistantMessage = {
       id: nexoChatId("assistant"),
       role: "assistant",
       content: answer?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
       createdAt: answer?.createdAt || new Date().toISOString(),
-    });
+    };
+    messages.push(assistantMessage);
+    saveNexoMessage("assistant", assistantMessage.content, conversationId).catch((error) => console.warn("[ANSEND NEXO] assistant message persist failed", error?.message || error));
   } catch (error) {
-    appState.nexoChatError = error?.message || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.";
+    if (error?.name !== "AbortError") {
+      appState.nexoChatError = error?.message || "Nao consegui responder agora. Tente novamente em alguns segundos.";
+    }
   } finally {
     appState.nexoChatLoading = false;
-    renderAiWorkspace();
-    hydrateView();
+    appState.nexoAssistant.abortController = null;
+    updateNexoSurfaces();
   }
 }
 
@@ -12182,6 +12957,7 @@ function hydrateView() {
   setupOptimizedImages(appView);
   setupOptimizedImages(document.querySelector(".sidebar") || document);
   applyTranslations();
+  renderNexoFloatingAssistant();
   lucide.createIcons();
   requestAnimationFrame(() => setupScrollReveals());
 }
@@ -12211,6 +12987,8 @@ function renderRoute() {
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
   document.body.classList.remove("release-mode");
+  document.body.classList.toggle("chat-dm-mode", route === "chat");
+  if (route !== "chat") cleanupChatRealtime();
   appView.classList.remove("route-slide-in", "route-slide-left");
   document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
@@ -12237,6 +13015,7 @@ function renderRoute() {
   if (route === "explorar" || route === "marketplace" || route === "ofertas") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
+  if (route === "chat") renderChatPage();
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
@@ -12261,7 +13040,7 @@ function renderRoute() {
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
-  if (route !== COMMUNITY_ROUTE) PageTransition(appView, route);
+  if (route !== COMMUNITY_ROUTE && route !== "chat") PageTransition(appView, route);
   hydrateView();
   stopShellPerf();
 }
@@ -13324,6 +14103,16 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appState.chat.newChatOpen) {
+    appState.chat.newChatOpen = false;
+    renderChatPage({ preserveActive: true });
+    return;
+  }
+  if (event.key === "Enter" && !event.shiftKey && event.target.closest?.(".chat-composer-form textarea")) {
+    event.preventDefault();
+    sendChatMessage(event.target.closest(".chat-composer-form"));
+    return;
+  }
   if (event.key === "Escape" && document.querySelector(".hiring-composer-popover:not([hidden])")) {
     closeHiringComposerPopovers(document);
   }
@@ -13360,6 +14149,11 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     const form = event.target.closest(".nexo-chat-form");
     form?.requestSubmit();
+    return;
+  }
+  if (event.target?.matches?.(".nexo-assistant-form textarea") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    event.target.closest(".nexo-assistant-form")?.requestSubmit();
     return;
   }
   const customSelect = event.target.closest?.(".nexo-dark-select");
@@ -13612,6 +14406,85 @@ document.addEventListener("click", (event) => {
   if (action === "catalog-publish") {
     publishCatalogImport();
     return;
+  }
+  if (action?.startsWith("nexo-assistant-")) {
+    event.preventDefault();
+    if (action === "nexo-assistant-toggle") {
+      const opening = !appState.nexoAssistant.open || appState.nexoAssistant.minimized;
+      appState.nexoAssistant.open = true;
+      appState.nexoAssistant.minimized = false;
+      appState.nexoAssistant.unread = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      if (opening && !appState.nexoChatMessages.length) void loadNexoConversationHistory();
+      window.requestAnimationFrame(() => document.querySelector(".nexo-assistant-form textarea")?.focus({ preventScroll: true }));
+      return;
+    }
+    if (action === "nexo-assistant-close") {
+      appState.nexoAssistant.open = false;
+      appState.nexoAssistant.minimized = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-minimize") {
+      appState.nexoAssistant.open = true;
+      appState.nexoAssistant.minimized = true;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-expand") {
+      appState.nexoAssistant.expanded = !appState.nexoAssistant.expanded;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-suggestion") {
+      sendNexoChatMessage(target.dataset.prompt || target.textContent || "");
+      return;
+    }
+  }
+  if (action?.startsWith("chat-")) {
+    event.preventDefault();
+    if (action === "chat-new-open") {
+      appState.chat.newChatOpen = true;
+      appState.chat.userSearch = "";
+      appState.chat.userResults = [];
+      renderChatPage({ preserveActive: true });
+      window.requestAnimationFrame(() => document.querySelector("[data-chat-user-search]")?.focus());
+      return;
+    }
+    if (action === "chat-new-close") {
+      appState.chat.newChatOpen = false;
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-select-user") {
+      openOrCreateDirectConversation(target.dataset.userId || "");
+      return;
+    }
+    if (action === "chat-open-conversation") {
+      openChatConversation(target.dataset.conversationId || "");
+      return;
+    }
+    if (action === "chat-back-list") {
+      appState.chat.activeConversationId = "";
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-open-profile") {
+      const profile = chatProfile(target.dataset.profileId || "");
+      const route = profile ? publicProfileRoute(profile) : "";
+      if (route) location.hash = route;
+      return;
+    }
+    if (action === "chat-start-profile") {
+      openOrCreateDirectConversation(target.dataset.profileId || "").then(() => {
+        location.hash = "chat";
+      });
+      return;
+    }
   }
   if (action?.startsWith("hiring-")) {
     const postId = target.dataset.postId || target.closest("[data-post-id]")?.dataset.postId || "";
@@ -14591,6 +15464,27 @@ document.addEventListener("pointerup", (event) => {
 
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.matches?.("[data-chat-search]")) {
+    appState.chat.search = input.value || "";
+    refreshChatConversationList();
+    return;
+  }
+  if (input.matches?.("[data-chat-user-search]")) {
+    appState.chat.userSearch = input.value || "";
+    window.clearTimeout(appState.chat.searchTimer);
+    appState.chat.searchTimer = window.setTimeout(() => searchChatUsers(appState.chat.userSearch), 250);
+    return;
+  }
+  if (input.matches?.(".nexo-assistant-form textarea")) {
+    input.style.height = "44px";
+    input.style.height = `${Math.min(132, Math.max(44, input.scrollHeight))}px`;
+    return;
+  }
+  if (input.closest?.(".chat-composer-form") && input.matches("textarea")) {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(140, input.scrollHeight)}px`;
+    return;
+  }
   const imageScaleInput = input.closest?.("[data-image-edit-scale]");
   if (imageScaleInput) {
     const picker = document.querySelector("[data-image-picker]");
@@ -14666,6 +15560,12 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const chatComposerForm = event.target.closest(".chat-composer-form");
+  if (chatComposerForm) {
+    event.preventDefault();
+    await sendChatMessage(chatComposerForm);
+    return;
+  }
   const feedCommentForm = event.target.closest(".nexo-feed-comment-form");
   if (feedCommentForm) {
     event.preventDefault();
@@ -14769,6 +15669,17 @@ document.addEventListener("submit", async (event) => {
     const message = input?.value || "";
     if (!message.trim()) return;
     input.value = "";
+    await sendNexoChatMessage(message);
+    return;
+  }
+  const nexoAssistantForm = event.target.closest(".nexo-assistant-form");
+  if (nexoAssistantForm) {
+    event.preventDefault();
+    const input = nexoAssistantForm.elements.message;
+    const message = input?.value || "";
+    if (!message.trim()) return;
+    input.value = "";
+    input.style.height = "44px";
     await sendNexoChatMessage(message);
     return;
   }
@@ -14927,6 +15838,13 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (appState.nexoAssistant.open && !appState.nexoAssistant.minimized) {
+      appState.nexoAssistant.open = false;
+      appState.nexoAssistant.minimized = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
     document.body.classList.remove("menu-open");
     closePlayerFloatingPanels();
     closeNexoFeedComments();

@@ -86,7 +86,14 @@ function nexoModelCandidates(env) {
   return [...new Set([primary, ...fallback])];
 }
 
-function buildNexoChatPrompt() {
+function buildNexoChatPrompt(context = {}) {
+  const safeContext = cleanRecommendationText(JSON.stringify({
+    route: context.route || "",
+    userId: context.userId || "",
+    profile: context.profile || null,
+    catalogCount: context.catalogCount || 0,
+    publicCatalogCount: context.publicCatalogCount || 0,
+  }), 2200);
   return `Voce e a NEXO IA, a inteligencia musical da ANSEND.
 Sua funcao e conversar com artistas, beatmakers e profissionais da musica para transformar ideias soltas em planos praticos de lancamento.
 Conduza a conversa naturalmente, sem quiz rigido.
@@ -94,7 +101,8 @@ Faca perguntas curtas, uma por vez, quando precisar de mais contexto.
 Quando tiver informacao suficiente, entregue diagnostico musical, plano de acao, proximos passos, tipos de servicos/profissionais necessarios dentro da ANSEND, ordem de execucao e ideias de posicionamento, estetica, capa, conteudo e lancamento.
 Nao invente profissionais reais, nomes de pessoas, dados de marketplace, promessas ou resultados.
 Se nao houver dados reais de marketplace disponiveis, sugira apenas categorias de profissionais e servicos.
-Seja objetivo, estrategico, profissional, util e escreva em portugues brasileiro.`;
+Seja objetivo, estrategico, profissional, util e escreva em portugues brasileiro.
+Contexto real enviado pela plataforma, quando disponivel: ${safeContext || "{}"}. Use apenas como apoio e diga quando precisar de mais informacoes.`;
 }
 
 function supabaseServiceConfig(env) {
@@ -457,6 +465,7 @@ async function handleNexoChat(request, env) {
   const messages = Array.isArray(payload?.messages)
     ? payload.messages.map(cleanChatMessage).filter(Boolean).slice(-12)
     : [];
+  const context = payload?.context && typeof payload.context === "object" ? payload.context : {};
 
   if (!messages.length || messages[messages.length - 1]?.role !== "user") {
     return jsonResponse({ success: false, error: "Envie uma mensagem para conversar com a NEXO IA." }, { status: 400 });
@@ -475,7 +484,7 @@ async function handleNexoChat(request, env) {
     reasoning: { effort: reasoningEffort },
     max_output_tokens: Math.min(Math.max(maxOutputTokens, 700), 2600),
     input: [
-      { role: "developer", content: buildNexoChatPrompt() },
+      { role: "developer", content: buildNexoChatPrompt(context) },
       ...messages.map((message) => ({ role: message.role, content: message.content })),
     ],
   };
