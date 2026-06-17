@@ -507,8 +507,27 @@ create table if not exists public.beats (
   cover_path text,
   audio_url text,
   audio_path text,
+  audio_original_name text,
+  audio_mime_type text,
+  audio_size_bytes bigint,
+  audio_duration_seconds numeric,
+  mp3_url text,
+  mp3_path text,
+  mp3_original_name text,
+  mp3_mime_type text,
+  mp3_size_bytes bigint,
+  mp3_duration_seconds numeric,
+  wav_url text,
+  wav_path text,
+  wav_original_name text,
+  wav_mime_type text,
+  wav_size_bytes bigint,
+  wav_duration_seconds numeric,
   stems_url text,
   stems_path text,
+  stems_original_name text,
+  stems_mime_type text,
+  stems_size_bytes bigint,
   duration_seconds numeric,
   file_size numeric,
   source_type text not null default 'upload' check (source_type in ('upload', 'youtube')),
@@ -543,6 +562,25 @@ alter table public.beats add column if not exists youtube_embed_url text null;
 alter table public.beats add column if not exists youtube_thumbnail_url text null;
 alter table public.beats add column if not exists youtube_title text null;
 alter table public.beats add column if not exists youtube_channel_title text null;
+alter table public.beats add column if not exists audio_original_name text null;
+alter table public.beats add column if not exists audio_mime_type text null;
+alter table public.beats add column if not exists audio_size_bytes bigint null;
+alter table public.beats add column if not exists audio_duration_seconds numeric null;
+alter table public.beats add column if not exists mp3_url text null;
+alter table public.beats add column if not exists mp3_path text null;
+alter table public.beats add column if not exists mp3_original_name text null;
+alter table public.beats add column if not exists mp3_mime_type text null;
+alter table public.beats add column if not exists mp3_size_bytes bigint null;
+alter table public.beats add column if not exists mp3_duration_seconds numeric null;
+alter table public.beats add column if not exists wav_url text null;
+alter table public.beats add column if not exists wav_path text null;
+alter table public.beats add column if not exists wav_original_name text null;
+alter table public.beats add column if not exists wav_mime_type text null;
+alter table public.beats add column if not exists wav_size_bytes bigint null;
+alter table public.beats add column if not exists wav_duration_seconds numeric null;
+alter table public.beats add column if not exists stems_original_name text null;
+alter table public.beats add column if not exists stems_mime_type text null;
+alter table public.beats add column if not exists stems_size_bytes bigint null;
 
 -- Enable RLS
 alter table public.beats enable row level security;
@@ -559,6 +597,59 @@ drop trigger if exists beats_set_updated_at on public.beats;
 create trigger beats_set_updated_at
 before update on public.beats
 for each row execute function public.set_updated_at();
+
+create or replace function public.validate_beat_storage_paths()
+returns trigger
+language plpgsql
+as $$
+declare
+  owner_prefix text := new.user_id::text || '/';
+  beat_segment text := '/' || new.id::text || '/';
+begin
+  if new.cover_path is not null
+    and not (
+      new.cover_path like owner_prefix || 'beat-covers' || beat_segment || '%'
+      or new.cover_path like owner_prefix || 'covers' || beat_segment || '%'
+    )
+  then
+    raise exception 'cover_path must belong to the beat owner and beat id';
+  end if;
+
+  if new.audio_path is not null
+    and new.audio_path not like owner_prefix || 'beat-audio' || beat_segment || '%'
+  then
+    raise exception 'audio_path must belong to the beat owner and beat id';
+  end if;
+
+  if new.mp3_path is not null
+    and new.mp3_path not like owner_prefix || 'beat-secure-files' || beat_segment || '%'
+  then
+    raise exception 'mp3_path must belong to the beat owner and beat id';
+  end if;
+
+  if new.wav_path is not null
+    and new.wav_path not like owner_prefix || 'beat-secure-files' || beat_segment || '%'
+  then
+    raise exception 'wav_path must belong to the beat owner and beat id';
+  end if;
+
+  if new.stems_path is not null
+    and not (
+      new.stems_path like owner_prefix || 'beat-secure-files' || beat_segment || '%'
+      or new.stems_path like owner_prefix || 'beat-stems' || beat_segment || '%'
+    )
+  then
+    raise exception 'stems_path must belong to the beat owner and beat id';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists beats_validate_storage_paths on public.beats;
+create trigger beats_validate_storage_paths
+before insert or update on public.beats
+for each row execute function public.validate_beat_storage_paths();
 
 -- Policies
 -- SELECT: published beats are public
@@ -668,8 +759,27 @@ create table if not exists public.release_upload_drafts (
   cover_path text,
   audio_url text,
   audio_path text,
+  audio_original_name text,
+  audio_mime_type text,
+  audio_size_bytes bigint,
+  audio_duration_seconds numeric,
+  mp3_url text,
+  mp3_path text,
+  mp3_original_name text,
+  mp3_mime_type text,
+  mp3_size_bytes bigint,
+  mp3_duration_seconds numeric,
+  wav_url text,
+  wav_path text,
+  wav_original_name text,
+  wav_mime_type text,
+  wav_size_bytes bigint,
+  wav_duration_seconds numeric,
   stems_url text,
   stems_path text,
+  stems_original_name text,
+  stems_mime_type text,
+  stems_size_bytes bigint,
   updated_at timestamptz not null default now()
 );
 
@@ -825,6 +935,7 @@ values
   ('beat-covers', 'beat-covers', true, 10485760, array['image/jpeg','image/png','image/webp']),
   ('beat-audio', 'beat-audio', true, 262144000, array['audio/mpeg','audio/wav','audio/x-wav','audio/flac','audio/mp4','audio/aac','audio/ogg','video/mp4']),
   ('beat-stems', 'beat-stems', false, 524288000, array['application/zip','application/x-zip-compressed']),
+  ('beat-secure-files', 'beat-secure-files', false, 524288000, array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','application/zip','application/x-zip-compressed']),
   ('profile-avatars', 'profile-avatars', true, 10485760, array['image/jpeg','image/png','image/webp']),
   ('profile-banners', 'profile-banners', true, 15728640, array['image/jpeg','image/png','image/webp']),
   ('chat-attachments', 'chat-attachments', true, 104857600, array['image/jpeg','image/png','image/webp','audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/flac','audio/mp4','audio/aac','audio/ogg','audio/x-m4a','video/mp4','video/webm','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain','application/zip','application/x-zip-compressed'])
@@ -956,6 +1067,59 @@ to authenticated
 using (
   bucket_id = 'beat-stems'
   and (storage.foldername(name))[1] = (auth.uid())::text
+);
+
+drop policy if exists "Users can upload their own secure files" on storage.objects;
+create policy "Users can upload their own secure files"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'beat-secure-files'
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
+  and coalesce((storage.foldername(name))[3], '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+);
+
+drop policy if exists "Users can update their own secure files" on storage.objects;
+create policy "Users can update their own secure files"
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'beat-secure-files'
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
+)
+with check (
+  bucket_id = 'beat-secure-files'
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
+  and coalesce((storage.foldername(name))[3], '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+);
+
+drop policy if exists "Users can delete their own secure files" on storage.objects;
+create policy "Users can delete their own secure files"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'beat-secure-files'
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
+);
+
+drop policy if exists "Users can read their own secure files" on storage.objects;
+create policy "Users can read their own secure files"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'beat-secure-files'
+  and (
+    ((storage.foldername(name))[1] = (auth.uid())::text and (storage.foldername(name))[2] = 'beat-secure-files')
+    or exists (
+      select 1
+      from public.order_items oi
+      join public.orders o on o.id = oi.order_id
+      where coalesce((storage.foldername(name))[3], '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        and oi.beat_id = ((storage.foldername(name))[3])::uuid
+        and o.buyer_id = auth.uid()
+        and o.status = 'completed'
+    )
+  )
 );
 
 drop policy if exists "Users can manage own profile avatars" on storage.objects;

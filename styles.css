@@ -30112,6 +30112,117 @@ body[data-route="cadastrar"] .custom-select-option:hover {
   background: #141414 !important;
 }
 
+/* Release file upload step */
+body[data-route="cadastrar"] .release-container {
+  width: min(1280px, calc(100vw - 56px)) !important;
+  max-width: 1280px !important;
+  margin-inline: auto !important;
+}
+
+body[data-route="cadastrar"] .release-upload-form {
+  width: 100% !important;
+  max-width: 1280px !important;
+}
+
+body[data-route="cadastrar"] .release-panel[data-panel="2"] {
+  width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-panel[data-panel="2"] .release-panel-header {
+  max-width: 760px !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr) !important;
+  align-items: stretch !important;
+  gap: 24px !important;
+  width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-files-main,
+body[data-route="cadastrar"] .release-files-secondary {
+  display: grid !important;
+  gap: 18px !important;
+  min-width: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-preview-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.82fr) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-secure-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.42fr) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .release-dropzone,
+body[data-route="cadastrar"] .release-files-layout .release-requirements,
+body[data-route="cadastrar"] .release-files-layout .secure-mp3-preview,
+body[data-route="cadastrar"] .release-files-layout .secure-wav-preview,
+body[data-route="cadastrar"] .release-files-layout .secure-stems-preview {
+  border-radius: 8px !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .release-dropzone {
+  min-height: 176px !important;
+  padding: 24px !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .release-requirements,
+body[data-route="cadastrar"] .release-files-layout .secure-mp3-preview,
+body[data-route="cadastrar"] .release-files-layout .secure-wav-preview,
+body[data-route="cadastrar"] .release-files-layout .secure-stems-preview {
+  min-height: 176px !important;
+  padding: 18px !important;
+  background: #0D0D0D !important;
+  border: 1px solid #1F1F1F !important;
+}
+
+body[data-route="cadastrar"] .release-files-secondary .release-secure-row {
+  grid-template-columns: 1fr !important;
+}
+
+body[data-route="cadastrar"] .release-files-secondary .release-dropzone {
+  min-height: 188px !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .an-secondary.use-preview-as-delivery-btn {
+  width: 100% !important;
+  min-height: 38px !important;
+  margin-top: 10px !important;
+  border-color: #2A2A2A !important;
+  color: #FFFFFF !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .release-upload-icon {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+body[data-route="cadastrar"] .release-files-layout .release-upload-error {
+  margin-top: 12px !important;
+}
+
+@media (max-width: 980px) {
+  body[data-route="cadastrar"] .release-container {
+    width: min(100%, calc(100vw - 24px)) !important;
+  }
+
+  body[data-route="cadastrar"] .release-files-layout,
+  body[data-route="cadastrar"] .release-preview-grid,
+  body[data-route="cadastrar"] .release-secure-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Fields & Inputs */
 body[data-route="cadastrar"] .release-field input,
 body[data-route="cadastrar"] .release-field select,

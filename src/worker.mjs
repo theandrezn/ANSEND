@@ -923,7 +923,7 @@ async function handleOrderDownload(request, env) {
   }
 
   // 2. Fetch the beat path from the database
-  const beatResponse = await supabaseRest(env, `beats?select=id,audio_path,stems_path,mp3_path,wav_path&id=eq.${beatId}`);
+  const beatResponse = await supabaseRest(env, `beats?select=id,user_id,audio_path,stems_path,mp3_path,wav_path&id=eq.${beatId}`);
   if (beatResponse.error || !beatResponse.data?.length) {
     return jsonResponse({ success: false, error: "Beat nao encontrado." }, { status: 404 });
   }
@@ -944,6 +944,14 @@ async function handleOrderDownload(request, env) {
   }
 
   if (!filePath) {
+    return jsonResponse({ success: false, error: "Arquivo indisponivel para download." }, { status: 404 });
+  }
+
+  const pathParts = String(filePath || "").split("/");
+  const expectedFolder = bucket === "beat-secure-files" ? "beat-secure-files" : bucket;
+  const pathBelongsToBeat = pathParts[0] === beat.user_id && pathParts[1] === expectedFolder && pathParts[2] === beatId;
+  if (!pathBelongsToBeat) {
+    console.warn("[ANSEND download] Rejected unsafe beat file path", { beatId, fileType, bucket, filePath });
     return jsonResponse({ success: false, error: "Arquivo indisponivel para download." }, { status: 404 });
   }
 

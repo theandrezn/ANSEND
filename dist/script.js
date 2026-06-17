@@ -12286,19 +12286,63 @@ async function restoreReleaseCoverDraft(form = releaseFormElement()) {
     setPersistentCoverPreview(data.cover_url, form);
   }
   if (data.audio_url && data.audio_path) {
-    form.elements.audio_url.value = data.audio_url;
-    form.elements.audio_path.value = data.audio_path;
-    const audioPreview = form.querySelector(".release-audio-preview");
-    const player = audioPreview?.querySelector("audio");
-    if (player) player.src = data.audio_url;
-    if (audioPreview) audioPreview.style.display = "flex";
-    form.querySelector(".release-audio-drop")?.classList.add("has-file");
+    setReleaseFileHiddenValues(form, "audio", {
+      url: data.audio_url,
+      path: data.audio_path,
+      originalName: data.audio_original_name,
+      mimeType: data.audio_mime_type,
+      size: data.audio_size_bytes || data.file_size,
+      durationSeconds: data.audio_duration_seconds || data.duration_seconds,
+    });
+    setReleaseFilePreview(form, "audio", {
+      url: data.audio_url,
+      originalName: data.audio_original_name || "Audio de preview",
+      size: data.audio_size_bytes || data.file_size,
+      durationSeconds: data.audio_duration_seconds || data.duration_seconds,
+    });
+  }
+  if (data.mp3_url && data.mp3_path) {
+    setReleaseFileHiddenValues(form, "secure_mp3", {
+      url: data.mp3_url,
+      path: data.mp3_path,
+      originalName: data.mp3_original_name,
+      mimeType: data.mp3_mime_type,
+      size: data.mp3_size_bytes,
+      durationSeconds: data.mp3_duration_seconds,
+    });
+    setReleaseFilePreview(form, "secure_mp3", {
+      originalName: data.mp3_original_name || "MP3 de entrega",
+      size: data.mp3_size_bytes,
+      durationSeconds: data.mp3_duration_seconds,
+    });
+  }
+  if (data.wav_url && data.wav_path) {
+    setReleaseFileHiddenValues(form, "secure_wav", {
+      url: data.wav_url,
+      path: data.wav_path,
+      originalName: data.wav_original_name,
+      mimeType: data.wav_mime_type,
+      size: data.wav_size_bytes,
+      durationSeconds: data.wav_duration_seconds,
+    });
+    setReleaseFilePreview(form, "secure_wav", {
+      originalName: data.wav_original_name || "WAV masterizado",
+      size: data.wav_size_bytes,
+      durationSeconds: data.wav_duration_seconds,
+    });
   }
   if (data.stems_url && data.stems_path) {
-    form.elements.stems_url.value = data.stems_url;
-    form.elements.stems_path.value = data.stems_path;
-    form.querySelector(".stems-preview")?.style.setProperty("display", "block");
-    form.querySelector(".release-stems-drop")?.classList.add("has-file");
+    setReleaseFileHiddenValues(form, "secure_stems", {
+      url: data.stems_url,
+      path: data.stems_path,
+      originalName: data.stems_original_name,
+      mimeType: data.stems_mime_type,
+      size: data.stems_size_bytes,
+    });
+    setReleaseFilePreview(form, "secure_stems", {
+      originalName: data.stems_original_name || "ZIP de stems",
+      size: data.stems_size_bytes,
+    });
   }
   syncReleaseForm(form);
 }
@@ -12327,7 +12371,194 @@ function releaseStorageErrorMessage(error, type) {
 function releaseUploadTimeoutMs(type) {
   if (type === "cover") return 180000;
   if (type === "audio") return 60000;
+  if (["secure_mp3", "secure_wav", "secure_stems", "stems"].includes(type)) return 180000;
   return 90000;
+}
+
+const RELEASE_DELIVERY_FIELDS = {
+  audio: {
+    url: "audio_url",
+    path: "audio_path",
+    name: "audio_original_name",
+    mime: "audio_mime_type",
+    size: "audio_size_bytes",
+    duration: "audio_duration_seconds",
+    preview: ".release-audio-preview",
+    drop: ".release-audio-drop",
+    nameNode: "[data-audio-name]",
+    sizeNode: "[data-audio-size]",
+    player: ".release-audio-player",
+    label: "Audio de preview",
+    role: "preview",
+  },
+  secure_mp3: {
+    url: "mp3_url",
+    path: "mp3_path",
+    name: "mp3_original_name",
+    mime: "mp3_mime_type",
+    size: "mp3_size_bytes",
+    duration: "mp3_duration_seconds",
+    preview: ".secure-mp3-preview",
+    drop: ".release-secure-mp3-drop",
+    nameNode: "[data-secure-mp3-name]",
+    sizeNode: "[data-secure-mp3-size]",
+    label: "MP3 de entrega",
+    role: "master",
+  },
+  secure_wav: {
+    url: "wav_url",
+    path: "wav_path",
+    name: "wav_original_name",
+    mime: "wav_mime_type",
+    size: "wav_size_bytes",
+    duration: "wav_duration_seconds",
+    preview: ".secure-wav-preview",
+    drop: ".release-secure-wav-drop",
+    nameNode: "[data-secure-wav-name]",
+    sizeNode: "[data-secure-wav-size]",
+    label: "WAV masterizado",
+    role: "master",
+  },
+  secure_stems: {
+    url: "stems_url",
+    path: "stems_path",
+    name: "stems_original_name",
+    mime: "stems_mime_type",
+    size: "stems_size_bytes",
+    preview: ".secure-stems-preview",
+    drop: ".release-secure-stems-drop",
+    nameNode: "[data-secure-stems-name]",
+    sizeNode: "[data-secure-stems-size]",
+    label: "ZIP de stems",
+    role: "stems",
+  },
+};
+
+function releaseFileField(type) {
+  return RELEASE_DELIVERY_FIELDS[type] || null;
+}
+
+function formatReleaseFileSize(bytes) {
+  const size = Number(bytes || 0);
+  if (!size) return "0 MB";
+  if (size >= 1024 * 1024 * 1024) return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatReleaseDuration(seconds) {
+  const duration = Number(seconds || 0);
+  if (!Number.isFinite(duration) || duration <= 0) return "";
+  const minutes = Math.floor(duration / 60);
+  const secs = Math.round(duration % 60).toString().padStart(2, "0");
+  return `${minutes}:${secs}`;
+}
+
+function readAudioFileDuration(file) {
+  return new Promise((resolve) => {
+    if (!file || !String(file.type || "").startsWith("audio/")) {
+      resolve(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const audio = document.createElement("audio");
+    const cleanup = () => URL.revokeObjectURL(url);
+    audio.preload = "metadata";
+    audio.onloadedmetadata = () => {
+      const duration = Number.isFinite(audio.duration) ? Math.round(audio.duration) : null;
+      cleanup();
+      resolve(duration);
+    };
+    audio.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    audio.src = url;
+  });
+}
+
+function releaseFileMetadataPatch(type, meta = {}) {
+  const fields = releaseFileField(type);
+  if (!fields) return {};
+  const patch = {};
+  if (fields.url) patch[fields.url] = meta.url || null;
+  if (fields.path) patch[fields.path] = meta.path || null;
+  if (fields.name) patch[fields.name] = meta.originalName || null;
+  if (fields.mime) patch[fields.mime] = meta.mimeType || null;
+  if (fields.size) patch[fields.size] = meta.size || null;
+  if (fields.duration) patch[fields.duration] = meta.durationSeconds || null;
+  return patch;
+}
+
+function setReleaseFileHiddenValues(form, type, meta = {}) {
+  const fields = releaseFileField(type);
+  if (!form || !fields) return;
+  if (fields.url && form.elements[fields.url]) form.elements[fields.url].value = meta.url || "";
+  if (fields.path && form.elements[fields.path]) form.elements[fields.path].value = meta.path || "";
+  if (fields.name && form.elements[fields.name]) form.elements[fields.name].value = meta.originalName || "";
+  if (fields.mime && form.elements[fields.mime]) form.elements[fields.mime].value = meta.mimeType || "";
+  if (fields.size && form.elements[fields.size]) form.elements[fields.size].value = meta.size || "";
+  if (fields.duration && form.elements[fields.duration]) form.elements[fields.duration].value = meta.durationSeconds || "";
+}
+
+function setReleaseFilePreview(form, type, meta = {}) {
+  const fields = releaseFileField(type);
+  if (!form || !fields) return;
+  const preview = form.querySelector(fields.preview);
+  const dropzone = form.querySelector(fields.drop);
+  const nameNode = form.querySelector(fields.nameNode);
+  const sizeNode = fields.sizeNode ? form.querySelector(fields.sizeNode) : null;
+  const sizeText = formatReleaseFileSize(meta.size);
+  const durationText = formatReleaseDuration(meta.durationSeconds);
+  if (nameNode) nameNode.textContent = meta.originalName || "Arquivo enviado";
+  if (sizeNode) sizeNode.textContent = durationText ? `${sizeText} - ${durationText}` : sizeText;
+  if (fields.player) {
+    const player = form.querySelector(fields.player);
+    if (player && meta.url) {
+      player.src = meta.url;
+      player.hidden = false;
+    }
+  }
+  if (preview) preview.style.display = type === "audio" ? "flex" : "block";
+  dropzone?.classList.add("has-file");
+}
+
+function clearReleaseFileState(form, type) {
+  const fields = releaseFileField(type);
+  if (!form || !fields) return {};
+  setReleaseFileHiddenValues(form, type, {});
+  const preview = form.querySelector(fields.preview);
+  const dropzone = form.querySelector(fields.drop);
+  if (preview) preview.style.display = "none";
+  if (fields.player) {
+    const player = form.querySelector(fields.player);
+    if (player) {
+      player.pause?.();
+      player.removeAttribute("src");
+      player.load?.();
+    }
+  }
+  dropzone?.classList.remove("has-file");
+  return releaseFileMetadataPatch(type, {});
+}
+
+function releaseFileIsConfirmed(form, type) {
+  const fields = releaseFileField(type);
+  if (!form || !fields) return false;
+  const url = form.elements[fields.url]?.value || "";
+  const path = form.elements[fields.path]?.value || "";
+  return Boolean(url && path && !/^(blob:|data:)/i.test(url) && !/^(blob:|data:)/i.test(path));
+}
+
+function releaseRequiredDeliveryTypes() {
+  const licenses = (appState.releaseLicenses || []).filter((lic) => lic.is_active);
+  const required = new Set();
+  licenses.forEach((lic) => {
+    if (lic.included_mp3 || ["basic", "premium", "exclusive"].includes(lic.license_key)) required.add("secure_mp3");
+    if (lic.included_wav || ["premium", "exclusive"].includes(lic.license_key)) required.add("secure_wav");
+    if (lic.included_stems || lic.license_key === "exclusive" || lic.is_exclusive) required.add("secure_stems");
+  });
+  if (!licenses.length) required.add("secure_mp3");
+  return required;
 }
 
 function loadImageElement(file) {
@@ -12518,33 +12749,28 @@ function validateReleaseStep(step) {
       showToast("Aguarde o término do envio dos arquivos.", "upload-cloud");
       return false;
     }
-    const audioUrl = form.elements.audio_url?.value;
-    if (!audioUrl) {
+    if (!releaseFileIsConfirmed(form, "audio")) {
       showToast("Por favor, envie o áudio de preview público.", "alert-triangle");
       return false;
     }
-    const mp3Url = form.elements.mp3_url?.value;
-    if (!mp3Url) {
+    if (!releaseFileIsConfirmed(form, "secure_mp3")) {
       showToast("Por favor, envie o arquivo MP3 seguro de entrega.", "alert-triangle");
       return false;
     }
     const premiumActive = appState.releaseLicenses?.find(l => l.license_key === "premium")?.is_active;
     if (premiumActive) {
-      const wavUrl = form.elements.wav_url?.value;
-      if (!wavUrl) {
+      if (!releaseFileIsConfirmed(form, "secure_wav")) {
         showToast("A licença Lease Premium está ativa. Envie o arquivo WAV de entrega correspondente.", "alert-triangle");
         return false;
       }
     }
     const exclusiveActive = appState.releaseLicenses?.find(l => l.license_key === "exclusive")?.is_active;
     if (exclusiveActive) {
-      const wavUrl = form.elements.wav_url?.value;
-      const stemsUrl = form.elements.stems_url?.value;
-      if (!wavUrl) {
+      if (!releaseFileIsConfirmed(form, "secure_wav")) {
         showToast("A licença Exclusiva está ativa. Envie o arquivo WAV de entrega correspondente.", "alert-triangle");
         return false;
       }
-      if (!stemsUrl) {
+      if (!releaseFileIsConfirmed(form, "secure_stems")) {
         showToast("A licença Exclusiva está ativa. Envie o arquivo ZIP de Stems de entrega correspondente.", "alert-triangle");
         return false;
       }
@@ -12646,11 +12872,41 @@ function syncReleaseForm(form = releaseFormElement()) {
   
   // Delivery files summary
   const files = [];
-  if (form.elements.delivery_mp3?.checked) files.push("MP3");
-  if (form.elements.delivery_wav?.checked) files.push("WAV");
-  if (form.elements.delivery_stems?.checked) files.push("Stems");
-  if (form.elements.delivery_contract?.checked) files.push("Contrato");
+  if (releaseFileIsConfirmed(form, "secure_mp3")) files.push("MP3");
+  if (releaseFileIsConfirmed(form, "secure_wav")) files.push("WAV");
+  if (releaseFileIsConfirmed(form, "secure_stems")) files.push("Stems");
+  files.push("Contrato");
   form.querySelectorAll("[data-review-files]").forEach(el => el.textContent = files.join(", ") || "-");
+}
+
+function prepareReleaseFilesLayout(form = releaseFormElement()) {
+  const panel = form?.querySelector('.release-panel[data-panel="2"]');
+  const layout = panel?.querySelector(".release-upload-layout");
+  if (!layout || layout.dataset.enhanced === "true") return;
+  const mp3Drop = layout.querySelector(".release-secure-mp3-drop");
+  const wavDrop = layout.querySelector(".release-secure-wav-drop");
+  const stemsDrop = layout.querySelector(".release-secure-stems-drop");
+  const previewGrid = layout.querySelector(".release-audio-drop")?.parentElement;
+  const mp3Row = mp3Drop?.parentElement;
+  const wavRow = wavDrop?.parentElement;
+  const stemsRow = stemsDrop?.parentElement;
+  const secureList = mp3Row?.parentElement;
+  if (!previewGrid || !mp3Row || !wavRow || !stemsRow) return;
+
+  const main = document.createElement("div");
+  const secondary = document.createElement("div");
+  main.className = "release-files-main";
+  secondary.className = "release-files-secondary";
+  previewGrid.classList.add("release-preview-grid");
+  mp3Row.classList.add("release-secure-row", "release-secure-row-mp3");
+  wavRow.classList.add("release-secure-row", "release-secure-row-wav");
+  stemsRow.classList.add("release-secure-row", "release-secure-row-stems");
+  main.append(previewGrid, mp3Row);
+  secondary.append(wavRow, stemsRow);
+  layout.replaceChildren(main, secondary);
+  layout.classList.add("release-files-layout");
+  layout.dataset.enhanced = "true";
+  secureList?.remove?.();
 }
 
 function setReleaseStep(step, form = releaseFormElement()) {
@@ -12739,7 +12995,14 @@ async function handleReleaseUpload(file, type, progressCallback) {
     timeoutMs: releaseUploadTimeoutMs(type),
   });
   progressCallback?.(100);
-  return { url: result.publicUrl, path: result.path, bucket: result.bucket };
+  return {
+    url: result.publicUrl,
+    path: result.path,
+    bucket: result.bucket,
+    mimeType: result.contentType || mimeTypeForFile(file),
+    originalName: file.name,
+    size: file.size,
+  };
 }
 
 async function handleReleaseFile(file, type) {
@@ -12752,6 +13015,10 @@ async function handleReleaseFile(file, type) {
   const form = releaseFormElement();
   if (!form) return;
   const dropzone = form.querySelector(`[data-upload-drop="${type}"]`);
+  if (isReleaseUploadInProgress(type, form)) {
+    showToast("Este arquivo ainda esta sendo enviado. Aguarde o termino antes de tentar novamente.", "upload-cloud");
+    return;
+  }
   const uploadToken = generateUUID();
   let progressTimer = null;
 
@@ -12791,11 +13058,15 @@ async function handleReleaseFile(file, type) {
     }
 
     progressTimer = startReleaseProgressTicker(dropzone, type === "cover" ? 42 : 10, 92, type === "cover" ? "Enviando capa..." : "Enviando arquivo...");
+    const durationSeconds = ["audio", "secure_mp3", "secure_wav"].includes(type)
+      ? await readAudioFileDuration(file)
+      : null;
     const result = await handleReleaseUpload(uploadFile, type, (progress) => {
       if (releaseUploadTokens.get(type) === uploadToken) {
         setReleaseProgress(dropzone, progress, type === "cover" ? "Finalizando capa..." : "Finalizando arquivo...");
       }
     });
+    result.durationSeconds = durationSeconds;
 
     if (progressTimer) window.clearInterval(progressTimer);
     if (releaseUploadTokens.get(type) !== uploadToken) return;
@@ -12813,45 +13084,19 @@ async function handleReleaseFile(file, type) {
       setReleaseUploadSuccess(dropzone, "Capa enviada com sucesso.");
       showToast("Capa enviada com sucesso!", "image");
     } else if (type === "audio") {
-      form.elements.audio_url.value = result.url;
-      form.elements.audio_path.value = result.path;
-      
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      form.elements.file_size.value = file.size;
-      
-      const audioPreview = form.querySelector(".release-audio-preview");
-      const nameNode = form.querySelector("[data-audio-name]");
-      const sizeNode = form.querySelector("[data-audio-size]");
-      const player = audioPreview?.querySelector("audio");
-      
-      if (nameNode) nameNode.textContent = file.name;
-      if (sizeNode) sizeNode.textContent = `${sizeMB} MB - carregando...`;
-      if (player) {
-        player.src = result.url;
-        player.hidden = false;
-        player.onloadedmetadata = () => {
-          const duration = player.duration;
-          form.elements.duration_seconds.value = Math.round(duration);
-          const minutes = Math.floor(duration / 60);
-          const seconds = Math.round(duration % 60).toString().padStart(2, "0");
-          if (sizeNode) sizeNode.textContent = `${sizeMB} MB - ${minutes}:${seconds}`;
-          syncReleaseForm(form);
-        };
-      }
-      if (audioPreview) audioPreview.style.display = "flex";
-      dropzone?.classList.add("has-file");
-      await persistReleaseUploadDraft({ audio_url: result.url, audio_path: result.path }, form);
+      setReleaseFileHiddenValues(form, "audio", result);
+      form.elements.file_size.value = result.size;
+      form.elements.duration_seconds.value = result.durationSeconds || "";
+      setReleaseFilePreview(form, "audio", result);
+      await persistReleaseUploadDraft(releaseFileMetadataPatch("audio", result), form);
       showToast("Audio enviado com sucesso!", "music");
-    } else if (type === "stems") {
-      form.elements.stems_url.value = result.url;
-      form.elements.stems_path.value = result.path;
-      const stemsPreview = form.querySelector(".stems-preview");
-      const nameNode = form.querySelector("[data-stems-name]");
-      if (nameNode) nameNode.textContent = file.name;
-      if (stemsPreview) stemsPreview.style.display = "block";
-      dropzone?.classList.add("has-file");
-      await persistReleaseUploadDraft({ stems_url: result.url, stems_path: result.path }, form);
-      showToast("ZIP de Stems enviado com sucesso!", "archive");
+    } else if (["secure_mp3", "secure_wav", "secure_stems", "stems"].includes(type)) {
+      const deliveryType = type === "stems" ? "secure_stems" : type;
+      setReleaseFileHiddenValues(form, deliveryType, result);
+      setReleaseFilePreview(form, deliveryType, result);
+      await persistReleaseUploadDraft(releaseFileMetadataPatch(deliveryType, result), form);
+      const toastIcon = deliveryType === "secure_stems" ? "archive" : "music";
+      showToast(`${releaseFileField(deliveryType)?.label || "Arquivo"} enviado com sucesso!`, toastIcon);
     }
     
     syncReleaseForm(form);
@@ -12915,6 +13160,65 @@ function setupMusicUploadEventListeners() {
       }
     });
   }
+
+  form.addEventListener("click", (e) => {
+    const usePreviewBtn = e.target.closest(".use-preview-as-delivery-btn");
+    const removeAction = e.target.closest('[data-action="remove-secure-mp3"], [data-action="remove-secure-wav"], [data-action="remove-secure-stems"]');
+    if (!usePreviewBtn && !removeAction) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    if (usePreviewBtn) {
+      const targetType = usePreviewBtn.dataset.target;
+      if (!releaseFileIsConfirmed(form, "audio")) {
+        showToast("Envie e confirme o audio de preview primeiro.", "alert-triangle");
+        return;
+      }
+      const previewMeta = {
+        url: form.elements.audio_url?.value || "",
+        path: form.elements.audio_path?.value || "",
+        originalName: form.elements.audio_original_name?.value || form.querySelector("[data-audio-name]")?.textContent || "Mesmo do Preview",
+        mimeType: form.elements.audio_mime_type?.value || "",
+        size: form.elements.audio_size_bytes?.value || form.elements.file_size?.value || "",
+        durationSeconds: form.elements.audio_duration_seconds?.value || form.elements.duration_seconds?.value || "",
+      };
+      if (targetType === "secure_mp3") {
+        const audioName = String(previewMeta.originalName || "").toLowerCase();
+        const audioMime = String(previewMeta.mimeType || "").toLowerCase();
+        const isMp3Preview = audioName.endsWith(".mp3") || ["audio/mpeg", "audio/mp3"].includes(audioMime);
+        if (!isMp3Preview) {
+          showToast("O preview nao e MP3. Envie um MP3 de entrega real.", "alert-triangle");
+          return;
+        }
+      }
+      if (targetType === "secure_wav") {
+        const audioName = String(previewMeta.originalName || "").toLowerCase();
+        const audioMime = String(previewMeta.mimeType || "").toLowerCase();
+        const isWavPreview = audioName.endsWith(".wav") || ["audio/wav", "audio/x-wav"].includes(audioMime);
+        if (!isWavPreview) {
+          showToast("O preview nao e WAV. Envie um WAV masterizado real.", "alert-triangle");
+          return;
+        }
+      }
+      if (!["secure_mp3", "secure_wav"].includes(targetType)) return;
+      setReleaseFileHiddenValues(form, targetType, previewMeta);
+      setReleaseFilePreview(form, targetType, previewMeta);
+      void persistReleaseUploadDraft(releaseFileMetadataPatch(targetType, previewMeta), form);
+      syncReleaseForm(form);
+      showToast(targetType === "secure_mp3" ? "Preview confirmado como MP3 de entrega." : "Preview confirmado como WAV de entrega.", "check-circle");
+      return;
+    }
+
+    const type = removeAction?.dataset.action === "remove-secure-mp3"
+      ? "secure_mp3"
+      : removeAction?.dataset.action === "remove-secure-wav"
+        ? "secure_wav"
+        : "secure_stems";
+    void persistReleaseUploadDraft(clearReleaseFileState(form, type), form);
+    syncReleaseForm(form);
+    showToast(type === "secure_mp3" ? "MP3 seguro removido." : type === "secure_wav" ? "WAV seguro removido." : "Stems ZIP seguro removido.", "info");
+  }, true);
   
   // Initialize Custom Select Component Logic
   const customSelects = form.querySelectorAll(".custom-select");
@@ -13250,6 +13554,21 @@ async function saveBeatRelease(status = "published") {
     wav_path: form.elements.wav_path?.value || null,
     stems_url: form.elements.stems_url?.value || null,
     stems_path: form.elements.stems_path?.value || null,
+    audio_original_name: form.elements.audio_original_name?.value || null,
+    audio_mime_type: form.elements.audio_mime_type?.value || null,
+    audio_size_bytes: form.elements.audio_size_bytes?.value ? Number(form.elements.audio_size_bytes.value) : null,
+    audio_duration_seconds: form.elements.audio_duration_seconds?.value ? Number(form.elements.audio_duration_seconds.value) : null,
+    mp3_original_name: form.elements.mp3_original_name?.value || null,
+    mp3_mime_type: form.elements.mp3_mime_type?.value || null,
+    mp3_size_bytes: form.elements.mp3_size_bytes?.value ? Number(form.elements.mp3_size_bytes.value) : null,
+    mp3_duration_seconds: form.elements.mp3_duration_seconds?.value ? Number(form.elements.mp3_duration_seconds.value) : null,
+    wav_original_name: form.elements.wav_original_name?.value || null,
+    wav_mime_type: form.elements.wav_mime_type?.value || null,
+    wav_size_bytes: form.elements.wav_size_bytes?.value ? Number(form.elements.wav_size_bytes.value) : null,
+    wav_duration_seconds: form.elements.wav_duration_seconds?.value ? Number(form.elements.wav_duration_seconds.value) : null,
+    stems_original_name: form.elements.stems_original_name?.value || null,
+    stems_mime_type: form.elements.stems_mime_type?.value || null,
+    stems_size_bytes: form.elements.stems_size_bytes?.value ? Number(form.elements.stems_size_bytes.value) : null,
     duration_seconds: form.elements.duration_seconds?.value ? Number(form.elements.duration_seconds.value) : null,
     file_size: form.elements.file_size?.value ? Number(form.elements.file_size.value) : null,
     status: status,
@@ -13265,6 +13584,12 @@ async function saveBeatRelease(status = "published") {
     const hasPersistentAudio = payload.audio_url && !/^(blob:|data:)/i.test(payload.audio_url);
     if (!hasPersistentCover || !hasPersistentAudio || !payload.audio_path) {
       showToast("Envie capa e audio para o storage antes de publicar.", "upload-cloud");
+      return;
+    }
+    const requiredDeliveryTypes = releaseRequiredDeliveryTypes();
+    if ([...requiredDeliveryTypes].some((type) => !releaseFileIsConfirmed(form, type))) {
+      showToast("Confirme os arquivos de entrega no Storage antes de publicar.", "upload-cloud");
+      setReleaseStep(2, form);
       return;
     }
   }
@@ -14203,6 +14528,10 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<input type="hidden" name="mp3_url"><input type="hidden" name="mp3_path">'
     + '<input type="hidden" name="wav_url"><input type="hidden" name="wav_path">'
     + '<input type="hidden" name="stems_url"><input type="hidden" name="stems_path">'
+    + '<input type="hidden" name="audio_original_name"><input type="hidden" name="audio_mime_type"><input type="hidden" name="audio_size_bytes"><input type="hidden" name="audio_duration_seconds">'
+    + '<input type="hidden" name="mp3_original_name"><input type="hidden" name="mp3_mime_type"><input type="hidden" name="mp3_size_bytes"><input type="hidden" name="mp3_duration_seconds">'
+    + '<input type="hidden" name="wav_original_name"><input type="hidden" name="wav_mime_type"><input type="hidden" name="wav_size_bytes"><input type="hidden" name="wav_duration_seconds">'
+    + '<input type="hidden" name="stems_original_name"><input type="hidden" name="stems_mime_type"><input type="hidden" name="stems_size_bytes">'
     + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
     + '<input type="hidden" name="tags">'
     + '<input type="hidden" name="producer_name" value="' + htmlEscape(releaseProducerName) + '">'
@@ -14370,6 +14699,7 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
 
   hydrateReleaseDetailsStep(releaseFormElement(), releaseProducerName, genreOptions, keyOptions);
   setupMusicUploadEventListeners();
+  prepareReleaseFilesLayout(releaseFormElement());
   refreshReleaseLicensesUI();
   void restoreReleaseCoverDraft();
   syncReleaseForm();
