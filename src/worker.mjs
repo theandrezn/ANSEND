@@ -660,10 +660,159 @@ async function handleNexoAnalysis(request, env) {
   }
 }
 
+async function handleCheckout(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 });
+  }
+
+  const cartItems = payload?.cart_items;
+  if (!Array.isArray(cartItems) || !cartItems.length) {
+    return jsonResponse({ success: false, error: "O carrinho esta vazio." }, { status: 400 });
+  }
+
+  const buyerName = cleanRecommendationText(payload?.buyer_name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
+  const buyerEmail = cleanRecommendationText(payload?.buyer_email || auth.user.email || "", 150);
+
+  // Call database RPC
+  const rpcResult = await supabaseRpc(env, "process_checkout", {
+    p_buyer_id: auth.user.id,
+    p_buyer_name: buyerName,
+    p_buyer_email: buyerEmail,
+    p_cart_items: cartItems
+  }, auth.authHeader);
+
+  if (rpcResult.error) {
+    return jsonResponse({ success: false, error: rpcResult.error }, { status: 400 });
+  }
+
+  return jsonResponse({ success: true, order: rpcResult.data });
+}
+
+async function handleOrderDownload(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "GET") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+
+  const url = new URL(request.url);
+  const beatId = url.searchParams.get("beat_id");
+  const fileType = url.searchParams.get("file_type")?.toLowerCase(); // 'mp3', 'wav', or 'stems'
+
+  if (!isUuid(beatId) || !["mp3", "wav", "stems"].includes(fileType)) {
+    return jsonResponse({ success: false, error: "Parametros invalidos." }, { status: 400 });
+  }
+
+  // 1. Verify that this user has completed order containing this beat and files
+  const ordersResponse = await supabaseRest(env, `orders?select=id,status,buyer_id,order_items(beat_id,files_included_snapshot)&buyer_id=eq.${auth.user.id}&status=eq.completed`);
+  if (ordersResponse.error) {
+    return jsonResponse({ success: false, error: "Erro ao verificar compra." }, { status: 500 });
+  }
+
+  const orders = ordersResponse.data || [];
+  let isAuthorized = false;
+  let filesIncluded = "";
+
+  for (const order of orders) {
+    for (const item of order.order_items || []) {
+      if (item.beat_id === beatId) {
+        filesIncluded = item.files_included_snapshot || "";
+        // Check if the fileType is included in the files snapshot
+        if (fileType === "mp3" && /mp3/i.test(filesIncluded)) isAuthorized = true;
+        if (fileType === "wav" && /wav/i.test(filesIncluded)) isAuthorized = true;
+        if (fileType === "stems" && /stem|zip/i.test(filesIncluded)) isAuthorized = true;
+      }
+    }
+  }
+
+  if (!isAuthorized) {
+    return jsonResponse({ success: false, error: "Voce nao possui autorizacao para baixar este arquivo." }, { status: 403 });
+  }
+
+  // 2. Fetch the beat path from the database
+  const beatResponse = await supabaseRest(env, `beats?select=id,audio_path,stems_path,mp3_path,wav_path&id=eq.${beatId}`);
+  if (beatResponse.error || !beatResponse.data?.length) {
+    return jsonResponse({ success: false, error: "Beat nao encontrado." }, { status: 404 });
+  }
+
+  const beat = beatResponse.data[0];
+  let bucket = "beat-secure-files";
+  let filePath = "";
+
+  if (fileType === "mp3") {
+    filePath = beat.mp3_path || beat.audio_path;
+    bucket = beat.mp3_path ? "beat-secure-files" : "beat-audio";
+  } else if (fileType === "wav") {
+    filePath = beat.wav_path || beat.audio_path;
+    bucket = beat.wav_path ? "beat-secure-files" : "beat-audio";
+  } else if (fileType === "stems") {
+    filePath = beat.stems_path;
+    bucket = (beat.stems_path && beat.stems_path.includes("secure")) ? "beat-secure-files" : "beat-stems";
+  }
+
+  if (!filePath) {
+    return jsonResponse({ success: false, error: "Arquivo indisponivel para download." }, { status: 404 });
+  }
+
+  // 3. Request temporary signed URL from Supabase Storage API using the service key
+  const { url: supabaseUrl, serviceKey } = supabaseServiceConfig(env);
+  const signResponse = await fetch(`${supabaseUrl}/storage/v1/object/sign/${bucket}/${filePath}`, {
+    method: "POST",
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expiresIn: 300 }),
+  });
+
+  const signData = await signResponse.json().catch(() => ({}));
+  if (!signResponse.ok) {
+    return jsonResponse({ success: false, error: signData?.message || "Erro ao gerar link de download seguro." }, { status: 502 });
+  }
+
+  const signedUrl = signData.signedURL || signData.signedUrl || "";
+  if (!signedUrl) {
+    return jsonResponse({ success: false, error: "Storage nao retornou link de download seguro." }, { status: 502 });
+  }
+
+  // Convert relative signed URL to absolute if necessary
+  let absoluteSignedUrl = signedUrl;
+  if (signedUrl.startsWith("/")) {
+    absoluteSignedUrl = `${supabaseUrl}${signedUrl}`;
+  }
+
+  return jsonResponse({ success: true, download_url: absoluteSignedUrl });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     let response;
+
+    if (url.pathname === "/api/checkout") {
+      response = await handleCheckout(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/orders/download") {
+      response = await handleOrderDownload(request, env);
+      return withSecurityHeaders(response, request);
+    }
 
     if (url.pathname === "/api/nexo/analisar") {
       response = await handleNexoAnalysis(request, env);
