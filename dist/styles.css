@@ -19428,6 +19428,16 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 }
 
 /* Hero headline correction: only ANSEND is orange; the marketplace line remains white. */
+.feed .ai-hero .an-hero-copy h1.hero-morph-title,
+.feed .ai-hero.is-beatmaker-hero .an-hero-copy h1.hero-morph-title,
+.feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1.hero-morph-title,
+.feed .ai-hero .hero-morph-title,
+.feed .ai-hero .hero-morph-title * {
+  font-family: "Anton", "Bebas Neue", "Poppins", sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: .015em !important;
+}
+
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
   animation: none !important;
