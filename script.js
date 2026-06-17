@@ -1341,6 +1341,7 @@ const appState = {
     drafts: {},
     draftModes: {},
     pendingActions: {},
+    failedMessages: {},
   },
   isAdmin: false,
   adminProfiles: [],
@@ -5333,6 +5334,11 @@ function chatDisplayForUser(userId) {
     username,
     handle: username ? `@${username}` : "",
     avatar: display.avatar,
+    avatarPosition: display.avatarPosition,
+    avatarScale: display.avatarScale,
+    roleLabel: display.roleLabel,
+    headline: display.headline,
+    bio: display.bio,
     verified: Boolean(profile?.is_verified || profile?.verified || profile?.verified_at),
   };
 }
@@ -5410,12 +5416,19 @@ function parseProposalDraft(body = "") {
   };
   const priceRaw = readLine("Valor");
   const numericPrice = Number(String(priceRaw).replace(/[^\d,.-]/g, "").replace(".", "").replace(",", "."));
+  const details = readLine("Detalhes")
+    || text
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*(Servico|Serviço|Prazo|Valor|Detalhes)\s*:/i.test(line))
+      .join("\n")
+      .replace(/^Ola! Vi sua publicacao na Comunidade da ANSEND e gostaria de enviar uma proposta\.\s*/i, "")
+      .trim();
   return {
     serviceTitle: readLine("Servico") || "Proposta ANSEND",
     deadline: readLine("Prazo") || "Prazo a combinar",
     priceText: priceRaw || "Valor a combinar",
     price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : null,
-    details: readLine("Detalhes") || text.slice(0, 1200),
+    details: (details || "Proposta enviada pela Comunidade ANSEND.").slice(0, 1200),
   };
 }
 
@@ -5435,7 +5448,37 @@ function chatProposalStatusLabel(status = "pending") {
     accepted: "Aceita",
     rejected: "Recusada",
     cancelled: "Cancelada",
+    expired: "Expirada",
   }[status] || status;
+}
+
+function chatDateDividerLabel(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "Hoje";
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round((startOfToday - startOfDate) / 86400000);
+  if (dayDiff === 0) return "Hoje";
+  if (dayDiff === 1) return "Ontem";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: date.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+}
+
+function chatProfileSummaryMarkup(display = {}) {
+  const profile = chatProfile(display.id || "");
+  const route = profile ? publicProfileRoute(profile) : "";
+  const meta = [display.roleLabel, display.headline || display.bio].filter(Boolean).slice(0, 2).join(" - ");
+  return `<section class="chat-profile-summary" aria-label="Resumo do perfil">
+    ${profileAvatarMarkup(display, "chat-summary-avatar")}
+    <strong>${htmlEscape(display.name)}${display.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
+    ${display.handle || display.username ? `<span>${htmlEscape(display.handle || display.username)}</span>` : ""}
+    ${meta ? `<p>${htmlEscape(meta)}</p>` : ""}
+    ${route ? `<button type="button" data-action="chat-open-profile" data-profile-id="${htmlEscape(display.id)}">Ver Perfil</button>` : ""}
+  </section>`;
+}
+
+function chatFailedMessages(conversationId = "") {
+  return appState.chat.failedMessages[conversationId] || [];
 }
 
 async function fetchChatProfiles(userIds = []) {
@@ -5664,13 +5707,14 @@ async function sendChatMessage(form) {
   const textarea = form?.querySelector("textarea[name='body']");
   const body = sanitizeChatMessage(textarea?.value || "");
   if (!conversationId || !body) return;
+  setChatDraft(conversationId, body);
   appState.chat.sending = true;
   renderChatPage({ preserveActive: true });
+  let messageType = "text";
+  let metadata = {};
   try {
     const conversation = appState.chat.conversations.find((item) => item.id === conversationId);
     const draftMode = appState.chat.draftModes[conversationId] || "";
-    let messageType = "text";
-    let metadata = {};
 
     if (draftMode === "proposal" && conversation?.community_post_id) {
       const proposal = parseProposalDraft(body);
@@ -5730,16 +5774,47 @@ async function sendChatMessage(form) {
     appendChatMessage(data);
     if (textarea) textarea.value = "";
     setChatDraft(conversationId, "");
+    appState.chat.failedMessages[conversationId] = chatFailedMessages(conversationId).filter((item) => item.retryBody !== body);
     delete appState.chat.draftModes[conversationId];
     await loadChatConversations({ render: false });
   } catch (error) {
     console.error("[ANSEND chat] send failed", error);
+    const failed = {
+      id: `failed-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_id: appState.authUser.id,
+      body: messageType === "proposal" ? chatProposalBodyFromMetadata(metadata) : body,
+      message_type: messageType,
+      metadata,
+      created_at: new Date().toISOString(),
+      failed: true,
+      retryBody: body,
+      retryMode: appState.chat.draftModes[conversationId] || "",
+    };
+    appState.chat.failedMessages[conversationId] = [...chatFailedMessages(conversationId).filter((item) => item.retryBody !== body), failed].slice(-3);
     showToast("Nao foi possivel enviar a mensagem.", "send-x");
   } finally {
     appState.chat.sending = false;
     renderChatPage({ preserveActive: true });
     queueChatScrollToBottom();
   }
+}
+
+async function retryChatMessage(failedId = "") {
+  const conversationId = appState.chat.activeConversationId;
+  if (!conversationId || !failedId) return;
+  const failed = chatFailedMessages(conversationId).find((item) => item.id === failedId);
+  if (!failed) return;
+  appState.chat.failedMessages[conversationId] = chatFailedMessages(conversationId).filter((item) => item.id !== failedId);
+  if (failed.retryMode) appState.chat.draftModes[conversationId] = failed.retryMode;
+  setChatDraft(conversationId, failed.retryBody || failed.body || "");
+  renderChatPage({ preserveActive: true });
+  window.requestAnimationFrame(() => {
+    const form = document.querySelector(`.chat-composer-form[data-conversation-id="${cssEscape(conversationId)}"]`);
+    const textarea = form?.querySelector("textarea[name='body']");
+    if (textarea) textarea.value = chatDraftFor(conversationId);
+    if (form) sendChatMessage(form);
+  });
 }
 
 async function updateChatProposalStatus(proposalId, messageId, status) {
@@ -5897,6 +5972,15 @@ function chatThreadEmptyMarkup() {
   </section>`;
 }
 
+function chatMessageStatusMarkup(message) {
+  if (message.failed) {
+    return `<button type="button" class="chat-message-retry" data-action="chat-retry-message" data-failed-id="${htmlEscape(message.id)}">
+      <i data-lucide="rotate-ccw"></i> Falhou, tente novamente
+    </button>`;
+  }
+  return "";
+}
+
 function chatMessageMarkup(message) {
   const mine = message.sender_id === appState.authUser?.id;
   const metadata = message.metadata && typeof message.metadata === "object" ? message.metadata : {};
@@ -5905,16 +5989,18 @@ function chatMessageMarkup(message) {
     const status = metadata.status || "pending";
     const canRespond = !mine && metadata.proposal_id && status === "pending";
     const canCancel = mine && metadata.proposal_id && status === "pending";
+    const fields = [
+      ["Servico", metadata.service_title && metadata.service_title !== "Proposta ANSEND" ? metadata.service_title : ""],
+      ["Prazo", metadata.deadline],
+      ["Valor", price],
+      ["Status", chatProposalStatusLabel(status)],
+    ].filter(([, value]) => String(value || "").trim());
     return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
       <div class="chat-message-bubble chat-proposal-bubble">
-        <span>Proposta enviada</span>
-        <strong>${htmlEscape(metadata.service_title || "Servico ANSEND")}</strong>
-        <p>${htmlEscape(metadata.description || message.body)}</p>
-        <dl>
-          <div><dt>Prazo</dt><dd>${htmlEscape(metadata.deadline || "A combinar")}</dd></div>
-          <div><dt>Valor</dt><dd>${htmlEscape(price)}</dd></div>
-          <div><dt>Status</dt><dd>${htmlEscape(chatProposalStatusLabel(status))}</dd></div>
-        </dl>
+        <span>${mine ? "Proposta enviada" : "Proposta recebida"}</span>
+        ${metadata.service_title && metadata.service_title !== "Proposta ANSEND" ? `<strong>${htmlEscape(metadata.service_title)}</strong>` : ""}
+        ${metadata.description ? `<p>${htmlEscape(metadata.description)}</p>` : ""}
+        ${fields.length ? `<dl>${fields.map(([label, value]) => `<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join("")}</dl>` : ""}
         ${canRespond ? `<div class="chat-proposal-actions">
           <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="accepted">Aceitar</button>
           <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="rejected">Recusar</button>
@@ -5923,6 +6009,7 @@ function chatMessageMarkup(message) {
           <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="cancelled">Cancelar proposta</button>
         </div>` : ""}
         <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+        ${chatMessageStatusMarkup(message)}
       </div>
     </div>`;
   }
@@ -5930,8 +6017,27 @@ function chatMessageMarkup(message) {
     <div class="chat-message-bubble">
       <p>${htmlEscape(message.body)}</p>
       <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+      ${chatMessageStatusMarkup(message)}
     </div>
   </div>`;
+}
+
+function chatTimelineMarkup(conversation, other, messages = []) {
+  const rows = [];
+  rows.push(chatProfileSummaryMarkup(other));
+  const context = chatPostContextMarkup(conversation);
+  if (context) rows.push(context);
+  const allMessages = [...messages, ...chatFailedMessages(conversation.id)].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  let currentDate = "";
+  allMessages.forEach((message) => {
+    const dateKey = new Date(message.created_at || Date.now()).toDateString();
+    if (dateKey !== currentDate) {
+      currentDate = dateKey;
+      rows.push(`<div class="chat-date-divider"><span>${htmlEscape(chatDateDividerLabel(message.created_at))}</span></div>`);
+    }
+    rows.push(chatMessageMarkup(message));
+  });
+  return rows.join("");
 }
 
 function renderChatThread() {
@@ -5950,15 +6056,21 @@ function renderChatThread() {
         <strong>${htmlEscape(other.name)}${other.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
         <span>${htmlEscape(other.handle || other.username || "")}</span>
       </button>
+      <button type="button" class="chat-thread-menu" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
     </header>
-    ${chatPostContextMarkup(conversation)}
     <div class="chat-thread-messages">
       ${appState.chat.messagesLoading ? `<div class="chat-message-skeleton"><span></span><span></span><span></span></div>` : ""}
-      ${!appState.chat.messagesLoading && !messages.length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : messages.map(chatMessageMarkup).join("")}
+      ${!appState.chat.messagesLoading ? chatTimelineMarkup(conversation, other, messages) : ""}
+      ${!appState.chat.messagesLoading && !messages.length && !chatFailedMessages(conversationId).length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : ""}
     </div>
     <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}" data-draft-mode="${htmlEscape(draftMode)}">
-      <textarea name="body" rows="${draftMode === "proposal" ? "5" : "1"}" maxlength="2000" placeholder="${draftMode === "proposal" ? "Revise sua proposta antes de enviar" : "Comece uma nova mensagem"}" aria-label="Mensagem">${htmlEscape(draft)}</textarea>
-      <button type="submit" ${appState.chat.sending ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
+      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="Adicionar"><i data-lucide="plus"></i></button>
+      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="GIF"><span>GIF</span></button>
+      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="Emoji"><i data-lucide="smile"></i></button>
+      <div class="chat-composer-input">
+        <textarea name="body" rows="${draftMode === "proposal" ? "4" : "1"}" maxlength="2000" placeholder="${draftMode === "proposal" ? "Revise sua proposta antes de enviar" : "Comece uma nova mensagem"}" aria-label="Mensagem">${htmlEscape(draft)}</textarea>
+        <button type="submit" ${appState.chat.sending || !draft.trim() ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
+      </div>
     </form>
   </section>`;
 }
@@ -6043,7 +6155,13 @@ function renderChatPage({ preserveActive = false } = {}) {
       <label class="chat-search-field">
         <i data-lucide="search"></i>
         <input type="search" value="${htmlEscape(appState.chat.search)}" placeholder="Buscar" data-chat-search autocomplete="off">
+        ${appState.chat.search ? `<button type="button" data-action="chat-clear-search" aria-label="Limpar busca"><i data-lucide="x"></i></button>` : ""}
       </label>
+      <nav class="chat-list-tabs" aria-label="Filtros do bate-papo">
+        <button type="button" class="is-active">Conversas</button>
+        <button type="button">Mensagens</button>
+      </nav>
+      ${!appState.chat.loading && !appState.chat.error && !conversations.length ? `<div class="chat-empty-action"><button type="button" data-action="chat-new-open"><i data-lucide="message-circle-plus"></i>Nova conversa</button></div>` : ""}
       <div class="chat-conversation-list">
         ${appState.chat.loading ? `<div class="chat-list-skeleton"><span></span><span></span><span></span></div>` : ""}
         ${!appState.chat.loading && appState.chat.error ? `<p class="chat-load-error">${htmlEscape(appState.chat.error)}</p>` : ""}
@@ -15042,6 +15160,20 @@ document.addEventListener("click", (event) => {
       renderChatPage({ preserveActive: true });
       return;
     }
+    if (action === "chat-clear-search") {
+      appState.chat.search = "";
+      renderChatPage({ preserveActive: true });
+      window.requestAnimationFrame(() => document.querySelector("[data-chat-search]")?.focus());
+      return;
+    }
+    if (action === "chat-composer-focus") {
+      target.closest(".chat-composer-form")?.querySelector("textarea[name='body']")?.focus();
+      return;
+    }
+    if (action === "chat-retry-message") {
+      retryChatMessage(target.dataset.failedId || "");
+      return;
+    }
     if (action === "chat-select-user") {
       openOrCreateDirectConversation(target.dataset.userId || "");
       return;
@@ -16070,7 +16202,10 @@ document.addEventListener("input", (event) => {
     return;
   }
   if (input.closest?.(".chat-composer-form") && input.matches("textarea")) {
-    setChatDraft(input.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId, input.value || "");
+    const form = input.closest(".chat-composer-form");
+    setChatDraft(form?.dataset.conversationId || appState.chat.activeConversationId, input.value || "");
+    const submit = form?.querySelector("button[type='submit']");
+    if (submit) submit.disabled = appState.chat.sending || !input.value.trim();
     input.style.height = "auto";
     input.style.height = `${Math.min(140, input.scrollHeight)}px`;
     return;
