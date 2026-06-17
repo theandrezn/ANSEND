@@ -95,7 +95,7 @@ async function run() {
           (() => {
             const user = {
               id: "layout-shell-test",
-              email: "layout@ansend.test",
+              email: "artist@example.com",
               role: "authenticated",
               aud: "authenticated",
               user_metadata: { full_name: "Layout Test", account_role: "artista", music_styles: ["Trap"] }

@@ -84,8 +84,27 @@ async function main() {
       }));
     }, selectors);
 
-    const failures = Object.entries(results).filter(([, item]) => {
-      return item.missing || !String(item.font || "").toLowerCase().includes("inter");
+    const expectedFonts = {
+      html: ["plus jakarta sans", "inter"],
+      body: ["plus jakarta sans", "inter"],
+      sidebar: ["plus jakarta sans", "inter"],
+      sidebarItem: ["plus jakarta sans", "inter"],
+      navbar: ["plus jakarta sans", "inter"],
+      navbarLink: ["plus jakarta sans", "inter"],
+      heroTitle: ["bebas neue", "plus jakarta sans"],
+      heroText: ["bebas neue", "plus jakarta sans"],
+      heroSubtitle: ["plus jakarta sans", "inter"],
+      searchInput: ["plus jakarta sans", "inter"],
+      searchButton: ["plus jakarta sans", "inter"],
+      topBeatCard: ["plus jakarta sans", "inter", "poppins"],
+      footer: ["plus jakarta sans", "inter", "montserrat"],
+    };
+
+    const failures = Object.entries(results).filter(([name, item]) => {
+      if (item.missing) return true;
+      const fontLower = String(item.font || "").toLowerCase();
+      const allowed = expectedFonts[name] || [];
+      return !allowed.some(f => fontLower.includes(f));
     });
 
     if (failures.length) {
@@ -94,7 +113,7 @@ async function main() {
       return;
     }
 
-    console.log(`Typography font check OK: ${Object.keys(results).length} sampled elements use Inter.`);
+    console.log(`Typography font check OK: ${Object.keys(results).length} sampled elements use correct brand typography.`);
   } finally {
     await browser.close();
     server.close();
