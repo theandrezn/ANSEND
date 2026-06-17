@@ -26167,13 +26167,19 @@ body.chat-dm-mode #appView.app-view {
 }
 
 .chat-attachment-preview img,
-.chat-attachment-preview video {
+.chat-attachment-preview video,
+.chat-attachment-preview audio {
   display: block;
   width: 100%;
   max-height: 190px;
   border-radius: 12px;
   object-fit: cover;
   background: #050505;
+}
+
+.chat-attachment-preview audio {
+  height: 38px;
+  object-fit: initial;
 }
 
 .chat-upload-progress {
@@ -30613,5 +30619,23 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
   width: 100%;
   max-width: 280px;
   height: 36px;
+}
+
+.chat-audio-attachment small,
+.chat-audio-loading,
+.chat-audio-error {
+  color: #71767b;
+  font-size: 12px;
+}
+
+.chat-audio-error,
+.chat-audio-attachment[data-chat-audio-state="ready"] .chat-audio-loading,
+.chat-audio-attachment[data-chat-audio-state="error"] .chat-audio-loading {
+  display: none;
+}
+
+.chat-audio-attachment[data-chat-audio-state="error"] .chat-audio-error {
+  display: inline;
+  color: #ff7b72;
 }
 

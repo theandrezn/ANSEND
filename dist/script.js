@@ -5391,9 +5391,43 @@ function chatMessageKindFromFile(file = {}) {
   const type = String(file.type || "").toLowerCase();
   const ext = fileExtension(file.name || "").toLowerCase();
   if (type.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(ext)) return "image";
-  if (type.startsWith("audio/") || ["mp3", "wav", "m4a", "flac"].includes(ext)) return "audio";
+  if (type.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(ext)) return "audio";
   if (type.startsWith("video/") || ["mp4", "webm"].includes(ext)) return "video";
   return "file";
+}
+
+function chatAttachmentKindFromMetadata(metadata = {}) {
+  const explicit = String(metadata.kind || "").toLowerCase();
+  const mime = String(metadata.mime || metadata.content_type || metadata.contentType || "").toLowerCase();
+  const ext = fileExtension(metadata.name || metadata.path || metadata.url || "").toLowerCase();
+  if (explicit === "audio" || mime.startsWith("audio/") || ["mp3", "wav", "m4a", "ogg", "flac"].includes(ext)) return "audio";
+  if (explicit === "image" || mime.startsWith("image/") || ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) return "image";
+  if (explicit === "video" || mime.startsWith("video/") || ["mp4", "webm"].includes(ext)) return "video";
+  return explicit || "file";
+}
+
+function mimeTypeForFile(file = {}) {
+  const explicit = String(file.type || "").trim().toLowerCase();
+  if (explicit) return explicit;
+  const ext = fileExtension(file.name || "").toLowerCase();
+  const map = {
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    ogg: "audio/ogg",
+    flac: "audio/flac",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    txt: "text/plain",
+    zip: "application/zip",
+  };
+  return map[ext] || "application/octet-stream";
 }
 
 function chatAttachmentDraft(conversationId = "") {
@@ -5415,6 +5449,7 @@ function chatAttachmentPreviewMarkup(conversationId = "") {
   const size = Number(file.size || 0) ? `${(Number(file.size || 0) / 1024 / 1024).toFixed(1)} MB` : "";
   return `<section class="chat-attachment-preview" aria-label="Anexo selecionado">
     ${draft.kind === "image" ? `<img src="${htmlEscape(draft.previewUrl)}" alt="">` : ""}
+    ${draft.kind === "audio" ? `<audio src="${htmlEscape(draft.previewUrl)}" controls preload="metadata"></audio>` : ""}
     ${draft.kind === "video" ? `<video src="${htmlEscape(draft.previewUrl)}" controls preload="metadata"></video>` : ""}
     <strong>${htmlEscape(file.name || "Arquivo")}</strong>
     <small>${htmlEscape([draft.kind, size].filter(Boolean).join(" - "))}</small>
@@ -5431,9 +5466,9 @@ function chatComposerMenuMarkup(conversationId = "") {
   const items = [
     ["image", "image", "Enviar imagem", "image/jpeg,image/png,image/webp"],
     ["video", "video", "Enviar video", "video/mp4,video/webm"],
-    ["audio", "music", "Enviar beat ou audio", "audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp4"],
+    ["audio", "music", "Enviar beat ou audio", ".mp3,.wav,.m4a,.ogg,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/flac,audio/mp4,audio/aac,audio/ogg,audio/x-m4a"],
     ["document", "file-text", "Enviar documento", "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"],
-    ["file", "paperclip", "Enviar arquivo geral", ".zip,.pdf,.docx,.txt,image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/flac,video/mp4,video/webm"],
+    ["file", "paperclip", "Enviar arquivo geral", ".zip,.pdf,.docx,.txt,.mp3,.wav,.m4a,.ogg,image/jpeg,image/png,image/webp,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/flac,audio/mp4,audio/aac,audio/ogg,audio/x-m4a,video/mp4,video/webm"],
   ];
   return `<div class="chat-composer-menu" role="menu" aria-label="Adicionar anexo">
     ${items.map(([kind, icon, label, accept]) => `<button type="button" role="menuitem" data-action="chat-attachment-pick" data-accept="${htmlEscape(accept)}" data-kind="${htmlEscape(kind)}"><i data-lucide="${icon}"></i>${htmlEscape(label)}</button>`).join("")}
@@ -5463,9 +5498,9 @@ function chatGifPickerMarkup(conversationId = "") {
 }
 
 function chatAttachmentMetadataMarkup(metadata = {}) {
-  const kind = metadata.kind || "file";
+  const kind = chatAttachmentKindFromMetadata(metadata);
   const name = metadata.name || "Arquivo";
-  const url = metadata.url || "";
+  const url = metadata.url || metadata.signedUrl || metadata.publicUrl || "";
   if (!url) return "";
   if (kind === "image" || metadata.type === "gif") {
     return `<div class="chat-attachment-message"><img src="${htmlEscape(url)}" alt="${htmlEscape(name)}" loading="lazy"></div>`;
@@ -5474,7 +5509,17 @@ function chatAttachmentMetadataMarkup(metadata = {}) {
     return `<div class="chat-attachment-message"><video src="${htmlEscape(url)}" controls preload="metadata"></video><span>${htmlEscape(name)}</span></div>`;
   }
   if (kind === "audio") {
-    return `<div class="chat-attachment-message"><strong>${htmlEscape(name)}</strong><audio src="${htmlEscape(url)}" controls preload="metadata"></audio><a class="chat-attachment-file" href="${htmlEscape(url)}" download="${htmlEscape(name)}"><i data-lucide="download"></i><span>Baixar audio</span></a></div>`;
+    const mime = metadata.mime || metadata.content_type || metadata.contentType || "";
+    const size = Number(metadata.size || 0) ? `${(Number(metadata.size || 0) / 1024 / 1024).toFixed(1)} MB` : "";
+    const details = [mime, size].filter(Boolean).join(" - ");
+    return `<div class="chat-attachment-message chat-audio-attachment" data-chat-audio-state="loading">
+      <strong>${htmlEscape(name)}</strong>
+      ${details ? `<small>${htmlEscape(details)}</small>` : ""}
+      <audio src="${htmlEscape(url)}" controls preload="metadata" onloadedmetadata="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','ready')" oncanplay="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','ready')" onerror="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','error')"></audio>
+      <span class="chat-audio-loading">Carregando audio...</span>
+      <span class="chat-audio-error">Nao foi possivel reproduzir este audio.</span>
+      <a class="chat-attachment-file" href="${htmlEscape(url)}" download="${htmlEscape(name)}"><i data-lucide="download"></i><span>Baixar audio</span></a>
+    </div>`;
   }
   return `<a class="chat-attachment-file" href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer" download="${htmlEscape(name)}"><i data-lucide="file-down"></i><span>${htmlEscape(name)}</span></a>`;
 }
@@ -5961,12 +6006,13 @@ async function sendChatMessage(form) {
       renderChatPage({ preserveActive: true });
       const file = attachmentDraft.file;
       const kind = attachmentDraft.kind || chatMessageKindFromFile(file);
+      const mime = mimeTypeForFile(file);
       const safeExt = fileExtension(file.name || "") || "bin";
       const safeBase = sanitizeStorageSegment((file.name || "arquivo").replace(/\.[^.]+$/, ""), "chat");
       const path = `${appState.authUser.id}/chat/${conversationId}/${Date.now()}-${safeBase}.${safeExt}`;
       appState.chat.uploadProgress[conversationId] = 36;
       renderChatPage({ preserveActive: true });
-      const result = await uploadStorageFile(file, { type: "chatAttachment", path, timeoutMs: 120000 });
+      const result = await uploadStorageFile(file, { type: "chatAttachment", path, timeoutMs: 120000, contentType: mime });
       appState.chat.uploadProgress[conversationId] = 100;
       messageType = kind === "audio" ? "audio" : "attachment";
       metadata = {
@@ -5974,10 +6020,14 @@ async function sendChatMessage(form) {
         kind,
         name: file.name || "Arquivo",
         size: file.size || 0,
-        mime: file.type || "",
+        mime,
+        content_type: mime,
         bucket: result.bucket,
         path: result.path,
         url: result.url,
+        publicUrl: result.publicUrl || result.url,
+        signedUrl: result.signedUrl || "",
+        signedUrlExpiresAt: result.signedUrlExpiresAt || null,
       };
     }
 
@@ -6119,7 +6169,7 @@ function setChatAttachmentFromInput(input) {
     validateStorageFile(file, STORAGE_UPLOAD_LIMITS.chatAttachment);
     clearChatAttachmentDraft(conversationId);
     const kind = chatMessageKindFromFile(file);
-    const previewUrl = ["image", "video"].includes(kind) ? URL.createObjectURL(file) : "";
+    const previewUrl = ["image", "audio", "video"].includes(kind) ? URL.createObjectURL(file) : "";
     appState.chat.attachmentDrafts[conversationId] = { file, kind, previewUrl, pickedAt: Date.now() };
     setChatComposerPanel(conversationId, "");
     renderChatPage({ preserveActive: true });
@@ -8375,7 +8425,7 @@ async function fileToDataUrl(file) {
 }
 
 function fileExtension(file) {
-  const name = file?.name || "";
+  const name = typeof file === "string" ? file : (file?.name || "");
   const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
   return ext || "png";
 }
@@ -8610,12 +8660,12 @@ const STORAGE_UPLOAD_LIMITS = {
     maxBytes: 100 * 1024 * 1024,
     allowedMime: [
       "image/jpeg", "image/png", "image/webp",
-      "audio/mpeg", "audio/wav", "audio/x-wav", "audio/flac", "audio/mp4", "audio/aac",
+      "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/flac", "audio/mp4", "audio/aac", "audio/ogg", "audio/x-m4a",
       "video/mp4", "video/webm",
       "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "text/plain", "application/zip", "application/x-zip-compressed",
     ],
-    allowedExt: ["jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "flac", "mp4", "webm", "pdf", "docx", "txt", "zip"],
+    allowedExt: ["jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "ogg", "flac", "mp4", "webm", "pdf", "docx", "txt", "zip"],
     upsert: false,
   },
 };
@@ -8647,6 +8697,7 @@ async function uploadStorageFile(file, options = {}) {
   const config = options.config || STORAGE_UPLOAD_LIMITS[options.type || "cover"];
   if (!config) throw new Error("Tipo de upload nao suportado.");
   const ext = validateStorageFile(file, config);
+  const contentType = options.contentType || mimeTypeForFile(file);
   const { user } = await ensureStorageAuthSession({ forceRefresh: Boolean(options.forceRefresh) });
   const safeBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), config.label);
   const fileId = typeof window.crypto?.randomUUID === "function" ? window.crypto.randomUUID() : generateUUID();
@@ -8655,13 +8706,13 @@ async function uploadStorageFile(file, options = {}) {
     bucket: config.bucket,
     path,
     userId: user.id,
-    fileType: file.type,
+    fileType: contentType,
     fileSize: file.size,
   });
   const upload = async () => withTimeout(
     supabaseClient.storage.from(config.bucket).upload(path, file, {
       cacheControl: "3600",
-      contentType: file.type || undefined,
+      contentType,
       upsert: options.upsert ?? config.upsert,
     }),
     options.timeoutMs || releaseUploadTimeoutMs(options.type),
@@ -8686,7 +8737,7 @@ async function uploadStorageFile(file, options = {}) {
   const publicUrl = urlData?.publicUrl || "";
   if (!publicUrl) throw new Error("Upload concluido, mas o storage nao retornou uma URL publica.");
   storageDebug("upload_success", { bucket: config.bucket, path, userId: user.id, fileSize: file.size });
-  return { bucket: config.bucket, path, publicUrl, url: publicUrl, user };
+  return { bucket: config.bucket, path, publicUrl, url: publicUrl, contentType, user };
 }
 
 async function uploadProfileAsset(file, type) {
