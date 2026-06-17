@@ -30824,18 +30824,19 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background-color: #eff3f4;
-  color: #0f1419;
-  border: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #eff3f4;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
-  transition: transform 0.1s ease, background-color 0.2s ease;
+  transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .ansend-chat-audio-player .audio-play-btn:hover {
   transform: scale(1.05);
-  background-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .ansend-chat-audio-player .audio-play-btn:active {
@@ -30845,7 +30846,8 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
 .ansend-chat-audio-player .audio-play-btn svg {
   width: 14px;
   height: 14px;
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
 }
 
 .ansend-chat-audio-player .audio-play-btn .icon-loader svg {
