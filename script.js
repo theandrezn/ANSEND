@@ -10438,8 +10438,14 @@ function writeNexoAssistantPrefs() {
 function nexoContextPayload() {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
+  const route = currentRoute();
+  const rawHash = String(location.hash || "").replace(/^#/, "");
+  const entityMatch = rawHash.match(/^(beat|perfil|comunidade)-(.+)$/);
   return {
-    route: currentRoute(),
+    route,
+    pathname: `/${route}`,
+    entityType: entityMatch?.[1] || null,
+    entityId: entityMatch?.[2] ? safeDecode(entityMatch[2]) : null,
     userId: appState.authUser?.id || "",
     profile: profile ? {
       name: display.name,
@@ -10451,6 +10457,62 @@ function nexoContextPayload() {
     catalogCount: visibleCatalogItems().length,
     publicCatalogCount: publishedCatalogItems().filter((item) => item.user_id === appState.authUser?.id).length,
   };
+}
+
+function nexoActionRouteHash(action = {}) {
+  const map = {
+    home: "feed",
+    community: "comunidade",
+    marketplace: "marketplace",
+    professionals: "produtores",
+    services: "servicos",
+    chat: "bate-papo",
+    launchMusic: "cadastrar",
+    myProfile: "perfil",
+    orders: "compras",
+    library: "biblioteca",
+    nexoAi: "ia",
+    support: "suporte",
+    settings: "configuracoes",
+  };
+  return action.hash || map[action.routeKey] || "";
+}
+
+function executeNexoAssistantActions(actions = []) {
+  const action = actions.find((item) => item?.type === "navigate");
+  if (!action) return;
+  const nextHash = nexoActionRouteHash(action);
+  if (!nextHash || nextHash === "admin") return;
+  const queryText = action.query?.q || action.params?.q || "";
+  if (queryText) {
+    sessionStorage.setItem("ansend-nexo-route-query", JSON.stringify({
+      route: nextHash,
+      q: String(queryText).slice(0, 120),
+      createdAt: Date.now(),
+    }));
+  }
+  if (location.hash.replace(/^#/, "") !== nextHash) location.hash = nextHash;
+  window.setTimeout(applyNexoPendingRouteQuery, 450);
+  showToast(`NEXO abriu ${nextHash === "produtores" ? "Profissionais" : nextHash === "cadastrar" ? "Lancar musica" : nextHash}.`, "sparkles");
+}
+
+function applyNexoPendingRouteQuery() {
+  let payload = null;
+  try {
+    payload = JSON.parse(sessionStorage.getItem("ansend-nexo-route-query") || "null");
+  } catch {
+    payload = null;
+  }
+  if (!payload?.q || Date.now() - Number(payload.createdAt || 0) > 15000) return;
+  const route = currentRoute();
+  if (payload.route && payload.route !== route) return;
+  const input = [...document.querySelectorAll("input[type='search'], input[placeholder*='Buscar'], input[placeholder*='buscar']")]
+    .find((candidate) => candidate.offsetParent !== null && !candidate.disabled);
+  if (!input) return;
+  input.value = payload.q;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.focus({ preventScroll: true });
+  sessionStorage.removeItem("ansend-nexo-route-query");
 }
 
 function syncNexoAssistantPrefsFromStorage() {
@@ -10467,12 +10529,16 @@ async function loadNexoConversationHistory() {
   appState.nexoChatHistoryLoading = true;
   renderNexoFloatingAssistant();
   try {
-    const { data: conversations, error } = await supabaseClient
-      .from("nexo_conversations")
-      .select("*")
-      .eq("user_id", appState.authUser.id)
-      .order("updated_at", { ascending: false })
-      .limit(1);
+    const { data: conversations, error } = await withTimeout(
+      supabaseClient
+        .from("nexo_conversations")
+        .select("*")
+        .eq("user_id", appState.authUser.id)
+        .order("updated_at", { ascending: false })
+        .limit(1),
+      3500,
+      "Historico da NEXO demorou para responder."
+    );
     if (error) throw error;
     const conversation = conversations?.[0] || null;
     if (!conversation) {
@@ -10481,12 +10547,16 @@ async function loadNexoConversationHistory() {
       return;
     }
     appState.nexoChatConversationId = conversation.id;
-    const { data: messages, error: messageError } = await supabaseClient
-      .from("nexo_messages")
-      .select("id,role,content,created_at")
-      .eq("conversation_id", conversation.id)
-      .order("created_at", { ascending: true })
-      .limit(80);
+    const { data: messages, error: messageError } = await withTimeout(
+      supabaseClient
+        .from("nexo_messages")
+        .select("id,role,content,created_at")
+        .eq("conversation_id", conversation.id)
+        .order("created_at", { ascending: true })
+        .limit(80),
+      3500,
+      "Mensagens da NEXO demoraram para responder."
+    );
     if (messageError) throw messageError;
     appState.nexoChatMessages = (messages || []).map((message) => ({
       id: message.id,
@@ -10496,7 +10566,8 @@ async function loadNexoConversationHistory() {
     }));
   } catch (error) {
     console.warn("[ANSEND NEXO] history load failed", error?.message || error);
-    appState.nexoChatError = "Nao foi possivel carregar o historico da NEXO agora.";
+    appState.nexoChatError = "";
+    appState.nexoChatMessages = appState.nexoChatMessages || [];
   } finally {
     appState.nexoChatHistoryLoading = false;
     renderNexoFloatingAssistant();
@@ -10584,7 +10655,7 @@ function renderNexoAssistantPanel() {
     <form class="nexo-assistant-form" autocomplete="off">
       <div class="nexo-assistant-input">
         <textarea name="message" rows="1" maxlength="4000" ${isLoading ? "disabled" : ""} placeholder="Pergunte ao NEXO"></textarea>
-        <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar para NEXO"><i data-lucide="${isLoading ? "loader-2" : "arrow-up"}"></i></button>
+        <button type="${isLoading ? "button" : "submit"}" ${isLoading ? `data-action="nexo-assistant-cancel"` : ""} aria-label="${isLoading ? "Cancelar resposta da NEXO" : "Enviar para NEXO"}"><i data-lucide="${isLoading ? "square" : "arrow-up"}"></i></button>
       </div>
     </form>
   </section>`;
@@ -10648,7 +10719,7 @@ async function callNexoChatApi(messages, { signal } = {}) {
   if (!response.ok || !data?.success) {
     throw new Error(data?.error || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.");
   }
-  return data.message;
+  return { message: data.message, actions: Array.isArray(data.actions) ? data.actions : [], meta: data.meta || null };
 }
 
 async function extractNexoIntent(message) {
@@ -10704,11 +10775,12 @@ async function sendNexoChatMessage(rawMessage) {
     const assistantMessage = {
       id: nexoChatId("assistant"),
       role: "assistant",
-      content: answer?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
-      createdAt: answer?.createdAt || new Date().toISOString(),
+      content: answer?.message?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
+      createdAt: answer?.message?.createdAt || new Date().toISOString(),
     };
     messages.push(assistantMessage);
     saveNexoMessage("assistant", assistantMessage.content, conversationId).catch((error) => console.warn("[ANSEND NEXO] assistant message persist failed", error?.message || error));
+    executeNexoAssistantActions(answer?.actions || []);
   } catch (error) {
     if (error?.name !== "AbortError") {
       appState.nexoChatError = error?.message || "Nao consegui responder agora. Tente novamente em alguns segundos.";
@@ -15138,6 +15210,14 @@ document.addEventListener("click", (event) => {
       appState.nexoAssistant.expanded = !appState.nexoAssistant.expanded;
       writeNexoAssistantPrefs();
       renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-cancel") {
+      appState.nexoAssistant.abortController?.abort?.();
+      appState.nexoChatLoading = false;
+      appState.nexoAssistant.abortController = null;
+      appState.nexoChatError = "Resposta cancelada.";
+      updateNexoSurfaces({ forceScroll: false });
       return;
     }
     if (action === "nexo-assistant-suggestion") {
