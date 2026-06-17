@@ -25643,6 +25643,82 @@ body.chat-dm-mode #appView.app-view {
   overflow: hidden !important;
   background: #000 !important;
   color: var(--chat-text) !important;
+  animation: chat-page-slide-in 180ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.chat-dm-page .chat-x-rail,
+.chat-dm-page .chat-list-column,
+.chat-dm-page .chat-thread-column {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+  animation-fill-mode: both;
+}
+
+.chat-dm-page .chat-x-rail {
+  animation-name: chat-rail-slide-in;
+}
+
+.chat-dm-page .chat-list-column {
+  animation-name: chat-list-slide-in;
+  animation-delay: 25ms;
+}
+
+.chat-dm-page .chat-thread-column {
+  animation-name: chat-thread-slide-in;
+  animation-delay: 55ms;
+}
+
+@keyframes chat-page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes chat-rail-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes chat-list-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chat-thread-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-dm-page,
+  .chat-dm-page .chat-x-rail,
+  .chat-dm-page .chat-list-column,
+  .chat-dm-page .chat-thread-column {
+    animation: none !important;
+  }
 }
 
 .chat-x-rail {

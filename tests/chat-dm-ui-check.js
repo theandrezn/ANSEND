@@ -30,6 +30,9 @@ const requiredStyles = [
   ".chat-composer-input",
   ".chat-message-retry",
   ".chat-message-row.is-mine .chat-proposal-bubble",
+  "chat-page-slide-in",
+  "chat-thread-slide-in",
+  "prefers-reduced-motion: reduce",
 ];
 
 for (const marker of requiredStyles) {
