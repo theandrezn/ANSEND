@@ -19,6 +19,7 @@
     "test:google-oauth": "node tests/google-oauth-check.js",
     "test:email-confirmation": "node tests/email-confirmation-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
+    "test:chat-focus-stability": "node tests/chat-focus-stability-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
     "test:release-secure-files": "node tests/release-secure-files-upload-check.js",
     "test:typography": "node tests/typography-font-check.js",

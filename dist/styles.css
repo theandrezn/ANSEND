@@ -25666,27 +25666,30 @@ body.chat-dm-mode #appView.app-view {
   overflow: hidden !important;
   background: #000 !important;
   color: var(--chat-text) !important;
+}
+
+.chat-dm-page.is-entering {
   animation: chat-page-slide-in 180ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
-.chat-dm-page .chat-x-rail,
-.chat-dm-page .chat-list-column,
-.chat-dm-page .chat-thread-column {
+.chat-dm-page.is-entering .chat-x-rail,
+.chat-dm-page.is-entering .chat-list-column,
+.chat-dm-page.is-entering .chat-thread-column {
   animation-duration: 220ms;
   animation-timing-function: cubic-bezier(.2, .8, .2, 1);
   animation-fill-mode: both;
 }
 
-.chat-dm-page .chat-x-rail {
+.chat-dm-page.is-entering .chat-x-rail {
   animation-name: chat-rail-slide-in;
 }
 
-.chat-dm-page .chat-list-column {
+.chat-dm-page.is-entering .chat-list-column {
   animation-name: chat-list-slide-in;
   animation-delay: 25ms;
 }
 
-.chat-dm-page .chat-thread-column {
+.chat-dm-page.is-entering .chat-thread-column {
   animation-name: chat-thread-slide-in;
   animation-delay: 55ms;
 }
@@ -25737,9 +25740,9 @@ body.chat-dm-mode #appView.app-view {
 
 @media (prefers-reduced-motion: reduce) {
   .chat-dm-page,
-  .chat-dm-page .chat-x-rail,
-  .chat-dm-page .chat-list-column,
-  .chat-dm-page .chat-thread-column {
+  .chat-dm-page.is-entering .chat-x-rail,
+  .chat-dm-page.is-entering .chat-list-column,
+  .chat-dm-page.is-entering .chat-thread-column {
     animation: none !important;
   }
 }

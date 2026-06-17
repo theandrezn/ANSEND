@@ -1360,6 +1360,7 @@ const appState = {
     emojiPickerOpen: "",
     pendingActions: {},
     failedMessages: {},
+    lastRenderedConversationId: "",
   },
   isAdmin: false,
   adminProfiles: [],
@@ -6772,12 +6773,84 @@ function refreshChatConversationList() {
   lucide.createIcons();
 }
 
-function renderChatPage({ preserveActive = false } = {}) {
+function captureChatVisualState() {
+  const chatPage = document.querySelector(".chat-dm-page");
+  if (!chatPage) return null;
+  const active = document.activeElement;
+  const composer = active?.closest?.(".chat-composer-form");
+  const composerTextarea = composer?.querySelector("textarea[name='body']");
+  const conversationId = composer?.dataset.conversationId || appState.chat.activeConversationId || "";
+  if (composerTextarea && conversationId) {
+    setChatDraft(conversationId, composerTextarea.value || "");
+  }
+  const audioStates = [...chatPage.querySelectorAll(".chat-audio-attachment audio")].map((audio) => ({
+    src: audio.currentSrc || audio.src || "",
+    currentTime: audio.currentTime || 0,
+    paused: audio.paused,
+    volume: audio.volume,
+    muted: audio.muted,
+  })).filter((item) => item.src);
+  return {
+    listScrollTop: chatPage.querySelector(".chat-conversation-list")?.scrollTop || 0,
+    messageScrollTop: chatPage.querySelector(".chat-thread-messages")?.scrollTop || 0,
+    activeSelector: active?.matches?.("[data-chat-search]")
+      ? "[data-chat-search]"
+      : active?.matches?.("[data-chat-user-search]")
+        ? "[data-chat-user-search]"
+        : composerTextarea
+          ? `.chat-composer-form[data-conversation-id="${cssEscape(conversationId)}"] textarea[name="body"]`
+          : "",
+    selectionStart: composerTextarea?.selectionStart ?? null,
+    selectionEnd: composerTextarea?.selectionEnd ?? null,
+    audioStates,
+  };
+}
+
+function restoreChatVisualState(snapshot) {
+  if (!snapshot) return;
+  window.requestAnimationFrame(() => {
+    const list = document.querySelector(".chat-conversation-list");
+    const messages = document.querySelector(".chat-thread-messages");
+    if (list) list.scrollTop = snapshot.listScrollTop || 0;
+    if (messages) messages.scrollTop = snapshot.messageScrollTop || 0;
+    if (snapshot.activeSelector) {
+      const active = document.querySelector(snapshot.activeSelector);
+      active?.focus?.({ preventScroll: true });
+      if (active?.matches?.("textarea") && snapshot.selectionStart !== null) {
+        active.setSelectionRange?.(snapshot.selectionStart, snapshot.selectionEnd ?? snapshot.selectionStart);
+      }
+    }
+    snapshot.audioStates?.forEach((state) => {
+      const audio = [...document.querySelectorAll(".chat-audio-attachment audio")].find((node) => (node.currentSrc || node.src || "") === state.src);
+      if (!audio) return;
+      audio.volume = state.volume;
+      audio.muted = state.muted;
+      if (Number.isFinite(state.currentTime)) {
+        try { audio.currentTime = state.currentTime; } catch (_) {}
+      }
+      if (!state.paused) {
+        audio.play?.().catch(() => {});
+      }
+    });
+  });
+}
+
+function shouldAnimateChatRender(nextConversationId, preserveActive) {
+  const hasExistingShell = Boolean(document.querySelector(".chat-dm-page"));
+  if (!hasExistingShell) return true;
+  if (preserveActive) return false;
+  return Boolean(nextConversationId && appState.chat.lastRenderedConversationId && appState.chat.lastRenderedConversationId !== nextConversationId);
+}
+
+function renderChatPage({ preserveActive = false, restoreVisualState = true } = {}) {
   if (!chatRequireAuth()) return;
   document.body.classList.add("chat-dm-mode");
   const requestedConversationId = chatConversationIdFromHash();
   if (requestedConversationId) appState.chat.activeConversationId = requestedConversationId;
   if (!requestedConversationId && !preserveActive) appState.chat.activeConversationId = "";
+  const activeConversationId = appState.chat.activeConversationId || "";
+  const visualSnapshot = restoreVisualState ? captureChatVisualState() : null;
+  const animateShell = shouldAnimateChatRender(activeConversationId, preserveActive);
   subscribeChatRealtime();
   const cachedInbox = hydrateChatInboxFromCache();
   const shouldRefreshInbox = !preserveActive
@@ -6795,7 +6868,7 @@ function renderChatPage({ preserveActive = false } = {}) {
     void loadChatMessages(requestedConversationId, { render: true });
   }
   const conversations = filteredChatConversations();
-  appView.innerHTML = `<main class="chat-dm-page ${appState.chat.activeConversationId ? "has-active-thread" : ""}">
+  appView.innerHTML = `<main class="chat-dm-page ${appState.chat.activeConversationId ? "has-active-thread" : ""} ${animateShell ? "is-entering" : "is-stable"}">
     <aside class="chat-x-rail" aria-label="Navegacao rapida">
       <a href="#feed" data-route="feed" aria-label="Inicio"><i data-lucide="home"></i></a>
       <a href="#nexo-feed" data-route="nexo-feed" aria-label="Feed"><i data-lucide="search"></i></a>
@@ -6840,7 +6913,8 @@ function renderChatPage({ preserveActive = false } = {}) {
   applyLocaleTextOverrides(appView);
   lucide.createIcons();
   initChatAudioPlayers();
-  queueChatScrollToBottom();
+  appState.chat.lastRenderedConversationId = activeConversationId;
+  if (restoreVisualState && !animateShell) restoreChatVisualState(visualSnapshot);
 }
 
 function hiringAvatar(display, className = "hiring-avatar") {

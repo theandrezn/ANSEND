@@ -17,6 +17,9 @@ const requiredScript = [
   "CHAT_INBOX_CACHE_KEY",
   "hydrateChatInboxFromCache",
   "writeChatInboxCache",
+  "captureChatVisualState",
+  "restoreChatVisualState",
+  "shouldAnimateChatRender",
 ];
 
 for (const marker of requiredScript) {
@@ -32,6 +35,7 @@ const requiredStyles = [
   ".chat-message-row.is-mine .chat-proposal-bubble",
   "chat-page-slide-in",
   "chat-thread-slide-in",
+  ".chat-dm-page.is-entering",
   "prefers-reduced-motion: reduce",
 ];
 
@@ -49,6 +53,13 @@ if (/background:\s*#eff3f4/.test(proposalOverride)) {
 
 if (!/\.chat-dm-page\s*\{[\s\S]*display:\s*flex\s*!important/.test(styles)) {
   throw new Error("Chat layout must keep the X-style flex viewport shell");
+}
+const baseChatBlock = styles.match(/\.chat-dm-page\s*\{[\s\S]*?\n\}/)?.[0] || "";
+if (/animation:\s*chat-/.test(baseChatBlock)) {
+  throw new Error("Base chat shell must not animate on every re-render.");
+}
+if (!/\.chat-dm-page\.is-entering\s*\{[\s\S]*animation:\s*chat-page-slide-in/.test(styles)) {
+  throw new Error("Chat entry animation must be opt-in via .is-entering.");
 }
 if (!/\.chat-list-column\s*\{[\s\S]*flex:\s*0 0 380px\s*!important/.test(styles) || !/\.chat-thread-column\s*\{[\s\S]*flex:\s*1\s*!important/.test(styles)) {
   throw new Error("Chat layout must keep the list/thread flex proportions");

@@ -601,6 +601,7 @@ for each row execute function public.set_updated_at();
 create or replace function public.validate_beat_storage_paths()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   owner_prefix text := new.user_id::text || '/';
