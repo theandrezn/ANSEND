@@ -5965,7 +5965,6 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
       ${shouldShowDescription ? `<p>${htmlEscape(description)}</p>` : ""}
       ${post.reference_links ? `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>` : ""}
     </button>
-    <div class="hiring-tags"><span>${htmlEscape(hiringCategoryLabel(post.category))}</span><span>${htmlEscape(hiringBudgetLabel(post))}</span><span>${htmlEscape(hiringDeadlineLabel(post.deadline_type))}</span><span>${htmlEscape(hiringWorkModes[post.work_mode] || post.work_mode)}</span><span data-status="${htmlEscape(post.status)}">${htmlEscape(hiringStatusLabels[post.status] || post.status)}</span></div>
     <div class="hiring-post-actions">
       <button type="button" data-action="hiring-comment-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Comentar"><i data-lucide="message-circle"></i><span>${post.metrics?.comments || 0}</span></button>
       <button type="button" class="${post.viewer?.reposted ? "is-active" : ""}" data-action="hiring-repost" data-post-id="${htmlEscape(post.id)}" aria-label="Repostar"><i data-lucide="repeat-2"></i><span>${post.metrics?.reposts || 0}</span></button>
