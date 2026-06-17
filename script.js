@@ -9,6 +9,8 @@ const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
 const AUTH_CACHE_KEY = "ansend-auth-cache-v1";
 const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
+const AUTH_PAGE_STARTED_AT = Date.now();
+const AUTH_LOGOUT_EVENT_GRACE_MS = 2000;
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
@@ -1728,6 +1730,16 @@ function persistAuthCache() {
 
 function clearAuthCache() {
   localStorage.removeItem(AUTH_CACHE_KEY);
+}
+
+function authLogoutEventTimestamp(value) {
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function isFreshAuthLogoutEvent(value) {
+  const timestamp = authLogoutEventTimestamp(value);
+  return timestamp > 0 && timestamp >= AUTH_PAGE_STARTED_AT - AUTH_LOGOUT_EVENT_GRACE_MS;
 }
 
 function nexoDefaultQuiz(prompt = "") {
@@ -15792,8 +15804,12 @@ async function handleAccountSubmit(form) {
 
 async function handleLogout() {
   localStorage.setItem(AUTH_EXPLICIT_LOGOUT_KEY, String(Date.now()));
-  if (supabaseClient && appState.authUser) {
-    await supabaseClient.auth.signOut();
+  try {
+    if (supabaseClient && appState.authUser) {
+      await supabaseClient.auth.signOut();
+    }
+  } finally {
+    localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
   }
   clearAuthenticatedSession("logout_explicit", { explicit: true });
   showToast("Você saiu da conta ANSEND", "log-out");
@@ -15813,10 +15829,14 @@ const menuToggle = document.querySelector(".menu-toggle");
 menuToggle?.addEventListener("click", () => document.body.classList.toggle("menu-open"));
 window.addEventListener("hashchange", () => renderRoutePreservingAuthFocus());
 window.addEventListener("storage", (event) => {
-  if (event.key === AUTH_EXPLICIT_LOGOUT_KEY && event.newValue) {
-    clearAuthenticatedSession("storage_logout_explicit", { explicit: true });
-    syncAccountUi();
-    renderRoutePreservingAuthFocus(true);
+  if (event.key === AUTH_EXPLICIT_LOGOUT_KEY) {
+    if (event.newValue && isFreshAuthLogoutEvent(event.newValue)) {
+      clearAuthenticatedSession("storage_logout_explicit", { explicit: true });
+      syncAccountUi();
+      renderRoutePreservingAuthFocus(true);
+    } else if (event.newValue) {
+      debugAuth("storage_logout_stale_ignored", { value: event.newValue });
+    }
     return;
   }
   if (event.key !== AUTH_CACHE_KEY || !event.newValue || appState.authUser) return;

@@ -175,6 +175,11 @@ async function run() {
     ]);
     await Promise.all([waitAuthenticated(perfil), waitAuthenticated(feed)]);
 
+    await perfil.evaluate(() => localStorage.setItem("ansend-explicit-logout-at", String(Date.now() - 60000)));
+    await feed.waitForTimeout(300);
+    const ignoredStaleLogout = await feed.evaluate(() => document.body.classList.contains("is-authenticated"));
+    if (!ignoredStaleLogout) throw new Error("A stale logout marker from another tab cleared the active session.");
+
     await perfil.evaluate(() => localStorage.setItem("ansend-test-profile-fail-next", "1"));
     await perfil.reload({ waitUntil: "domcontentloaded" });
     await waitAuthenticated(perfil);
