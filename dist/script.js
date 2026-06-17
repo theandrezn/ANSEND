@@ -3222,6 +3222,7 @@ function nexoFeedDetailPanel(item) {
 function renderNexoFeed() {
   const items = getRankedNexoFeed();
   appView.innerHTML = `<section class="nexo-feed-page" aria-label="NEXO Feed">
+    <span class="sr-only">NEXO IA</span>
     ${items.length ? `<main class="nexo-feed-stream" id="nexoFeedStream">
       ${items.map(nexoFeedCard).join("")}
     </main>` : `<main class="nexo-feed-empty" id="nexoFeedStream">
@@ -11289,7 +11290,7 @@ function scrollNexoChatToBottom() {
 
 function nexoAssistantCanRender(route = currentRoute()) {
   if (!hasAccountAccess()) return false;
-  if (["vendedor", "confirmar-email", "email-confirmed", "admin"].includes(route)) return false;
+  if (["nexo-feed", "vendedor", "confirmar-email", "email-confirmed", "admin"].includes(route)) return false;
   return true;
 }
 
