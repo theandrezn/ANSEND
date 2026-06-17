@@ -21929,9 +21929,10 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 .mini-player .mini-close,
 .player-close-button {
   position: absolute !important;
-  top: 50% !important;
-  right: 16px !important;
-  transform: translateY(-50%) !important;
+  top: calc((var(--player-height) + 130px) * -1) !important;
+  right: 24px !important;
+  bottom: auto !important;
+  transform: none !important;
   z-index: 10 !important;
   width: 28px !important;
   height: 28px !important;
@@ -21946,7 +21947,8 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 @media (max-width: 1100px) {
   .mini-player .mini-close,
   .player-close-button {
-    top: 12px !important;
+    top: calc((var(--player-height) + 126px) * -1) !important;
+    bottom: auto !important;
     transform: none !important;
   }
 }
