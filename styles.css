@@ -10126,13 +10126,13 @@ body.modal-open {
 .feed .ai-hero .an-hero-copy h1,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
-  font-family: "Inter", "Inter", sans-serif;
-  max-width: 640px;
+  font-family: var(--font-hero);
+  max-width: 560px;
   color: #fff;
-  font-size: clamp(52px, 5.2vw, 84px);
+  font-size: clamp(58px, 5.05vw, 92px);
   font-weight: 400;
-  letter-spacing: .015em;
-  line-height: .92;
+  letter-spacing: 0;
+  line-height: .9;
   text-transform: uppercase;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .72);
 }
@@ -10576,10 +10576,10 @@ body[data-route="cadastrar"] .feed {
 .feed .ai-hero .an-hero-copy h1,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
-  font-size: clamp(52px, 5.45vw, 104px);
-  line-height: .92;
-  letter-spacing: -.06em;
-  font-weight: 850;
+  font-size: clamp(58px, 5.05vw, 92px);
+  line-height: .9;
+  letter-spacing: 0;
+  font-weight: 400;
 }
 
 .feed .ai-hero .ai-diagnostic-form,
@@ -19476,8 +19476,8 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
   font-family: var(--font-hero) !important;
-  font-weight: 850 !important;
-  letter-spacing: -.06em !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
 }
 
 .feed .ai-hero .hero-morph-title,
