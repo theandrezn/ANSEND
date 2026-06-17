@@ -5,8 +5,8 @@
 ANSEND uses one shared typography contract across the platform:
 
 - UI and body text: `Inter`
-- Product headings: `Montserrat`
-- Home hero headline only: `Anton`
+- Product headings: `Inter`
+- Home hero headline: `Inter`
 
 The source of truth is in `styles.css`:
 
@@ -27,4 +27,4 @@ Do not add component-level `font-family` overrides unless a route has a document
 .font-display
 ```
 
-The home hero must keep `ANSEND` in orange and the marketplace headline in white. Keep the phrase `O marketplace` together so the headline never breaks with a lonely `O` on its own line.
+The home hero must keep `ANSEND` in orange and the marketplace headline in white. Keep `O marketplace` and `da musica` together so the headline never breaks with a lonely `O` or `DA` on its own line.

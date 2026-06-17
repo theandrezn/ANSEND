@@ -24,17 +24,17 @@
   --ansend-text: #ffffff;
   --ansend-muted: rgba(255,255,255,0.58);
   --ansend-orange: #ff6a00;
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: var(--font-sans);
-  --font-heading: "Montserrat", "Inter", system-ui, sans-serif;
-  --font-display: "Montserrat", "Inter", system-ui, sans-serif;
-  --font-hero: "Anton", "Bebas Neue", "Montserrat", sans-serif;
+  --font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-ui);
+  --font-body: var(--font-ui);
+  --font-heading: var(--font-ui);
+  --font-display: var(--font-ui);
+  --font-hero: var(--font-ui);
 }
 
 /* ANSEND typography contract.
-   Keep global UI on Inter, headings on Montserrat, and reserve Anton for the
-   home hero brand headline only. Avoid component-level font-family overrides
-   unless a route has a documented product reason. */
+   Inter is the only official ANSEND font for UI, headings, hero, buttons,
+   forms, cards, nav, and sidebars. Do not add local font-family overrides. */
 
 /* 2026-06-05: NEXO hero refinement and login-first gate. */
 body.requires-auth {
@@ -2971,7 +2971,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   padding: 0 16px;
 }
 .professional-card-name {
-  font-family: Inter, "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -2981,7 +2981,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 .professional-card-role {
   display: block;
-  font-family: Inter, "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -3645,7 +3645,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   max-width: 1400px;
   margin: 0 auto;
   color: #f3f4f6;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 /* 1. Artist Hero Banner */
@@ -5898,7 +5898,7 @@ body.onboarding-open { overflow: hidden; }
   color: white;
   background: transparent;
   line-height: 1.45;
-  font-family: 'Poppins', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Inter", system-ui, -apple-system, sans-serif;
   font-weight: 500;
 }
 .ai-input-shell textarea::placeholder {
@@ -8075,7 +8075,7 @@ body.onboarding-open { overflow: hidden; }
   position: relative;
   z-index: 2;
   color: #ffffff !important;
-  font-family: "Poppins", sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 22px !important;
   font-weight: 800 !important;
   letter-spacing: 0.5px !important;
@@ -10123,7 +10123,7 @@ body.modal-open {
 .feed .ai-hero .an-hero-copy h1,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
-  font-family: "Bebas Neue", "Plus Jakarta Sans", sans-serif;
+  font-family: "Inter", "Inter", sans-serif;
   max-width: 640px;
   color: #fff;
   font-size: clamp(52px, 5.2vw, 84px);
@@ -10573,8 +10573,10 @@ body[data-route="cadastrar"] .feed {
 .feed .ai-hero .an-hero-copy h1,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
-  font-size: clamp(58px, 5.05vw, 92px);
-  line-height: .9;
+  font-size: clamp(52px, 5.45vw, 104px);
+  line-height: .92;
+  letter-spacing: -.06em;
+  font-weight: 850;
 }
 
 .feed .ai-hero .ai-diagnostic-form,
@@ -11621,7 +11623,7 @@ body.onboarding-open {
   display: flex;
   flex-direction: column;
   color: #ffffff;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   letter-spacing: -0.01em;
 }
 
@@ -11644,7 +11646,7 @@ body.onboarding-open {
   border: none;
   color: #a1a1aa;
   cursor: pointer;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -11691,7 +11693,7 @@ body.onboarding-open {
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #a1a1aa;
   cursor: pointer;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -11719,7 +11721,7 @@ body.onboarding-open {
 }
 
 .spotify-quiz-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: clamp(38px, 6vw, 68px);
   font-weight: 400;
   text-align: center;
@@ -11733,7 +11735,7 @@ body.onboarding-open {
 }
 
 .spotify-quiz-subtitle {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 400;
   font-size: 15px;
   color: #a1a1aa;
@@ -11778,7 +11780,7 @@ body.onboarding-open {
   background: rgba(255, 255, 255, 0.03);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 16px;
   font-weight: 500;
   outline: none;
@@ -11894,7 +11896,7 @@ body.onboarding-open {
 }
 
 .spotify-option-card.is-circle span {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: #e4e4e7;
@@ -11908,7 +11910,7 @@ body.onboarding-open {
 }
 
 .spotify-option-card.is-circle small {
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 11px;
   color: #a1a1aa;
   max-width: 130px;
@@ -11989,7 +11991,7 @@ body.onboarding-open {
 }
 
 .spotify-option-card.is-gradient span {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 19px;
   font-weight: 800;
   color: #ffffff;
@@ -12000,7 +12002,7 @@ body.onboarding-open {
 }
 
 .spotify-option-card.is-gradient small {
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
@@ -12088,7 +12090,7 @@ body.onboarding-open {
   padding: 8px 24px;
   color: #e4e4e7;
   background: rgba(255, 255, 255, 0.03);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 500;
   font-size: 14px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -12123,7 +12125,7 @@ body.onboarding-open {
   background: rgba(255, 255, 255, 0.02);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 15px;
   font-weight: 500;
   line-height: 1.5;
@@ -12149,7 +12151,7 @@ body.onboarding-open {
   border: none;
   padding: 14px 48px;
   border-radius: 99px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
@@ -12529,7 +12531,7 @@ body.onboarding-open {
 
 .minimal-beat-card .card-title,
 .minimal-playlist-card .card-title {
-  font-family: 'Schibsted Grotesk', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 15px !important;
   font-weight: 750 !important;
   color: white !important;
@@ -12542,7 +12544,7 @@ body.onboarding-open {
 
 .minimal-beat-card .card-producer,
 .minimal-playlist-card .card-subtitle {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 12px !important;
   font-weight: 500 !important;
   color: #a0a0a0 !important;
@@ -12596,7 +12598,7 @@ body.onboarding-open {
   border: 1px solid var(--buy-green) !important;
   background: transparent !important;
   color: var(--buy-green) !important;
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
@@ -13266,7 +13268,7 @@ body.onboarding-open {
 }
 
 .quick-action-card strong {
-  font-family: 'Schibsted Grotesk', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 15px !important;
   font-weight: 750 !important;
   color: white !important;
@@ -13279,7 +13281,7 @@ body.onboarding-open {
 }
 
 .quick-action-card span {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
   font-size: 11.5px !important;
   color: #a5a5a5 !important;
   line-height: 1.45 !important;
@@ -13418,7 +13420,7 @@ body.onboarding-open {
 }
 
 .nexo-minimal-title {
-  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: "Inter", 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
   font-weight: 800 !important;
   font-size: clamp(34px, 3.6vw, 54px) !important;
   line-height: 0.98 !important;
@@ -13462,7 +13464,7 @@ body.onboarding-open {
   outline: none;
   resize: none;
   color: #f5f5f5;
-  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 650;
   font-size: 14.5px;
   line-height: 1.5;
@@ -13522,7 +13524,7 @@ body.onboarding-open {
   color: #d4d4d8;
   padding: 6px 14px;
   border-radius: 8px;
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 750;
   display: flex;
@@ -13587,7 +13589,7 @@ body.onboarding-open {
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 10px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 500;
   white-space: nowrap;
   opacity: 0;
@@ -13633,7 +13635,7 @@ body.onboarding-open {
 }
 
 .nexo-action-btn span {
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-weight: 650;
   font-size: 11.5px;
   letter-spacing: -0.01em;
@@ -13652,7 +13654,7 @@ body.onboarding-open {
   gap: 8px;
   margin-top: 24px;
   color: #737373;
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.01em;
@@ -13696,7 +13698,7 @@ body.onboarding-open {
 }
 
 .nexo-minimal-placeholder p {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 300;
   font-size: 13px;
   line-height: 1.6;
@@ -13720,7 +13722,7 @@ body.onboarding-open {
 .nexo-minimal-container button,
 .nexo-minimal-container textarea,
 .nexo-minimal-container input {
-  font-family: 'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: "Inter", 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 .nexo-minimal-plan-grid {
@@ -13748,7 +13750,7 @@ body.onboarding-open {
 .nexo-minimal-plan-badge {
   display: inline-block;
   color: var(--orange);
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -13756,7 +13758,7 @@ body.onboarding-open {
 }
 
 .nexo-minimal-plan-header h2 {
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif !important;
+  font-family: "Inter", 'Inter', system-ui, sans-serif !important;
   font-weight: 850 !important;
   font-size: clamp(20px, 2.2vw, 28px) !important;
   color: #ffffff !important;
@@ -13765,7 +13767,7 @@ body.onboarding-open {
 }
 
 .nexo-minimal-plan-combo {
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: #a3a3a3;
@@ -13792,7 +13794,7 @@ body.onboarding-open {
   align-items: flex-start;
   gap: 12px;
   color: #e4e4e7;
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-weight: 560;
   font-size: 13.5px;
   line-height: 1.45;
@@ -13818,7 +13820,7 @@ body.onboarding-open {
   border-radius: 10px;
   color: #ffffff;
   padding: 10px 16px;
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-family: "Inter", 'Inter', system-ui, sans-serif;
   font-weight: 760;
   font-size: 12px;
   display: inline-flex;
@@ -13901,14 +13903,14 @@ body.onboarding-open {
 }
 
 .timeline-step-content strong {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 500;
   font-size: 14px;
   color: #ffffff;
 }
 
 .timeline-step-content span {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 300;
   font-size: 12.5px;
   color: #a3a3a3;
@@ -13950,7 +13952,7 @@ body.onboarding-open {
 }
 
 .airbit-track-row {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, "Inter", Inter, sans-serif !important;
   display: grid !important;
   grid-template-columns: 48px minmax(200px, 1.2fr) minmax(200px, 1fr) auto !important;
   gap: 16px !important;
@@ -14057,7 +14059,7 @@ button.airbit-cover {
   font-weight: 900 !important;
   letter-spacing: 0.5px !important;
   text-align: center !important;
-  font-family: 'Poppins', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
 }
 
 button.airbit-track-title {
@@ -14160,7 +14162,7 @@ button.airbit-track-title {
   font-weight: 600 !important;
   transition: all 0.2s ease !important;
   cursor: pointer !important;
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
 }
 
 .airbit-tag-chip:hover {
@@ -14800,7 +14802,7 @@ body:has(.nexo-feed-page) .footer {
 .nexo-feed-rail h1 {
   max-width: 8ch;
   margin: 0;
-  font-family: var(--font-display, Poppins, sans-serif);
+  font-family: var(--font-display, "Inter", sans-serif);
   font-size: clamp(34px, 4vw, 58px);
   line-height: .9;
   letter-spacing: 0;
@@ -14986,7 +14988,7 @@ body:has(.nexo-feed-page) .footer {
   font-size: clamp(34px, 5vw, 66px);
   line-height: .92;
   letter-spacing: 0;
-  font-family: var(--font-display, Poppins, sans-serif);
+  font-family: var(--font-display, "Inter", sans-serif);
 }
 
 .nexo-feed-copy p {
@@ -15874,7 +15876,7 @@ body:has(.nexo-feed-page) .footer {
   margin: 0;
   max-width: 12ch;
   color: #fff;
-  font-family: var(--font-display, Poppins, sans-serif);
+  font-family: var(--font-display, "Inter", sans-serif);
   font-size: clamp(34px, 5.4vw, 58px);
   line-height: .92;
   letter-spacing: 0;
@@ -16489,7 +16491,7 @@ body.nexo-feed-comments-open {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   background: rgba(255, 255, 255, 0.04) !important;
   color: rgba(245, 245, 245, 0.8) !important;
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif !important;
+  font-family: "Inter", 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
@@ -17050,7 +17052,7 @@ body.nexo-feed-comments-open {
   margin: 0;
   perspective: 900px;
   color: #fff;
-  font-family: "Bebas Neue", "Poppins", sans-serif;
+  font-family: "Inter", "Inter", sans-serif;
   font-size: clamp(52px, 10vw, 148px);
   line-height: .88;
   letter-spacing: .012em;
@@ -17173,7 +17175,7 @@ body.nexo-feed-comments-open {
   padding: 0 0 140px;
   background: #050505;
   color: #fff;
-  font-family: "Inter", "Schibsted Grotesk", system-ui, sans-serif;
+  font-family: "Inter", "Inter", system-ui, sans-serif;
 }
 
 .release-container {
@@ -18833,7 +18835,7 @@ body.release-mode {
   padding: 0 !important;
   overflow: hidden auto;
   background: #000 !important;
-  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+  font-family: "Inter", "Inter", system-ui, sans-serif !important;
   z-index: 10;
   border: 1px solid rgba(255, 106, 0, .18);
   border-radius: 22px;
@@ -19264,7 +19266,7 @@ body.release-mode {
   border-radius: 12px;
   background: rgba(255, 255, 255, .035);
   color: #fff;
-  font: 800 13px/1.4 "Schibsted Grotesk", "Poppins", system-ui, sans-serif;
+  font: 800 13px/1.4 "Inter", "Inter", system-ui, sans-serif;
   outline: 0;
 }
 
@@ -19448,7 +19450,7 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 }
 
 .nexo-minimal-title {
-  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+  font-family: "Inter", "Inter", system-ui, sans-serif !important;
   font-weight: 760 !important;
   letter-spacing: -.055em !important;
 }
@@ -19471,8 +19473,8 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
   font-family: var(--font-hero) !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
+  font-weight: 850 !important;
+  letter-spacing: -.06em !important;
 }
 
 .feed .ai-hero .hero-morph-title,
@@ -19654,7 +19656,7 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 }
 
 .nexo-minimal-title {
-  font-family: "Schibsted Grotesk", "Poppins", system-ui, sans-serif !important;
+  font-family: "Inter", "Inter", system-ui, sans-serif !important;
   font-weight: 760 !important;
   letter-spacing: -.055em !important;
 }
@@ -21285,7 +21287,7 @@ body[data-route="feed"] .footer.cinematic-footer:not([hidden]) {
   overflow: hidden !important;
   background: #000000 !important;
   color: #ffffff !important;
-  font-family: 'Plus Jakarta Sans', "Poppins", system-ui, sans-serif;
+  font-family: "Inter", "Inter", system-ui, sans-serif;
   z-index: 10 !important;
   padding: 80px 40px 24px 40px !important;
   box-sizing: border-box !important;
@@ -22324,7 +22326,7 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 .professionals-directory {
   gap: 24px;
   padding-top: 0;
-  font-family: Inter, "SF Pro Display", "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Inter", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
@@ -22573,7 +22575,7 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 }
 
 .professional-card-name {
-  font-family: Inter, "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -22584,7 +22586,7 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 
 .professional-card-role {
   display: block;
-  font-family: Inter, "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -29054,7 +29056,7 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
 }
 
 .notification-dropdown-header h3 {
-  font-family: "Inter", "Plus Jakarta Sans", sans-serif !important;
+  font-family: "Inter", "Inter", sans-serif !important;
   font-size: 16px !important;
   font-weight: 700 !important;
   color: #ffffff !important;
@@ -29345,4 +29347,38 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
   .notification-list {
     max-height: calc(80vh - 120px) !important;
   }
+}
+
+/* Final typography guard.
+   This neutralizes legacy route/component font-family declarations so the app
+   cannot drift back to local component stacks. SVG icon internals are
+   intentionally not targeted. */
+html,
+body,
+body :where(a, abbr, address, article, aside, b, blockquote, button, caption, cite, code, dd, details, dialog, div, dl, dt, em, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, input, kbd, label, legend, li, main, mark, menu, nav, ol, option, output, p, pre, section, select, small, span, strong, summary, table, tbody, td, textarea, tfoot, th, thead, time, tr, u, ul) {
+  font-family: var(--font-ui) !important;
+}
+
+button,
+input,
+textarea,
+select,
+.ai-inline-submit,
+.sidebar,
+.sidebar *,
+.floating-navbar,
+.floating-navbar *,
+.navbar-auth-btn,
+.navbar-link,
+.ai-input-shell,
+.ai-input-shell *,
+.hero-morph-title,
+.hero-morph-title * {
+  font-family: var(--font-ui) !important;
+}
+
+.ai-inline-submit {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.01em !important;
 }

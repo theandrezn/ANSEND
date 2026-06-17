@@ -19,6 +19,7 @@
     "test:email-confirmation": "node tests/email-confirmation-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
+    "test:typography": "node tests/typography-font-check.js",
     "test:i18n": "node tests/i18n-language-check.js",
     "test:recommendations": "node tests/recommendations-architecture-check.js",
     "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js"

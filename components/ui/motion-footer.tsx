@@ -15,10 +15,8 @@ if (typeof window !== "undefined") {
 // 1. THEME-ADAPTIVE INLINE STYLES
 // -------------------------------------------------------------------------
 const STYLES = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
-
 .cinematic-footer-wrapper {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-ui, 'Inter', system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   
   /* Dynamic Variables using standard shadcn/tailwind v4 tokens */
