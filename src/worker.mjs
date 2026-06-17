@@ -977,7 +977,6 @@ async function handleOrderDownload(request, env) {
 
   return jsonResponse({ success: true, download_url: absoluteSignedUrl });
 }
-}
 
 export default {
   async fetch(request, env) {
