@@ -1,4 +1,4 @@
-﻿const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
+const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
 const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
 const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
 const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
@@ -8467,7 +8467,9 @@ function renderPublicProfile() {
     return;
   }
   trackUserEvent("view", "professional", profile.id, { source: "public-profile" });
-  renderSpotifyProfile({ profile, isOwner: false });
+  const current = activeProfile();
+  const isOwner = current && String(profile.id) === String(current.id);
+  renderSpotifyProfile({ profile, isOwner });
 }
 
 async function fileToDataUrl(file) {
