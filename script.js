@@ -6,7 +6,7 @@ const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
-const ANSEND_PUBLIC_APP_URL = "https://ansend.andrrluis86.workers.dev";
+const ANSEND_PUBLIC_APP_URL = "https://ansendmusic.site";
 const ANSEND_BUILD_ID = window.ANSEND_BUILD_ID || "dev";
 const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
@@ -9732,10 +9732,15 @@ function registerAuthStateListener() {
           touchLogin: event === "SIGNED_IN",
           lastLoginAt: event === "SIGNED_IN" ? new Date().toISOString() : null,
         });
+        const shouldRedirectAfterOAuth = event === "SIGNED_IN" && session?.user && hasOAuthRedirectIntent();
         if (event === "SIGNED_IN") {
           clearOAuthRedirectIntent();
           clearEmailConfirmation();
           clearEmailConfirmationIntent();
+        }
+        if (shouldRedirectAfterOAuth) {
+          redirectAfterLogin();
+          return;
         }
         renderApplication(oldUserId !== (appState.authUser?.id || null) || event === "SIGNED_OUT");
       });
@@ -15861,20 +15866,19 @@ function setAuthSubmitState(form, isLoading) {
 
 function redirectAfterLogin() {
   const targetHash = "#perfil";
+  if (location.pathname === "/auth/callback") {
+    window.history.replaceState({}, "", `/${location.search || ""}${location.hash || ""}`);
+  }
   if (location.hash !== targetHash) location.hash = targetHash;
   renderRoutePreservingAuthFocus(true);
 }
 
 function publicAppUrl() {
-  const configuredSiteUrl = SUPABASE_CONFIG.siteUrl || SUPABASE_CONFIG.siteURL || ANSEND_PUBLIC_APP_URL;
-  const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
-  if (configuredSiteUrl && isLocalHost) return configuredSiteUrl;
-  if (configuredSiteUrl && !location.origin.includes(new URL(ANSEND_PUBLIC_APP_URL).hostname)) return configuredSiteUrl;
-  return location.origin;
+  return /^https?:\/\//i.test(location.origin) ? location.origin : ANSEND_PUBLIC_APP_URL;
 }
 
 function googleOAuthRedirectUrl() {
-  const url = new URL(publicAppUrl());
+  const url = new URL("/auth/callback", publicAppUrl());
   url.searchParams.set("ansend_oauth", "google");
   return url.toString();
 }
@@ -15898,7 +15902,8 @@ function clearOAuthRedirectIntent() {
   url.searchParams.delete("error");
   url.searchParams.delete("error_code");
   url.searchParams.delete("error_description");
-  if (url.href !== window.location.href) window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  const pathname = url.pathname === "/auth/callback" ? "/" : url.pathname;
+  if (url.href !== window.location.href || pathname !== url.pathname) window.history.replaceState({}, "", `${pathname}${url.search}${url.hash}`);
 }
 
 async function validateOAuthProviderUrl(url) {

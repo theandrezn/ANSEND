@@ -6,7 +6,7 @@ O login com Google da ANSEND usa o projeto Supabase `qxujynzqdursxaehchik`.
 
 Crie um OAuth Client do tipo `Web application` e configure:
 
-- Authorized JavaScript origin: `https://ansend.andrrluis86.workers.dev`
+- Authorized JavaScript origin: `https://ansendmusic.site`
 - Authorized redirect URI: `https://qxujynzqdursxaehchik.supabase.co/auth/v1/callback`
 
 Guarde o Client ID e o Client Secret.
@@ -22,37 +22,33 @@ Em `Authentication > Providers > Google`:
 
 Em `Authentication > URL Configuration`:
 
-- Site URL: `https://ansend.andrrluis86.workers.dev`
+- Site URL: `https://ansendmusic.site`
 - Redirect URLs:
-  - `https://ansend.andrrluis86.workers.dev`
-  - `https://ansend.andrrluis86.workers.dev/**`
+  - `https://ansendmusic.site`
+  - `https://ansendmusic.site/**`
+  - `https://ansendmusic.site/auth/callback`
 
-Remova entradas antigas como:
+Remova entradas antigas de producao que apontem para dominios de preview, worker ou qualquer origem diferente de `https://ansendmusic.site`.
 
-```text
-http://localhost:3000
-http://localhost:3000/**
-```
-
-Se o `Site URL` continuar em `localhost:3000`, o Supabase pode concluir o OAuth e devolver `#access_token` para localhost, quebrando o login em producao.
+Se o `Site URL` continuar no dominio antigo, o Supabase pode concluir o OAuth e salvar a sessao em outra origem, deixando `ansendmusic.site` deslogado.
 
 ## Nome mostrado pelo Google
 
 Configure o nome do aplicativo como `ANSEND` no Google Cloud em `APIs & Services > OAuth consent screen`.
 
-Mesmo com o nome do app correto, o Google pode mostrar `qxujynzqdursxaehchik.supabase.co` porque o callback OAuth passa pelo domínio padrão do Supabase:
+Mesmo com o nome do app correto, o Google pode mostrar `qxujynzqdursxaehchik.supabase.co` porque o callback OAuth passa pelo dominio padrao do Supabase:
 
 ```text
 https://qxujynzqdursxaehchik.supabase.co/auth/v1/callback
 ```
 
-Para remover completamente esse domínio da tela do Google, configure um domínio customizado de Auth no Supabase, por exemplo:
+Para remover completamente esse dominio da tela do Google, configure um dominio customizado de Auth no Supabase, por exemplo:
 
 ```text
-https://auth.ansend.com.br/auth/v1/callback
+https://auth.ansendmusic.site/auth/v1/callback
 ```
 
-Depois disso, substitua o Authorized redirect URI no Google Cloud pelo callback do domínio customizado.
+Depois disso, substitua o Authorized redirect URI no Google Cloud pelo callback do dominio customizado.
 
 ## CLI
 

@@ -5,7 +5,7 @@ async function run() {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   
   console.log("Navigating to live homepage...");
-  await page.goto("https://ansend.andrrluis86.workers.dev/");
+  await page.goto("https://ansendmusic.site/");
   await page.waitForTimeout(2000);
   
   // Login if gate exists

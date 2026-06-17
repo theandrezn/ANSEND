@@ -5,7 +5,7 @@ async function run() {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   
   console.log("Navigating to live homepage vendedor route...");
-  await page.goto("https://ansend.andrrluis86.workers.dev/#vendedor");
+  await page.goto("https://ansendmusic.site/#vendedor");
   await page.waitForTimeout(3000);
   
   console.log("Checking if email input exists...");

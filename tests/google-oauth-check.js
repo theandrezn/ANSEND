@@ -23,8 +23,15 @@ function serveStatic(req, res) {
 
   fs.readFile(filePath, (error, content) => {
     if (error) {
-      res.writeHead(404);
-      res.end("Not found");
+      fs.readFile(path.join(root, "index.html"), (fallbackError, fallbackContent) => {
+        if (fallbackError) {
+          res.writeHead(404);
+          res.end("Not found");
+          return;
+        }
+        res.writeHead(200, { "Content-Type": mimeTypes[".html"] });
+        res.end(fallbackContent);
+      });
       return;
     }
     res.writeHead(200, { "Content-Type": mimeTypes[path.extname(filePath).toLowerCase()] || "application/octet-stream" });
@@ -51,7 +58,7 @@ function supabaseMock() {
       };
       const session = { user, access_token: "google-token", expires_at: Math.floor(Date.now() / 1000) + 3600 };
       let profile = null;
-      const hasCallback = location.search.includes("ansend_oauth=google");
+      const hasCallback = location.pathname === "/auth/callback" && location.search.includes("ansend_oauth=google");
       function tableApi(table) {
         const api = {
           select() { return api; },
@@ -114,13 +121,14 @@ async function run() {
     const oauthArgs = await page.evaluate(() => window.__oauthArgs);
 
     if (oauthArgs.provider !== "google") throw new Error(`Wrong provider: ${JSON.stringify(oauthArgs)}`);
-    const origin = "https://ansend.andrrluis86.workers.dev";
+    const origin = `http://127.0.0.1:${port}`;
     if (oauthArgs.options.skipBrowserRedirect !== true) throw new Error("Google OAuth should validate before browser redirect");
-    if (!oauthArgs.options.redirectTo.startsWith(origin)) throw new Error(`Wrong redirectTo: ${oauthArgs.options.redirectTo}`);
+    if (!oauthArgs.options.redirectTo.startsWith(`${origin}/auth/callback`)) throw new Error(`Wrong redirectTo: ${oauthArgs.options.redirectTo}`);
+    if (oauthArgs.options.redirectTo.includes("/#perfil")) throw new Error(`OAuth redirectTo must not go directly to #perfil: ${oauthArgs.options.redirectTo}`);
     if (!oauthArgs.options.redirectTo.includes("ansend_oauth=google")) throw new Error(`Missing OAuth callback marker: ${oauthArgs.options.redirectTo}`);
 
     const callbackPage = await context.newPage();
-    await callbackPage.goto(`/index.html?ansend_oauth=google`, { waitUntil: "domcontentloaded" });
+    await callbackPage.goto(`/auth/callback?ansend_oauth=google`, { waitUntil: "domcontentloaded" });
     await callbackPage.waitForFunction(() => location.hash === "#perfil", null, { timeout: 30000 });
     const upsert = await callbackPage.evaluate(() => window.__profileUpsert);
     const update = await callbackPage.evaluate(() => window.__profileUpdate);

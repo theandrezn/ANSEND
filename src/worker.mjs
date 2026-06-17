@@ -1042,6 +1042,20 @@ export default {
       return withSecurityHeaders(response, request);
     }
 
+    if (url.pathname === "/auth/callback") {
+      const appUrl = new URL("/", request.url);
+      response = await env.ASSETS.fetch(new Request(appUrl, request));
+      const headers = new Headers(response.headers);
+      headers.set("content-type", "text/html; charset=utf-8");
+      headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      response = new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+      return withSecurityHeaders(response, request);
+    }
+
     response = await env.ASSETS.fetch(request);
     if (response.ok && url.pathname.startsWith("/assets/")) {
       const headers = new Headers(response.headers);

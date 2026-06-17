@@ -1,10 +1,11 @@
 project_id = "qxujynzqdursxaehchik"
 
 [auth]
-site_url = "https://ansend.andrrluis86.workers.dev"
+site_url = "https://ansendmusic.site"
 additional_redirect_urls = [
-  "https://ansend.andrrluis86.workers.dev",
-  "https://ansend.andrrluis86.workers.dev/**"
+  "https://ansendmusic.site",
+  "https://ansendmusic.site/**",
+  "https://ansendmusic.site/auth/callback"
 ]
 
 [auth.email]
