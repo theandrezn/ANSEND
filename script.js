@@ -1299,6 +1299,7 @@ const appState = {
     conversations: [],
     messages: {},
     loading: false,
+    submitting: false,
     error: "",
     detailId: "",
     lastLoadedAt: 0,
@@ -5161,7 +5162,26 @@ function invalidateHiringCache() {
   appState.hiring.lastLoadedAt = 0;
 }
 
+function waitForHiringAuthReady(timeoutMs = 4500) {
+  if (!supabaseClient || appState.authReady || !appState.authLoading) return Promise.resolve();
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const tick = () => {
+      if (appState.authReady || !appState.authLoading || Date.now() - startedAt >= timeoutMs) {
+        resolve();
+        return;
+      }
+      window.setTimeout(tick, 80);
+    };
+    tick();
+  });
+}
+
 function hiringRequireAuth() {
+  if (appState.authLoading && !appState.authReady) {
+    showToast("Validando sua sessao na Comunidade ANSEND...", "loader-2");
+    return false;
+  }
   if (hasAccountAccess()) return true;
   showToast("Entre para interagir com a Comunidade ANSEND.", "log-in");
   location.hash = "vendedor";
@@ -5278,7 +5298,7 @@ async function getCommunityProfilesForIds(userIds = []) {
   const stop = perfStart("Community profiles query");
   const { data, error } = await withTimeout(
     supabaseClient.from("public_profiles").select(HIRING_PROFILE_SELECT).in("id", ids).limit(ids.length),
-    1800,
+    6000,
     "A Comunidade ANSEND demorou para carregar perfis."
   );
   stop();
@@ -5297,7 +5317,7 @@ async function getCommunityRecommendedProfiles({ limit = 4 } = {}) {
       .eq("is_public", true)
       .order("updated_at", { ascending: false })
       .limit(limit),
-    1800,
+    6000,
     "A Comunidade ANSEND demorou para carregar profissionais."
   );
   stop();
@@ -5311,7 +5331,7 @@ async function getFollowingIdsForCommunity() {
   const stop = perfStart("Community following query");
   const { data, error } = await withTimeout(
     supabaseClient.from("user_follows").select("following_id").eq("follower_id", appState.authUser.id).limit(200),
-    1500,
+    5000,
     "A Comunidade ANSEND demorou para carregar quem voce segue."
   );
   stop();
@@ -5346,7 +5366,7 @@ async function queryHiringPosts(detailId = hiringDetailIdFromHash()) {
   if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
   if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
 
-  const { data, error } = await withTimeout(query, 2200, "A Comunidade ANSEND demorou para responder.");
+  const { data, error } = await withTimeout(query, 9000, "A Comunidade ANSEND demorou para responder.");
   stop();
   if (error) throw error;
   let posts = data || [];
@@ -5436,7 +5456,7 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
     supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_comments").select("id,post_id,user_id,parent_id,content,created_at").in("post_id", ids).order("created_at", { ascending: true }),
     supabaseClient.from("hiring_proposals").select("id,post_id,sender_id,receiver_id,message,proposed_amount,delivery_deadline,portfolio_links,status,created_at").in("post_id", ids).order("created_at", { ascending: false }),
-  ]), 2200, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
+  ]), 7000, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
     console.warn("[ANSEND community] engagement fallback", error?.message || error);
     return [];
   });
@@ -5549,6 +5569,7 @@ function hiringComposerReferencePopoverMarkup() {
 
 function hiringComposerMarkup() {
   const profile = profileDisplayData(activeProfile());
+  const publishLabel = appState.hiring.submitting ? "Publicando..." : "Publicar";
   return `<form class="hiring-composer" data-hiring-composer novalidate>
     ${hiringAvatar({ ...profile, name: profile.name || "ANSEND" })}
     <div class="hiring-composer-main">
@@ -5572,7 +5593,7 @@ function hiringComposerMarkup() {
           <button type="button" data-action="hiring-composer-popover" data-popover="work_mode" title="Local" aria-label="Local"><i data-lucide="map-pin"></i><span>Local</span></button>
           <button type="button" data-action="hiring-composer-popover" data-popover="deadline" title="Prazo" aria-label="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
         </div>
-        <button type="submit" class="hiring-publish-btn" disabled>Publicar</button>
+        <button type="submit" class="hiring-publish-btn" disabled>${publishLabel}</button>
       </div>
     </div>
   </form>`;
@@ -6056,11 +6077,19 @@ async function renderHiringPage(options = {}) {
 }
 
 async function submitHiringPost(form) {
+  await waitForHiringAuthReady();
   if (!hiringRequireAuth()) return;
+  if (appState.hiring.submitting) return;
   const description = String(form.elements.description?.value || "").trim();
   if (!description) {
     showToast("Escreva algo para publicar.", "triangle-alert");
     return;
+  }
+  const submitButton = form.querySelector('button[type="submit"]');
+  appState.hiring.submitting = true;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Publicando...";
   }
   const title = String(form.elements.title?.value || description.split(/\s+/).slice(0, 10).join(" ")).trim();
   const budgetType = form.elements.budget_type?.value || "fixed";
@@ -6079,18 +6108,30 @@ async function submitHiringPost(form) {
     status: "open",
     visibility: "public",
   };
-  const { data, error } = await supabaseClient.from("hiring_posts").insert(payload).select().single();
-  if (error) {
-    showToast(error.message || "Nao foi possivel publicar.", "triangle-alert");
-    return;
+  try {
+    const { data, error } = await withTimeout(
+      supabaseClient.from("hiring_posts").insert(payload).select(HIRING_POST_SELECT).single(),
+      9000,
+      "A publicacao demorou para responder. Tente novamente."
+    );
+    if (error) throw error;
+    invalidateHiringCache();
+    form.reset();
+    resetHiringComposerMeta(form);
+    appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts.filter((post) => post.id !== data.id)];
+    await loadHiringEngagement(appState.hiring.posts);
+    showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
+    renderHiringPage({ force: false });
+  } catch (error) {
+    console.warn("[ANSEND community] post insert failed", error?.message || error);
+    showToast(error.message || "Nao foi possivel publicar na comunidade.", "triangle-alert");
+  } finally {
+    appState.hiring.submitting = false;
+    if (submitButton && document.contains(submitButton)) {
+      submitButton.textContent = "Publicar";
+      submitButton.disabled = !String(form.elements.description?.value || "").trim();
+    }
   }
-  invalidateHiringCache();
-  form.reset();
-  resetHiringComposerMeta(form);
-  appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
-  await loadHiringEngagement(appState.hiring.posts);
-  showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
-  renderHiringPage({ force: false });
 }
 
 async function toggleHiringAction(kind, postId) {
@@ -14538,7 +14579,7 @@ document.addEventListener("input", (event) => {
   if (hiringComposer) {
     const description = String(hiringComposer.elements.description?.value || "").trim();
     const button = hiringComposer.querySelector('button[type="submit"]');
-    if (button) button.disabled = !description;
+    if (button) button.disabled = appState.hiring.submitting || !description;
     hiringComposer.classList.toggle("is-writing", Boolean(description || document.activeElement?.closest?.(".hiring-composer")));
     if (input.matches("textarea")) {
       input.style.height = "auto";
