@@ -21936,6 +21936,8 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
+  z-index: 9800 !important;
+  pointer-events: auto !important;
   border-color: rgba(255, 255, 255, .16) !important;
   background: rgba(255, 255, 255, .04) !important;
   color: rgba(255, 255, 255, .72) !important;
@@ -24341,6 +24343,7 @@ body[data-route="contratacoes"] #appView.app-view {
   bottom: 24px;
   z-index: 9500;
   color: var(--nexo-text);
+  pointer-events: none;
 }
 
 body.modal-open .nexo-floating-assistant,
@@ -24360,6 +24363,7 @@ body.requires-auth .nexo-floating-assistant {
   color: #eff3f4;
   box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 16px 42px rgba(0,0,0,.55), 0 0 26px rgba(255,255,255,.08);
   cursor: pointer;
+  pointer-events: auto;
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
@@ -24452,6 +24456,7 @@ body.requires-auth .nexo-floating-assistant {
   background: #000;
   box-shadow: 0 20px 80px rgba(0,0,0,.65), 0 0 34px rgba(255,255,255,.08);
   animation: nexo-assistant-in 180ms ease both;
+  pointer-events: auto;
 }
 
 .nexo-assistant-panel.is-expanded,
@@ -24769,6 +24774,11 @@ body.requires-auth .nexo-floating-assistant {
 }
 
 @media (max-width: 640px) {
+  .mini-player .mini-close {
+    top: -132px !important;
+    right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
   .nexo-floating-assistant {
     right: 18px;
     bottom: 18px;
