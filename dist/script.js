@@ -77,7 +77,7 @@ const i18n = {
     "search.placeholder": "Buscar serviços, artistas ou profissionais",
     "hero.kicker": "NEXO IA",
     "hero.titleLine1": "ANSEND",
-    "hero.titleLine2": "O marketplace inteligente da música",
+    "hero.titleLine2": "O\u00a0marketplace inteligente da música",
     "hero.subtitle": "Descreva sua música, letra, demo ou objetivo. A NEXO IA conecta você aos profissionais certos.",
     "hero.prompt": "Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente...",
     "hero.primaryCta": "Começar com IA",
@@ -578,7 +578,7 @@ const englishTextPairs = [
   ["Buscar servi\u00e7os, artistas ou profissionais", "Search services, artists, or professionals"],
   ["Buscar beats, artistas, servi\u00e7os, BPM ou vibe", "Search beats, artists, services, BPM, or vibe"],
   ["Buscar beats, artistas, BPM ou vibe", "Search beats, artists, BPM, or vibe"],
-  ["O marketplace inteligente da m\u00fasica", "The intelligent music marketplace"],
+  ["O\u00a0marketplace inteligente da m\u00fasica", "The intelligent music marketplace"],
   ["ANSEND | O marketplace inteligente da m\u00fasica", "ANSEND | The intelligent music marketplace"],
   ["O que podemos lan\u00e7ar hoje?", "What can we release today?"],
   ["Tenho uma ideia musical e preciso transformar em lan\u00e7amento profissional.", "I have a music idea and need to turn it into a professional release."],
@@ -1217,7 +1217,7 @@ const roleDashboards = {
   },
 };
 
-const heroHeadline = ["ANSEND", "O marketplace inteligente da música"];
+const heroHeadline = ["ANSEND", "O\u00a0marketplace inteligente da música"];
 
 const playlists = [
   ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],

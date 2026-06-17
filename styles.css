@@ -17,7 +17,24 @@
   --buy-green-rgb: 18, 214, 111;
   --hot: #ff6a00;
   --radius: 12px;
+  --ansend-bg: #000000;
+  --ansend-surface: #0b0b0b;
+  --ansend-surface-2: #111111;
+  --ansend-border: rgba(255,255,255,0.08);
+  --ansend-text: #ffffff;
+  --ansend-muted: rgba(255,255,255,0.58);
+  --ansend-orange: #ff6a00;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: var(--font-sans);
+  --font-heading: "Montserrat", "Inter", system-ui, sans-serif;
+  --font-display: "Montserrat", "Inter", system-ui, sans-serif;
+  --font-hero: "Anton", "Bebas Neue", "Montserrat", sans-serif;
 }
+
+/* ANSEND typography contract.
+   Keep global UI on Inter, headings on Montserrat, and reserve Anton for the
+   home hero brand headline only. Avoid component-level font-family overrides
+   unless a route has a documented product reason. */
 
 /* 2026-06-05: NEXO hero refinement and login-first gate. */
 body.requires-auth {
@@ -903,9 +920,24 @@ body {
   margin: 0;
   background: #000000;
   color: var(--text);
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
   position: relative;
+}
+
+.font-ui,
+.font-body {
+  font-family: var(--font-body) !important;
+}
+
+.font-heading {
+  font-family: var(--font-heading) !important;
+}
+
+.font-display {
+  font-family: var(--font-display) !important;
 }
 
 /* Ambient Background Glow with blurred animated blobs */
@@ -1042,7 +1074,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   letter-spacing: 0.05em;
   color: #fff;
   transition: transform 0.2s ease;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-heading);
 }
 .brand span {
   background: linear-gradient(135deg, #ff8a00, #ff5000);
@@ -1236,7 +1268,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 .sidebar-nav-item span {
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-body);
   transition: color 0.2s ease;
 }
 .sidebar-nav-item:hover {
@@ -10534,14 +10566,15 @@ body[data-route="cadastrar"] .feed {
 .feed .ai-hero .ai-hero-layout .an-hero-copy,
 .feed .ai-hero.is-beatmaker-hero .ai-hero-layout .an-hero-copy,
 .feed .ai-hero:not(.is-beatmaker-hero) .ai-hero-layout .an-hero-copy {
-  width: min(680px, 100%);
-  max-width: 680px;
+  width: min(780px, 100%);
+  max-width: 780px;
 }
 
 .feed .ai-hero .an-hero-copy h1,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1 {
-  font-size: clamp(64px, 5.7vw, 106px);
+  font-size: clamp(58px, 5.05vw, 92px);
+  line-height: .9;
 }
 
 .feed .ai-hero .ai-diagnostic-form,
@@ -16774,7 +16807,7 @@ body.nexo-feed-comments-open {
 
 .hero-morph-title .hero-morph-main {
   display: block;
-  max-width: min(720px, 100%);
+  max-width: min(780px, 100%);
   min-height: 1.84em;
   color: #fff !important;
 }
@@ -16782,6 +16815,10 @@ body.nexo-feed-comments-open {
 .hero-morph-text {
   display: inline;
   white-space: normal;
+}
+
+.hero-morph-text .hero-keep {
+  white-space: nowrap;
 }
 
 .hero-morph-cursor {
@@ -19433,9 +19470,9 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1.hero-morph-title,
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
-  font-family: "Anton", "Bebas Neue", "Poppins", sans-serif !important;
+  font-family: var(--font-hero) !important;
   font-weight: 400 !important;
-  letter-spacing: .015em !important;
+  letter-spacing: 0 !important;
 }
 
 .feed .ai-hero .hero-morph-title,
@@ -22853,7 +22890,7 @@ body .navbar-links {
 
 body .navbar-link {
   color: rgba(255, 255, 255, 0.68) !important;
-  font-family: "Inter", "Plus Jakarta Sans", sans-serif !important;
+  font-family: var(--font-body) !important;
   font-size: 14px !important;
   font-weight: 600 !important;
   text-decoration: none !important;
@@ -22888,7 +22925,7 @@ body .navbar-auth-btn {
   border-radius: 999px !important;
   padding: 0 24px !important;
   height: 44px !important;
-  font-family: "Inter", "Plus Jakarta Sans", sans-serif !important;
+  font-family: var(--font-body) !important;
   font-size: 14px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
@@ -22939,7 +22976,7 @@ body .dropdown-item {
   padding: 10px 14px !important;
   border-radius: 10px !important;
   color: #a0a0a5 !important;
-  font-family: "Inter", "Plus Jakarta Sans", sans-serif !important;
+  font-family: var(--font-body) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   text-decoration: none !important;
