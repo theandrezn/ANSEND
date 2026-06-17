@@ -786,6 +786,59 @@ async function handleNexoAnalysis(request, env) {
   }
 }
 
+async function handleChatGifs(request, env) {
+  const auth = await requireAuthenticatedUser(request, env);
+  if (auth.error) return auth.error;
+  const url = new URL(request.url);
+  const query = cleanRecommendationText(url.searchParams.get("q") || "", 80);
+  const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 16)));
+
+  try {
+    if (env.TENOR_API_KEY) {
+      const tenorUrl = new URL(query ? "https://tenor.googleapis.com/v2/search" : "https://tenor.googleapis.com/v2/featured");
+      tenorUrl.searchParams.set("key", env.TENOR_API_KEY);
+      tenorUrl.searchParams.set("client_key", "ansend_chat");
+      tenorUrl.searchParams.set("limit", String(limit));
+      tenorUrl.searchParams.set("media_filter", "gif,tinygif");
+      tenorUrl.searchParams.set("contentfilter", "medium");
+      if (query) tenorUrl.searchParams.set("q", query);
+      const response = await fetch(tenorUrl, { headers: { Accept: "application/json" } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error?.message || "Tenor indisponivel.");
+      const results = (data.results || []).map((item) => ({
+        id: item.id,
+        title: item.content_description || "GIF",
+        url: item.media_formats?.gif?.url || item.media_formats?.tinygif?.url,
+        preview: item.media_formats?.tinygif?.url || item.media_formats?.gif?.url,
+      })).filter((item) => item.url);
+      return jsonResponse({ success: true, results });
+    }
+
+    if (env.GIPHY_API_KEY) {
+      const giphyUrl = new URL(query ? "https://api.giphy.com/v1/gifs/search" : "https://api.giphy.com/v1/gifs/trending");
+      giphyUrl.searchParams.set("api_key", env.GIPHY_API_KEY);
+      giphyUrl.searchParams.set("limit", String(limit));
+      giphyUrl.searchParams.set("rating", "pg-13");
+      if (query) giphyUrl.searchParams.set("q", query);
+      const response = await fetch(giphyUrl, { headers: { Accept: "application/json" } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.message || "GIPHY indisponivel.");
+      const results = (data.data || []).map((item) => ({
+        id: item.id,
+        title: item.title || "GIF",
+        url: item.images?.original?.url || item.images?.fixed_height?.url,
+        preview: item.images?.fixed_width_small?.url || item.images?.fixed_height_small?.url || item.images?.fixed_height?.url,
+      })).filter((item) => item.url);
+      return jsonResponse({ success: true, results });
+    }
+
+    return jsonResponse({ success: false, error: "Configure TENOR_API_KEY ou GIPHY_API_KEY no Cloudflare para ativar GIFs." }, { status: 503 });
+  } catch (error) {
+    console.error("Chat GIF search failed", error?.message || error);
+    return jsonResponse({ success: false, error: "Nao foi possivel carregar GIFs agora." }, { status: 502 });
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -798,6 +851,11 @@ export default {
 
     if (url.pathname === "/api/nexo/chat") {
       response = await handleNexoChat(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/chat/gifs") {
+      response = await handleChatGifs(request, env);
       return withSecurityHeaders(response, request);
     }
 

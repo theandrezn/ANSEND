@@ -1340,6 +1340,14 @@ const appState = {
     searchTimer: null,
     drafts: {},
     draftModes: {},
+    attachmentDrafts: {},
+    uploadProgress: {},
+    composerMenuOpen: "",
+    gifPickerOpen: "",
+    gifQuery: "",
+    gifResults: [],
+    gifLoading: false,
+    emojiPickerOpen: "",
     pendingActions: {},
     failedMessages: {},
   },
@@ -5348,6 +5356,11 @@ function chatRelativeDate(value) {
 }
 
 function chatPreviewText(message) {
+  if (message?.message_type === "gif") return "GIF";
+  if (message?.message_type === "attachment" || message?.message_type === "audio") {
+    const metadata = message.metadata && typeof message.metadata === "object" ? message.metadata : {};
+    return metadata.kind === "image" ? "Imagem" : metadata.kind === "video" ? "Video" : metadata.kind === "audio" ? "Audio" : (metadata.name || "Arquivo");
+  }
   if (!message?.body) return "Nenhuma mensagem ainda";
   return String(message.body || "").replace(/\s+/g, " ").trim().slice(0, 140);
 }
@@ -5359,6 +5372,98 @@ function chatOtherParticipant(conversation) {
 
 function sanitizeChatMessage(value = "") {
   return String(value || "").replace(/\u0000/g, "").trim().slice(0, 2000);
+}
+
+function chatMessageKindFromFile(file = {}) {
+  const type = String(file.type || "").toLowerCase();
+  const ext = fileExtension(file.name || "").toLowerCase();
+  if (type.startsWith("image/") || ["jpg", "jpeg", "png", "webp"].includes(ext)) return "image";
+  if (type.startsWith("audio/") || ["mp3", "wav", "m4a", "flac"].includes(ext)) return "audio";
+  if (type.startsWith("video/") || ["mp4", "webm"].includes(ext)) return "video";
+  return "file";
+}
+
+function chatAttachmentDraft(conversationId = "") {
+  return appState.chat.attachmentDrafts[conversationId] || null;
+}
+
+function clearChatAttachmentDraft(conversationId = "") {
+  const draft = chatAttachmentDraft(conversationId);
+  if (draft?.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+  delete appState.chat.attachmentDrafts[conversationId];
+  delete appState.chat.uploadProgress[conversationId];
+}
+
+function chatAttachmentPreviewMarkup(conversationId = "") {
+  const draft = chatAttachmentDraft(conversationId);
+  if (!draft) return "";
+  const progress = appState.chat.uploadProgress[conversationId] || 0;
+  const file = draft.file || {};
+  const size = Number(file.size || 0) ? `${(Number(file.size || 0) / 1024 / 1024).toFixed(1)} MB` : "";
+  return `<section class="chat-attachment-preview" aria-label="Anexo selecionado">
+    ${draft.kind === "image" ? `<img src="${htmlEscape(draft.previewUrl)}" alt="">` : ""}
+    ${draft.kind === "video" ? `<video src="${htmlEscape(draft.previewUrl)}" controls preload="metadata"></video>` : ""}
+    <strong>${htmlEscape(file.name || "Arquivo")}</strong>
+    <small>${htmlEscape([draft.kind, size].filter(Boolean).join(" - "))}</small>
+    ${progress ? `<div class="chat-upload-progress" aria-label="Upload ${progress}%"><span style="--chat-upload-progress:${Math.max(4, progress)}%"></span></div>` : ""}
+    <div class="chat-attachment-actions">
+      <button type="button" data-action="chat-attachment-remove">Cancelar</button>
+      <button type="submit">${appState.chat.sending ? "Enviando..." : "Enviar"}</button>
+    </div>
+  </section>`;
+}
+
+function chatComposerMenuMarkup(conversationId = "") {
+  if (appState.chat.composerMenuOpen !== conversationId) return "";
+  const items = [
+    ["image", "image", "Enviar imagem", "image/jpeg,image/png,image/webp"],
+    ["video", "video", "Enviar video", "video/mp4,video/webm"],
+    ["audio", "music", "Enviar beat ou audio", "audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp4"],
+    ["document", "file-text", "Enviar documento", "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"],
+    ["file", "paperclip", "Enviar arquivo geral", ".zip,.pdf,.docx,.txt,image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/flac,video/mp4,video/webm"],
+  ];
+  return `<div class="chat-composer-menu" role="menu" aria-label="Adicionar anexo">
+    ${items.map(([kind, icon, label, accept]) => `<button type="button" role="menuitem" data-action="chat-attachment-pick" data-accept="${htmlEscape(accept)}" data-kind="${htmlEscape(kind)}"><i data-lucide="${icon}"></i>${htmlEscape(label)}</button>`).join("")}
+  </div>`;
+}
+
+const CHAT_EMOJIS = ["🔥", "🎧", "🎵", "🎶", "🚀", "💿", "🎹", "🎙️", "👏", "🙏", "💪", "❤️", "😂", "😍", "😮", "😎", "🥶", "✨", "✅", "💰", "📌", "📩", "🤝", "🏆"];
+
+function chatEmojiPickerMarkup(conversationId = "") {
+  if (appState.chat.emojiPickerOpen !== conversationId) return "";
+  return `<div class="chat-emoji-picker" role="dialog" aria-label="Selecionar emoji">
+    ${CHAT_EMOJIS.map((emoji) => `<button type="button" data-action="chat-emoji-insert" data-emoji="${htmlEscape(emoji)}">${htmlEscape(emoji)}</button>`).join("")}
+  </div>`;
+}
+
+function chatGifPickerMarkup(conversationId = "") {
+  if (appState.chat.gifPickerOpen !== conversationId) return "";
+  const query = appState.chat.gifQuery || "";
+  return `<section class="chat-gif-picker" aria-label="Selecionar GIF">
+    <label><i data-lucide="search"></i><input type="search" value="${htmlEscape(query)}" placeholder="Buscar GIF" data-chat-gif-search autocomplete="off"></label>
+    <div class="chat-gif-grid">
+      ${appState.chat.gifLoading ? `<p class="chat-load-error">Carregando GIFs...</p>` : ""}
+      ${!appState.chat.gifLoading && !appState.chat.gifResults.length ? `<p class="chat-load-error">Busque um GIF para enviar.</p>` : ""}
+      ${appState.chat.gifResults.map((gif) => `<button type="button" data-action="chat-gif-send" data-gif-url="${htmlEscape(gif.url)}" data-gif-title="${htmlEscape(gif.title || "GIF")}"><img src="${htmlEscape(gif.preview || gif.url)}" alt="${htmlEscape(gif.title || "GIF")}"></button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function chatAttachmentMetadataMarkup(metadata = {}) {
+  const kind = metadata.kind || "file";
+  const name = metadata.name || "Arquivo";
+  const url = metadata.url || "";
+  if (!url) return "";
+  if (kind === "image" || metadata.type === "gif") {
+    return `<div class="chat-attachment-message"><img src="${htmlEscape(url)}" alt="${htmlEscape(name)}" loading="lazy"></div>`;
+  }
+  if (kind === "video") {
+    return `<div class="chat-attachment-message"><video src="${htmlEscape(url)}" controls preload="metadata"></video><span>${htmlEscape(name)}</span></div>`;
+  }
+  if (kind === "audio") {
+    return `<div class="chat-attachment-message"><strong>${htmlEscape(name)}</strong><audio src="${htmlEscape(url)}" controls preload="metadata"></audio><a class="chat-attachment-file" href="${htmlEscape(url)}" download="${htmlEscape(name)}"><i data-lucide="download"></i><span>Baixar audio</span></a></div>`;
+  }
+  return `<a class="chat-attachment-file" href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer" download="${htmlEscape(name)}"><i data-lucide="file-down"></i><span>${htmlEscape(name)}</span></a>`;
 }
 
 function chatDraftFor(conversationId = "") {
@@ -5706,7 +5811,8 @@ async function sendChatMessage(form) {
   const conversationId = form?.dataset.conversationId || appState.chat.activeConversationId;
   const textarea = form?.querySelector("textarea[name='body']");
   const body = sanitizeChatMessage(textarea?.value || "");
-  if (!conversationId || !body) return;
+  const attachmentDraft = chatAttachmentDraft(conversationId);
+  if (!conversationId || (!body && !attachmentDraft)) return;
   setChatDraft(conversationId, body);
   appState.chat.sending = true;
   renderChatPage({ preserveActive: true });
@@ -5759,12 +5865,37 @@ async function sendChatMessage(form) {
       invalidateHiringCache();
     }
 
+    if (attachmentDraft && messageType === "text") {
+      appState.chat.uploadProgress[conversationId] = 12;
+      renderChatPage({ preserveActive: true });
+      const file = attachmentDraft.file;
+      const kind = attachmentDraft.kind || chatMessageKindFromFile(file);
+      const safeExt = fileExtension(file.name || "") || "bin";
+      const safeBase = sanitizeStorageSegment((file.name || "arquivo").replace(/\.[^.]+$/, ""), "chat");
+      const path = `${appState.authUser.id}/chat/${conversationId}/${Date.now()}-${safeBase}.${safeExt}`;
+      appState.chat.uploadProgress[conversationId] = 36;
+      renderChatPage({ preserveActive: true });
+      const result = await uploadStorageFile(file, { type: "chatAttachment", path, timeoutMs: 120000 });
+      appState.chat.uploadProgress[conversationId] = 100;
+      messageType = kind === "audio" ? "audio" : "attachment";
+      metadata = {
+        type: "attachment",
+        kind,
+        name: file.name || "Arquivo",
+        size: file.size || 0,
+        mime: file.type || "",
+        bucket: result.bucket,
+        path: result.path,
+        url: result.url,
+      };
+    }
+
     const { data, error } = await supabaseClient
       .from("messages")
       .insert({
         conversation_id: conversationId,
         sender_id: appState.authUser.id,
-        body: messageType === "proposal" ? chatProposalBodyFromMetadata(metadata) : body,
+        body: messageType === "proposal" ? chatProposalBodyFromMetadata(metadata) : (body || metadata.name || "Arquivo"),
         message_type: messageType,
         metadata,
       })
@@ -5774,6 +5905,7 @@ async function sendChatMessage(form) {
     appendChatMessage(data);
     if (textarea) textarea.value = "";
     setChatDraft(conversationId, "");
+    clearChatAttachmentDraft(conversationId);
     appState.chat.failedMessages[conversationId] = chatFailedMessages(conversationId).filter((item) => item.retryBody !== body);
     delete appState.chat.draftModes[conversationId];
     await loadChatConversations({ render: false });
@@ -5847,6 +5979,116 @@ async function updateChatProposalStatus(proposalId, messageId, status) {
   } catch (error) {
     console.error("[ANSEND chat] proposal status failed", error);
     showToast("Nao foi possivel atualizar a proposta.", "triangle-alert");
+  }
+}
+
+function setChatComposerPanel(conversationId = "", panel = "") {
+  appState.chat.composerMenuOpen = panel === "menu" ? conversationId : "";
+  appState.chat.gifPickerOpen = panel === "gif" ? conversationId : "";
+  appState.chat.emojiPickerOpen = panel === "emoji" ? conversationId : "";
+}
+
+function focusChatComposer(conversationId = appState.chat.activeConversationId) {
+  window.requestAnimationFrame(() => {
+    document.querySelector(`.chat-composer-form[data-conversation-id="${cssEscape(conversationId)}"] textarea[name="body"]`)?.focus({ preventScroll: true });
+  });
+}
+
+function insertChatEmoji(emoji = "") {
+  const conversationId = appState.chat.activeConversationId;
+  const textarea = document.querySelector(`.chat-composer-form[data-conversation-id="${cssEscape(conversationId)}"] textarea[name="body"]`);
+  if (!textarea || !emoji) return;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+  textarea.value = `${textarea.value.slice(0, start)}${emoji}${textarea.value.slice(end)}`;
+  const cursor = start + emoji.length;
+  textarea.setSelectionRange(cursor, cursor);
+  setChatDraft(conversationId, textarea.value);
+  appState.chat.emojiPickerOpen = "";
+  renderChatPage({ preserveActive: true });
+  focusChatComposer(conversationId);
+}
+
+function pickChatAttachment(button) {
+  const form = button.closest(".chat-composer-form");
+  const input = form?.querySelector("[data-chat-attachment-input]");
+  if (!input) return;
+  input.accept = button.dataset.accept || "";
+  input.dataset.kind = button.dataset.kind || "";
+  input.value = "";
+  input.click();
+}
+
+function setChatAttachmentFromInput(input) {
+  const form = input.closest(".chat-composer-form");
+  const conversationId = form?.dataset.conversationId || appState.chat.activeConversationId;
+  const file = input.files?.[0];
+  if (!conversationId || !file) return;
+  try {
+    validateStorageFile(file, STORAGE_UPLOAD_LIMITS.chatAttachment);
+    clearChatAttachmentDraft(conversationId);
+    const kind = chatMessageKindFromFile(file);
+    const previewUrl = ["image", "video"].includes(kind) ? URL.createObjectURL(file) : "";
+    appState.chat.attachmentDrafts[conversationId] = { file, kind, previewUrl, pickedAt: Date.now() };
+    setChatComposerPanel(conversationId, "");
+    renderChatPage({ preserveActive: true });
+    focusChatComposer(conversationId);
+  } catch (error) {
+    showToast(error?.message || "Arquivo nao permitido.", "file-warning");
+  }
+}
+
+async function loadChatGifs(query = "") {
+  const conversationId = appState.chat.activeConversationId;
+  appState.chat.gifLoading = true;
+  appState.chat.gifQuery = query;
+  renderChatPage({ preserveActive: true });
+  try {
+    const params = new URLSearchParams({ q: query || "" });
+    const response = await fetch(`/api/chat/gifs?${params.toString()}`, { headers: await recommendationAuthHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) throw new Error(data.error || "GIF indisponivel.");
+    appState.chat.gifResults = Array.isArray(data.results) ? data.results : [];
+  } catch (error) {
+    console.warn("[ANSEND chat] gif search failed", error);
+    appState.chat.gifResults = [];
+    showToast("Nao foi possivel carregar GIFs agora.", "image-off");
+  } finally {
+    appState.chat.gifLoading = false;
+    renderChatPage({ preserveActive: true });
+  }
+}
+
+async function sendChatGif(url = "", title = "GIF") {
+  if (!chatRequireAuth() || appState.chat.sending || !url) return;
+  const conversationId = appState.chat.activeConversationId;
+  if (!conversationId) return;
+  appState.chat.sending = true;
+  appState.chat.gifPickerOpen = "";
+  renderChatPage({ preserveActive: true });
+  try {
+    const metadata = { type: "gif", kind: "image", name: title || "GIF", url };
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: appState.authUser.id,
+        body: title || "GIF",
+        message_type: "gif",
+        metadata,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    appendChatMessage(data);
+    await loadChatConversations({ render: false });
+  } catch (error) {
+    console.error("[ANSEND chat] gif send failed", error);
+    showToast("Nao foi possivel enviar o GIF.", "send-x");
+  } finally {
+    appState.chat.sending = false;
+    renderChatPage({ preserveActive: true });
+    queueChatScrollToBottom();
   }
 }
 
@@ -6013,6 +6255,16 @@ function chatMessageMarkup(message) {
       </div>
     </div>`;
   }
+  if (message.message_type === "attachment" || message.message_type === "audio" || message.message_type === "gif") {
+    return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
+      <div class="chat-message-bubble">
+        ${chatAttachmentMetadataMarkup(metadata)}
+        ${message.body && message.body !== metadata.name ? `<p>${htmlEscape(message.body)}</p>` : ""}
+        <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+        ${chatMessageStatusMarkup(message)}
+      </div>
+    </div>`;
+  }
   return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
     <div class="chat-message-bubble">
       <p>${htmlEscape(message.body)}</p>
@@ -6048,6 +6300,7 @@ function renderChatThread() {
   const messages = appState.chat.messages[conversationId] || [];
   const draft = chatDraftFor(conversationId);
   const draftMode = appState.chat.draftModes[conversationId] || "";
+  const hasAttachment = Boolean(chatAttachmentDraft(conversationId));
   return `<section class="chat-thread ${messages.length ? "has-messages" : ""}">
     <header class="chat-thread-header">
       <button type="button" class="chat-back-button" data-action="chat-back-list" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
@@ -6064,12 +6317,17 @@ function renderChatThread() {
       ${!appState.chat.messagesLoading && !messages.length && !chatFailedMessages(conversationId).length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : ""}
     </div>
     <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}" data-draft-mode="${htmlEscape(draftMode)}">
-      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="Adicionar"><i data-lucide="plus"></i></button>
-      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="GIF"><span>GIF</span></button>
-      <button type="button" class="chat-composer-icon" data-action="chat-composer-focus" aria-label="Emoji"><i data-lucide="smile"></i></button>
+      ${chatComposerMenuMarkup(conversationId)}
+      ${chatGifPickerMarkup(conversationId)}
+      ${chatEmojiPickerMarkup(conversationId)}
+      ${chatAttachmentPreviewMarkup(conversationId)}
+      <input type="file" data-chat-attachment-input hidden>
+      <button type="button" class="chat-composer-icon" data-action="chat-composer-menu" aria-label="Adicionar"><i data-lucide="plus"></i></button>
+      <button type="button" class="chat-composer-icon" data-action="chat-gif-toggle" aria-label="GIF"><span>GIF</span></button>
+      <button type="button" class="chat-composer-icon" data-action="chat-emoji-toggle" aria-label="Emoji"><i data-lucide="smile"></i></button>
       <div class="chat-composer-input">
         <textarea name="body" rows="${draftMode === "proposal" ? "4" : "1"}" maxlength="2000" placeholder="${draftMode === "proposal" ? "Revise sua proposta antes de enviar" : "Comece uma nova mensagem"}" aria-label="Mensagem">${htmlEscape(draft)}</textarea>
-        <button type="submit" ${appState.chat.sending || !draft.trim() ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
+        <button type="submit" ${appState.chat.sending || (!draft.trim() && !hasAttachment) ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
       </div>
     </form>
   </section>`;
@@ -8214,6 +8472,21 @@ const STORAGE_UPLOAD_LIMITS = {
     allowedMime: ["image/jpeg", "image/png", "image/webp"],
     allowedExt: ["jpg", "jpeg", "png", "webp"],
     upsert: true,
+  },
+  chatAttachment: {
+    label: "arquivo do chat",
+    bucket: "chat-attachments",
+    folder: "chat",
+    maxBytes: 100 * 1024 * 1024,
+    allowedMime: [
+      "image/jpeg", "image/png", "image/webp",
+      "audio/mpeg", "audio/wav", "audio/x-wav", "audio/flac", "audio/mp4", "audio/aac",
+      "video/mp4", "video/webm",
+      "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain", "application/zip", "application/x-zip-compressed",
+    ],
+    allowedExt: ["jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "flac", "mp4", "webm", "pdf", "docx", "txt", "zip"],
+    upsert: false,
   },
 };
 
@@ -15250,6 +15523,43 @@ document.addEventListener("click", (event) => {
       target.closest(".chat-composer-form")?.querySelector("textarea[name='body']")?.focus();
       return;
     }
+    if (action === "chat-composer-menu") {
+      const conversationId = target.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId;
+      setChatComposerPanel(conversationId, appState.chat.composerMenuOpen === conversationId ? "" : "menu");
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-attachment-pick") {
+      pickChatAttachment(target);
+      return;
+    }
+    if (action === "chat-attachment-remove") {
+      clearChatAttachmentDraft(target.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId);
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-gif-toggle") {
+      const conversationId = target.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId;
+      const opening = appState.chat.gifPickerOpen !== conversationId;
+      setChatComposerPanel(conversationId, opening ? "gif" : "");
+      renderChatPage({ preserveActive: true });
+      if (opening && !appState.chat.gifResults.length) loadChatGifs(appState.chat.gifQuery || "");
+      return;
+    }
+    if (action === "chat-gif-send") {
+      sendChatGif(target.dataset.gifUrl || "", target.dataset.gifTitle || "GIF");
+      return;
+    }
+    if (action === "chat-emoji-toggle") {
+      const conversationId = target.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId;
+      setChatComposerPanel(conversationId, appState.chat.emojiPickerOpen === conversationId ? "" : "emoji");
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-emoji-insert") {
+      insertChatEmoji(target.dataset.emoji || target.textContent || "");
+      return;
+    }
     if (action === "chat-retry-message") {
       retryChatMessage(target.dataset.failedId || "");
       return;
@@ -16106,6 +16416,11 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const chatAttachmentInput = event.target.closest("[data-chat-attachment-input]");
+  if (chatAttachmentInput) {
+    setChatAttachmentFromInput(chatAttachmentInput);
+    return;
+  }
   const hiringFilter = event.target.closest('[data-action="hiring-filter"]');
   if (hiringFilter) {
     const key = hiringFilter.dataset.filter;
@@ -16276,6 +16591,12 @@ document.addEventListener("input", (event) => {
     appState.chat.searchTimer = window.setTimeout(() => searchChatUsers(appState.chat.userSearch), 250);
     return;
   }
+  if (input.matches?.("[data-chat-gif-search]")) {
+    appState.chat.gifQuery = input.value || "";
+    window.clearTimeout(appState.chat.searchTimer);
+    appState.chat.searchTimer = window.setTimeout(() => loadChatGifs(appState.chat.gifQuery), 350);
+    return;
+  }
   if (input.matches?.(".nexo-assistant-form textarea")) {
     input.style.height = "44px";
     input.style.height = `${Math.min(132, Math.max(44, input.scrollHeight))}px`;
@@ -16283,9 +16604,10 @@ document.addEventListener("input", (event) => {
   }
   if (input.closest?.(".chat-composer-form") && input.matches("textarea")) {
     const form = input.closest(".chat-composer-form");
-    setChatDraft(form?.dataset.conversationId || appState.chat.activeConversationId, input.value || "");
+    const conversationId = form?.dataset.conversationId || appState.chat.activeConversationId;
+    setChatDraft(conversationId, input.value || "");
     const submit = form?.querySelector("button[type='submit']");
-    if (submit) submit.disabled = appState.chat.sending || !input.value.trim();
+    if (submit) submit.disabled = appState.chat.sending || (!input.value.trim() && !chatAttachmentDraft(conversationId));
     input.style.height = "auto";
     input.style.height = `${Math.min(140, input.scrollHeight)}px`;
     return;
