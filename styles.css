@@ -30792,4 +30792,260 @@ body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
   }
 }
 
+/* Custom Chat Audio Player Style */
+.ansend-chat-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #16181a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  width: 100%;
+  max-width: 320px;
+  min-width: 250px;
+  box-sizing: border-box;
+  color: #eff3f4;
+  font-family: inherit;
+  user-select: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ansend-chat-audio-player:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Play/Pause Button */
+.ansend-chat-audio-player .audio-play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #eff3f4;
+  color: #0f1419;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.ansend-chat-audio-player .audio-play-btn:hover {
+  transform: scale(1.05);
+  background-color: #ffffff;
+}
+
+.ansend-chat-audio-player .audio-play-btn:active {
+  transform: scale(0.95);
+}
+
+.ansend-chat-audio-player .audio-play-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.ansend-chat-audio-player .audio-play-btn .icon-loader svg {
+  fill: none;
+}
+
+/* Center Info Box */
+.ansend-chat-audio-player .audio-center-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.ansend-chat-audio-player .audio-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ansend-chat-audio-player .audio-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #eff3f4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.ansend-chat-audio-player .audio-time {
+  font-size: 11px;
+  font-family: monospace;
+  color: #71767b;
+  flex-shrink: 0;
+}
+
+/* Progress Bar (Timeline) */
+.ansend-chat-audio-player .audio-timeline-container {
+  width: 100%;
+}
+
+.ansend-chat-audio-player .audio-timeline-rail {
+  position: relative;
+  height: 4px;
+  background-color: #2f3336;
+  border-radius: 2px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.ansend-chat-audio-player .audio-timeline-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background-color: #1d9bf0; /* Azul característico */
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.ansend-chat-audio-player .audio-timeline-slider {
+  position: absolute;
+  left: 0;
+  top: -6px;
+  width: 100%;
+  height: 16px;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  -webkit-appearance: none;
+}
+
+/* Aumenta trilho interativo ao passar o mouse */
+.ansend-chat-audio-player .audio-timeline-rail:hover {
+  height: 6px;
+}
+
+/* Right Controls (Volume and Download) */
+.ansend-chat-audio-player .audio-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Volume Slider Overlay */
+.ansend-chat-audio-player .audio-volume-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ansend-chat-audio-player .audio-volume-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #71767b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.ansend-chat-audio-player .audio-volume-btn:hover {
+  color: #eff3f4;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.ansend-chat-audio-player .audio-volume-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ansend-chat-audio-player .audio-volume-slider {
+  width: 0;
+  height: 4px;
+  opacity: 0;
+  background-color: #2f3336;
+  border-radius: 2px;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  -webkit-appearance: none;
+  transition: width 0.2s ease, opacity 0.2s ease;
+}
+
+.ansend-chat-audio-player .audio-volume-container:hover .audio-volume-slider,
+.ansend-chat-audio-player .audio-volume-slider:focus {
+  width: 50px;
+  opacity: 1;
+  margin-left: 4px;
+}
+
+.ansend-chat-audio-player .audio-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+
+.ansend-chat-audio-player .audio-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  background: #eff3f4;
+  cursor: pointer;
+  margin-top: -3px;
+}
+
+/* Download Button */
+.ansend-chat-audio-player .audio-download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #71767b;
+  text-decoration: none;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.ansend-chat-audio-player .audio-download-btn:hover {
+  color: #eff3f4;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.ansend-chat-audio-player .audio-download-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Reset de contêiner e overrides do chat default */
+.chat-audio-attachment {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+.chat-audio-attachment .chat-audio-loading,
+.chat-audio-attachment .chat-audio-error,
+.chat-audio-attachment .chat-attachment-file,
+.chat-audio-attachment audio {
+  display: none !important;
+}
+
+/* Ajustes no preview de rascunho de áudio */
+.chat-attachment-preview .ansend-chat-audio-player {
+  margin: 8px 0;
+  max-width: 100%;
+}
+.chat-attachment-preview audio {
+  display: none !important;
+}
+
+
 

@@ -5477,10 +5477,10 @@ function chatAttachmentPreviewMarkup(conversationId = "") {
   const size = Number(file.size || 0) ? `${(Number(file.size || 0) / 1024 / 1024).toFixed(1)} MB` : "";
   return `<section class="chat-attachment-preview" aria-label="Anexo selecionado">
     ${draft.kind === "image" ? `<img src="${htmlEscape(draft.previewUrl)}" alt="">` : ""}
-    ${draft.kind === "audio" ? `<audio src="${htmlEscape(draft.previewUrl)}" controls preload="metadata"></audio>` : ""}
+    ${draft.kind === "audio" ? ChatAudioPlayerMarkup(draft.previewUrl, file.name || "Audio", size, true) : ""}
     ${draft.kind === "video" ? `<video src="${htmlEscape(draft.previewUrl)}" controls preload="metadata"></video>` : ""}
-    <strong>${htmlEscape(file.name || "Arquivo")}</strong>
-    <small>${htmlEscape([draft.kind, size].filter(Boolean).join(" - "))}</small>
+    ${draft.kind !== "audio" ? `<strong>${htmlEscape(file.name || "Arquivo")}</strong>` : ""}
+    ${draft.kind !== "audio" ? `<small>${htmlEscape([draft.kind, size].filter(Boolean).join(" - "))}</small>` : ""}
     ${progress ? `<div class="chat-upload-progress" aria-label="Upload ${progress}%"><span style="--chat-upload-progress:${Math.max(4, progress)}%"></span></div>` : ""}
     <div class="chat-attachment-actions">
       <button type="button" data-action="chat-attachment-remove">Cancelar</button>
@@ -5525,6 +5525,229 @@ function chatGifPickerMarkup(conversationId = "") {
   </section>`;
 }
 
+function ChatAudioPlayerMarkup(url, name, sizeOrDetails = "", isPreview = false) {
+  return `
+    <div class="ansend-chat-audio-player" data-state="loading" data-preview="${isPreview}">
+      <audio src="${htmlEscape(url)}" preload="metadata"></audio>
+      
+      <button type="button" class="audio-play-btn" aria-label="Reproduzir">
+        <i data-lucide="play" class="icon-play" style="display:none;"></i>
+        <i data-lucide="pause" class="icon-pause" style="display:none;"></i>
+        <span class="icon-loader"><i class="animate-spin" data-lucide="loader-2"></i></span>
+      </button>
+      
+      <div class="audio-center-info">
+        <div class="audio-header-row">
+          <span class="audio-title" title="${htmlEscape(name)}">${htmlEscape(name)}</span>
+          <span class="audio-time">0:00 / --:--</span>
+        </div>
+        
+        <div class="audio-timeline-container">
+          <div class="audio-timeline-rail">
+            <div class="audio-timeline-fill" style="width: 0%;"></div>
+            <input type="range" class="audio-timeline-slider" min="0" max="100" value="0" aria-label="Progresso do áudio">
+          </div>
+        </div>
+      </div>
+      
+      <div class="audio-right-controls">
+        <div class="audio-volume-container">
+          <button type="button" class="audio-volume-btn" aria-label="Volume">
+            <i data-lucide="volume-2" class="icon-volume"></i>
+            <i data-lucide="volume-x" class="icon-mute" style="display:none;"></i>
+          </button>
+          <input type="range" class="audio-volume-slider" min="0" max="100" value="80" aria-label="Ajustar volume">
+        </div>
+        ${!isPreview ? `
+          <a class="audio-download-btn" href="${htmlEscape(url)}" download="${htmlEscape(name)}" aria-label="Baixar áudio" title="Baixar áudio">
+            <i data-lucide="download"></i>
+          </a>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function initChatAudioPlayers() {
+  const players = document.querySelectorAll(".ansend-chat-audio-player:not(.is-initialized)");
+  players.forEach((player) => {
+    player.classList.add("is-initialized");
+    const audio = player.querySelector("audio");
+    const playBtn = player.querySelector(".audio-play-btn");
+    const playIcon = player.querySelector(".icon-play");
+    const pauseIcon = player.querySelector(".icon-pause");
+    const loaderIcon = player.querySelector(".icon-loader");
+    
+    const timeDisplay = player.querySelector(".audio-time");
+    const timelineFill = player.querySelector(".audio-timeline-fill");
+    const timelineSlider = player.querySelector(".audio-timeline-slider");
+    
+    const volumeBtn = player.querySelector(".audio-volume-btn");
+    const volumeIcon = player.querySelector(".icon-volume");
+    const muteIcon = player.querySelector(".icon-mute");
+    const volumeSlider = player.querySelector(".audio-volume-slider");
+    
+    let isDragging = false;
+    
+    function formatTime(seconds) {
+      if (isNaN(seconds) || seconds === Infinity) return "--:--";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+    }
+    
+    function updateTimeDisplay() {
+      const current = formatTime(audio.currentTime);
+      const duration = formatTime(audio.duration);
+      timeDisplay.textContent = `${current} / ${duration}`;
+    }
+    
+    function updateProgress() {
+      if (isDragging) return;
+      if (!audio.duration) return;
+      const percent = (audio.currentTime / audio.duration) * 100;
+      timelineSlider.value = percent;
+      timelineFill.style.width = `${percent}%`;
+      updateTimeDisplay();
+    }
+    
+    // Configura eventos do elemento de áudio
+    audio.addEventListener("loadedmetadata", () => {
+      player.setAttribute("data-state", "ready");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon) playIcon.style.display = "";
+      if (pauseIcon) pauseIcon.style.display = "none";
+      updateTimeDisplay();
+    });
+    
+    if (audio.readyState >= 1) {
+      player.setAttribute("data-state", "ready");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon) playIcon.style.display = "";
+      if (pauseIcon) pauseIcon.style.display = "none";
+      updateTimeDisplay();
+    }
+    
+    audio.addEventListener("canplay", () => {
+      player.setAttribute("data-state", "ready");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon && audio.paused) playIcon.style.display = "";
+      updateTimeDisplay();
+    });
+    
+    audio.addEventListener("waiting", () => {
+      if (loaderIcon) loaderIcon.style.display = "";
+      if (playIcon) playIcon.style.display = "none";
+      if (pauseIcon) pauseIcon.style.display = "none";
+    });
+    
+    audio.addEventListener("playing", () => {
+      player.setAttribute("data-state", "playing");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon) playIcon.style.display = "none";
+      if (pauseIcon) pauseIcon.style.display = "";
+    });
+    
+    audio.addEventListener("pause", () => {
+      player.setAttribute("data-state", "paused");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon) playIcon.style.display = "";
+      if (pauseIcon) pauseIcon.style.display = "none";
+    });
+    
+    audio.addEventListener("ended", () => {
+      audio.currentTime = 0;
+      player.setAttribute("data-state", "ready");
+      if (playIcon) playIcon.style.display = "";
+      if (pauseIcon) pauseIcon.style.display = "none";
+      timelineSlider.value = 0;
+      timelineFill.style.width = "0%";
+      updateTimeDisplay();
+    });
+    
+    audio.addEventListener("timeupdate", updateProgress);
+    
+    audio.addEventListener("error", () => {
+      player.setAttribute("data-state", "error");
+      if (loaderIcon) loaderIcon.style.display = "none";
+      if (playIcon) playIcon.style.display = "";
+      if (pauseIcon) pauseIcon.style.display = "none";
+      timeDisplay.textContent = "Erro de audio";
+    });
+    
+    playBtn.addEventListener("click", () => {
+      const state = player.getAttribute("data-state");
+      if (state === "playing") {
+        audio.pause();
+      } else {
+        // Pausar outros players de chat
+        const allAudios = document.querySelectorAll(".ansend-chat-audio-player audio");
+        allAudios.forEach((otherAudio) => {
+          if (otherAudio !== audio) {
+            otherAudio.pause();
+          }
+        });
+        audio.play().catch((err) => {
+          console.warn("Falha ao reproduzir audio do chat:", err);
+        });
+      }
+    });
+    
+    timelineSlider.addEventListener("input", (e) => {
+      isDragging = true;
+      const percent = e.target.value;
+      timelineFill.style.width = `${percent}%`;
+      if (audio.duration) {
+        const tempTime = (percent / 100) * audio.duration;
+        timeDisplay.textContent = `${formatTime(tempTime)} / ${formatTime(audio.duration)}`;
+      }
+    });
+    
+    timelineSlider.addEventListener("change", (e) => {
+      if (audio.duration) {
+        audio.currentTime = (e.target.value / 100) * audio.duration;
+      }
+      isDragging = false;
+    });
+    
+    let lastVolume = 0.8;
+    audio.volume = lastVolume;
+    volumeSlider.value = lastVolume * 100;
+    
+    function updateVolumeIcon(volume) {
+      if (volume === 0 || audio.muted) {
+        volumeIcon.style.display = "none";
+        muteIcon.style.display = "";
+      } else {
+        volumeIcon.style.display = "";
+        muteIcon.style.display = "none";
+      }
+    }
+    
+    volumeSlider.addEventListener("input", (e) => {
+      const vol = e.target.value / 100;
+      audio.volume = vol;
+      audio.muted = (vol === 0);
+      lastVolume = vol > 0 ? vol : lastVolume;
+      updateVolumeIcon(vol);
+    });
+    
+    volumeBtn.addEventListener("click", () => {
+      if (audio.muted || audio.volume === 0) {
+        audio.muted = false;
+        audio.volume = lastVolume || 0.8;
+        volumeSlider.value = audio.volume * 100;
+        updateVolumeIcon(audio.volume);
+      } else {
+        lastVolume = audio.volume;
+        audio.muted = true;
+        volumeSlider.value = 0;
+        updateVolumeIcon(0);
+      }
+    });
+  });
+}
+
 function chatAttachmentMetadataMarkup(metadata = {}) {
   const kind = chatAttachmentKindFromMetadata(metadata);
   const name = metadata.name || "Arquivo";
@@ -5540,13 +5763,8 @@ function chatAttachmentMetadataMarkup(metadata = {}) {
     const mime = metadata.mime || metadata.content_type || metadata.contentType || "";
     const size = Number(metadata.size || 0) ? `${(Number(metadata.size || 0) / 1024 / 1024).toFixed(1)} MB` : "";
     const details = [mime, size].filter(Boolean).join(" - ");
-    return `<div class="chat-attachment-message chat-audio-attachment" data-chat-audio-state="loading">
-      <strong>${htmlEscape(name)}</strong>
-      ${details ? `<small>${htmlEscape(details)}</small>` : ""}
-      <audio src="${htmlEscape(url)}" controls preload="metadata" onloadedmetadata="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','ready')" oncanplay="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','ready')" onerror="this.closest('.chat-audio-attachment')?.setAttribute('data-chat-audio-state','error')"></audio>
-      <span class="chat-audio-loading">Carregando audio...</span>
-      <span class="chat-audio-error">Nao foi possivel reproduzir este audio.</span>
-      <a class="chat-attachment-file" href="${htmlEscape(url)}" download="${htmlEscape(name)}"><i data-lucide="download"></i><span>Baixar audio</span></a>
+    return `<div class="chat-attachment-message chat-audio-attachment">
+      ${ChatAudioPlayerMarkup(url, name, details, false)}
     </div>`;
   }
   return `<a class="chat-attachment-file" href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer" download="${htmlEscape(name)}"><i data-lucide="file-down"></i><span>${htmlEscape(name)}</span></a>`;
@@ -6621,6 +6839,7 @@ function renderChatPage({ preserveActive = false } = {}) {
   </main>`;
   applyLocaleTextOverrides(appView);
   lucide.createIcons();
+  initChatAudioPlayers();
   queueChatScrollToBottom();
 }
 
