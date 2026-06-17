@@ -14,6 +14,9 @@ const requiredScript = [
   "chat-composer-input",
   "chat-thread-menu",
   "chatFailedMessages",
+  "CHAT_INBOX_CACHE_KEY",
+  "hydrateChatInboxFromCache",
+  "writeChatInboxCache",
 ];
 
 for (const marker of requiredScript) {
@@ -41,8 +44,11 @@ if (/background:\s*#eff3f4/.test(proposalOverride)) {
   throw new Error("Proposal cards must not use white sent-message styling");
 }
 
-if (!/\.chat-dm-page\s*\{[\s\S]*grid-template-columns:\s*72px minmax\(330px,\s*395px\) minmax\(0,\s*1fr\)/.test(styles)) {
-  throw new Error("Chat layout must keep the X-style three-column proportion");
+if (!/\.chat-dm-page\s*\{[\s\S]*display:\s*flex\s*!important/.test(styles)) {
+  throw new Error("Chat layout must keep the X-style flex viewport shell");
+}
+if (!/\.chat-list-column\s*\{[\s\S]*flex:\s*0 0 380px\s*!important/.test(styles) || !/\.chat-thread-column\s*\{[\s\S]*flex:\s*1\s*!important/.test(styles)) {
+  throw new Error("Chat layout must keep the list/thread flex proportions");
 }
 
 console.log("Chat DM UI check passed");

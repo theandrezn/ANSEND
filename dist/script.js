@@ -17,6 +17,8 @@ const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
 const CHAT_ROUTE = "bate-papo";
 const CHAT_LEGACY_ROUTES = new Set(["chat", "chats", "mensagens", "messages", "batepapo"]);
+const CHAT_INBOX_CACHE_KEY = "ansend-chat-inbox-cache-v1";
+const CHAT_INBOX_CACHE_TTL_MS = 15000;
 const CHAT_ROUTES = {
   list: () => CHAT_ROUTE,
   conversation: (conversationId = "") => `${CHAT_ROUTE}/${encodeURIComponent(conversationId)}`,
@@ -1335,6 +1337,8 @@ const appState = {
     userSearch: "",
     userResults: [],
     loading: false,
+    lastLoadedAt: 0,
+    activeRequestId: 0,
     messagesLoading: false,
     sending: false,
     newChatOpen: false,
@@ -5628,6 +5632,66 @@ function chatFailedMessages(conversationId = "") {
   return appState.chat.failedMessages[conversationId] || [];
 }
 
+function chatInboxCacheKey(userId = appState.authUser?.id || "") {
+  return userId ? `${CHAT_INBOX_CACHE_KEY}:${userId}` : "";
+}
+
+function readChatInboxCache(userId = appState.authUser?.id || "") {
+  const key = chatInboxCacheKey(userId);
+  if (!key) return null;
+  const cached = safeReadJson(key, null);
+  if (!cached || typeof cached !== "object" || !Array.isArray(cached.conversations)) return null;
+  return cached;
+}
+
+function applyChatInboxSnapshot(snapshot = {}) {
+  appState.chat.conversations = sortChatConversations((snapshot.conversations || []).map((conversation) => ({ ...conversation })));
+  appState.chat.participants = { ...(snapshot.participants || {}) };
+  appState.chat.profiles = { ...appState.chat.profiles, ...(snapshot.profiles || {}) };
+  Object.entries(snapshot.messages || {}).forEach(([conversationId, messages]) => {
+    if (!appState.chat.messages[conversationId]) appState.chat.messages[conversationId] = messages;
+  });
+  appState.chat.lastLoadedAt = snapshot.updatedAt || Date.now();
+}
+
+function hydrateChatInboxFromCache(userId = appState.authUser?.id || "") {
+  if (appState.chat.conversations.length) return null;
+  const cached = readChatInboxCache(userId);
+  if (!cached) return null;
+  applyChatInboxSnapshot(cached);
+  appState.chat.error = "";
+  appState.chat.loading = false;
+  return cached;
+}
+
+function writeChatInboxCache(userId = appState.authUser?.id || "") {
+  const key = chatInboxCacheKey(userId);
+  if (!key) return;
+  const conversationIds = new Set(appState.chat.conversations.map((conversation) => conversation.id));
+  const profileIds = new Set(Object.values(appState.chat.participants).flat());
+  const profiles = {};
+  profileIds.forEach((id) => {
+    if (appState.chat.profiles[id]) profiles[id] = appState.chat.profiles[id];
+  });
+  const messages = {};
+  conversationIds.forEach((id) => {
+    if (Array.isArray(appState.chat.messages[id]) && appState.chat.messages[id].length) {
+      messages[id] = appState.chat.messages[id].slice(-30);
+    }
+  });
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      conversations: appState.chat.conversations,
+      participants: appState.chat.participants,
+      profiles,
+      messages,
+      updatedAt: Date.now(),
+    }));
+  } catch (error) {
+    console.warn("[ANSEND chat] inbox cache write failed", error);
+  }
+}
+
 async function fetchChatProfiles(userIds = []) {
   const ids = [...new Set(userIds.filter(Boolean))].filter((id) => !appState.chat.profiles[id]);
   if (!ids.length || !supabaseClient) return;
@@ -5658,13 +5722,22 @@ function filteredChatConversations() {
   });
 }
 
-async function loadChatConversations({ render = false } = {}) {
+async function loadChatConversations({ render = false, force = false } = {}) {
   if (!supabaseClient || !appState.authUser?.id) return [];
-  appState.chat.loading = true;
+  const userId = appState.authUser.id;
+  const cached = !force ? readChatInboxCache(userId) : null;
+  if (!force && cached && !appState.chat.conversations.length) {
+    applyChatInboxSnapshot(cached);
+    appState.chat.error = "";
+    appState.chat.loading = false;
+    if (render) renderChatPage({ preserveActive: true });
+    if (Date.now() - (cached.updatedAt || 0) < CHAT_INBOX_CACHE_TTL_MS) return appState.chat.conversations;
+  }
+  const requestId = ++appState.chat.activeRequestId;
+  appState.chat.loading = !appState.chat.conversations.length;
   appState.chat.error = "";
   if (render) renderChatPage({ preserveActive: true });
   try {
-    const userId = appState.authUser.id;
     const { data: ownRows, error: ownError } = await supabaseClient
       .from("conversation_participants")
       .select("conversation_id,last_read_at")
@@ -5673,9 +5746,12 @@ async function loadChatConversations({ render = false } = {}) {
     if (ownError) throw ownError;
     const conversationIds = [...new Set((ownRows || []).map((row) => row.conversation_id).filter(Boolean))];
     if (!conversationIds.length) {
+      if (requestId !== appState.chat.activeRequestId) return appState.chat.conversations;
       appState.chat.conversations = [];
       appState.chat.participants = {};
       appState.chat.loading = false;
+      appState.chat.lastLoadedAt = Date.now();
+      writeChatInboxCache(userId);
       if (render) renderChatPage({ preserveActive: true });
       return [];
     }
@@ -5688,6 +5764,7 @@ async function loadChatConversations({ render = false } = {}) {
     if (conversationsError) throw conversationsError;
     if (participantsError) throw participantsError;
     if (messagesError) throw messagesError;
+    if (requestId !== appState.chat.activeRequestId) return appState.chat.conversations;
 
     const participantsByConversation = {};
     (participants || []).forEach((row) => {
@@ -5716,12 +5793,16 @@ async function loadChatConversations({ render = false } = {}) {
         unreadCount,
       };
     }));
+    appState.chat.lastLoadedAt = Date.now();
+    writeChatInboxCache(userId);
   } catch (error) {
     console.error("[ANSEND chat] load conversations failed", error);
-    appState.chat.error = "Nao foi possivel carregar suas conversas.";
+    appState.chat.error = appState.chat.conversations.length ? "" : "Nao foi possivel carregar suas conversas.";
   } finally {
-    appState.chat.loading = false;
-    if (render) renderChatPage({ preserveActive: true });
+    if (requestId === appState.chat.activeRequestId) {
+      appState.chat.loading = false;
+      if (render) renderChatPage({ preserveActive: true });
+    }
   }
   return appState.chat.conversations;
 }
@@ -5740,6 +5821,7 @@ async function loadChatMessages(conversationId, { render = false } = {}) {
       .limit(50);
     if (error) throw error;
     appState.chat.messages[conversationId] = [...(data || [])].reverse();
+    writeChatInboxCache();
     await markChatConversationRead(conversationId);
   } catch (error) {
     console.error("[ANSEND chat] load messages failed", error);
@@ -6425,7 +6507,16 @@ function renderChatPage({ preserveActive = false } = {}) {
   if (requestedConversationId) appState.chat.activeConversationId = requestedConversationId;
   if (!requestedConversationId && !preserveActive) appState.chat.activeConversationId = "";
   subscribeChatRealtime();
-  if (!preserveActive && !appState.chat.loading && !appState.chat.conversations.length) {
+  const cachedInbox = hydrateChatInboxFromCache();
+  const shouldRefreshInbox = !preserveActive
+    && !appState.chat.loading
+    && (
+      !appState.chat.conversations.length
+      || !appState.chat.lastLoadedAt
+      || Date.now() - appState.chat.lastLoadedAt > CHAT_INBOX_CACHE_TTL_MS
+      || Boolean(cachedInbox)
+    );
+  if (shouldRefreshInbox) {
     void loadChatConversations({ render: true });
   }
   if (requestedConversationId && !appState.chat.messages[requestedConversationId] && !appState.chat.messagesLoading) {
