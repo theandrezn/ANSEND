@@ -1392,6 +1392,8 @@ const appState = {
     speed: Number(localStorage.getItem("ansend-player-speed") || "1"),
     pitch: Number(localStorage.getItem("ansend-player-pitch") || "0"),
     previewTime: Number(localStorage.getItem("ansend-player-preview-time") || "11"),
+    sourceType: "",
+    youtubeVideoId: "",
   },
 };
 
@@ -3406,9 +3408,13 @@ function nexoFeedBeatForCard(card) {
 function pauseNexoFeedCard(card, { fromUser = false } = {}) {
   const item = nexoFeedBeatForCard(card);
   const audio = topBeatAudio();
-  if (item && appState.playing === item.id && audio) {
-    audio.pause();
-    setTopBeatPlaying(false);
+  if (item && appState.playing === item.id) {
+    if (isYoutubeBeat(item)) {
+      pauseYouTubeBeat({ quiet: true });
+    } else if (audio) {
+      audio.pause();
+      setTopBeatPlaying(false);
+    }
   }
   card?.classList.remove("is-playing");
   card?.classList.toggle("is-paused", Boolean(fromUser));
@@ -3421,7 +3427,11 @@ async function playNexoFeedCard(card, { fromUser = false } = {}) {
   if (!item) return false;
   if (!fromUser && card?.dataset.userPaused === "true") return false;
   const audio = topBeatAudio();
-  if (appState.playing === item.id && audio && !audio.paused) {
+  const youtubePlaying = isYoutubeBeat(item)
+    && appState.playing === item.id
+    && youtubeBeatPlayerState.player?.getPlayerState?.() === window.YT?.PlayerState?.PLAYING;
+  const uploadPlaying = !isYoutubeBeat(item) && appState.playing === item.id && audio && !audio.paused;
+  if (youtubePlaying || uploadPlaying) {
     card?.classList.add("is-playing");
     card?.classList.remove("is-paused");
     if (!fromUser) clearNexoFeedPlaybackOverlay(card);
@@ -3448,7 +3458,9 @@ function toggleNexoFeedCardPlayback(card) {
   const item = nexoFeedBeatForCard(card);
   if (!item) return;
   const audio = topBeatAudio();
-  const isPlaying = appState.playing === item.id && audio && !audio.paused;
+  const isPlaying = isYoutubeBeat(item)
+    ? appState.playing === item.id && youtubeBeatPlayerState.player?.getPlayerState?.() === window.YT?.PlayerState?.PLAYING
+    : appState.playing === item.id && audio && !audio.paused;
   if (isPlaying) {
     card.dataset.userPaused = "true";
     pauseNexoFeedCard(card, { fromUser: true });
@@ -6888,6 +6900,7 @@ function communityAdBeatItem(ad = {}) {
     cover: ad.cover || IMAGE_FALLBACK_SRC,
     audio: ad.audioUrl || "",
     audio_url: ad.audioUrl || "",
+    source_type: "upload",
     price: ad.priceLabel || "",
     genre: ad.tag || "",
     raw: {
@@ -6943,7 +6956,6 @@ async function toggleCommunityAdPlayback(adId = "") {
   const ad = appState.hiring.promotedAd.item;
   if (!ad || String(ad.id) !== String(adId)) return false;
   const item = communityAdBeatItem(ad);
-  const audio = topBeatAudio();
   if (!item.audio && !item.audio_url) {
     trackCommunityAdEvent("click", ad.id);
     const targetUrl = safeUrl(ad.targetUrl, { fallback: "#marketplace" });
@@ -6951,12 +6963,7 @@ async function toggleCommunityAdPlayback(adId = "") {
     else window.location.href = targetUrl;
     return false;
   }
-  if (appState.playing === item.id && audio && !audio.paused) {
-    audio.pause();
-    setTopBeatPlaying(false);
-    return true;
-  }
-  const played = await playBeat(item, { quiet: true, suppressErrorLog: false });
+  const played = await toggleBeatPlayback(item);
   if (played) trackCommunityAdEvent("click", ad.id);
   return played;
 }
@@ -10269,7 +10276,9 @@ function cartEntryKey(id, licenseId = "premium") {
 
 function findBeat(id) {
   const { beatId } = splitCartEntry(id);
-  return searchableBeatPool().find((item) => item.id === beatId) || topBeatOfDay;
+  if (!beatId) return null;
+  if (String(beatId) === String(topBeatOfDay.id)) return topBeatOfDay;
+  return searchableBeatPool().find((item) => String(item.id) === String(beatId)) || null;
 }
 
 function pageIntro(route, actions = "") {
@@ -10331,6 +10340,13 @@ function renderPurchases() {
   const orderMarkup = orders.map((order) => {
     const item = findBeat(order.beatId);
     const license = licensePlans[order.license] || licensePlans.basic;
+    if (!item) {
+      return `<article>
+        <img src="assets/ansend-logo-square.png" alt="">
+        <div><strong>Beat indisponivel</strong><span>${license.label} - ${license.price}</span></div>
+        <span class="purchase-status">Indisponivel</span>
+      </article>`;
+    }
     return `<article>
       <img src="${item.cover}" alt="">
       <div><strong>${item.title}</strong><span>${item.producer} - ${license.label} - ${license.price}</span></div>
@@ -10391,7 +10407,8 @@ function renderCart() {
 
   const items = appState.cart.map(id => {
     const { beatId, licenseId } = splitCartEntry(id);
-    const beatItem = findBeat(beatId) || topBeatOfDay;
+    const beatItem = findBeat(beatId);
+    if (!beatItem) return null;
     const license = licensePlans[licenseId] || licensePlans.premium;
     const priceText = license.price || beatItem.price || (beatItem.id === "top-beat-psiiiko" ? "$49.99" : ["$29.99", "$35.00", "$44.95", "$49.99", "$9.99", "$24.99"][(beatItem.title.length + (beatItem.producer || "").length) % 6]);
     const rawPrice = Number(beatItem.raw?.price || 0);
@@ -10405,7 +10422,14 @@ function renderCart() {
       priceVal,
       priceText
     };
-  });
+  }).filter(Boolean);
+
+  if (!items.length) {
+    appState.cart = [];
+    persistState();
+    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho estÃ¡ vazio", "Os beats salvos nao estao mais disponiveis no catalogo.")}`;
+    return;
+  }
 
   const subtotal = items.reduce((sum, item) => sum + item.priceVal, 0);
   const serviceFee = parseFloat((subtotal * 0.12).toFixed(2));
@@ -11294,6 +11318,10 @@ function licenseTermsMarkup(plan) {
 function renderBeatDetail() {
   const hashId = location.hash.replace("#beat-", "");
   const item = findBeat(hashId);
+  if (!item) {
+    appView.innerHTML = `${pageIntro("detalhe")}${emptyState("music-2", "Beat nao encontrado", "Este beat nao esta disponivel no catalogo.", "explorar")}`;
+    return;
+  }
   trackUserEvent("view", "beat", item?.raw?.id || item?.id || hashId, { source: "beat-detail" });
   const ownerProfile = profileForUserId(item.user_id || item.raw?.user_id);
   const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
@@ -13602,7 +13630,7 @@ function renderProfileLegacy() {
   ].filter(([, , url]) => url);
   const recentProfileItems = [
     ...items.slice(0, 3).map((item) => ["music", item.title, item.status === "published" ? "Publicado no catalogo" : "Salvo como rascunho"]),
-    ...appState.orders.slice(0, 2).map((order) => ["shopping-bag", findBeat(order.beatId).title, order.status || "Pedido registrado"]),
+    ...appState.orders.slice(0, 2).map((order) => ["shopping-bag", findBeat(order.beatId)?.title || "Beat indisponivel", order.status || "Pedido registrado"]),
   ];
 
   const catalogCards = items.length ? items.map((item, index) => {
@@ -14130,7 +14158,7 @@ function openProfessionalProfile(name) {
       <button type="button" data-action="ai-chip" data-prompt="Quero contratar ${profile.name} para ${profile.specialty}.">Pedir plano NEXO</button>
     </div>
     <div class="modal-mini-grid">
-      ${relatedBeats.map((item) => `<button type="button" data-action="open-beat" data-id="${item.id}"><img src="${findBeat(item.id).cover}" alt=""><span>${item.title}</span></button>`).join("")}
+      ${relatedBeats.map((item) => `<button type="button" data-action="open-beat" data-id="${item.id}"><img src="${(findBeat(item.id) || item).cover}" alt=""><span>${item.title}</span></button>`).join("")}
     </div>
   </section>`);
 }
@@ -14163,7 +14191,11 @@ function openProfessionalContract(name) {
 }
 
 function openCheckout(id, selectedPlan = "premium") {
-  const item = findBeat(id) || topBeatOfDay;
+  const item = findBeat(id);
+  if (!item) {
+    showToast("Beat nao encontrado para checkout.", "alert-triangle");
+    return;
+  }
   const cards = Object.entries(licensePlans).map(([key, plan]) => `<label class="checkout-plan ${key === selectedPlan ? "is-selected" : ""}">
     <input type="radio" name="license" value="${key}" ${key === selectedPlan ? "checked" : ""}>
     <span>${plan.label}</span>
@@ -14418,9 +14450,132 @@ function formatTime(seconds) {
   return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
 }
 
+const youtubeBeatPlayerState = {
+  apiPromise: null,
+  player: null,
+  ready: false,
+  videoId: "",
+  progressTimer: null,
+};
+
 function currentPlayingBeat() {
-  if (appState.playing === topBeatOfDay.id) return topBeatOfDay;
-  return findBeat(appState.playing) || topBeatOfDay;
+  if (!appState.playing) return null;
+  if (String(appState.playing) === String(topBeatOfDay.id)) return topBeatOfDay;
+  return findBeat(appState.playing);
+}
+
+function youtubeVideoIdForBeat(item = {}) {
+  const directId = item.youtube_video_id || item.youtubeVideoId || item.raw?.youtube_video_id || item.raw?.youtubeVideoId || "";
+  if (directId) return String(directId).trim();
+  const meta = youtubeMetadataFromUrl(item.youtube_url || item.youtubeUrl || item.raw?.youtube_url || item.raw?.youtubeUrl || "");
+  return meta?.youtube_video_id || "";
+}
+
+function isCurrentYoutubeSource() {
+  return appState.player.sourceType === "youtube" && Boolean(appState.player.youtubeVideoId);
+}
+
+function ensureYouTubeBeatHost() {
+  let host = document.querySelector("#youtubeBeatPlayerHost");
+  if (host) return host;
+  host = document.createElement("div");
+  host.id = "youtubeBeatPlayerHost";
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;overflow:hidden;pointer-events:none;";
+  host.innerHTML = '<div id="youtubeBeatPlayerFrame"></div>';
+  document.body.appendChild(host);
+  return host;
+}
+
+function loadYouTubeIframeApi() {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeBeatPlayerState.apiPromise) return youtubeBeatPlayerState.apiPromise;
+  youtubeBeatPlayerState.apiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousReady === "function") previousReady();
+      resolve(window.YT);
+    };
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.async = true;
+      script.onerror = () => reject(new Error("youtube_api_load_failed"));
+      document.head.appendChild(script);
+    }
+    window.setTimeout(() => {
+      if (window.YT?.Player) resolve(window.YT);
+    }, 12000);
+  });
+  return youtubeBeatPlayerState.apiPromise;
+}
+
+async function ensureYouTubeBeatPlayer() {
+  ensureYouTubeBeatHost();
+  const YTApi = await loadYouTubeIframeApi();
+  if (youtubeBeatPlayerState.player) return youtubeBeatPlayerState.player;
+  youtubeBeatPlayerState.player = await new Promise((resolve) => {
+    const player = new YTApi.Player("youtubeBeatPlayerFrame", {
+      width: "1",
+      height: "1",
+      playerVars: {
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1,
+        origin: window.location.origin,
+      },
+      events: {
+        onReady: () => {
+          youtubeBeatPlayerState.ready = true;
+          resolve(player);
+        },
+        onStateChange: (event) => {
+          const state = window.YT?.PlayerState || {};
+          if (event.data === state.PLAYING) {
+            setTopBeatPlaying(true);
+            updateMiniProgress();
+          }
+          if (event.data === state.PAUSED || event.data === state.ENDED) {
+            setTopBeatPlaying(false);
+            updateMiniProgress();
+          }
+        },
+        onError: () => {
+          setTopBeatPlaying(false);
+          showToast("Nao foi possivel reproduzir este beat do YouTube.", "alert-triangle");
+        },
+      },
+    });
+  });
+  return youtubeBeatPlayerState.player;
+}
+
+function stopYouTubeProgressTimer() {
+  if (youtubeBeatPlayerState.progressTimer) {
+    window.clearInterval(youtubeBeatPlayerState.progressTimer);
+    youtubeBeatPlayerState.progressTimer = null;
+  }
+}
+
+function startYouTubeProgressTimer() {
+  stopYouTubeProgressTimer();
+  youtubeBeatPlayerState.progressTimer = window.setInterval(updateMiniProgress, 500);
+}
+
+function pauseYouTubeBeat({ quiet = false } = {}) {
+  const player = youtubeBeatPlayerState.player;
+  if (player?.pauseVideo) {
+    try {
+      player.pauseVideo();
+    } catch (error) {
+      console.warn("YouTube pause error", error);
+    }
+  }
+  stopYouTubeProgressTimer();
+  if (isCurrentYoutubeSource()) {
+    setTopBeatPlaying(false);
+    if (!quiet) showToast("Beat pausado", "pause");
+  }
 }
 
 function applyPlayerAudioSettings() {
@@ -14502,9 +14657,21 @@ function updateMiniProgress() {
   const player = document.querySelector(".mini-player");
   if (!player) return;
   const audio = topBeatAudio();
-  const isAudioBeat = Boolean(appState.playing) && audio;
-  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
-  const current = isAudioBeat ? audio.currentTime : Math.min(duration, Math.max(0, appState.player.previewTime || 0));
+  const youtubePlayer = youtubeBeatPlayerState.player;
+  const isYoutube = isCurrentYoutubeSource() && youtubePlayer?.getDuration && youtubePlayer?.getCurrentTime;
+  const isAudioBeat = Boolean(appState.playing) && !isYoutube && audio && audio.src;
+  const youtubeDuration = isYoutube ? Number(youtubePlayer.getDuration()) : 0;
+  const youtubeCurrent = isYoutube ? Number(youtubePlayer.getCurrentTime()) : 0;
+  const duration = isYoutube && Number.isFinite(youtubeDuration) && youtubeDuration > 0
+    ? youtubeDuration
+    : isAudioBeat && Number.isFinite(audio.duration)
+      ? audio.duration
+      : 165;
+  const current = isYoutube && Number.isFinite(youtubeCurrent)
+    ? youtubeCurrent
+    : isAudioBeat
+      ? audio.currentTime
+      : Math.min(duration, Math.max(0, appState.player.previewTime || 0));
   const progress = Math.min(1, duration ? current / duration : 0);
   const waveform = player.querySelector(".mini-waveform");
   player.querySelector(".mini-current").textContent = formatTime(current);
@@ -14521,9 +14688,16 @@ function seekMiniPlayerToRatio(ratio) {
   if (!player) return;
   const audio = topBeatAudio();
   const safeRatio = Math.min(1, Math.max(0, ratio));
-  const isAudioBeat = Boolean(appState.playing) && audio;
-  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
-  if (isAudioBeat) {
+  const youtubePlayer = youtubeBeatPlayerState.player;
+  const isYoutube = isCurrentYoutubeSource() && youtubePlayer?.seekTo && youtubePlayer?.getDuration;
+  const duration = isYoutube && Number.isFinite(Number(youtubePlayer.getDuration()))
+    ? Number(youtubePlayer.getDuration())
+    : audio && audio.src && Number.isFinite(audio.duration)
+      ? audio.duration
+      : 165;
+  if (isYoutube) {
+    youtubePlayer.seekTo(safeRatio * duration, true);
+  } else if (audio && audio.src) {
     audio.currentTime = safeRatio * duration;
   } else {
     appState.player.previewTime = safeRatio * duration;
@@ -14562,6 +14736,44 @@ function updateMiniPlayer(item, show = true) {
 
 function topBeatAudio() {
   return document.querySelector("#topBeatAudio");
+}
+
+async function playYouTubeBeat(item, { quiet = false } = {}) {
+  const videoId = youtubeVideoIdForBeat(item);
+  if (!item || !videoId) {
+    showToast("Link do YouTube invalido ou indisponivel para este beat.", "alert-triangle");
+    return false;
+  }
+  const audio = topBeatAudio();
+  if (audio) {
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+  }
+  appState.playing = item.id;
+  appState.player.sourceType = "youtube";
+  appState.player.youtubeVideoId = videoId;
+  appState.player.previewTime = 0;
+  youtubeBeatPlayerState.videoId = videoId;
+  updateMiniPlayer(item);
+  showMiniPlayer();
+  try {
+    const player = await ensureYouTubeBeatPlayer();
+    if (player.getVideoData?.().video_id !== videoId) {
+      player.loadVideoById(videoId);
+    } else {
+      player.playVideo();
+    }
+    startYouTubeProgressTimer();
+    setTopBeatPlaying(true);
+    if (!quiet) showToast(`Tocando agora: ${item.title}`, "play");
+    return true;
+  } catch (error) {
+    console.error("YouTube playback error", error);
+    setTopBeatPlaying(false);
+    showToast("Nao foi possivel carregar o player do YouTube.", "alert-triangle");
+    return false;
+  }
 }
 
 function setTopBeatPlaying(isPlaying) {
@@ -14613,19 +14825,10 @@ function setTopBeatPlaying(isPlaying) {
 async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) {
   if (!item) return false;
   if (isYoutubeBeat(item)) {
-    appState.playing = item.id;
-    updateMiniPlayer(item);
-    setTopBeatPlaying(false);
-    if (!quiet) showToast("Abrindo player incorporado do YouTube.", "youtube");
-    if (location.hash !== `#beat-${item.id}`) location.hash = `beat-${item.id}`;
-    return true;
+    return playYouTubeBeat(item, { quiet });
   }
   const audio = topBeatAudio();
   if (!audio) return false;
-
-  audio.pause();
-  appState.playing = item.id;
-  updateMiniPlayer(item);
 
   let audioUrl = item.audio || item.audio_url || "";
   if (!audioUrl && item.raw) {
@@ -14637,6 +14840,13 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
     setTopBeatPlaying(false);
     return false;
   }
+
+  pauseYouTubeBeat({ quiet: true });
+  audio.pause();
+  appState.playing = item.id;
+  appState.player.sourceType = "upload";
+  appState.player.youtubeVideoId = "";
+  updateMiniPlayer(item);
 
   const currentUrl = audio.src ? new URL(audio.src, window.location.href).href : "";
   const targetUrl = new URL(audioUrl, window.location.href).href;
@@ -14664,25 +14874,43 @@ async function playTopBeat({ quiet = false } = {}) {
   return playBeat(topBeatOfDay, { quiet });
 }
 
+async function toggleBeatPlayback(item) {
+  if (!item) return false;
+  if (String(appState.playing || "") !== String(item.id || "")) {
+    return playBeat(item);
+  }
+  if (isYoutubeBeat(item)) {
+    const player = youtubeBeatPlayerState.player;
+    const state = player?.getPlayerState?.();
+    const playingState = window.YT?.PlayerState?.PLAYING;
+    if (state === playingState) {
+      pauseYouTubeBeat();
+      return false;
+    }
+    return playBeat(item, { quiet: true });
+  }
+  const audio = topBeatAudio();
+  if (!audio) return false;
+  if (audio.paused) {
+    return playBeat(item, { quiet: true });
+  }
+  audio.pause();
+  setTopBeatPlaying(false);
+  return false;
+}
+
 function pauseTopBeat({ quiet = false } = {}) {
   const audio = topBeatAudio();
   if (audio) {
     audio.pause();
   }
+  pauseYouTubeBeat({ quiet: true });
   setTopBeatPlaying(false);
   if (!quiet) showToast("Beat pausado", "pause");
 }
 
 function toggleTopBeat() {
-  const audio = topBeatAudio();
-  if (!audio) return;
-  if (appState.playing !== topBeatOfDay.id) {
-    playTopBeat();
-  } else if (audio.paused) {
-    audio.play().then(() => setTopBeatPlaying(true));
-  } else {
-    pauseTopBeat();
-  }
+  toggleBeatPlayback(topBeatOfDay);
 }
 
 function playBeatByOffset(offset) {
@@ -14703,6 +14931,10 @@ window.addEventListener("load", () => {
     const player = document.querySelector(".mini-player");
     if (!player?.classList.contains("is-playing")) return;
     const audio = topBeatAudio();
+    if (isCurrentYoutubeSource()) {
+      updateMiniProgress();
+      return;
+    }
     if (audio && audio.src && !audio.paused) return;
     if (appState.playing === topBeatOfDay.id) return;
     appState.player.previewTime = appState.player.loop && appState.player.previewTime >= 165
@@ -15223,9 +15455,19 @@ document.addEventListener("keydown", (event) => {
   const waveform = event.target.closest(".mini-waveform");
   if (!waveform) return;
   const audio = topBeatAudio();
-  const isAudioBeat = appState.playing === topBeatOfDay.id && audio;
-  const duration = isAudioBeat && Number.isFinite(audio.duration) ? audio.duration : 165;
-  const current = isAudioBeat ? audio.currentTime : appState.player.previewTime;
+  const youtubePlayer = youtubeBeatPlayerState.player;
+  const isYoutube = isCurrentYoutubeSource() && youtubePlayer?.getDuration && youtubePlayer?.getCurrentTime;
+  const isAudioBeat = !isYoutube && Boolean(appState.playing) && audio && audio.src;
+  const duration = isYoutube && Number.isFinite(Number(youtubePlayer.getDuration()))
+    ? Number(youtubePlayer.getDuration())
+    : isAudioBeat && Number.isFinite(audio.duration)
+      ? audio.duration
+      : 165;
+  const current = isYoutube && Number.isFinite(Number(youtubePlayer.getCurrentTime()))
+    ? Number(youtubePlayer.getCurrentTime())
+    : isAudioBeat
+      ? audio.currentTime
+      : appState.player.previewTime;
   const step = event.shiftKey ? 15 : 5;
   const keyMap = {
     ArrowLeft: current - step,
@@ -16051,19 +16293,7 @@ document.addEventListener("click", (event) => {
     const item = appState.ownedCatalogItems.find((entry) => entry.id === target.dataset.id);
     if (item) {
       const beatItem = catalogItemToBeat(item);
-      if (appState.playing === beatItem.id) {
-        const audio = topBeatAudio();
-        if (audio) {
-          if (audio.paused) {
-            audio.play().then(() => setTopBeatPlaying(true));
-          } else {
-            audio.pause();
-            setTopBeatPlaying(false);
-          }
-        }
-      } else {
-        playBeat(beatItem);
-      }
+      toggleBeatPlayback(beatItem);
     }
     return;
   }
@@ -16142,19 +16372,7 @@ document.addEventListener("click", (event) => {
   if (action === "play") {
     const item = findBeat(target.dataset.id);
     if (item) {
-      if (appState.playing === item.id) {
-        const audio = topBeatAudio();
-        if (audio) {
-          if (audio.paused) {
-            audio.play().then(() => setTopBeatPlaying(true));
-          } else {
-            audio.pause();
-            setTopBeatPlaying(false);
-          }
-        }
-      } else {
-        playBeat(item);
-      }
+      toggleBeatPlayback(item);
     }
     if (target.closest(".queue-tool-modal")) closeModal();
   }
@@ -16167,34 +16385,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "mini-play") {
-    const audio = topBeatAudio();
-    if (audio) {
-      if (audio.paused) {
-        const current = currentPlayingBeat();
-        let audioUrl = current?.audio || current?.audio_url || "";
-        if (!audioUrl && current?.raw) {
-          audioUrl = current.raw.audio_url || "";
-        }
-        if (audioUrl) {
-          const currentUrl = audio.src ? new URL(audio.src, window.location.href).href : "";
-          const targetUrl = new URL(audioUrl, window.location.href).href;
-          if (currentUrl !== targetUrl) {
-            audio.src = audioUrl;
-            audio.load();
-          }
-          audio.play().then(() => setTopBeatPlaying(true)).catch((err) => {
-            console.error("Playback error", err);
-            showToast("Erro ao reproduzir o áudio", "alert-triangle");
-            setTopBeatPlaying(false);
-          });
-        } else {
-          showToast("Áudio não disponível para este beat", "alert-triangle");
-        }
-      } else {
-        audio.pause();
-        setTopBeatPlaying(false);
-      }
-    }
+    toggleBeatPlayback(currentPlayingBeat());
     return;
   }
   if (action === "prev-track") {
@@ -16920,6 +17111,10 @@ document.addEventListener("submit", async (event) => {
     const beatId = checkoutForm.dataset.beatId;
     const license = checkoutForm.querySelector('input[name="license"]:checked')?.value || "premium";
     const item = findBeat(beatId);
+    if (!item) {
+      showToast("Beat nao encontrado para finalizar pedido.", "alert-triangle");
+      return;
+    }
     appState.orders.unshift({
       id: `order-${Date.now()}`,
       beatId,
