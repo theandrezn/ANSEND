@@ -9957,12 +9957,7 @@ function nexoChatId(prefix = "msg") {
 
 function nexoIconMarkup(className = "nexo-orbit-icon") {
   return `<span class="${className}" aria-hidden="true">
-    <svg viewBox="0 0 48 48" focusable="false">
-      <circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".9"></circle>
-      <path d="M10 34C22 33 31 24 34 10" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
-      <path d="M38 14C26 15 17 24 14 38" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
-      <circle cx="24" cy="24" r="4.4" fill="currentColor"></circle>
-    </svg>
+    <img src="assets/nexo-ia-logo.svg" alt="" decoding="async" loading="lazy">
   </span>`;
 }
 

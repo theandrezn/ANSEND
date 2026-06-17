@@ -24353,6 +24353,23 @@ body.requires-auth .nexo-floating-assistant {
 .nexo-assistant-message-icon {
   display: inline-grid;
   place-items: center;
+  overflow: hidden;
+}
+
+.nexo-floating-icon img,
+.nexo-orbit-icon img,
+.nexo-assistant-logo img,
+.nexo-assistant-message-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nexo-floating-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: 999px;
 }
 
 .nexo-floating-icon svg {
@@ -24449,6 +24466,10 @@ body.requires-auth .nexo-floating-assistant {
 .nexo-assistant-logo svg {
   width: 24px;
   height: 24px;
+}
+
+.nexo-assistant-logo img {
+  border-radius: inherit;
 }
 
 .nexo-assistant-title span {
