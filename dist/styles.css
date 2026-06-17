@@ -25198,6 +25198,47 @@ body.chat-dm-mode #appView.app-view {
   font-size: 13px;
 }
 
+.chat-post-context {
+  display: grid;
+  gap: 6px;
+  margin: 14px 18px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--chat-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chat-post-context span,
+.chat-post-context small {
+  color: var(--chat-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.chat-post-context strong {
+  color: var(--chat-text);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.chat-post-context p {
+  margin: 0;
+  color: var(--chat-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.chat-post-context button {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1d9bf0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .chat-thread-messages {
   display: flex;
   flex-direction: column;
@@ -25249,6 +25290,84 @@ body.chat-dm-mode #appView.app-view {
   opacity: 0.58;
   font-size: 11px;
   text-align: right;
+}
+
+.chat-proposal-bubble {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-proposal-bubble > span {
+  color: inherit;
+  opacity: .72;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.chat-proposal-bubble strong {
+  color: inherit;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.chat-proposal-bubble dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.chat-proposal-bubble dl div {
+  min-width: 0;
+}
+
+.chat-proposal-bubble dt,
+.chat-proposal-bubble dd {
+  margin: 0;
+}
+
+.chat-proposal-bubble dt {
+  opacity: .62;
+  font-size: 11px;
+}
+
+.chat-proposal-bubble dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chat-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chat-proposal-actions button {
+  min-height: 30px;
+  border: 1px solid rgba(15, 20, 25, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 20, 25, 0.08);
+  color: inherit;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chat-message-row.is-theirs .chat-proposal-actions button {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-proposal-actions button:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .chat-composer-form {

@@ -12,6 +12,12 @@ const AUTH_EXPLICIT_LOGOUT_KEY = "ansend-explicit-logout-at";
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
 const COMMUNITY_LEGACY_ROUTE = "contratacoes";
+const CHAT_ROUTE = "bate-papo";
+const CHAT_LEGACY_ROUTES = new Set(["chat", "chats", "mensagens", "messages", "batepapo"]);
+const CHAT_ROUTES = {
+  list: () => CHAT_ROUTE,
+  conversation: (conversationId = "") => `${CHAT_ROUTE}/${encodeURIComponent(conversationId)}`,
+};
 const COMMUNITY_TITLE = "Comunidade ANSEND";
 const COMMUNITY_SUBTITLE = "Publique duvidas, pedidos, oportunidades e conversas com profissionais da musica.";
 const IMAGE_FALLBACK_SRC = "assets/ansend-logo-square.png";
@@ -1332,6 +1338,9 @@ const appState = {
     error: "",
     realtimeChannels: [],
     searchTimer: null,
+    drafts: {},
+    draftModes: {},
+    pendingActions: {},
   },
   isAdmin: false,
   adminProfiles: [],
@@ -3801,6 +3810,8 @@ let heroTypewriterToken = 0;
 
 function currentRouteFromHash() {
   const route = (location.hash.replace("#", "") || "feed").split("?")[0];
+  if (route === CHAT_ROUTE || CHAT_LEGACY_ROUTES.has(route)) return "chat";
+  if (route.startsWith(`${CHAT_ROUTE}/`) || route.startsWith("chat/")) return "chat";
   if (route.startsWith("beat-")) return "detalhe";
   if (route.startsWith("playlist-")) return "playlist";
   if (route.startsWith("perfil-")) return "perfil-publico";
@@ -3845,6 +3856,22 @@ function currentRouteFromHash() {
     "marketplace"
   ]);
   return knownRoutes.has(route) || routeTitles?.[route] ? route : "feed";
+}
+
+function chatConversationIdFromHash() {
+  const route = (location.hash.replace("#", "") || "").split("?")[0];
+  if (route.startsWith(`${CHAT_ROUTE}/`)) return safeDecode(route.slice(`${CHAT_ROUTE}/`.length));
+  if (route.startsWith("chat/")) return safeDecode(route.slice("chat/".length));
+  return "";
+}
+
+function navigateToChatConversation(conversationId = "") {
+  const nextRoute = conversationId ? CHAT_ROUTES.conversation(conversationId) : CHAT_ROUTES.list();
+  if (location.hash !== `#${nextRoute}`) {
+    location.hash = nextRoute;
+  } else {
+    renderRoutePreservingAuthFocus(true);
+  }
 }
 
 function PageTransition(container = appView, key = currentRoute()) {
@@ -5328,6 +5355,89 @@ function sanitizeChatMessage(value = "") {
   return String(value || "").replace(/\u0000/g, "").trim().slice(0, 2000);
 }
 
+function chatDraftFor(conversationId = "") {
+  return appState.chat.drafts[conversationId] || "";
+}
+
+function setChatDraft(conversationId = "", value = "") {
+  if (!conversationId) return;
+  appState.chat.drafts[conversationId] = String(value || "").slice(0, 2000);
+}
+
+function chatConversationMetadata(conversation = {}) {
+  const raw = conversation?.metadata || {};
+  return raw && typeof raw === "object" ? raw : {};
+}
+
+function chatPostContext(conversation = {}) {
+  const metadata = chatConversationMetadata(conversation);
+  const postId = conversation.community_post_id || metadata.post_id || "";
+  if (!postId) return null;
+  return {
+    postId,
+    title: metadata.post_title || "Publicacao da Comunidade",
+    summary: metadata.post_summary || "",
+    createdAt: metadata.post_created_at || conversation.created_at,
+    authorId: metadata.post_author_id || chatOtherParticipant(conversation),
+  };
+}
+
+function chatPostContextMarkup(conversation = {}) {
+  const context = chatPostContext(conversation);
+  if (!context) return "";
+  const author = hiringAuthorDisplay(context.authorId);
+  return `<aside class="chat-post-context" aria-label="Publicacao vinculada">
+    <span>Publicacao da Comunidade</span>
+    <strong>${htmlEscape(context.title)}</strong>
+    ${context.summary ? `<p>${htmlEscape(context.summary)}</p>` : ""}
+    <small>${htmlEscape(author.name)} · ${htmlEscape(hiringRelativeDate(context.createdAt))}</small>
+    <button type="button" data-action="chat-open-community-post" data-post-id="${htmlEscape(context.postId)}">Ver publicacao</button>
+  </aside>`;
+}
+
+function defaultCommunityChatDraft(action = "interest") {
+  if (action === "proposal") {
+    return "Ola! Vi sua publicacao na Comunidade da ANSEND e gostaria de enviar uma proposta.\n\nServico:\nPrazo:\nValor:\nDetalhes:";
+  }
+  return "Ola! Vi sua publicacao na Comunidade da ANSEND e tenho interesse.";
+}
+
+function parseProposalDraft(body = "") {
+  const text = String(body || "");
+  const readLine = (label) => {
+    const match = text.match(new RegExp(`^${label}:\\s*(.*)$`, "im"));
+    return match ? match[1].trim() : "";
+  };
+  const priceRaw = readLine("Valor");
+  const numericPrice = Number(String(priceRaw).replace(/[^\d,.-]/g, "").replace(".", "").replace(",", "."));
+  return {
+    serviceTitle: readLine("Servico") || "Proposta ANSEND",
+    deadline: readLine("Prazo") || "Prazo a combinar",
+    priceText: priceRaw || "Valor a combinar",
+    price: Number.isFinite(numericPrice) && numericPrice > 0 ? numericPrice : null,
+    details: readLine("Detalhes") || text.slice(0, 1200),
+  };
+}
+
+function chatProposalBodyFromMetadata(metadata = {}) {
+  const price = metadata.price_text || (metadata.price ? Number(metadata.price).toLocaleString("pt-BR", { style: "currency", currency: metadata.currency || "BRL" }) : "Valor a combinar");
+  return [
+    `Proposta: ${metadata.service_title || "Servico ANSEND"}`,
+    `Prazo: ${metadata.deadline || "A combinar"}`,
+    `Valor: ${price}`,
+    metadata.description ? `Detalhes: ${metadata.description}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function chatProposalStatusLabel(status = "pending") {
+  return {
+    pending: "Enviada",
+    accepted: "Aceita",
+    rejected: "Recusada",
+    cancelled: "Cancelada",
+  }[status] || status;
+}
+
 async function fetchChatProfiles(userIds = []) {
   const ids = [...new Set(userIds.filter(Boolean))].filter((id) => !appState.chat.profiles[id]);
   if (!ids.length || !supabaseClient) return;
@@ -5490,10 +5600,61 @@ async function openOrCreateDirectConversation(otherUserId) {
     if (error) throw error;
     appState.chat.newChatOpen = false;
     await loadChatConversations({ render: false });
-    await openChatConversation(data, { render: true });
+    navigateToChatConversation(data);
   } catch (error) {
     console.error("[ANSEND chat] create direct failed", error);
     showToast("Nao foi possivel iniciar o chat.", "message-circle-warning");
+  }
+}
+
+async function handleCommunityChatAction({ postId, action = "interest" } = {}) {
+  await waitForHiringAuthReady();
+  if (!hiringRequireAuth()) return "";
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post) {
+    showToast("Publicacao nao encontrada.", "triangle-alert");
+    return "";
+  }
+  if (post.user_id === appState.authUser.id) {
+    showToast("Voce nao pode iniciar conversa consigo mesmo.", "user-x");
+    return "";
+  }
+  const actionKey = `${postId}:${action}`;
+  if (appState.chat.pendingActions[actionKey]) return "";
+  appState.chat.pendingActions[actionKey] = true;
+  renderHiringPage({ force: false });
+  try {
+    if (action === "interest") {
+      const { error: interestError } = await supabaseClient
+        .from("hiring_interests")
+        .upsert({ post_id: postId, user_id: appState.authUser.id }, { onConflict: "post_id,user_id" });
+      if (interestError) throw interestError;
+      post.viewer.interested = true;
+      post.metrics.interests = Math.max(1, Number(post.metrics.interests || 0) + 1);
+    }
+
+    const { data, error } = await supabaseClient.rpc("get_or_create_community_conversation", {
+      p_post_id: postId,
+      p_interaction_type: action,
+    });
+    if (error) throw error;
+    const conversationId = data;
+    appState.chat.draftModes[conversationId] = action;
+    setChatDraft(conversationId, defaultCommunityChatDraft(action));
+    invalidateHiringCache();
+    await loadChatConversations({ render: false });
+    navigateToChatConversation(conversationId);
+    return conversationId;
+  } catch (error) {
+    console.error("[ANSEND chat] community action failed", error);
+    const message = /SELF_CONVERSATION/i.test(error?.message || "")
+      ? "Voce nao pode iniciar conversa consigo mesmo."
+      : "Nao foi possivel abrir o bate-papo desta publicacao.";
+    showToast(message, "message-circle-warning");
+    return "";
+  } finally {
+    delete appState.chat.pendingActions[actionKey];
+    if (currentRoute() === COMMUNITY_ROUTE) renderHiringPage({ force: false });
   }
 }
 
@@ -5506,14 +5667,70 @@ async function sendChatMessage(form) {
   appState.chat.sending = true;
   renderChatPage({ preserveActive: true });
   try {
+    const conversation = appState.chat.conversations.find((item) => item.id === conversationId);
+    const draftMode = appState.chat.draftModes[conversationId] || "";
+    let messageType = "text";
+    let metadata = {};
+
+    if (draftMode === "proposal" && conversation?.community_post_id) {
+      const proposal = parseProposalDraft(body);
+      const recipientId = chatOtherParticipant(conversation);
+      const proposalPayload = {
+        post_id: conversation.community_post_id,
+        sender_id: appState.authUser.id,
+        receiver_id: recipientId,
+        message: proposal.details.slice(0, 1200),
+        proposed_amount: proposal.price,
+        delivery_deadline: proposal.deadline,
+        portfolio_links: null,
+        attachments: [],
+        status: "pending",
+      };
+      const { data: proposalRow, error: proposalError } = await supabaseClient
+        .from("hiring_proposals")
+        .upsert(proposalPayload, { onConflict: "post_id,sender_id" })
+        .select()
+        .single();
+      if (proposalError) throw proposalError;
+      messageType = "proposal";
+      metadata = {
+        proposal_id: proposalRow?.id || null,
+        post_id: conversation.community_post_id,
+        service_title: proposal.serviceTitle,
+        description: proposal.details,
+        price: proposal.price,
+        price_text: proposal.priceText,
+        currency: "BRL",
+        deadline: proposal.deadline,
+        status: proposalRow?.status || "pending",
+      };
+      const relatedPost = appState.hiring.posts.find((post) => post.id === conversation.community_post_id);
+      if (relatedPost) {
+        relatedPost.viewer.proposed = true;
+        relatedPost.metrics.proposals = Math.max(1, Number(relatedPost.metrics.proposals || 0) + 1);
+      }
+      if (proposalRow) {
+        appState.hiring.proposals = [proposalRow, ...appState.hiring.proposals.filter((item) => item.id !== proposalRow.id)];
+      }
+      invalidateHiringCache();
+    }
+
     const { data, error } = await supabaseClient
       .from("messages")
-      .insert({ conversation_id: conversationId, sender_id: appState.authUser.id, body, message_type: "text", metadata: {} })
+      .insert({
+        conversation_id: conversationId,
+        sender_id: appState.authUser.id,
+        body: messageType === "proposal" ? chatProposalBodyFromMetadata(metadata) : body,
+        message_type: messageType,
+        metadata,
+      })
       .select()
       .single();
     if (error) throw error;
     appendChatMessage(data);
     if (textarea) textarea.value = "";
+    setChatDraft(conversationId, "");
+    delete appState.chat.draftModes[conversationId];
     await loadChatConversations({ render: false });
   } catch (error) {
     console.error("[ANSEND chat] send failed", error);
@@ -5522,6 +5739,39 @@ async function sendChatMessage(form) {
     appState.chat.sending = false;
     renderChatPage({ preserveActive: true });
     queueChatScrollToBottom();
+  }
+}
+
+async function updateChatProposalStatus(proposalId, messageId, status) {
+  if (!chatRequireAuth() || !proposalId || !messageId || !["accepted", "rejected", "cancelled"].includes(status)) return;
+  try {
+    const { data: rpcRows, error } = await supabaseClient.rpc("update_chat_proposal_status", {
+      p_proposal_id: proposalId,
+      p_message_id: messageId,
+      p_status: status,
+    });
+    if (error) throw error;
+    const nextStatus = rpcRows?.[0]?.status || status;
+
+    const activeMessages = appState.chat.messages[appState.chat.activeConversationId] || [];
+    const currentMessage = activeMessages.find((message) => message.id === messageId);
+    const nextMetadata = {
+      ...(currentMessage?.metadata || {}),
+      status: nextStatus,
+      proposal_id: proposalId,
+    };
+
+    appState.chat.messages[appState.chat.activeConversationId] = activeMessages.map((message) => (
+      message.id === messageId ? { ...message, metadata: nextMetadata } : message
+    ));
+    appState.hiring.proposals = appState.hiring.proposals.map((item) => (
+      item.id === proposalId ? { ...item, status: nextStatus } : item
+    ));
+    showToast(status === "accepted" ? "Proposta aceita." : status === "rejected" ? "Proposta recusada." : "Proposta cancelada.", "badge-check");
+    renderChatPage({ preserveActive: true });
+  } catch (error) {
+    console.error("[ANSEND chat] proposal status failed", error);
+    showToast("Nao foi possivel atualizar a proposta.", "triangle-alert");
   }
 }
 
@@ -5649,6 +5899,33 @@ function chatThreadEmptyMarkup() {
 
 function chatMessageMarkup(message) {
   const mine = message.sender_id === appState.authUser?.id;
+  const metadata = message.metadata && typeof message.metadata === "object" ? message.metadata : {};
+  if (message.message_type === "proposal") {
+    const price = metadata.price_text || (metadata.price ? Number(metadata.price).toLocaleString("pt-BR", { style: "currency", currency: metadata.currency || "BRL" }) : "Valor a combinar");
+    const status = metadata.status || "pending";
+    const canRespond = !mine && metadata.proposal_id && status === "pending";
+    const canCancel = mine && metadata.proposal_id && status === "pending";
+    return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
+      <div class="chat-message-bubble chat-proposal-bubble">
+        <span>Proposta enviada</span>
+        <strong>${htmlEscape(metadata.service_title || "Servico ANSEND")}</strong>
+        <p>${htmlEscape(metadata.description || message.body)}</p>
+        <dl>
+          <div><dt>Prazo</dt><dd>${htmlEscape(metadata.deadline || "A combinar")}</dd></div>
+          <div><dt>Valor</dt><dd>${htmlEscape(price)}</dd></div>
+          <div><dt>Status</dt><dd>${htmlEscape(chatProposalStatusLabel(status))}</dd></div>
+        </dl>
+        ${canRespond ? `<div class="chat-proposal-actions">
+          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="accepted">Aceitar</button>
+          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="rejected">Recusar</button>
+        </div>` : ""}
+        ${canCancel ? `<div class="chat-proposal-actions">
+          <button type="button" data-action="chat-proposal-status" data-proposal-id="${htmlEscape(metadata.proposal_id)}" data-message-id="${htmlEscape(message.id)}" data-status="cancelled">Cancelar proposta</button>
+        </div>` : ""}
+        <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+      </div>
+    </div>`;
+  }
   return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
     <div class="chat-message-bubble">
       <p>${htmlEscape(message.body)}</p>
@@ -5663,6 +5940,8 @@ function renderChatThread() {
   if (!conversationId || !conversation) return chatThreadEmptyMarkup();
   const other = chatDisplayForUser(chatOtherParticipant(conversation));
   const messages = appState.chat.messages[conversationId] || [];
+  const draft = chatDraftFor(conversationId);
+  const draftMode = appState.chat.draftModes[conversationId] || "";
   return `<section class="chat-thread ${messages.length ? "has-messages" : ""}">
     <header class="chat-thread-header">
       <button type="button" class="chat-back-button" data-action="chat-back-list" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
@@ -5672,12 +5951,13 @@ function renderChatThread() {
         <span>${htmlEscape(other.handle || other.username || "")}</span>
       </button>
     </header>
+    ${chatPostContextMarkup(conversation)}
     <div class="chat-thread-messages">
       ${appState.chat.messagesLoading ? `<div class="chat-message-skeleton"><span></span><span></span><span></span></div>` : ""}
       ${!appState.chat.messagesLoading && !messages.length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : messages.map(chatMessageMarkup).join("")}
     </div>
-    <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}">
-      <textarea name="body" rows="1" maxlength="2000" placeholder="Comece uma nova mensagem" aria-label="Mensagem"></textarea>
+    <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}" data-draft-mode="${htmlEscape(draftMode)}">
+      <textarea name="body" rows="${draftMode === "proposal" ? "5" : "1"}" maxlength="2000" placeholder="${draftMode === "proposal" ? "Revise sua proposta antes de enviar" : "Comece uma nova mensagem"}" aria-label="Mensagem">${htmlEscape(draft)}</textarea>
       <button type="submit" ${appState.chat.sending ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
     </form>
   </section>`;
@@ -5729,9 +6009,15 @@ function refreshChatConversationList() {
 function renderChatPage({ preserveActive = false } = {}) {
   if (!chatRequireAuth()) return;
   document.body.classList.add("chat-dm-mode");
+  const requestedConversationId = chatConversationIdFromHash();
+  if (requestedConversationId) appState.chat.activeConversationId = requestedConversationId;
+  if (!requestedConversationId && !preserveActive) appState.chat.activeConversationId = "";
   subscribeChatRealtime();
   if (!preserveActive && !appState.chat.loading && !appState.chat.conversations.length) {
     void loadChatConversations({ render: true });
+  }
+  if (requestedConversationId && !appState.chat.messages[requestedConversationId] && !appState.chat.messagesLoading) {
+    void loadChatMessages(requestedConversationId, { render: true });
   }
   const conversations = filteredChatConversations();
   appView.innerHTML = `<main class="chat-dm-page ${appState.chat.activeConversationId ? "has-active-thread" : ""}">
@@ -5740,7 +6026,7 @@ function renderChatPage({ preserveActive = false } = {}) {
       <a href="#nexo-feed" data-route="nexo-feed" aria-label="Feed"><i data-lucide="search"></i></a>
       <a href="#comunidade" data-route="comunidade" aria-label="Comunidade"><i data-lucide="bell"></i></a>
       <a href="#produtores" data-route="produtores" aria-label="Profissionais"><i data-lucide="user-plus"></i></a>
-      <a href="#chat" data-route="chat" class="is-active" aria-label="Bate-papo"><i data-lucide="message-circle"></i></a>
+      <a href="#bate-papo" data-route="chat" class="is-active" aria-label="Bate-papo"><i data-lucide="message-circle"></i></a>
       <a href="#biblioteca" data-route="biblioteca" aria-label="Biblioteca"><i data-lucide="bookmark"></i></a>
       <a href="#cadastrar" data-route="cadastrar" class="chat-compose-route" aria-label="Publicar"><i data-lucide="square-pen"></i></a>
       <a href="#perfil" data-route="perfil" class="chat-rail-avatar" aria-label="Perfil">${profileAvatarMarkup(profileDisplayData(activeProfile()), "chat-avatar")}</a>
@@ -6520,6 +6806,8 @@ function hiringProposalPreviewMarkup(proposal) {
 function hiringPostCardMarkup(post, { detail = false } = {}) {
   const author = hiringAuthorDisplay(post.user_id);
   const isOwner = appState.authUser?.id && appState.authUser.id === post.user_id;
+  const interestBusy = Boolean(appState.chat.pendingActions[`${post.id}:interest`]);
+  const proposalBusy = Boolean(appState.chat.pendingActions[`${post.id}:proposal`]);
   const comments = appState.hiring.comments[post.id] || [];
   const ownerProposals = isOwner ? appState.hiring.proposals.filter((proposal) => proposal.post_id === post.id) : [];
   const profileAttrs = profileTargetAttrs({ id: author.id, username: author.username, title: author.name });
@@ -6546,11 +6834,11 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
       <button type="button" class="${post.viewer?.liked ? "is-active" : ""}" data-action="hiring-like" data-post-id="${htmlEscape(post.id)}" aria-label="Curtir"><i data-lucide="heart"></i><span>${post.metrics?.likes || 0}</span></button>
       <button type="button" class="${post.viewer?.saved ? "is-active" : ""}" data-action="hiring-save" data-post-id="${htmlEscape(post.id)}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>${post.metrics?.saves || 0}</span></button>
       <button type="button" data-action="hiring-share" data-post-id="${htmlEscape(post.id)}" aria-label="Compartilhar"><i data-lucide="share"></i></button>
-      <button type="button" class="hiring-chat-icon" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""} aria-label="Abrir chat"><i data-lucide="messages-square"></i></button>
+      <button type="button" class="hiring-chat-icon" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner || interestBusy ? "disabled" : ""} aria-label="Abrir chat"><i data-lucide="${interestBusy ? "loader-2" : "messages-square"}"></i></button>
     </div>
     <div class="hiring-professional-actions">
-      <button type="button" class="hiring-compact-cta ${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
-      <button type="button" class="hiring-compact-cta ${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner || interestBusy ? "disabled" : ""}><i data-lucide="${interestBusy ? "loader-2" : "hand"}"></i>${interestBusy ? "Abrindo chat..." : (post.viewer?.interested ? "Interesse enviado" : "Tenho interesse")}</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner || proposalBusy ? "disabled" : ""}><i data-lucide="${proposalBusy ? "loader-2" : "send"}"></i>${proposalBusy ? "Abrindo proposta..." : (post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta")}</button>
       ${isOwner ? `<label class="hiring-status-select">Status<select data-action="hiring-status" data-post-id="${htmlEscape(post.id)}">${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${post.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>` : ""}
     </div>
     <section class="hiring-comments" ${detail ? "" : "hidden"}>
@@ -6751,26 +7039,11 @@ async function toggleHiringAction(kind, postId) {
 }
 
 async function sendHiringInterest(postId) {
-  if (!hiringRequireAuth()) return;
-  const post = appState.hiring.posts.find((item) => item.id === postId);
-  if (!post || post.user_id === appState.authUser.id) return;
-  const { error } = await supabaseClient.from("hiring_interests").upsert({ post_id: postId, user_id: appState.authUser.id }, { onConflict: "post_id,user_id" });
-  if (error) {
-    showToast(error.message || "Nao foi possivel enviar interesse.", "triangle-alert");
-    return;
-  }
-  invalidateHiringCache();
-  post.viewer.interested = true;
-  post.metrics.interests = Math.max(1, Number(post.metrics.interests || 0) + 1);
-  showToast("Interesse enviado", "hand");
-  renderHiringPage({ force: false });
+  await handleCommunityChatAction({ postId, action: "interest" });
 }
 
 function openHiringProposalModal(postId) {
-  if (!hiringRequireAuth()) return;
-  const post = appState.hiring.posts.find((item) => item.id === postId);
-  if (!post || post.user_id === appState.authUser.id) return;
-  openModal(`<form class="hiring-proposal-form" data-post-id="${htmlEscape(postId)}"><span><i data-lucide="send"></i>Enviar proposta</span><h2>${htmlEscape(post.title)}</h2><label>Mensagem da proposta<textarea name="message" rows="5" maxlength="1200" required placeholder="Explique como voce pode resolver essa demanda."></textarea></label><label>Valor sugerido<input name="proposed_amount" type="number" inputmode="decimal" min="0" placeholder="R$"></label><label>Prazo de entrega<input name="delivery_deadline" type="text" maxlength="80" placeholder="Ex: hoje, 24h, sexta-feira"></label><label>Links de portfolio<input name="portfolio_links" type="text" maxlength="500" placeholder="SoundCloud, BeatStars, Instagram, site"></label><button class="seller-submit" type="submit">Enviar proposta<i data-lucide="arrow-right"></i></button></form>`);
+  handleCommunityChatAction({ postId, action: "proposal" });
 }
 
 async function submitHiringProposal(form) {
@@ -6853,21 +7126,7 @@ async function updateHiringStatus(postId, status) {
 }
 
 async function openHiringChat(postId) {
-  if (!hiringRequireAuth()) return;
-  const post = appState.hiring.posts.find((item) => item.id === postId);
-  if (!post || post.user_id === appState.authUser.id) return;
-  const { data, error } = await supabaseClient.from("hiring_conversations").upsert({ post_id: post.id, client_id: post.user_id, professional_id: appState.authUser.id }, { onConflict: "post_id,client_id,professional_id" }).select().single();
-  if (error) {
-    showToast(error.message || "Nao foi possivel abrir chat.", "triangle-alert");
-    return;
-  }
-  const { data: messages, error: messageError } = await supabaseClient.from("hiring_messages").select("*").eq("conversation_id", data.id).order("created_at", { ascending: true });
-  if (messageError) {
-    showToast(messageError.message || "Nao foi possivel carregar mensagens.", "triangle-alert");
-    return;
-  }
-  appState.hiring.messages[data.id] = messages || [];
-  openHiringConversationModal(data, post);
+  await handleCommunityChatAction({ postId, action: "interest" });
 }
 
 function hiringMessageMarkup(message) {
@@ -14788,7 +15047,7 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "chat-open-conversation") {
-      openChatConversation(target.dataset.conversationId || "");
+      navigateToChatConversation(target.dataset.conversationId || "");
       return;
     }
     if (action === "chat-back-list") {
@@ -14803,9 +15062,16 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "chat-start-profile") {
-      openOrCreateDirectConversation(target.dataset.profileId || "").then(() => {
-        location.hash = "chat";
-      });
+      openOrCreateDirectConversation(target.dataset.profileId || "");
+      return;
+    }
+    if (action === "chat-open-community-post") {
+      const postId = target.dataset.postId || "";
+      if (postId) location.hash = `${COMMUNITY_ROUTE}-${postId}`;
+      return;
+    }
+    if (action === "chat-proposal-status") {
+      updateChatProposalStatus(target.dataset.proposalId || "", target.dataset.messageId || "", target.dataset.status || "");
       return;
     }
   }
@@ -15804,6 +16070,7 @@ document.addEventListener("input", (event) => {
     return;
   }
   if (input.closest?.(".chat-composer-form") && input.matches("textarea")) {
+    setChatDraft(input.closest(".chat-composer-form")?.dataset.conversationId || appState.chat.activeConversationId, input.value || "");
     input.style.height = "auto";
     input.style.height = `${Math.min(140, input.scrollHeight)}px`;
     return;
