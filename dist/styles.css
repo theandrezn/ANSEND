@@ -24263,7 +24263,6 @@ body[data-route="contratacoes"] #appView.app-view {
   bottom: 24px;
   z-index: 9500;
   color: var(--nexo-text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 body.modal-open .nexo-floating-assistant,
@@ -24754,7 +24753,6 @@ body.chat-dm-mode #appView.app-view {
   height: 100vh;
   background: var(--chat-surface);
   color: var(--chat-text);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .chat-dm-page button,
