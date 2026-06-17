@@ -26915,7 +26915,7 @@ body[data-route="comunidade"] .hiring-right-rail {
   display: block;
   width: min(100%, 238px);
   margin-left: auto;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 9 / 16;
   overflow: hidden;
   border: 0;
   border-radius: 22px;
@@ -27163,7 +27163,7 @@ body[data-route="comunidade"] .hiring-right-rail {
 }
 
 .community-ad-card.is-placeholder {
-  aspect-ratio: 1 / 1.16;
+  aspect-ratio: 9 / 16;
   min-height: 0;
 }
 

@@ -58,6 +58,10 @@ if (/if \(route !== COMMUNITY_ROUTE(?:\s*&&\s*route !== "chat")?\) PageTransitio
 if (!/communityRouteEnter/.test(styles) || !/body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
   throw new Error("Community route transition animation missing");
 }
+if (!/\.community-ad-card\s*\{[\s\S]*?aspect-ratio:\s*9\s*\/\s*16/.test(styles)
+  || !/\.community-ad-card\.is-placeholder\s*\{[\s\S]*?aspect-ratio:\s*9\s*\/\s*16/.test(styles)) {
+  throw new Error("Community ad banner must keep a 9:16 aspect ratio");
+}
 if (!/prefers-reduced-motion[\s\S]*communityRouteEnter|prefers-reduced-motion[\s\S]*body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
   throw new Error("Community route transition must respect reduced motion");
 }
