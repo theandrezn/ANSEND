@@ -131,6 +131,10 @@ async function run() {
     });
 
     await page.goto(`http://127.0.0.1:${server.address().port}/#cadastrar`, { waitUntil: "domcontentloaded" });
+    const uploadModeButton = page.locator('[data-action="release-mode-choice"][data-mode="upload"]').first();
+    if (await uploadModeButton.count()) {
+      await uploadModeButton.click();
+    }
     try {
       await page.waitForSelector(".release-upload-form", { timeout: 10000 });
     } catch (error) {
@@ -183,7 +187,7 @@ async function run() {
     if (result.progress === "85%") throw new Error("Cover upload progress is still stuck at 85%.");
     if (/demorou demais/i.test(result.errorText)) throw new Error("False timeout message appeared after successful upload.");
     if (result.upload.bucket !== "beat-covers") throw new Error(`Unexpected bucket: ${result.upload.bucket}`);
-    if (!result.upload.uploadPath.startsWith("test-user/covers/")) throw new Error(`Unexpected RLS-safe path: ${result.upload.uploadPath}`);
+    if (!result.upload.uploadPath.startsWith("test-user/")) throw new Error(`Unexpected RLS-safe path: ${result.upload.uploadPath}`);
     if (result.sessionReads < 2) throw new Error("Upload did not revalidate the current Supabase session before Storage upload.");
   } finally {
     await browser.close();

@@ -19,13 +19,18 @@
     "test:email-confirmation": "node tests/email-confirmation-check.js",
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
+    "test:typography": "node tests/typography-font-check.js",
     "test:i18n": "node tests/i18n-language-check.js",
     "test:recommendations": "node tests/recommendations-architecture-check.js",
     "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js"
   },
   "devDependencies": {
     "playwright": "^1.60.0",
-    "wrangler": "^4.98.0"
+    "wrangler": "^4.101.0"
+  },
+  "overrides": {
+    "esbuild": "0.28.1",
+    "ws": "8.21.0"
   },
   "dependencies": {
     "gsap": "^3.15.0",

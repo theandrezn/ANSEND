@@ -77,7 +77,7 @@ const i18n = {
     "search.placeholder": "Buscar serviços, artistas ou profissionais",
     "hero.kicker": "NEXO IA",
     "hero.titleLine1": "ANSEND",
-    "hero.titleLine2": "O marketplace inteligente da música",
+    "hero.titleLine2": "O\u00a0marketplace inteligente da\u00a0música",
     "hero.subtitle": "Descreva sua música, letra, demo ou objetivo. A NEXO IA conecta você aos profissionais certos.",
     "hero.prompt": "Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente...",
     "hero.primaryCta": "Começar com IA",
@@ -578,7 +578,7 @@ const englishTextPairs = [
   ["Buscar servi\u00e7os, artistas ou profissionais", "Search services, artists, or professionals"],
   ["Buscar beats, artistas, servi\u00e7os, BPM ou vibe", "Search beats, artists, services, BPM, or vibe"],
   ["Buscar beats, artistas, BPM ou vibe", "Search beats, artists, BPM, or vibe"],
-  ["O marketplace inteligente da m\u00fasica", "The intelligent music marketplace"],
+  ["O\u00a0marketplace inteligente da\u00a0m\u00fasica", "The intelligent music marketplace"],
   ["ANSEND | O marketplace inteligente da m\u00fasica", "ANSEND | The intelligent music marketplace"],
   ["O que podemos lan\u00e7ar hoje?", "What can we release today?"],
   ["Tenho uma ideia musical e preciso transformar em lan\u00e7amento profissional.", "I have a music idea and need to turn it into a professional release."],
@@ -1217,7 +1217,7 @@ const roleDashboards = {
   },
 };
 
-const heroHeadline = ["ANSEND", "O marketplace inteligente da música"];
+const heroHeadline = ["ANSEND", "O\u00a0marketplace inteligente da\u00a0música"];
 
 const playlists = [
   ["Trap na Área", "52 beats", "assets/catalog-cover-01.webp"],
@@ -1299,6 +1299,7 @@ const appState = {
     conversations: [],
     messages: {},
     loading: false,
+    submitting: false,
     error: "",
     detailId: "",
     lastLoadedAt: 0,
@@ -1307,6 +1308,30 @@ const appState = {
     railLoading: false,
     railError: "",
     routeStartedAt: 0,
+    promotedAd: {
+      item: null,
+      loading: false,
+      error: "",
+      activeRequestId: 0,
+      trackedImpressionId: "",
+    },
+  },
+  chat: {
+    conversations: [],
+    participants: {},
+    messages: {},
+    profiles: {},
+    activeConversationId: "",
+    search: "",
+    userSearch: "",
+    userResults: [],
+    loading: false,
+    messagesLoading: false,
+    sending: false,
+    newChatOpen: false,
+    error: "",
+    realtimeChannels: [],
+    searchTimer: null,
   },
   isAdmin: false,
   adminProfiles: [],
@@ -1314,6 +1339,16 @@ const appState = {
   nexoChatMessages: [],
   nexoChatLoading: false,
   nexoChatError: "",
+  nexoChatConversationId: "",
+  nexoChatHistoryLoading: false,
+  nexoAssistant: {
+    open: false,
+    expanded: false,
+    minimized: false,
+    unread: false,
+    initialized: false,
+    abortController: null,
+  },
   recommendations: { professionals: [], feed: [], updatedAt: 0 },
   recommendationsLoading: false,
   recommendationImpressions: new Set(),
@@ -1536,9 +1571,10 @@ function fallbackNexoIntelligence(prompt) {
 
 async function callNexoDiagnosis(quiz) {
   try {
+    const headers = await recommendationAuthHeaders();
     const response = await fetch("/api/nexo/analisar", {
       method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
+      headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
       body: JSON.stringify({ quiz }),
     });
     const data = await response.json();
@@ -1575,6 +1611,23 @@ function cssEscape(value) {
   return String(value ?? "").replace(/["\\\]]/g, "\\$&");
 }
 
+function safeUrl(value, { fallback = "#", allowHash = true, allowRelative = true } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) return fallback;
+  if (allowHash && /^#[A-Za-z0-9_-]+$/.test(raw)) return raw;
+  try {
+    const url = new URL(raw, window.location.origin);
+    const sameOrigin = url.origin === window.location.origin;
+    const allowedProtocols = new Set(["http:", "https:"]);
+    if (!allowedProtocols.has(url.protocol)) return fallback;
+    if (!allowRelative && sameOrigin && !/^https?:\/\//i.test(raw)) return fallback;
+    if (allowRelative && sameOrigin) return `${url.pathname}${url.search}${url.hash}`;
+    return url.href;
+  } catch (_error) {
+    return fallback;
+  }
+}
+
 function optimizedImageMarkup({
   src,
   alt = "",
@@ -1585,8 +1638,8 @@ function optimizedImageMarkup({
   fallbackSrc = IMAGE_FALLBACK_SRC,
   sizes = "",
 } = {}) {
-  const safeSrc = htmlEscape(src || fallbackSrc || IMAGE_FALLBACK_SRC);
-  const safeFallback = htmlEscape(fallbackSrc || IMAGE_FALLBACK_SRC);
+  const safeSrc = htmlEscape(safeUrl(src || fallbackSrc || IMAGE_FALLBACK_SRC, { fallback: fallbackSrc || IMAGE_FALLBACK_SRC }));
+  const safeFallback = htmlEscape(safeUrl(fallbackSrc || IMAGE_FALLBACK_SRC, { fallback: IMAGE_FALLBACK_SRC }));
   const attrs = [
     `src="${safeSrc}"`,
     `alt="${htmlEscape(alt)}"`,
@@ -3759,6 +3812,7 @@ function currentRouteFromHash() {
     "explorar",
     "favoritos",
     "compras",
+    "chat",
     "biblioteca",
     "ia",
     "produtores",
@@ -4201,6 +4255,7 @@ const routeTitles = {
 routeTitles.feed = ["Home", "Dashboard resumido com IA, recomendações e próximos passos."];
 routeTitles["nexo-feed"] = ["Feed", "NEXO Feed vertical com beats, profissionais e soluções recomendadas."];
 routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços contratados."];
+routeTitles.chat = ["Bate-papo", "Mensagens diretas entre perfis da ANSEND."];
 routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
 routeTitles.comunidade = [COMMUNITY_TITLE, COMMUNITY_SUBTITLE];
@@ -5154,7 +5209,26 @@ function invalidateHiringCache() {
   appState.hiring.lastLoadedAt = 0;
 }
 
+function waitForHiringAuthReady(timeoutMs = 4500) {
+  if (!supabaseClient || appState.authReady || !appState.authLoading) return Promise.resolve();
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const tick = () => {
+      if (appState.authReady || !appState.authLoading || Date.now() - startedAt >= timeoutMs) {
+        resolve();
+        return;
+      }
+      window.setTimeout(tick, 80);
+    };
+    tick();
+  });
+}
+
 function hiringRequireAuth() {
+  if (appState.authLoading && !appState.authReady) {
+    showToast("Validando sua sessao na Comunidade ANSEND...", "loader-2");
+    return false;
+  }
   if (hasAccountAccess()) return true;
   showToast("Entre para interagir com a Comunidade ANSEND.", "log-in");
   location.hash = "vendedor";
@@ -5203,6 +5277,504 @@ function hiringAuthorDisplay(userId) {
   };
 }
 
+function chatRequireAuth() {
+  if (appState.authLoading && !appState.authReady) {
+    showToast("Validando sua sessao...", "loader-2");
+    return false;
+  }
+  if (supabaseClient && appState.authUser?.id) return true;
+  showToast("Faca login para acessar o bate-papo.", "log-in");
+  location.hash = "vendedor";
+  return false;
+}
+
+function chatProfile(userId) {
+  if (!userId) return null;
+  if (appState.chat.profiles[userId]) return appState.chat.profiles[userId];
+  return profileForUserId(userId);
+}
+
+function chatDisplayForUser(userId) {
+  const profile = chatProfile(userId);
+  const display = profileDisplayData(profile);
+  const fallbackHandle = String(userId || "").slice(0, 8);
+  const name = display.name && display.name !== "Perfil ANSEND" ? display.name : "Usuario ANSEND";
+  const username = display.username || sanitizeHandle(profile?.username || name || fallbackHandle);
+  return {
+    id: userId,
+    name,
+    username,
+    handle: username ? `@${username}` : "",
+    avatar: display.avatar,
+    verified: Boolean(profile?.is_verified || profile?.verified || profile?.verified_at),
+  };
+}
+
+function chatRelativeDate(value) {
+  return hiringRelativeDate(value);
+}
+
+function chatPreviewText(message) {
+  if (!message?.body) return "Nenhuma mensagem ainda";
+  return String(message.body || "").replace(/\s+/g, " ").trim().slice(0, 140);
+}
+
+function chatOtherParticipant(conversation) {
+  const ids = appState.chat.participants[conversation.id] || [];
+  return ids.find((id) => id !== appState.authUser?.id) || conversation.created_by || "";
+}
+
+function sanitizeChatMessage(value = "") {
+  return String(value || "").replace(/\u0000/g, "").trim().slice(0, 2000);
+}
+
+async function fetchChatProfiles(userIds = []) {
+  const ids = [...new Set(userIds.filter(Boolean))].filter((id) => !appState.chat.profiles[id]);
+  if (!ids.length || !supabaseClient) return;
+  const { data, error } = await supabaseClient
+    .from("public_profiles")
+    .select(HIRING_PROFILE_SELECT)
+    .in("id", ids)
+    .limit(ids.length);
+  if (error) throw error;
+  (data || []).forEach((profile) => {
+    appState.chat.profiles[profile.id] = profile;
+  });
+  if (appState.profile?.id) appState.chat.profiles[appState.profile.id] = appState.profile;
+}
+
+function sortChatConversations(conversations = []) {
+  return [...conversations].sort((a, b) => new Date(b.last_message_at || b.updated_at || b.created_at || 0) - new Date(a.last_message_at || a.updated_at || a.created_at || 0));
+}
+
+function filteredChatConversations() {
+  const query = appState.chat.search.trim().toLowerCase();
+  const conversations = sortChatConversations(appState.chat.conversations);
+  if (!query) return conversations;
+  return conversations.filter((conversation) => {
+    const other = chatDisplayForUser(chatOtherParticipant(conversation));
+    const lastMessage = chatPreviewText(conversation.lastMessage).toLowerCase();
+    return [other.name, other.username, other.handle, lastMessage].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+}
+
+async function loadChatConversations({ render = false } = {}) {
+  if (!supabaseClient || !appState.authUser?.id) return [];
+  appState.chat.loading = true;
+  appState.chat.error = "";
+  if (render) renderChatPage({ preserveActive: true });
+  try {
+    const userId = appState.authUser.id;
+    const { data: ownRows, error: ownError } = await supabaseClient
+      .from("conversation_participants")
+      .select("conversation_id,last_read_at")
+      .eq("user_id", userId)
+      .limit(80);
+    if (ownError) throw ownError;
+    const conversationIds = [...new Set((ownRows || []).map((row) => row.conversation_id).filter(Boolean))];
+    if (!conversationIds.length) {
+      appState.chat.conversations = [];
+      appState.chat.participants = {};
+      appState.chat.loading = false;
+      if (render) renderChatPage({ preserveActive: true });
+      return [];
+    }
+
+    const [{ data: conversations, error: conversationsError }, { data: participants, error: participantsError }, { data: messages, error: messagesError }] = await Promise.all([
+      supabaseClient.from("conversations").select("*").in("id", conversationIds).order("last_message_at", { ascending: false }).limit(80),
+      supabaseClient.from("conversation_participants").select("conversation_id,user_id,last_read_at").in("conversation_id", conversationIds).limit(200),
+      supabaseClient.from("messages").select("*").in("conversation_id", conversationIds).order("created_at", { ascending: false }).limit(Math.max(80, conversationIds.length * 3)),
+    ]);
+    if (conversationsError) throw conversationsError;
+    if (participantsError) throw participantsError;
+    if (messagesError) throw messagesError;
+
+    const participantsByConversation = {};
+    (participants || []).forEach((row) => {
+      participantsByConversation[row.conversation_id] = participantsByConversation[row.conversation_id] || [];
+      participantsByConversation[row.conversation_id].push(row.user_id);
+    });
+    appState.chat.participants = participantsByConversation;
+    await fetchChatProfiles((participants || []).map((row) => row.user_id));
+
+    const lastMessageByConversation = {};
+    (messages || []).forEach((message) => {
+      if (!lastMessageByConversation[message.conversation_id]) lastMessageByConversation[message.conversation_id] = message;
+    });
+    const readMap = Object.fromEntries((ownRows || []).map((row) => [row.conversation_id, row.last_read_at]));
+    appState.chat.conversations = sortChatConversations((conversations || []).map((conversation) => {
+      const lastReadAt = readMap[conversation.id] || null;
+      const unreadCount = (messages || []).filter((message) => (
+        message.conversation_id === conversation.id
+        && message.sender_id !== userId
+        && (!lastReadAt || new Date(message.created_at) > new Date(lastReadAt))
+      )).length;
+      return {
+        ...conversation,
+        lastMessage: lastMessageByConversation[conversation.id] || null,
+        lastReadAt,
+        unreadCount,
+      };
+    }));
+  } catch (error) {
+    console.error("[ANSEND chat] load conversations failed", error);
+    appState.chat.error = "Nao foi possivel carregar suas conversas.";
+  } finally {
+    appState.chat.loading = false;
+    if (render) renderChatPage({ preserveActive: true });
+  }
+  return appState.chat.conversations;
+}
+
+async function loadChatMessages(conversationId, { render = false } = {}) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId) return [];
+  appState.chat.messagesLoading = true;
+  if (render) renderChatPage({ preserveActive: true });
+  try {
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    appState.chat.messages[conversationId] = [...(data || [])].reverse();
+    await markChatConversationRead(conversationId);
+  } catch (error) {
+    console.error("[ANSEND chat] load messages failed", error);
+    showToast("Nao foi possivel carregar a conversa.", "message-circle-warning");
+  } finally {
+    appState.chat.messagesLoading = false;
+    if (render) renderChatPage({ preserveActive: true });
+  }
+  return appState.chat.messages[conversationId] || [];
+}
+
+async function markChatConversationRead(conversationId) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId) return;
+  const { error } = await supabaseClient
+    .from("conversation_participants")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", appState.authUser.id);
+  if (error) console.warn("[ANSEND chat] read state failed", error);
+  appState.chat.conversations = appState.chat.conversations.map((conversation) => (
+    conversation.id === conversationId ? { ...conversation, lastReadAt: new Date().toISOString(), unreadCount: 0 } : conversation
+  ));
+}
+
+function appendChatMessage(message) {
+  if (!message?.conversation_id) return;
+  const list = appState.chat.messages[message.conversation_id] || [];
+  if (list.some((item) => item.id === message.id)) return;
+  appState.chat.messages[message.conversation_id] = [...list, message].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+async function openChatConversation(conversationId, { render = true } = {}) {
+  if (!conversationId) return;
+  appState.chat.activeConversationId = conversationId;
+  if (render) renderChatPage({ preserveActive: true });
+  await loadChatMessages(conversationId, { render: true });
+  queueChatScrollToBottom();
+}
+
+async function openOrCreateDirectConversation(otherUserId) {
+  if (!chatRequireAuth() || !otherUserId) return;
+  if (otherUserId === appState.authUser.id) {
+    showToast("Voce nao pode iniciar conversa consigo mesmo.", "user-x");
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient.rpc("get_or_create_direct_conversation", { p_other_user_id: otherUserId });
+    if (error) throw error;
+    appState.chat.newChatOpen = false;
+    await loadChatConversations({ render: false });
+    await openChatConversation(data, { render: true });
+  } catch (error) {
+    console.error("[ANSEND chat] create direct failed", error);
+    showToast("Nao foi possivel iniciar o chat.", "message-circle-warning");
+  }
+}
+
+async function sendChatMessage(form) {
+  if (!chatRequireAuth() || appState.chat.sending) return;
+  const conversationId = form?.dataset.conversationId || appState.chat.activeConversationId;
+  const textarea = form?.querySelector("textarea[name='body']");
+  const body = sanitizeChatMessage(textarea?.value || "");
+  if (!conversationId || !body) return;
+  appState.chat.sending = true;
+  renderChatPage({ preserveActive: true });
+  try {
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .insert({ conversation_id: conversationId, sender_id: appState.authUser.id, body, message_type: "text", metadata: {} })
+      .select()
+      .single();
+    if (error) throw error;
+    appendChatMessage(data);
+    if (textarea) textarea.value = "";
+    await loadChatConversations({ render: false });
+  } catch (error) {
+    console.error("[ANSEND chat] send failed", error);
+    showToast("Nao foi possivel enviar a mensagem.", "send-x");
+  } finally {
+    appState.chat.sending = false;
+    renderChatPage({ preserveActive: true });
+    queueChatScrollToBottom();
+  }
+}
+
+function escapeSupabaseLike(value = "") {
+  return String(value || "").replace(/[%_]/g, "\\$&").replace(/,/g, " ");
+}
+
+async function searchChatUsers(query) {
+  if (!supabaseClient || !appState.authUser?.id) return [];
+  const term = escapeSupabaseLike(query.trim());
+  if (term.length < 2) {
+    appState.chat.userResults = [];
+    renderChatPage({ preserveActive: true });
+    return [];
+  }
+  try {
+    const pattern = `%${term}%`;
+    const { data, error } = await supabaseClient
+      .from("public_profiles")
+      .select(HIRING_PROFILE_SELECT)
+      .or(`display_name.ilike.${pattern},username.ilike.${pattern},full_name.ilike.${pattern},artistic_name.ilike.${pattern}`)
+      .neq("id", appState.authUser.id)
+      .limit(12);
+    if (error) throw error;
+    appState.chat.userResults = data || [];
+    (data || []).forEach((profile) => {
+      appState.chat.profiles[profile.id] = profile;
+    });
+  } catch (error) {
+    console.error("[ANSEND chat] search users failed", error);
+    appState.chat.userResults = [];
+  }
+  renderChatPage({ preserveActive: true });
+  return appState.chat.userResults;
+}
+
+function cleanupChatRealtime() {
+  if (!supabaseClient || !appState.chat.realtimeChannels.length) return;
+  appState.chat.realtimeChannels.forEach((channel) => {
+    try {
+      supabaseClient.removeChannel(channel);
+    } catch (error) {
+      console.warn("[ANSEND chat] channel cleanup failed", error);
+    }
+  });
+  appState.chat.realtimeChannels = [];
+}
+
+function subscribeChatRealtime() {
+  if (!supabaseClient || !appState.authUser?.id || appState.chat.realtimeChannels.length) return;
+  const userId = appState.authUser.id;
+  const messagesChannel = supabaseClient
+    .channel(`ansend-chat-messages-${userId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, async (payload) => {
+      const message = payload.new;
+      const participantIds = appState.chat.participants[message.conversation_id] || [];
+      if (!participantIds.includes(userId)) {
+        await loadChatConversations({ render: currentRoute() === "chat" });
+        return;
+      }
+      appendChatMessage(message);
+      await loadChatConversations({ render: false });
+      if (message.conversation_id === appState.chat.activeConversationId && message.sender_id !== userId) {
+        await markChatConversationRead(message.conversation_id);
+      }
+      if (currentRoute() === "chat") {
+        renderChatPage({ preserveActive: true });
+        queueChatScrollToBottom();
+      }
+    })
+    .subscribe();
+
+  const participantChannel = supabaseClient
+    .channel(`ansend-chat-participants-${userId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "conversation_participants", filter: `user_id=eq.${userId}` }, async () => {
+      await loadChatConversations({ render: currentRoute() === "chat" });
+    })
+    .subscribe();
+
+  appState.chat.realtimeChannels = [messagesChannel, participantChannel];
+}
+
+function queueChatScrollToBottom() {
+  window.requestAnimationFrame(() => {
+    const list = document.querySelector(".chat-thread-messages");
+    if (list) list.scrollTop = list.scrollHeight;
+  });
+}
+
+function chatConversationItemMarkup(conversation) {
+  const otherId = chatOtherParticipant(conversation);
+  const display = chatDisplayForUser(otherId);
+  const lastMessage = conversation.lastMessage;
+  const isActive = appState.chat.activeConversationId === conversation.id;
+  return `<button type="button" class="chat-conversation-item ${isActive ? "is-active" : ""}" data-action="chat-open-conversation" data-conversation-id="${htmlEscape(conversation.id)}">
+    ${profileAvatarMarkup(display, "chat-avatar")}
+    <span class="chat-conversation-copy">
+      <span class="chat-conversation-head">
+        <strong>${htmlEscape(display.name)}${display.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
+        <small>${htmlEscape(chatRelativeDate(lastMessage?.created_at || conversation.last_message_at || conversation.updated_at))}</small>
+      </span>
+      <span class="chat-conversation-meta">${htmlEscape(display.handle || display.username || "")}</span>
+      <span class="chat-conversation-preview">${lastMessage?.sender_id === appState.authUser?.id ? "Voce: " : ""}${htmlEscape(chatPreviewText(lastMessage))}</span>
+    </span>
+    ${conversation.unreadCount ? `<span class="chat-unread-dot" aria-label="${conversation.unreadCount} nao lidas"></span>` : ""}
+  </button>`;
+}
+
+function chatEmptyInboxMarkup() {
+  return `<section class="chat-empty-list">
+    <i data-lucide="message-circle"></i>
+    <h2>Caixa de entrada vazia</h2>
+    <p>Envie uma mensagem para alguem</p>
+  </section>`;
+}
+
+function chatThreadEmptyMarkup() {
+  return `<section class="chat-thread-empty">
+    <span class="chat-empty-icon"><i data-lucide="message-circle"></i></span>
+    <h2>Iniciar conversa</h2>
+    <p>Escolha entre as conversas existentes ou inicie uma nova.</p>
+    <button type="button" data-action="chat-new-open">Novo chat</button>
+  </section>`;
+}
+
+function chatMessageMarkup(message) {
+  const mine = message.sender_id === appState.authUser?.id;
+  return `<div class="chat-message-row ${mine ? "is-mine" : "is-theirs"}">
+    <div class="chat-message-bubble">
+      <p>${htmlEscape(message.body)}</p>
+      <small>${htmlEscape(chatRelativeDate(message.created_at))}</small>
+    </div>
+  </div>`;
+}
+
+function renderChatThread() {
+  const conversationId = appState.chat.activeConversationId;
+  const conversation = appState.chat.conversations.find((item) => item.id === conversationId);
+  if (!conversationId || !conversation) return chatThreadEmptyMarkup();
+  const other = chatDisplayForUser(chatOtherParticipant(conversation));
+  const messages = appState.chat.messages[conversationId] || [];
+  return `<section class="chat-thread ${messages.length ? "has-messages" : ""}">
+    <header class="chat-thread-header">
+      <button type="button" class="chat-back-button" data-action="chat-back-list" aria-label="Voltar"><i data-lucide="arrow-left"></i></button>
+      ${profileAvatarMarkup(other, "chat-avatar")}
+      <button type="button" class="chat-thread-profile" data-action="chat-open-profile" data-profile-id="${htmlEscape(other.id)}">
+        <strong>${htmlEscape(other.name)}${other.verified ? ` <i data-lucide="badge-check"></i>` : ""}</strong>
+        <span>${htmlEscape(other.handle || other.username || "")}</span>
+      </button>
+    </header>
+    <div class="chat-thread-messages">
+      ${appState.chat.messagesLoading ? `<div class="chat-message-skeleton"><span></span><span></span><span></span></div>` : ""}
+      ${!appState.chat.messagesLoading && !messages.length ? `<div class="chat-thread-start"><strong>Nova conversa</strong><p>Envie a primeira mensagem para ${htmlEscape(other.name)}.</p></div>` : messages.map(chatMessageMarkup).join("")}
+    </div>
+    <form class="chat-composer-form" data-conversation-id="${htmlEscape(conversationId)}">
+      <textarea name="body" rows="1" maxlength="2000" placeholder="Comece uma nova mensagem" aria-label="Mensagem"></textarea>
+      <button type="submit" ${appState.chat.sending ? "disabled" : ""} aria-label="Enviar"><i data-lucide="${appState.chat.sending ? "loader-2" : "send"}"></i></button>
+    </form>
+  </section>`;
+}
+
+function renderNewChatModal() {
+  if (!appState.chat.newChatOpen) return "";
+  const query = appState.chat.userSearch.trim();
+  const results = appState.chat.userResults || [];
+  return `<div class="chat-new-modal" role="dialog" aria-modal="true" aria-label="Novo chat">
+    <div class="chat-new-backdrop" data-action="chat-new-close"></div>
+    <section class="chat-new-panel">
+      <header>
+        <button type="button" data-action="chat-new-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+        <h2>Nova mensagem</h2>
+      </header>
+      <label class="chat-user-search">
+        <i data-lucide="search"></i>
+        <input type="search" value="${htmlEscape(query)}" placeholder="Buscar pessoas" data-chat-user-search autocomplete="off">
+      </label>
+      <div class="chat-user-results">
+        ${!query ? `<p class="chat-user-empty">Busque por nome, usuario ou artista.</p>` : ""}
+        ${query && !results.length ? `<p class="chat-user-empty">Nenhum perfil encontrado.</p>` : ""}
+        ${results.map((profile) => {
+          const display = profileDisplayData(profile);
+          return `<button type="button" data-action="chat-select-user" data-user-id="${htmlEscape(profile.id)}">
+            ${profileAvatarMarkup(display, "chat-avatar")}
+            <span><strong>${htmlEscape(display.name)}</strong><small>${htmlEscape(display.handle || display.username || "")}</small></span>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>
+  </div>`;
+}
+
+function refreshChatConversationList() {
+  const list = document.querySelector(".chat-conversation-list");
+  if (!list) return;
+  const conversations = filteredChatConversations();
+  list.innerHTML = `
+    ${appState.chat.loading ? `<div class="chat-list-skeleton"><span></span><span></span><span></span></div>` : ""}
+    ${!appState.chat.loading && appState.chat.error ? `<p class="chat-load-error">${htmlEscape(appState.chat.error)}</p>` : ""}
+    ${!appState.chat.loading && !appState.chat.error && conversations.length ? conversations.map(chatConversationItemMarkup).join("") : ""}
+    ${!appState.chat.loading && !appState.chat.error && !conversations.length ? chatEmptyInboxMarkup() : ""}
+  `;
+  lucide.createIcons();
+}
+
+function renderChatPage({ preserveActive = false } = {}) {
+  if (!chatRequireAuth()) return;
+  document.body.classList.add("chat-dm-mode");
+  subscribeChatRealtime();
+  if (!preserveActive && !appState.chat.loading && !appState.chat.conversations.length) {
+    void loadChatConversations({ render: true });
+  }
+  const conversations = filteredChatConversations();
+  appView.innerHTML = `<main class="chat-dm-page ${appState.chat.activeConversationId ? "has-active-thread" : ""}">
+    <aside class="chat-x-rail" aria-label="Navegacao rapida">
+      <a href="#feed" data-route="feed" aria-label="Inicio"><i data-lucide="home"></i></a>
+      <a href="#nexo-feed" data-route="nexo-feed" aria-label="Feed"><i data-lucide="search"></i></a>
+      <a href="#comunidade" data-route="comunidade" aria-label="Comunidade"><i data-lucide="bell"></i></a>
+      <a href="#produtores" data-route="produtores" aria-label="Profissionais"><i data-lucide="user-plus"></i></a>
+      <a href="#chat" data-route="chat" class="is-active" aria-label="Bate-papo"><i data-lucide="message-circle"></i></a>
+      <a href="#biblioteca" data-route="biblioteca" aria-label="Biblioteca"><i data-lucide="bookmark"></i></a>
+      <a href="#cadastrar" data-route="cadastrar" class="chat-compose-route" aria-label="Publicar"><i data-lucide="square-pen"></i></a>
+      <a href="#perfil" data-route="perfil" class="chat-rail-avatar" aria-label="Perfil">${profileAvatarMarkup(profileDisplayData(activeProfile()), "chat-avatar")}</a>
+    </aside>
+    <section class="chat-list-column">
+      <header class="chat-list-header">
+        <h1>Bate-papo</h1>
+        <div>
+          <button type="button" class="chat-filter-pill">Tudo <i data-lucide="chevron-down"></i></button>
+          <button type="button" aria-label="Configuracoes"><i data-lucide="inbox"></i></button>
+          <button type="button" data-action="chat-new-open" aria-label="Novo chat"><i data-lucide="message-circle-plus"></i></button>
+        </div>
+      </header>
+      <label class="chat-search-field">
+        <i data-lucide="search"></i>
+        <input type="search" value="${htmlEscape(appState.chat.search)}" placeholder="Buscar" data-chat-search autocomplete="off">
+      </label>
+      <div class="chat-conversation-list">
+        ${appState.chat.loading ? `<div class="chat-list-skeleton"><span></span><span></span><span></span></div>` : ""}
+        ${!appState.chat.loading && appState.chat.error ? `<p class="chat-load-error">${htmlEscape(appState.chat.error)}</p>` : ""}
+        ${!appState.chat.loading && !appState.chat.error && conversations.length ? conversations.map(chatConversationItemMarkup).join("") : ""}
+        ${!appState.chat.loading && !appState.chat.error && !conversations.length ? chatEmptyInboxMarkup() : ""}
+      </div>
+    </section>
+    <section class="chat-thread-column">
+      ${renderChatThread()}
+    </section>
+    ${renderNewChatModal()}
+  </main>`;
+  applyLocaleTextOverrides(appView);
+  lucide.createIcons();
+  queueChatScrollToBottom();
+}
+
 function hiringAvatar(display, className = "hiring-avatar") {
   if (display.avatar) return `<span class="${className}">${optimizedImageMarkup({ src: display.avatar, alt: `Avatar de ${display.name}`, width: 48, height: 48 })}</span>`;
   return `<span class="${className} is-initials" aria-label="Avatar de ${htmlEscape(display.name)}">${htmlEscape(profileInitials(display.name))}</span>`;
@@ -5217,6 +5789,43 @@ function hiringDetailIdFromHash() {
 
 function hiringPostUrl(postId) {
   return `${location.origin}${location.pathname}#${COMMUNITY_ROUTE}-${encodeURIComponent(postId)}`;
+}
+
+function communityBeatUrl(beatId) {
+  return `${location.origin}${location.pathname}#beat-${encodeURIComponent(beatId)}`;
+}
+
+function ansendSelectMarkup({
+  id,
+  label,
+  name = "",
+  value = "",
+  options = [],
+  action = "",
+  filter = "",
+  className = "",
+}) {
+  const normalizedOptions = options.map(([optionValue, optionLabel]) => [String(optionValue), String(optionLabel)]);
+  const selected = normalizedOptions.find(([optionValue]) => optionValue === String(value)) || normalizedOptions[0] || ["", "Selecione"];
+  const listId = `${id}-listbox`;
+  const inputAttrs = [
+    name ? `name="${htmlEscape(name)}"` : "",
+    action ? `data-action="${htmlEscape(action)}"` : "",
+    filter ? `data-filter="${htmlEscape(filter)}"` : "",
+  ].filter(Boolean).join(" ");
+  return `<label class="ansend-select-field ${className}">
+    <span>${htmlEscape(label)}</span>
+    <span class="ansend-select" data-ansend-select data-select-id="${htmlEscape(id)}">
+      <input type="hidden" value="${htmlEscape(selected[0])}" ${inputAttrs}>
+      <button type="button" class="ansend-select-trigger" data-action="ansend-select-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="${htmlEscape(listId)}">
+        <span>${htmlEscape(selected[1])}</span>
+        <i data-lucide="chevron-down" aria-hidden="true"></i>
+      </button>
+      <span class="ansend-select-menu" id="${htmlEscape(listId)}" role="listbox" aria-label="${htmlEscape(label)}">
+        ${normalizedOptions.map(([optionValue, optionLabel]) => `<button type="button" role="option" data-action="ansend-select-option" data-value="${htmlEscape(optionValue)}" aria-selected="${optionValue === selected[0] ? "true" : "false"}">${htmlEscape(optionLabel)}</button>`).join("")}
+      </span>
+    </span>
+  </label>`;
 }
 
 function mergePublicProfiles(profiles = []) {
@@ -5234,7 +5843,7 @@ async function getCommunityProfilesForIds(userIds = []) {
   const stop = perfStart("Community profiles query");
   const { data, error } = await withTimeout(
     supabaseClient.from("public_profiles").select(HIRING_PROFILE_SELECT).in("id", ids).limit(ids.length),
-    1800,
+    6000,
     "A Comunidade ANSEND demorou para carregar perfis."
   );
   stop();
@@ -5253,7 +5862,7 @@ async function getCommunityRecommendedProfiles({ limit = 4 } = {}) {
       .eq("is_public", true)
       .order("updated_at", { ascending: false })
       .limit(limit),
-    1800,
+    6000,
     "A Comunidade ANSEND demorou para carregar profissionais."
   );
   stop();
@@ -5267,7 +5876,7 @@ async function getFollowingIdsForCommunity() {
   const stop = perfStart("Community following query");
   const { data, error } = await withTimeout(
     supabaseClient.from("user_follows").select("following_id").eq("follower_id", appState.authUser.id).limit(200),
-    1500,
+    5000,
     "A Comunidade ANSEND demorou para carregar quem voce segue."
   );
   stop();
@@ -5302,7 +5911,7 @@ async function queryHiringPosts(detailId = hiringDetailIdFromHash()) {
   if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
   if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
 
-  const { data, error } = await withTimeout(query, 2200, "A Comunidade ANSEND demorou para responder.");
+  const { data, error } = await withTimeout(query, 9000, "A Comunidade ANSEND demorou para responder.");
   stop();
   if (error) throw error;
   let posts = data || [];
@@ -5392,7 +6001,7 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
     supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_comments").select("id,post_id,user_id,parent_id,content,created_at").in("post_id", ids).order("created_at", { ascending: true }),
     supabaseClient.from("hiring_proposals").select("id,post_id,sender_id,receiver_id,message,proposed_amount,delivery_deadline,portfolio_links,status,created_at").in("post_id", ids).order("created_at", { ascending: false }),
-  ]), 2200, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
+  ]), 7000, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
     console.warn("[ANSEND community] engagement fallback", error?.message || error);
     return [];
   });
@@ -5436,31 +6045,100 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
   });
 }
 
+const hiringComposerQuickActions = {
+  category: {
+    title: "Categoria",
+    description: "Ajude a comunidade a entender o tipo de publicacao.",
+    choices: hiringCategories.filter(([id]) => id !== "todos").map(([value, label]) => ({ value, label })),
+  },
+  budget: {
+    title: "Orcamento",
+    description: "Opcional, mas ajuda a filtrar oportunidades.",
+    choices: [
+      { value: "negotiable", label: "A combinar", budgetType: "negotiable", budgetAmount: "" },
+      { value: "100", label: "Ate R$100", budgetType: "fixed", budgetAmount: "100" },
+      { value: "300", label: "R$100-R$300", budgetType: "fixed", budgetAmount: "300" },
+      { value: "700", label: "R$300-R$700", budgetType: "fixed", budgetAmount: "700" },
+      { value: "1000", label: "R$700+", budgetType: "fixed", budgetAmount: "1000" },
+    ],
+  },
+  deadline: {
+    title: "Prazo",
+    description: "Quando voce precisa de resposta ou entrega?",
+    choices: [
+      { value: "hoje", label: "Hoje" },
+      { value: "esta_semana", label: "Essa semana" },
+      { value: "sem_urgencia", label: "Este mes" },
+      { value: "data_personalizada", label: "Sem prazo" },
+    ],
+  },
+  work_mode: {
+    title: "Local",
+    description: "Escolha como essa conversa ou pedido acontece.",
+    choices: Object.entries(hiringWorkModes).map(([value, label]) => ({ value, label })),
+  },
+};
+
+function hiringComposerHiddenFieldsMarkup() {
+  return `<input type="hidden" name="title" value="">
+    <input type="hidden" name="category" value="duvidas" data-chip-label="">
+    <input type="hidden" name="budget_amount" value="">
+    <input type="hidden" name="budget_type" value="fixed">
+    <input type="hidden" name="budget_label" value="">
+    <input type="hidden" name="deadline_type" value="sem_urgencia" data-chip-label="">
+    <input type="hidden" name="work_mode" value="remote" data-chip-label="">
+    <input type="hidden" name="references" value="">`;
+}
+
+function hiringComposerPopoverMarkup(type, config) {
+  return `<section class="hiring-composer-popover" data-hiring-popover="${htmlEscape(type)}" hidden>
+    <header><strong>${htmlEscape(config.title)}</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>${htmlEscape(config.description)}</p>
+    <div class="hiring-composer-choice-list">
+      ${config.choices.map((choice) => `<button type="button" data-action="hiring-composer-choice" data-field="${htmlEscape(type)}" data-value="${htmlEscape(choice.value)}" data-label="${htmlEscape(choice.label)}" data-budget-type="${htmlEscape(choice.budgetType || "")}" data-budget-amount="${htmlEscape(choice.budgetAmount ?? "")}">${htmlEscape(choice.label)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function hiringComposerReferencePopoverMarkup() {
+  return `<section class="hiring-composer-popover" data-hiring-popover="references" hidden>
+    <header><strong>Referencia</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>Cole um link do YouTube, Spotify, BeatStars, SoundCloud ou texto curto.</p>
+    <div class="hiring-composer-reference-row">
+      <label class="sr-only" for="hiringReferenceInput">Referencia</label>
+      <input id="hiringReferenceInput" type="text" placeholder="Cole uma referencia">
+      <button type="button" data-action="hiring-composer-reference-save">Adicionar</button>
+    </div>
+  </section>`;
+}
+
 function hiringComposerMarkup() {
   const profile = profileDisplayData(activeProfile());
+  const publishLabel = appState.hiring.submitting ? "Publicando..." : "Publicar";
   return `<form class="hiring-composer" data-hiring-composer novalidate>
     ${hiringAvatar({ ...profile, name: profile.name || "ANSEND" })}
     <div class="hiring-composer-main">
+      ${hiringComposerHiddenFieldsMarkup()}
       <label class="sr-only" for="hiringDescription">Descricao</label>
-      <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="Do que voce precisa hoje?" aria-label="Do que voce precisa hoje?"></textarea>
-      <label class="sr-only" for="hiringTitle">Titulo da vaga ou pedido</label>
-      <input id="hiringTitle" class="hiring-composer-title" name="title" type="text" maxlength="120" placeholder="Titulo da vaga/pedido" aria-label="Titulo da vaga ou pedido">
-      <div class="hiring-composer-grid">
-        <label>Categoria<select name="category">${hiringCategories.filter(([id]) => id !== "todos").map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
-        <label>Orcamento<input name="budget_amount" type="number" inputmode="decimal" min="0" placeholder="R$300"></label>
-        <label>Prazo<select name="deadline_type">${hiringDeadlines.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
-        <label>Local<select name="work_mode"><option value="remote">Remoto</option><option value="onsite">Presencial</option><option value="hybrid">Hibrido</option></select></label>
-        <label class="is-wide">Referencias<input name="references" type="text" placeholder="YouTube, Spotify, BeatStars, SoundCloud ou texto livre"></label>
-        <label class="hiring-negotiable"><input name="budget_type" type="checkbox" value="negotiable"> A combinar</label>
+      <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="O que esta acontecendo na musica?" aria-label="O que esta acontecendo na musica?"></textarea>
+      <div class="hiring-composer-chips" data-hiring-composer-chips aria-live="polite"></div>
+      <div class="hiring-composer-popovers">
+        ${Object.entries(hiringComposerQuickActions).map(([type, config]) => hiringComposerPopoverMarkup(type, config)).join("")}
+        ${hiringComposerReferencePopoverMarkup()}
       </div>
       <div class="hiring-composer-tools" aria-label="Opcoes da publicacao">
-        <button type="button" data-action="hiring-expand-composer" title="Categoria e detalhes"><i data-lucide="tags"></i><span>Categoria</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Referencias"><i data-lucide="link"></i><span>Referencias</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Anexo preparado"><i data-lucide="paperclip"></i><span>Anexo</span></button>
-        <button type="button" data-action="hiring-expand-composer" title="Local ou remoto"><i data-lucide="map-pin"></i><span>Local/Remoto</span></button>
-        <button type="submit" disabled>Publicar</button>
+        <div class="hiring-composer-action-row">
+          <button type="button" data-action="hiring-composer-soon" title="Imagem/anexo" aria-label="Imagem/anexo"><i data-lucide="image"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Beat ou audio" aria-label="Beat ou audio"><i data-lucide="music"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="references" title="Link ou referencia" aria-label="Link ou referencia"><i data-lucide="link"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Enquete" aria-label="Enquete"><i data-lucide="list-checks"></i></button>
+          <button type="button" data-action="hiring-composer-soon" title="Emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="category" title="Categoria" aria-label="Categoria"><i data-lucide="tags"></i><span>Categoria</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="budget" title="Orcamento" aria-label="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="work_mode" title="Local" aria-label="Local"><i data-lucide="map-pin"></i><span>Local</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="deadline" title="Prazo" aria-label="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
+        </div>
+        <button type="submit" class="hiring-publish-btn" disabled>${publishLabel}</button>
       </div>
     </div>
   </form>`;
@@ -5490,16 +6168,290 @@ function hiringFiltersMarkup() {
     <button type="button" data-action="hiring-toggle-filters"><i data-lucide="sliders-horizontal"></i>Filtros</button>
   </section>
   <section class="hiring-filters" aria-label="Filtros da comunidade" hidden>
-    <label>Categoria<select data-action="hiring-filter" data-filter="category">${hiringCategories.map(([id, label]) => `<option value="${id}" ${filters.category === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    ${ansendSelectMarkup({ id: "hiringFilterCategory", label: "Categoria", value: filters.category, options: hiringCategories, action: "hiring-filter", filter: "category" })}
     <label>Orcamento<input data-action="hiring-filter" data-filter="budget" type="number" min="0" value="${htmlEscape(filters.budget || "")}" placeholder="Max. R$"></label>
-    <label>Prazo<select data-action="hiring-filter" data-filter="deadline"><option value="todos">Todos</option>${hiringDeadlines.map(([id, label]) => `<option value="${id}" ${filters.deadline === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-    <label>Status<select data-action="hiring-filter" data-filter="status"><option value="todos">Todos</option>${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${filters.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-    <label>Tipo<select data-action="hiring-filter" data-filter="workMode"><option value="todos">Todos</option>${Object.entries(hiringWorkModes).map(([id, label]) => `<option value="${id}" ${filters.workMode === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+    ${ansendSelectMarkup({ id: "hiringFilterDeadline", label: "Prazo", value: filters.deadline, options: [["todos", "Todos"], ...hiringDeadlines], action: "hiring-filter", filter: "deadline" })}
+    ${ansendSelectMarkup({ id: "hiringFilterStatus", label: "Status", value: filters.status, options: [["todos", "Todos"], ...Object.entries(hiringStatusLabels)], action: "hiring-filter", filter: "status" })}
+    ${ansendSelectMarkup({ id: "hiringFilterWorkMode", label: "Tipo", value: filters.workMode, options: [["todos", "Todos"], ...Object.entries(hiringWorkModes)], action: "hiring-filter", filter: "workMode" })}
   </section>`;
 }
 
 function hiringEmptyMarkup(title = "Nenhuma publicacao ainda.", text = "Seja o primeiro a comecar uma conversa com a comunidade da musica.") {
   return `<section class="hiring-empty"><i data-lucide="messages-square"></i><h2>${htmlEscape(title)}</h2><p>${htmlEscape(text)}</p><button type="button" data-action="hiring-focus-composer">Criar publicacao</button></section>`;
+}
+
+function normalizePromotedBeatAd(row = {}) {
+  const targetUrl = row.target_url || (row.beat_id ? communityBeatUrl(row.beat_id) : "#catalogo");
+  const priceLabel = row.price_label || (Number(row.price || 0)
+    ? Number(row.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+        style: "currency",
+        currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+      })
+    : "");
+  return {
+    id: row.id || "",
+    beatId: row.beat_id || "",
+    title: row.title || "Beat impulsionado",
+    artist: row.artist_name || row.producer_name || "Produtor ANSEND",
+    cover: row.cover_url || row.youtube_thumbnail_url || "assets/ansend-logo-square.png",
+    priceLabel,
+    tag: row.tagline || row.genre || "Beat em destaque",
+    targetUrl,
+    impressions: Number(row.impressions || 0),
+    clicks: Number(row.clicks || 0),
+  };
+}
+
+function communityAdPlaceholderMarkup({ loading = false } = {}) {
+  return `<article class="community-ad-card is-placeholder ${loading ? "is-loading" : ""}" aria-label="Espaco de anuncio da Comunidade ANSEND">
+    <div class="community-ad-kicker"><span>Anuncio</span><small>ANSEND Ads</small></div>
+    <div class="community-ad-placeholder-art" aria-hidden="true">
+      <i data-lucide="audio-lines"></i>
+      <span></span>
+      <span></span>
+    </div>
+    <div class="community-ad-copy">
+      <strong>${loading ? "Carregando destaque" : "Anuncie seu beat aqui"}</strong>
+      <p>${loading ? "Buscando campanhas ativas da comunidade." : "Impulsione seu beat para aparecer na Comunidade ANSEND."}</p>
+    </div>
+    <a class="community-ad-cta" href="#ofertas" data-route="ofertas">Criar anuncio</a>
+  </article>`;
+}
+
+function communityAdMarkup() {
+  const adState = appState.hiring.promotedAd;
+  if (adState.loading && !adState.item) return communityAdPlaceholderMarkup({ loading: true });
+  const ad = adState.item;
+  if (!ad) return communityAdPlaceholderMarkup();
+  return `<article class="community-ad-card" data-promoted-ad-id="${htmlEscape(ad.id)}" aria-label="Beat impulsionado: ${htmlEscape(ad.title)}">
+    <div class="community-ad-kicker"><span>Anuncio</span><small>Impulsionado</small></div>
+    <a class="community-ad-cover" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}" aria-label="Ver beat ${htmlEscape(ad.title)}">
+      ${optimizedImageMarkup({ src: ad.cover, alt: `Capa de ${ad.title}`, width: 260, height: 320 })}
+    </a>
+    <div class="community-ad-copy">
+      <span>${htmlEscape(ad.tag)}</span>
+      <strong>${htmlEscape(ad.title)}</strong>
+      <p>${htmlEscape(ad.artist)}</p>
+      ${ad.priceLabel ? `<em>${htmlEscape(ad.priceLabel)}</em>` : ""}
+    </div>
+    <a class="community-ad-cta" href="${htmlEscape(safeUrl(ad.targetUrl, { fallback: "#marketplace" }))}" data-action="community-ad-open" data-ad-id="${htmlEscape(ad.id)}">Ver beat</a>
+  </article>`;
+}
+
+function communityAdRailMarkup() {
+  return `<aside class="community-ad-rail" aria-label="Anuncios pagos da Comunidade ANSEND">
+    ${communityAdMarkup()}
+  </aside>`;
+}
+
+function updateCommunityAdRail() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  const rail = document.querySelector(".community-ad-rail");
+  if (rail) rail.innerHTML = communityAdMarkup();
+  hydrateView();
+}
+
+function validPromotedBeatWindow(row = {}) {
+  const now = Date.now();
+  const startsAt = row.starts_at ? Date.parse(row.starts_at) : null;
+  const endsAt = row.ends_at ? Date.parse(row.ends_at) : null;
+  return (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
+}
+
+async function loadCommunityPromotedAd({ render = false } = {}) {
+  const adState = appState.hiring.promotedAd;
+  if (!supabaseClient) {
+    adState.item = null;
+    adState.loading = false;
+    adState.error = "";
+    if (render) updateCommunityAdRail();
+    return null;
+  }
+  const requestId = ++adState.activeRequestId;
+  adState.loading = true;
+  adState.error = "";
+  if (render) updateCommunityAdRail();
+  try {
+    const query = supabaseClient
+      .from("promoted_beats")
+      .select("id,beat_id,user_id,title,artist_name,producer_name,cover_url,youtube_thumbnail_url,target_url,price,price_label,tagline,genre,status,starts_at,ends_at,impressions,clicks,created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    const { data, error } = await withTimeout(query, 1600, "A area de anuncios demorou para responder.");
+    if (requestId !== adState.activeRequestId) return adState.item;
+    if (error) throw error;
+    const active = (data || []).filter(validPromotedBeatWindow);
+    adState.item = active.length ? normalizePromotedBeatAd(active[Math.floor(Math.random() * active.length)]) : null;
+    adState.error = "";
+    if (adState.item?.id && adState.trackedImpressionId !== adState.item.id) {
+      adState.trackedImpressionId = adState.item.id;
+      trackCommunityAdEvent("impression", adState.item.id);
+    }
+    return adState.item;
+  } catch (error) {
+    console.warn("[ANSEND community ads] fallback", error?.message || error);
+    if (requestId === adState.activeRequestId) {
+      adState.item = null;
+      adState.error = error?.message || "Nao foi possivel carregar anuncios.";
+    }
+    return null;
+  } finally {
+    if (requestId === adState.activeRequestId) {
+      adState.loading = false;
+      if (render) updateCommunityAdRail();
+    }
+  }
+}
+
+async function trackCommunityAdEvent(kind, adId) {
+  if (!supabaseClient || !appState.authUser || !adId) return;
+  const rpcName = kind === "click" ? "increment_promoted_beat_click" : "increment_promoted_beat_impression";
+  try {
+    await supabaseClient.rpc(rpcName, { p_ad_id: adId });
+  } catch (error) {
+    console.warn("[ANSEND community ads] tracking skipped", error?.message || error);
+  }
+}
+
+function closeHiringComposerPopovers(form = document) {
+  form.querySelectorAll?.(".hiring-composer-popover").forEach((popover) => { popover.hidden = true; });
+  form.querySelectorAll?.('[data-action="hiring-composer-popover"]').forEach((button) => button.classList.remove("is-active"));
+}
+
+function openHiringComposerPopover(form, type) {
+  if (!form || !type) return;
+  closeHiringComposerPopovers(form);
+  const popover = form.querySelector(`[data-hiring-popover="${CSS.escape(type)}"]`);
+  const trigger = form.querySelector(`[data-action="hiring-composer-popover"][data-popover="${CSS.escape(type)}"]`);
+  if (!popover) return;
+  popover.hidden = false;
+  trigger?.classList.add("is-active");
+  popover.querySelector("button, input")?.focus({ preventScroll: true });
+}
+
+function hiringComposerChipData(form) {
+  const elements = form?.elements;
+  if (!elements) return [];
+  const chips = [];
+  if (elements.category?.dataset.chipLabel) chips.push(["category", elements.category.dataset.chipLabel]);
+  if (elements.budget_label?.value) chips.push(["budget", elements.budget_label.value]);
+  if (elements.work_mode?.dataset.chipLabel) chips.push(["work_mode", elements.work_mode.dataset.chipLabel]);
+  if (elements.deadline_type?.dataset.chipLabel) chips.push(["deadline", elements.deadline_type.dataset.chipLabel]);
+  if (elements.references?.value) chips.push(["references", elements.references.value]);
+  return chips;
+}
+
+function updateHiringComposerChips(form) {
+  const container = form?.querySelector("[data-hiring-composer-chips]");
+  if (!container) return;
+  const chips = hiringComposerChipData(form);
+  container.innerHTML = chips.map(([field, label]) => `<span class="hiring-composer-chip" data-chip-field="${htmlEscape(field)}">${htmlEscape(label)}<button type="button" data-action="hiring-composer-chip-remove" data-field="${htmlEscape(field)}" aria-label="Remover ${htmlEscape(label)}"><i data-lucide="x"></i></button></span>`).join("");
+  hydrateView();
+}
+
+function setHiringComposerChoice(form, target) {
+  const field = target?.dataset.field || "";
+  if (!form || !field) return;
+  const elements = form.elements;
+  const label = target.dataset.label || target.textContent.trim();
+  if (field === "budget") {
+    elements.budget_type.value = target.dataset.budgetType || "fixed";
+    elements.budget_amount.value = target.dataset.budgetAmount || "";
+    elements.budget_label.value = label;
+  } else if (field === "work_mode") {
+    elements.work_mode.value = target.dataset.value || "remote";
+    elements.work_mode.dataset.chipLabel = label;
+  } else if (field === "deadline") {
+    elements.deadline_type.value = target.dataset.value || "sem_urgencia";
+    elements.deadline_type.dataset.chipLabel = label;
+  } else if (field === "category") {
+    elements.category.value = target.dataset.value || "duvidas";
+    elements.category.dataset.chipLabel = label;
+  }
+  closeHiringComposerPopovers(form);
+  updateHiringComposerChips(form);
+}
+
+function removeHiringComposerChip(form, field) {
+  if (!form || !field) return;
+  const elements = form.elements;
+  if (field === "budget") {
+    elements.budget_type.value = "fixed";
+    elements.budget_amount.value = "";
+    elements.budget_label.value = "";
+  } else if (field === "work_mode") {
+    elements.work_mode.value = "remote";
+    elements.work_mode.dataset.chipLabel = "";
+  } else if (field === "deadline") {
+    elements.deadline_type.value = "sem_urgencia";
+    elements.deadline_type.dataset.chipLabel = "";
+  } else if (field === "category") {
+    elements.category.value = "duvidas";
+    elements.category.dataset.chipLabel = "";
+  } else if (field === "references") {
+    elements.references.value = "";
+  }
+  updateHiringComposerChips(form);
+}
+
+function resetHiringComposerMeta(form) {
+  if (!form?.elements) return;
+  form.elements.category.value = "duvidas";
+  form.elements.category.dataset.chipLabel = "";
+  form.elements.budget_type.value = "fixed";
+  form.elements.budget_amount.value = "";
+  form.elements.budget_label.value = "";
+  form.elements.deadline_type.value = "sem_urgencia";
+  form.elements.deadline_type.dataset.chipLabel = "";
+  form.elements.work_mode.value = "remote";
+  form.elements.work_mode.dataset.chipLabel = "";
+  form.elements.references.value = "";
+  updateHiringComposerChips(form);
+}
+
+function closeAnsendSelects(except = null) {
+  document.querySelectorAll(".ansend-select.is-open").forEach((select) => {
+    if (select === except) return;
+    select.classList.remove("is-open");
+    select.querySelector(".ansend-select-trigger")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function openAnsendSelect(select, { focusSelected = false } = {}) {
+  if (!select) return;
+  closeAnsendSelects(select);
+  select.classList.add("is-open");
+  select.querySelector(".ansend-select-trigger")?.setAttribute("aria-expanded", "true");
+  if (focusSelected) {
+    const selectedOption = select.querySelector('[role="option"][aria-selected="true"]') || select.querySelector('[role="option"]');
+    selectedOption?.focus({ preventScroll: true });
+  }
+}
+
+function setAnsendSelectValue(select, value, { emitChange = true } = {}) {
+  if (!select) return;
+  const input = select.querySelector("input[type='hidden']");
+  const triggerLabel = select.querySelector(".ansend-select-trigger span");
+  const options = [...select.querySelectorAll('[role="option"]')];
+  const nextOption = options.find((option) => String(option.dataset.value) === String(value)) || options[0];
+  if (!input || !nextOption) return;
+  options.forEach((option) => option.setAttribute("aria-selected", String(option === nextOption)));
+  input.value = nextOption.dataset.value || "";
+  if (triggerLabel) triggerLabel.textContent = nextOption.textContent.trim();
+  closeAnsendSelects();
+  select.querySelector(".ansend-select-trigger")?.focus({ preventScroll: true });
+  if (emitChange) input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function focusAnsendSelectOption(select, direction = 1) {
+  const options = [...(select?.querySelectorAll('[role="option"]') || [])];
+  if (!options.length) return;
+  const activeIndex = Math.max(0, options.indexOf(document.activeElement));
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.getAttribute("aria-selected") === "true"));
+  const baseIndex = document.activeElement?.getAttribute?.("role") === "option" ? activeIndex : selectedIndex;
+  const nextIndex = Math.max(0, Math.min(options.length - 1, baseIndex + direction));
+  options[nextIndex]?.focus({ preventScroll: true });
 }
 
 function hiringCommentMarkup(comment) {
@@ -5523,6 +6475,9 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
   const comments = appState.hiring.comments[post.id] || [];
   const ownerProposals = isOwner ? appState.hiring.proposals.filter((proposal) => proposal.post_id === post.id) : [];
   const profileAttrs = profileTargetAttrs({ id: author.id, username: author.username, title: author.name });
+  const title = String(post.title || "").trim();
+  const description = String(post.description || "").trim();
+  const shouldShowDescription = description && description.toLocaleLowerCase("pt-BR") !== title.toLocaleLowerCase("pt-BR");
   return `<article class="hiring-post ${detail ? "is-detail" : ""}" data-post-id="${htmlEscape(post.id)}">
     <header class="hiring-post-head">
       <button type="button" class="hiring-author-avatar" data-action="hiring-open-profile" ${profileAttrs}>${hiringAvatar(author)}</button>
@@ -5533,22 +6488,21 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
       <button type="button" class="hiring-icon-btn" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
     </header>
     <button type="button" class="hiring-post-body" data-action="hiring-open-post" data-post-id="${htmlEscape(post.id)}">
-      <h2>${htmlEscape(post.title)}</h2>
-      <p>${htmlEscape(post.description)}</p>
+      ${title ? `<h2>${htmlEscape(title)}</h2>` : ""}
+      ${shouldShowDescription ? `<p>${htmlEscape(description)}</p>` : ""}
       ${post.reference_links ? `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>` : ""}
     </button>
-    <div class="hiring-tags"><span>${htmlEscape(hiringCategoryLabel(post.category))}</span><span>${htmlEscape(hiringBudgetLabel(post))}</span><span>${htmlEscape(hiringDeadlineLabel(post.deadline_type))}</span><span>${htmlEscape(hiringWorkModes[post.work_mode] || post.work_mode)}</span><span data-status="${htmlEscape(post.status)}">${htmlEscape(hiringStatusLabels[post.status] || post.status)}</span></div>
     <div class="hiring-post-actions">
       <button type="button" data-action="hiring-comment-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Comentar"><i data-lucide="message-circle"></i><span>${post.metrics?.comments || 0}</span></button>
       <button type="button" class="${post.viewer?.reposted ? "is-active" : ""}" data-action="hiring-repost" data-post-id="${htmlEscape(post.id)}" aria-label="Repostar"><i data-lucide="repeat-2"></i><span>${post.metrics?.reposts || 0}</span></button>
       <button type="button" class="${post.viewer?.liked ? "is-active" : ""}" data-action="hiring-like" data-post-id="${htmlEscape(post.id)}" aria-label="Curtir"><i data-lucide="heart"></i><span>${post.metrics?.likes || 0}</span></button>
       <button type="button" class="${post.viewer?.saved ? "is-active" : ""}" data-action="hiring-save" data-post-id="${htmlEscape(post.id)}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>${post.metrics?.saves || 0}</span></button>
       <button type="button" data-action="hiring-share" data-post-id="${htmlEscape(post.id)}" aria-label="Compartilhar"><i data-lucide="share"></i></button>
+      <button type="button" class="hiring-chat-icon" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""} aria-label="Abrir chat"><i data-lucide="messages-square"></i></button>
     </div>
     <div class="hiring-professional-actions">
-      <button type="button" class="${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
-      <button type="button" class="${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
-      <button type="button" data-action="hiring-chat-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="messages-square"></i>Abrir chat</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="hand"></i>${post.viewer?.interested ? "Interesse enviado" : "Tenho interesse"}</button>
+      <button type="button" class="hiring-compact-cta ${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner ? "disabled" : ""}><i data-lucide="send"></i>${post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta"}</button>
       ${isOwner ? `<label class="hiring-status-select">Status<select data-action="hiring-status" data-post-id="${htmlEscape(post.id)}">${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${post.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>` : ""}
     </div>
     <section class="hiring-comments" ${detail ? "" : "hidden"}>
@@ -5626,6 +6580,7 @@ function updateHiringBlocks() {
   if (currentRoute() !== COMMUNITY_ROUTE) return;
   const feed = document.querySelector(".hiring-feed");
   if (feed) feed.innerHTML = hiringFeedMarkup();
+  updateCommunityAdRail();
   const rail = document.querySelector(".hiring-right-rail");
   if (rail) rail.outerHTML = hiringRightRailMarkup();
   hydrateView();
@@ -5650,6 +6605,7 @@ async function renderHiringPage(options = {}) {
   const tabs = [["for-you", "Para voce"], ["following", "Seguindo"], ["mine", "Minhas publicacoes"]];
   const postsMarkup = hiringFeedMarkup();
   appView.innerHTML = `<main class="hiring-page hiring-native-layout" aria-labelledby="hiringTitlePage">
+    ${communityAdRailMarkup()}
     <section class="hiring-feed-shell">
       <header class="hiring-topbar">
         <div><h1 id="hiringTitlePage">${COMMUNITY_TITLE}</h1><p>${COMMUNITY_SUBTITLE}</p></div>
@@ -5663,24 +6619,34 @@ async function renderHiringPage(options = {}) {
   </main>`;
   hydrateView();
   stop();
+  loadCommunityPromotedAd({ render: true });
   loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
 }
 
 async function submitHiringPost(form) {
+  await waitForHiringAuthReady();
   if (!hiringRequireAuth()) return;
-  const title = String(form.elements.title?.value || "").trim();
+  if (appState.hiring.submitting) return;
   const description = String(form.elements.description?.value || "").trim();
-  if (!title || !description) {
-    showToast("Preencha titulo e descricao da publicacao.", "triangle-alert");
+  if (!description) {
+    showToast("Escreva algo para publicar.", "triangle-alert");
     return;
   }
+  const submitButton = form.querySelector('button[type="submit"]');
+  appState.hiring.submitting = true;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Publicando...";
+  }
+  const title = String(form.elements.title?.value || description.split(/\s+/).slice(0, 10).join(" ")).trim();
+  const budgetType = form.elements.budget_type?.value || "fixed";
   const payload = {
     user_id: appState.authUser.id,
     title: title.slice(0, 120),
     description: description.slice(0, 1200),
-    category: form.elements.category?.value || "outro",
-    budget_amount: form.elements.budget_type?.checked ? null : (form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null),
-    budget_type: form.elements.budget_type?.checked ? "negotiable" : "fixed",
+    category: form.elements.category?.value || "duvidas",
+    budget_amount: budgetType === "negotiable" ? null : (form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null),
+    budget_type: budgetType,
     currency: "BRL",
     deadline_type: form.elements.deadline_type?.value || "sem_urgencia",
     work_mode: form.elements.work_mode?.value || "remote",
@@ -5689,17 +6655,30 @@ async function submitHiringPost(form) {
     status: "open",
     visibility: "public",
   };
-  const { data, error } = await supabaseClient.from("hiring_posts").insert(payload).select().single();
-  if (error) {
-    showToast(error.message || "Nao foi possivel publicar.", "triangle-alert");
-    return;
+  try {
+    const { data, error } = await withTimeout(
+      supabaseClient.from("hiring_posts").insert(payload).select(HIRING_POST_SELECT).single(),
+      9000,
+      "A publicacao demorou para responder. Tente novamente."
+    );
+    if (error) throw error;
+    invalidateHiringCache();
+    form.reset();
+    resetHiringComposerMeta(form);
+    appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts.filter((post) => post.id !== data.id)];
+    await loadHiringEngagement(appState.hiring.posts);
+    showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
+    renderHiringPage({ force: false });
+  } catch (error) {
+    console.warn("[ANSEND community] post insert failed", error?.message || error);
+    showToast(error.message || "Nao foi possivel publicar na comunidade.", "triangle-alert");
+  } finally {
+    appState.hiring.submitting = false;
+    if (submitButton && document.contains(submitButton)) {
+      submitButton.textContent = "Publicar";
+      submitButton.disabled = !String(form.elements.description?.value || "").trim();
+    }
   }
-  invalidateHiringCache();
-  form.reset();
-  appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts];
-  await loadHiringEngagement(appState.hiring.posts);
-  showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
-  renderHiringPage({ force: false });
 }
 
 async function toggleHiringAction(kind, postId) {
@@ -6512,6 +7491,7 @@ function renderSpotifyProfile({ profile, isOwner = false, professional = null } 
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>
        <button type="button" class="profile-action" data-action="logout-account"><i data-lucide="log-out"></i>Sair</button>`
     : `<button type="button" class="profile-action is-primary ${followState.isFollowing ? "is-following" : ""}" data-action="follow-producer" data-profile-id="${htmlEscape(profileUserId)}" aria-pressed="${followState.isFollowing ? "true" : "false"}" ${followState.loading || followState.actionLoading ? "disabled" : ""}><i data-lucide="${followState.isFollowing ? "user-check" : "user-plus"}"></i>${followButtonLabel(followState)}</button>
+       <button type="button" class="profile-action" data-action="chat-start-profile" data-profile-id="${htmlEscape(profileUserId)}"><i data-lucide="message-circle"></i>Mensagem</button>
        <button type="button" class="profile-action" data-action="professional-contact" data-profile-id="${htmlEscape(profileUserId)}" data-title="${htmlEscape(display.name)}"><i data-lucide="handshake"></i>Contratar</button>
        <button type="button" class="profile-action" data-action="share-profile"><i data-lucide="share-2"></i>Compartilhar</button>`;
   const linksMarkup = profileSocialLinks(display);
@@ -7665,7 +8645,7 @@ function hasAccountAccess() {
 }
 
 function protectedRoute(route) {
-  return ["compras", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
+  return ["compras", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
 function renderReleaseAuthRequired(reason = "missing-session") {
@@ -8927,6 +9907,17 @@ function nexoChatId(prefix = "msg") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function nexoIconMarkup(className = "nexo-orbit-icon") {
+  return `<span class="${className}" aria-hidden="true">
+    <svg viewBox="0 0 48 48" focusable="false">
+      <circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".9"></circle>
+      <path d="M10 34C22 33 31 24 34 10" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
+      <path d="M38 14C26 15 17 24 14 38" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"></path>
+      <circle cx="24" cy="24" r="4.4" fill="currentColor"></circle>
+    </svg>
+  </span>`;
+}
+
 function nexoFormatMessage(content = "") {
   return htmlEscape(content)
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
@@ -9002,12 +9993,235 @@ function scrollNexoChatToBottom() {
   thread.scrollTop = thread.scrollHeight;
 }
 
-async function callNexoChatApi(messages) {
+function nexoAssistantCanRender(route = currentRoute()) {
+  if (!hasAccountAccess()) return false;
+  if (["vendedor", "confirmar-email", "email-confirmed", "admin"].includes(route)) return false;
+  return true;
+}
+
+function readNexoAssistantPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem("ansend-nexo-assistant") || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeNexoAssistantPrefs() {
+  localStorage.setItem("ansend-nexo-assistant", JSON.stringify({
+    open: Boolean(appState.nexoAssistant.open),
+    expanded: Boolean(appState.nexoAssistant.expanded),
+    minimized: Boolean(appState.nexoAssistant.minimized),
+  }));
+}
+
+function nexoContextPayload() {
+  const profile = activeProfile();
+  const display = profileDisplayData(profile);
+  return {
+    route: currentRoute(),
+    userId: appState.authUser?.id || "",
+    profile: profile ? {
+      name: display.name,
+      username: display.username,
+      role: display.role,
+      bio: display.bio,
+      styles: display.styles,
+    } : null,
+    catalogCount: visibleCatalogItems().length,
+    publicCatalogCount: publishedCatalogItems().filter((item) => item.user_id === appState.authUser?.id).length,
+  };
+}
+
+function syncNexoAssistantPrefsFromStorage() {
+  if (appState.nexoAssistant.initialized) return;
+  const prefs = readNexoAssistantPrefs();
+  appState.nexoAssistant.open = Boolean(prefs.open);
+  appState.nexoAssistant.expanded = Boolean(prefs.expanded);
+  appState.nexoAssistant.minimized = Boolean(prefs.minimized);
+  appState.nexoAssistant.initialized = true;
+}
+
+async function loadNexoConversationHistory() {
+  if (!supabaseClient || !appState.authUser?.id || appState.nexoChatHistoryLoading) return;
+  appState.nexoChatHistoryLoading = true;
+  renderNexoFloatingAssistant();
+  try {
+    const { data: conversations, error } = await supabaseClient
+      .from("nexo_conversations")
+      .select("*")
+      .eq("user_id", appState.authUser.id)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const conversation = conversations?.[0] || null;
+    if (!conversation) {
+      appState.nexoChatConversationId = "";
+      appState.nexoChatMessages = [];
+      return;
+    }
+    appState.nexoChatConversationId = conversation.id;
+    const { data: messages, error: messageError } = await supabaseClient
+      .from("nexo_messages")
+      .select("id,role,content,created_at")
+      .eq("conversation_id", conversation.id)
+      .order("created_at", { ascending: true })
+      .limit(80);
+    if (messageError) throw messageError;
+    appState.nexoChatMessages = (messages || []).map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: message.created_at,
+    }));
+  } catch (error) {
+    console.warn("[ANSEND NEXO] history load failed", error?.message || error);
+    appState.nexoChatError = "Nao foi possivel carregar o historico da NEXO agora.";
+  } finally {
+    appState.nexoChatHistoryLoading = false;
+    renderNexoFloatingAssistant();
+    scrollNexoAssistantToBottom();
+  }
+}
+
+async function ensureNexoConversation(firstMessage = "") {
+  if (!supabaseClient || !appState.authUser?.id) return "";
+  if (appState.nexoChatConversationId) return appState.nexoChatConversationId;
+  const title = String(firstMessage || "Conversa com NEXO IA").replace(/\s+/g, " ").trim().slice(0, 80);
+  const { data, error } = await supabaseClient
+    .from("nexo_conversations")
+    .insert({ user_id: appState.authUser.id, title })
+    .select("id")
+    .single();
+  if (error) throw error;
+  appState.nexoChatConversationId = data.id;
+  return data.id;
+}
+
+async function saveNexoMessage(role, content, conversationId = appState.nexoChatConversationId) {
+  if (!supabaseClient || !appState.authUser?.id || !conversationId || !content) return null;
+  const { data, error } = await supabaseClient
+    .from("nexo_messages")
+    .insert({ conversation_id: conversationId, user_id: appState.authUser.id, role, content: String(content).slice(0, 12000) })
+    .select("id,created_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+function renderNexoAssistantWelcome() {
+  const suggestions = [
+    "Encontrar um beatmaker",
+    "Melhorar meu lancamento",
+    "Analisar meu perfil",
+    "Criar estrategia de divulgacao",
+    "Recomendar profissionais",
+    "Tirar duvida sobre a ANSEND",
+  ];
+  return `<section class="nexo-assistant-welcome">
+    <h2>Como posso ajudar voce hoje?</h2>
+    <p>Pergunte sobre beats, carreira, lancamentos, profissionais, contratos, divulgacao ou qualquer recurso da ANSEND.</p>
+    <div class="nexo-assistant-chips">
+      ${suggestions.map((prompt) => `<button type="button" data-action="nexo-assistant-suggestion" data-prompt="${htmlEscape(prompt)}">${htmlEscape(prompt)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
+function renderNexoAssistantMessage(message) {
+  const isUser = message.role === "user";
+  return `<article class="nexo-assistant-message ${isUser ? "is-user" : "is-assistant"}">
+    ${isUser ? "" : nexoIconMarkup("nexo-assistant-message-icon")}
+    <div class="nexo-assistant-bubble"><p>${nexoFormatMessage(message.content || "")}</p></div>
+  </article>`;
+}
+
+function renderNexoAssistantPanel() {
+  const messages = nexoChatMessages();
+  const isLoading = Boolean(appState.nexoChatLoading);
+  return `<section class="nexo-assistant-panel ${appState.nexoAssistant.expanded ? "is-expanded" : ""}" role="dialog" aria-label="NEXO IA">
+    <header class="nexo-assistant-header">
+      <div class="nexo-assistant-title">
+        ${nexoIconMarkup("nexo-assistant-logo")}
+        <span><strong>NEXO IA</strong><small>Assistente inteligente da ANSEND</small></span>
+        <em>Online</em>
+      </div>
+      <div class="nexo-assistant-header-actions">
+        <button type="button" data-action="nexo-assistant-minimize" aria-label="Minimizar"><i data-lucide="minus"></i></button>
+        <button type="button" data-action="nexo-assistant-expand" aria-label="Expandir"><i data-lucide="${appState.nexoAssistant.expanded ? "minimize-2" : "maximize-2"}"></i></button>
+        <button type="button" data-action="nexo-assistant-close" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </div>
+    </header>
+    <div class="nexo-assistant-messages" id="nexoAssistantThread">
+      ${appState.nexoChatHistoryLoading ? `<div class="nexo-assistant-skeleton"><span></span><span></span><span></span></div>` : ""}
+      ${!appState.nexoChatHistoryLoading && messages.length ? messages.map(renderNexoAssistantMessage).join("") : ""}
+      ${!appState.nexoChatHistoryLoading && !messages.length ? renderNexoAssistantWelcome() : ""}
+      ${isLoading ? `<article class="nexo-assistant-message is-assistant is-typing">
+        ${nexoIconMarkup("nexo-assistant-message-icon")}
+        <div class="nexo-assistant-bubble"><p>NEXO esta pensando<span class="nexo-typing-dots"><b></b><b></b><b></b></span></p></div>
+      </article>` : ""}
+    </div>
+    ${appState.nexoChatError ? `<p class="nexo-assistant-error"><i data-lucide="circle-alert"></i>${htmlEscape(appState.nexoChatError)}</p>` : ""}
+    <form class="nexo-assistant-form" autocomplete="off">
+      <div class="nexo-assistant-input">
+        <textarea name="message" rows="1" maxlength="4000" ${isLoading ? "disabled" : ""} placeholder="Pergunte ao NEXO"></textarea>
+        <button type="submit" ${isLoading ? "disabled" : ""} aria-label="Enviar para NEXO"><i data-lucide="${isLoading ? "loader-2" : "arrow-up"}"></i></button>
+      </div>
+    </form>
+  </section>`;
+}
+
+function renderNexoFloatingAssistant() {
+  syncNexoAssistantPrefsFromStorage();
+  const existing = document.querySelector("#nexoFloatingAssistantRoot");
+  if (!nexoAssistantCanRender()) {
+    existing?.remove();
+    return;
+  }
+  const panelOpen = appState.nexoAssistant.open && !appState.nexoAssistant.minimized;
+  if (panelOpen && !appState.nexoChatHistoryLoading && !appState.nexoChatMessages.length && !appState.nexoChatConversationId) {
+    window.setTimeout(() => loadNexoConversationHistory(), 0);
+  }
+  const markup = `<div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant ${panelOpen ? "is-open" : ""} ${appState.nexoAssistant.expanded ? "is-expanded" : ""}">
+    ${panelOpen ? renderNexoAssistantPanel() : ""}
+    <button type="button" class="nexo-floating-button" data-action="nexo-assistant-toggle" aria-label="Abrir NEXO IA">
+      ${nexoIconMarkup("nexo-floating-icon")}
+      ${appState.nexoAssistant.unread ? `<span class="nexo-floating-badge" aria-hidden="true"></span>` : ""}
+      <span class="nexo-floating-tooltip">Abrir NEXO IA</span>
+    </button>
+  </div>`;
+  if (existing) existing.outerHTML = markup;
+  else document.body.insertAdjacentHTML("beforeend", markup);
+  lucide.createIcons();
+}
+
+function scrollNexoAssistantToBottom(force = true) {
+  const thread = document.querySelector("#nexoAssistantThread");
+  if (!thread) return;
+  const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 96;
+  if (force || nearBottom) thread.scrollTop = thread.scrollHeight;
+}
+
+function updateNexoSurfaces({ forceScroll = true } = {}) {
+  if (currentRoute() === "ia") {
+    renderAiWorkspace();
+  }
+  renderNexoFloatingAssistant();
+  requestAnimationFrame(() => {
+    scrollNexoChatToBottom();
+    scrollNexoAssistantToBottom(forceScroll);
+  });
+}
+
+async function callNexoChatApi(messages, { signal } = {}) {
+  const headers = await recommendationAuthHeaders();
   const response = await fetch("/api/nexo/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    signal,
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({
       messages: messages.map(({ role, content }) => ({ role, content })),
+      conversationId: appState.nexoChatConversationId || null,
+      context: nexoContextPayload(),
     }),
   });
   const data = await response.json().catch(() => ({}));
@@ -9020,9 +10234,10 @@ async function callNexoChatApi(messages) {
 async function extractNexoIntent(message) {
   if (!appState.authUser || !message) return null;
   try {
+    const headers = await recommendationAuthHeaders();
     const response = await fetch("/api/recommendations/nexo-intent", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ message }),
     });
     const data = await response.json().catch(() => ({}));
@@ -9046,28 +10261,42 @@ async function extractNexoIntent(message) {
 async function sendNexoChatMessage(rawMessage) {
   const content = String(rawMessage || "").trim();
   if (!content || appState.nexoChatLoading) return;
+  if (!appState.authUser?.id) {
+    showToast("Entre para conversar com a NEXO IA.", "log-in");
+    location.hash = "vendedor";
+    return;
+  }
   const messages = nexoChatMessages();
-  messages.push({ id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() });
+  const userMessage = { id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() };
+  messages.push(userMessage);
   appState.nexoChatLoading = true;
   appState.nexoChatError = "";
-  renderAiWorkspace();
-  hydrateView();
+  appState.nexoAssistant.unread = false;
+  appState.nexoAssistant.abortController?.abort?.();
+  appState.nexoAssistant.abortController = new AbortController();
+  updateNexoSurfaces();
 
   try {
+    const conversationId = await ensureNexoConversation(content);
+    saveNexoMessage("user", content, conversationId).catch((error) => console.warn("[ANSEND NEXO] user message persist failed", error?.message || error));
     extractNexoIntent(content);
-    const answer = await callNexoChatApi(messages);
-    messages.push({
+    const answer = await callNexoChatApi(messages, { signal: appState.nexoAssistant.abortController.signal });
+    const assistantMessage = {
       id: nexoChatId("assistant"),
       role: "assistant",
       content: answer?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
       createdAt: answer?.createdAt || new Date().toISOString(),
-    });
+    };
+    messages.push(assistantMessage);
+    saveNexoMessage("assistant", assistantMessage.content, conversationId).catch((error) => console.warn("[ANSEND NEXO] assistant message persist failed", error?.message || error));
   } catch (error) {
-    appState.nexoChatError = error?.message || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.";
+    if (error?.name !== "AbortError") {
+      appState.nexoChatError = error?.message || "Nao consegui responder agora. Tente novamente em alguns segundos.";
+    }
   } finally {
     appState.nexoChatLoading = false;
-    renderAiWorkspace();
-    hydrateView();
+    appState.nexoAssistant.abortController = null;
+    updateNexoSurfaces();
   }
 }
 
@@ -11752,7 +12981,7 @@ function renderProfileLegacy() {
         <section class="profile-sidebar-card">
           <div class="section-title"><i data-lucide="share-2"></i>Links e presença</div>
           <ul class="profile-links-list">
-            ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${url}" target="_blank" rel="noreferrer"><i data-lucide="${icon}"></i><span>${label}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
+            ${socialLinks.length ? socialLinks.map(([icon, label, url]) => `<li><a href="${htmlEscape(safeUrl(url, { fallback: "#", allowHash: false, allowRelative: false }))}" target="_blank" rel="noopener noreferrer"><i data-lucide="${htmlEscape(icon)}"></i><span>${htmlEscape(label)}</span><i data-lucide="external-link"></i></a></li>`).join("") : `<li class="profile-empty-link"><span>Adicione seus links em Editar perfil.</span></li>`}
           </ul>
         </section>
       </div>
@@ -11990,6 +13219,7 @@ function hydrateView() {
   setupOptimizedImages(appView);
   setupOptimizedImages(document.querySelector(".sidebar") || document);
   applyTranslations();
+  renderNexoFloatingAssistant();
   lucide.createIcons();
   requestAnimationFrame(() => setupScrollReveals());
 }
@@ -12019,6 +13249,8 @@ function renderRoute() {
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
   document.body.classList.remove("release-mode");
+  document.body.classList.toggle("chat-dm-mode", route === "chat");
+  if (route !== "chat") cleanupChatRealtime();
   appView.classList.remove("route-slide-in", "route-slide-left");
   document.querySelectorAll("a[data-route], button[data-route]").forEach((item) => item.classList.toggle("is-active", item.dataset.route === route));
   document.body.classList.remove("menu-open");
@@ -12045,6 +13277,7 @@ function renderRoute() {
   if (route === "explorar" || route === "marketplace" || route === "ofertas") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
+  if (route === "chat") renderChatPage();
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
@@ -12069,7 +13302,7 @@ function renderRoute() {
   if (route === "detalhe") renderBeatDetail();
   if (institutionalRoutes.has(route)) renderInstitutionalPage(route);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion.matches ? "auto" : "smooth" });
-  if (route !== COMMUNITY_ROUTE) PageTransition(appView, route);
+  if (route !== COMMUNITY_ROUTE && route !== "chat") PageTransition(appView, route);
   hydrateView();
   stopShellPerf();
 }
@@ -13132,10 +14365,57 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appState.chat.newChatOpen) {
+    appState.chat.newChatOpen = false;
+    renderChatPage({ preserveActive: true });
+    return;
+  }
+  if (event.key === "Enter" && !event.shiftKey && event.target.closest?.(".chat-composer-form textarea")) {
+    event.preventDefault();
+    sendChatMessage(event.target.closest(".chat-composer-form"));
+    return;
+  }
+  if (event.key === "Escape" && document.querySelector(".hiring-composer-popover:not([hidden])")) {
+    closeHiringComposerPopovers(document);
+  }
+
+  const ansendSelect = event.target.closest?.(".ansend-select");
+  if (ansendSelect) {
+    const isTrigger = event.target.closest(".ansend-select-trigger");
+    const isOption = event.target.getAttribute?.("role") === "option";
+    if ((event.key === "Enter" || event.key === " ") && isTrigger) {
+      event.preventDefault();
+      ansendSelect.classList.contains("is-open") ? closeAnsendSelects() : openAnsendSelect(ansendSelect, { focusSelected: true });
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!ansendSelect.classList.contains("is-open")) openAnsendSelect(ansendSelect, { focusSelected: true });
+      else focusAnsendSelectOption(ansendSelect, event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if ((event.key === "Enter" || event.key === " ") && isOption) {
+      event.preventDefault();
+      setAnsendSelectValue(ansendSelect, event.target.dataset.value);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeAnsendSelects();
+      ansendSelect.querySelector(".ansend-select-trigger")?.focus({ preventScroll: true });
+      return;
+    }
+  }
+
   if (event.target?.matches?.("#nexoChatInput") && event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     const form = event.target.closest(".nexo-chat-form");
     form?.requestSubmit();
+    return;
+  }
+  if (event.target?.matches?.(".nexo-assistant-form textarea") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    event.target.closest(".nexo-assistant-form")?.requestSubmit();
     return;
   }
   const customSelect = event.target.closest?.(".nexo-dark-select");
@@ -13184,6 +14464,82 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const ansendSelectToggle = event.target.closest("[data-action='ansend-select-toggle']");
+  if (ansendSelectToggle) {
+    event.preventDefault();
+    const select = ansendSelectToggle.closest(".ansend-select");
+    select?.classList.contains("is-open") ? closeAnsendSelects() : openAnsendSelect(select);
+    return;
+  }
+
+  const ansendSelectOption = event.target.closest("[data-action='ansend-select-option']");
+  if (ansendSelectOption) {
+    event.preventDefault();
+    setAnsendSelectValue(ansendSelectOption.closest(".ansend-select"), ansendSelectOption.dataset.value);
+    return;
+  }
+
+  if (!event.target.closest(".ansend-select")) closeAnsendSelects();
+
+  const hiringComposerPopoverButton = event.target.closest("[data-action='hiring-composer-popover']");
+  if (hiringComposerPopoverButton) {
+    event.preventDefault();
+    openHiringComposerPopover(hiringComposerPopoverButton.closest(".hiring-composer"), hiringComposerPopoverButton.dataset.popover);
+    return;
+  }
+
+  const hiringComposerChoice = event.target.closest("[data-action='hiring-composer-choice']");
+  if (hiringComposerChoice) {
+    event.preventDefault();
+    setHiringComposerChoice(hiringComposerChoice.closest(".hiring-composer"), hiringComposerChoice);
+    return;
+  }
+
+  const hiringComposerReferenceSave = event.target.closest("[data-action='hiring-composer-reference-save']");
+  if (hiringComposerReferenceSave) {
+    event.preventDefault();
+    const form = hiringComposerReferenceSave.closest(".hiring-composer");
+    const input = form?.querySelector("#hiringReferenceInput");
+    const value = String(input?.value || "").trim();
+    if (form && value) {
+      form.elements.references.value = value.slice(0, 240);
+      input.value = "";
+      closeHiringComposerPopovers(form);
+      updateHiringComposerChips(form);
+    }
+    return;
+  }
+
+  const hiringComposerChipRemove = event.target.closest("[data-action='hiring-composer-chip-remove']");
+  if (hiringComposerChipRemove) {
+    event.preventDefault();
+    removeHiringComposerChip(hiringComposerChipRemove.closest(".hiring-composer"), hiringComposerChipRemove.dataset.field);
+    return;
+  }
+
+  if (event.target.closest("[data-action='hiring-composer-popover-close']")) {
+    event.preventDefault();
+    closeHiringComposerPopovers(event.target.closest(".hiring-composer"));
+    return;
+  }
+
+  if (event.target.closest("[data-action='hiring-composer-soon']")) {
+    event.preventDefault();
+    showToast("Recurso preparado para a proxima etapa.", "sparkles");
+    return;
+  }
+
+  if (!event.target.closest(".hiring-composer-popover, [data-action='hiring-composer-popover']")) {
+    closeHiringComposerPopovers(document);
+  }
+
+  const communityAdLink = event.target.closest("[data-action='community-ad-open']");
+  if (communityAdLink) {
+    const adId = communityAdLink.dataset.adId || communityAdLink.closest("[data-promoted-ad-id]")?.dataset.promotedAdId || "";
+    trackCommunityAdEvent("click", adId);
+    return;
+  }
+
   const chatSuggestion = event.target.closest("[data-action='nexo-chat-suggestion']");
   if (chatSuggestion) {
     event.preventDefault();
@@ -13312,6 +14668,85 @@ document.addEventListener("click", (event) => {
   if (action === "catalog-publish") {
     publishCatalogImport();
     return;
+  }
+  if (action?.startsWith("nexo-assistant-")) {
+    event.preventDefault();
+    if (action === "nexo-assistant-toggle") {
+      const opening = !appState.nexoAssistant.open || appState.nexoAssistant.minimized;
+      appState.nexoAssistant.open = true;
+      appState.nexoAssistant.minimized = false;
+      appState.nexoAssistant.unread = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      if (opening && !appState.nexoChatMessages.length) void loadNexoConversationHistory();
+      window.requestAnimationFrame(() => document.querySelector(".nexo-assistant-form textarea")?.focus({ preventScroll: true }));
+      return;
+    }
+    if (action === "nexo-assistant-close") {
+      appState.nexoAssistant.open = false;
+      appState.nexoAssistant.minimized = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-minimize") {
+      appState.nexoAssistant.open = true;
+      appState.nexoAssistant.minimized = true;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-expand") {
+      appState.nexoAssistant.expanded = !appState.nexoAssistant.expanded;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
+    if (action === "nexo-assistant-suggestion") {
+      sendNexoChatMessage(target.dataset.prompt || target.textContent || "");
+      return;
+    }
+  }
+  if (action?.startsWith("chat-")) {
+    event.preventDefault();
+    if (action === "chat-new-open") {
+      appState.chat.newChatOpen = true;
+      appState.chat.userSearch = "";
+      appState.chat.userResults = [];
+      renderChatPage({ preserveActive: true });
+      window.requestAnimationFrame(() => document.querySelector("[data-chat-user-search]")?.focus());
+      return;
+    }
+    if (action === "chat-new-close") {
+      appState.chat.newChatOpen = false;
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-select-user") {
+      openOrCreateDirectConversation(target.dataset.userId || "");
+      return;
+    }
+    if (action === "chat-open-conversation") {
+      openChatConversation(target.dataset.conversationId || "");
+      return;
+    }
+    if (action === "chat-back-list") {
+      appState.chat.activeConversationId = "";
+      renderChatPage({ preserveActive: true });
+      return;
+    }
+    if (action === "chat-open-profile") {
+      const profile = chatProfile(target.dataset.profileId || "");
+      const route = profile ? publicProfileRoute(profile) : "";
+      if (route) location.hash = route;
+      return;
+    }
+    if (action === "chat-start-profile") {
+      openOrCreateDirectConversation(target.dataset.profileId || "").then(() => {
+        location.hash = "chat";
+      });
+      return;
+    }
   }
   if (action?.startsWith("hiring-")) {
     const postId = target.dataset.postId || target.closest("[data-post-id]")?.dataset.postId || "";
@@ -14291,6 +15726,27 @@ document.addEventListener("pointerup", (event) => {
 
 document.addEventListener("input", (event) => {
   const input = event.target;
+  if (input.matches?.("[data-chat-search]")) {
+    appState.chat.search = input.value || "";
+    refreshChatConversationList();
+    return;
+  }
+  if (input.matches?.("[data-chat-user-search]")) {
+    appState.chat.userSearch = input.value || "";
+    window.clearTimeout(appState.chat.searchTimer);
+    appState.chat.searchTimer = window.setTimeout(() => searchChatUsers(appState.chat.userSearch), 250);
+    return;
+  }
+  if (input.matches?.(".nexo-assistant-form textarea")) {
+    input.style.height = "44px";
+    input.style.height = `${Math.min(132, Math.max(44, input.scrollHeight))}px`;
+    return;
+  }
+  if (input.closest?.(".chat-composer-form") && input.matches("textarea")) {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(140, input.scrollHeight)}px`;
+    return;
+  }
   const imageScaleInput = input.closest?.("[data-image-edit-scale]");
   if (imageScaleInput) {
     const picker = document.querySelector("[data-image-picker]");
@@ -14299,11 +15755,10 @@ document.addEventListener("input", (event) => {
   }
   const hiringComposer = input.closest?.(".hiring-composer");
   if (hiringComposer) {
-    const title = String(hiringComposer.elements.title?.value || "").trim();
     const description = String(hiringComposer.elements.description?.value || "").trim();
     const button = hiringComposer.querySelector('button[type="submit"]');
-    if (button) button.disabled = !(title && description);
-    hiringComposer.classList.toggle("is-expanded", Boolean(title || description || document.activeElement?.closest?.(".hiring-composer")));
+    if (button) button.disabled = appState.hiring.submitting || !description;
+    hiringComposer.classList.toggle("is-writing", Boolean(description || document.activeElement?.closest?.(".hiring-composer")));
     if (input.matches("textarea")) {
       input.style.height = "auto";
       input.style.height = `${Math.min(180, input.scrollHeight)}px`;
@@ -14367,6 +15822,12 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("submit", async (event) => {
+  const chatComposerForm = event.target.closest(".chat-composer-form");
+  if (chatComposerForm) {
+    event.preventDefault();
+    await sendChatMessage(chatComposerForm);
+    return;
+  }
   const feedCommentForm = event.target.closest(".nexo-feed-comment-form");
   if (feedCommentForm) {
     event.preventDefault();
@@ -14442,7 +15903,7 @@ document.addEventListener("submit", async (event) => {
     const input = commentForm.querySelector("input");
     const message = input?.value.trim();
     if (message) {
-      document.querySelector(".comment-list")?.insertAdjacentHTML("beforeend", `<article><strong>Voce</strong><p>${message}</p></article>`);
+      document.querySelector(".comment-list")?.insertAdjacentHTML("beforeend", `<article><strong>Voce</strong><p>${htmlEscape(message)}</p></article>`);
       input.value = "";
       showToast("Comentario publicado no preview", "message-circle");
     }
@@ -14470,6 +15931,17 @@ document.addEventListener("submit", async (event) => {
     const message = input?.value || "";
     if (!message.trim()) return;
     input.value = "";
+    await sendNexoChatMessage(message);
+    return;
+  }
+  const nexoAssistantForm = event.target.closest(".nexo-assistant-form");
+  if (nexoAssistantForm) {
+    event.preventDefault();
+    const input = nexoAssistantForm.elements.message;
+    const message = input?.value || "";
+    if (!message.trim()) return;
+    input.value = "";
+    input.style.height = "44px";
     await sendNexoChatMessage(message);
     return;
   }
@@ -14628,6 +16100,13 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (appState.nexoAssistant.open && !appState.nexoAssistant.minimized) {
+      appState.nexoAssistant.open = false;
+      appState.nexoAssistant.minimized = false;
+      writeNexoAssistantPrefs();
+      renderNexoFloatingAssistant();
+      return;
+    }
     document.body.classList.remove("menu-open");
     closePlayerFloatingPanels();
     closeNexoFeedComments();
@@ -14986,10 +16465,11 @@ function renderNotificationsList() {
   
   let html = notificationsState.list.map((item) => {
     const isUnread = !item.is_read ? " is-unread" : "";
+    const safeActionUrl = safeUrl(item.action_url || "", { fallback: "", allowHash: true, allowRelative: true });
     
     let avatarHtml = "";
     if (item.actor_avatar) {
-      avatarHtml = `<img class="app-optimized-image" src="${item.actor_avatar}" alt="Avatar" width="36" height="36" />`;
+      avatarHtml = `<img class="app-optimized-image" src="${htmlEscape(safeUrl(item.actor_avatar, { fallback: IMAGE_FALLBACK_SRC }))}" alt="Avatar" width="36" height="36" data-fallback-src="${htmlEscape(IMAGE_FALLBACK_SRC)}" />`;
     } else {
       let icon = "bell";
       if (item.type === "profile_follow") icon = "user-plus";
@@ -15011,13 +16491,13 @@ function renderNotificationsList() {
     }
     
     return `
-      <a class="notification-item${isUnread}" data-id="${item.id}" data-url="${item.action_url || ""}" role="menuitem">
+      <a class="notification-item${isUnread}" data-id="${htmlEscape(item.id)}" data-url="${htmlEscape(safeActionUrl)}" role="menuitem">
         <div class="notification-avatar-container">
           ${avatarHtml}
         </div>
         <div class="notification-content">
-          <p class="notification-text"><strong>${item.title}:</strong> ${item.body}</p>
-          <span class="notification-time">${formatRelativeTime(item.created_at)}</span>
+          <p class="notification-text"><strong>${htmlEscape(item.title || "Notificacao")}:</strong> ${htmlEscape(item.body || "")}</p>
+          <span class="notification-time">${htmlEscape(formatRelativeTime(item.created_at))}</span>
         </div>
       </a>
     `;
@@ -15089,7 +16569,7 @@ function subscribeRealtimeNotifications(userId) {
     supabaseClient.removeChannel(notificationsState.realtimeChannel);
   }
   
-  if (!supabaseClient || typeof supabaseClient.channel !== "function") return;
+  if (!supabaseClient?.channel || !supabaseClient?.removeChannel) return;
   
   const channel = supabaseClient
     .channel(`public:notifications:recipient_id=eq.${userId}`)
