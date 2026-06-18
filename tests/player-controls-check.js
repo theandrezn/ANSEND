@@ -136,6 +136,25 @@ async function run() {
       syncMiniPlayerState();
     });
 
+    const waveformGeometry = await page.evaluate(() => {
+      const bars = document.querySelector(".mini-wave-bars");
+      const rect = bars.getBoundingClientRect();
+      return [0, 0.5, 1].map((expected) => {
+        const event = new MouseEvent("pointerdown", {
+          clientX: rect.left + rect.width * expected,
+          clientY: rect.top + rect.height / 2,
+          bubbles: true,
+        });
+        const actual = miniWaveformProgressFromPointer(event, { requireInside: true });
+        return { expected, actual, rectWidth: rect.width };
+      });
+    });
+    for (const point of waveformGeometry) {
+      if (point.rectWidth <= 0 || Math.abs(point.expected - point.actual) > 0.002) {
+        throw new Error(`Mini waveform geometry mismatch: ${JSON.stringify(waveformGeometry)}`);
+      }
+    }
+
     const hasLyricsButton = await page.locator('[data-action="lyrics"]').count();
     if (hasLyricsButton) throw new Error("Lyrics button should be removed from the mini player.");
 

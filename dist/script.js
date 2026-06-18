@@ -1304,12 +1304,14 @@ const appState = {
       category: "todos",
       budget: "",
       deadline: "todos",
-      status: "todos",
       workMode: "todos",
     },
     posts: [],
     comments: {},
     proposals: [],
+    pollVotes: {},
+    draftAttachments: [],
+    openMenuPostId: "",
     conversations: [],
     messages: {},
     loading: false,
@@ -5230,11 +5232,10 @@ const hiringCategories = [
 ];
 const hiringDeadlines = [["hoje", "Hoje"], ["24h", "24h"], ["48h", "48h"], ["esta_semana", "Esta semana"], ["sem_urgencia", "Sem urgencia"], ["data_personalizada", "Data personalizada"]];
 const hiringWorkModes = { remote: "Remoto", onsite: "Presencial", hybrid: "Hibrido" };
-const hiringStatusLabels = { open: "Aberta", negotiating: "Em negociacao", hired: "Contratada", completed: "Finalizada", cancelled: "Cancelada" };
 const hiringActionTables = { like: "hiring_likes", save: "hiring_saves", repost: "hiring_reposts" };
 const HIRING_CACHE_TTL = 45000;
 const HIRING_POST_LIMIT = 24;
-const HIRING_POST_SELECT = "id,user_id,title,description,category,budget_amount,budget_type,currency,deadline_type,work_mode,status,visibility,reference_links,attachments,created_at,updated_at";
+const HIRING_POST_SELECT = "id,user_id,title,description,category,budget_amount,budget_type,currency,deadline_type,work_mode,visibility,reference_links,attachments,tags,location,scheduled_at,published_at,poll_question,poll_options,metadata,created_at,updated_at";
 const HIRING_PROFILE_SELECT = "id,display_name,username,full_name,artistic_name,account_role,bio,avatar_url,banner_url,banner_position_x,banner_position_y,avatar_position_x,avatar_position_y,banner_scale,avatar_scale,music_styles,is_public,updated_at,created_at";
 
 function perfEnabled() {
@@ -5266,7 +5267,6 @@ function hiringCacheKey(detailId = hiringDetailIdFromHash()) {
     detailId ? `detail:${detailId}` : `tab:${appState.hiring.activeTab}`,
     `category:${filters.category || "todos"}`,
     `deadline:${filters.deadline || "todos"}`,
-    `status:${filters.status || "todos"}`,
     `work:${filters.workMode || "todos"}`,
     `budget:${filters.budget || ""}`,
     `user:${appState.authUser?.id || "anon"}`,
@@ -7034,7 +7034,6 @@ async function queryHiringPosts(detailId = hiringDetailIdFromHash()) {
   const filters = appState.hiring.filters || {};
   if (!detailId && filters.category && filters.category !== "todos") query = query.eq("category", filters.category);
   if (!detailId && filters.deadline && filters.deadline !== "todos") query = query.eq("deadline_type", filters.deadline);
-  if (!detailId && filters.status && filters.status !== "todos") query = query.eq("status", filters.status);
   if (!detailId && filters.workMode && filters.workMode !== "todos") query = query.eq("work_mode", filters.workMode);
 
   const { data, error } = await withTimeout(query, 9000, "A Comunidade ANSEND demorou para responder.");
@@ -7064,6 +7063,7 @@ async function loadHiringPosts({ force = false, render = false } = {}) {
     appState.hiring.posts = cached.posts.map((post) => ({ ...post }));
     appState.hiring.comments = { ...cached.comments };
     appState.hiring.proposals = [...cached.proposals];
+    appState.hiring.pollVotes = { ...(cached.pollVotes || {}) };
     appState.hiring.error = "";
     appState.hiring.loading = false;
     appState.hiring.lastLoadedAt = cached.updatedAt;
@@ -7098,6 +7098,7 @@ async function loadHiringPosts({ force = false, render = false } = {}) {
       posts: appState.hiring.posts.map((post) => ({ ...post })),
       comments: { ...appState.hiring.comments },
       proposals: [...appState.hiring.proposals],
+      pollVotes: { ...appState.hiring.pollVotes },
     });
     return appState.hiring.posts;
   } catch (error) {
@@ -7127,6 +7128,7 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
     supabaseClient.from("hiring_interests").select("post_id,user_id").in("post_id", ids),
     supabaseClient.from("hiring_comments").select("id,post_id,user_id,parent_id,content,created_at").in("post_id", ids).order("created_at", { ascending: true }),
     supabaseClient.from("hiring_proposals").select("id,post_id,sender_id,receiver_id,message,proposed_amount,delivery_deadline,portfolio_links,status,created_at").in("post_id", ids).order("created_at", { ascending: false }),
+    supabaseClient.from("hiring_poll_votes").select("post_id,user_id,option_index").in("post_id", ids),
   ]), 7000, "Engajamento da Comunidade ANSEND demorou para responder.").catch((error) => {
     console.warn("[ANSEND community] engagement fallback", error?.message || error);
     return [];
@@ -7143,6 +7145,7 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
   const interests = safe(3);
   const comments = safe(4);
   const proposals = safe(5);
+  const pollVotes = safe(6);
   const groupedComments = {};
   comments.forEach((comment) => {
     groupedComments[comment.post_id] = groupedComments[comment.post_id] || [];
@@ -7150,6 +7153,11 @@ async function loadHiringEngagement(posts = appState.hiring.posts) {
   });
   appState.hiring.comments = groupedComments;
   appState.hiring.proposals = proposals;
+  appState.hiring.pollVotes = pollVotes.reduce((acc, vote) => {
+    acc[vote.post_id] = acc[vote.post_id] || [];
+    acc[vote.post_id].push(vote);
+    return acc;
+  }, {});
   const currentUserId = appState.authUser?.id || "";
   posts.forEach((post) => {
     const postRows = (rows) => rows.filter((row) => row.post_id === post.id);
@@ -7213,7 +7221,12 @@ function hiringComposerHiddenFieldsMarkup() {
     <input type="hidden" name="budget_label" value="">
     <input type="hidden" name="deadline_type" value="sem_urgencia" data-chip-label="">
     <input type="hidden" name="work_mode" value="remote" data-chip-label="">
-    <input type="hidden" name="references" value="">`;
+    <input type="hidden" name="references" value="">
+    <input type="hidden" name="tags" value="">
+    <input type="hidden" name="location" value="">
+    <input type="hidden" name="scheduled_at" value="">
+    <input type="hidden" name="poll_question" value="">
+    <input type="hidden" name="poll_options" value="">`;
 }
 
 function hiringComposerPopoverMarkup(type, config) {
@@ -7238,6 +7251,124 @@ function hiringComposerReferencePopoverMarkup() {
   </section>`;
 }
 
+function hiringComposerTextPopoverMarkup({ type, title, description, inputId, placeholder, action }) {
+  return `<section class="hiring-composer-popover" data-hiring-popover="${htmlEscape(type)}" hidden>
+    <header><strong>${htmlEscape(title)}</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>${htmlEscape(description)}</p>
+    <div class="hiring-composer-reference-row">
+      <label class="sr-only" for="${htmlEscape(inputId)}">${htmlEscape(title)}</label>
+      <input id="${htmlEscape(inputId)}" type="text" placeholder="${htmlEscape(placeholder)}">
+      <button type="button" data-action="${htmlEscape(action)}">Salvar</button>
+    </div>
+  </section>`;
+}
+
+function hiringComposerSchedulePopoverMarkup() {
+  return `<section class="hiring-composer-popover" data-hiring-popover="schedule" hidden>
+    <header><strong>Agendar</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>Opcional. A publicacao fica visivel no horario escolhido.</p>
+    <div class="hiring-composer-reference-row">
+      <label class="sr-only" for="hiringScheduleInput">Agendamento</label>
+      <input id="hiringScheduleInput" type="datetime-local">
+      <button type="button" data-action="hiring-composer-schedule-save">Salvar</button>
+    </div>
+  </section>`;
+}
+
+function hiringComposerPollPopoverMarkup() {
+  return `<section class="hiring-composer-popover" data-hiring-popover="poll" hidden>
+    <header><strong>Enquete</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <p>Adicione uma pergunta e de duas a quatro opcoes.</p>
+    <div class="hiring-composer-stack">
+      <input id="hiringPollQuestionInput" type="text" maxlength="160" placeholder="Pergunta">
+      <input data-poll-option type="text" maxlength="80" placeholder="Opcao 1">
+      <input data-poll-option type="text" maxlength="80" placeholder="Opcao 2">
+      <input data-poll-option type="text" maxlength="80" placeholder="Opcao 3">
+      <input data-poll-option type="text" maxlength="80" placeholder="Opcao 4">
+      <button type="button" data-action="hiring-composer-poll-save">Salvar enquete</button>
+    </div>
+  </section>`;
+}
+
+function hiringComposerEmojiPopoverMarkup() {
+  const emojis = ["🔥", "🎧", "🎹", "🎤", "🥁", "🚀", "💿", "✨", "🤝", "💰", "📍", "⏱️"];
+  return `<section class="hiring-composer-popover" data-hiring-popover="emoji" hidden>
+    <header><strong>Emoji</strong><button type="button" data-action="hiring-composer-popover-close" aria-label="Fechar"><i data-lucide="x"></i></button></header>
+    <div class="hiring-emoji-grid">${emojis.map((emoji) => `<button type="button" data-action="hiring-composer-emoji" data-emoji="${htmlEscape(emoji)}">${htmlEscape(emoji)}</button>`).join("")}</div>
+  </section>`;
+}
+
+function hiringDraftAttachmentsForForm(form) {
+  const formId = form?.dataset?.draftId || "";
+  return appState.hiring.draftAttachments.filter((item) => item.formId === formId);
+}
+
+function hiringDraftAttachmentPreviewMarkup(item) {
+  const name = htmlEscape(item.file?.name || "Arquivo");
+  return `<article class="hiring-attachment-preview" data-draft-id="${htmlEscape(item.id)}">
+    ${item.type === "image" ? `<img src="${htmlEscape(item.previewUrl)}" alt="${name}">` : `<audio controls preload="metadata" src="${htmlEscape(item.previewUrl)}"></audio>`}
+    <span>${name}</span>
+    <button type="button" data-action="hiring-attachment-remove" data-draft-id="${htmlEscape(item.id)}" aria-label="Remover ${name}"><i data-lucide="x"></i></button>
+  </article>`;
+}
+
+function updateHiringAttachmentPreviews(form) {
+  const container = form?.querySelector("[data-hiring-attachment-previews]");
+  if (!container) return;
+  const items = hiringDraftAttachmentsForForm(form);
+  container.innerHTML = items.map(hiringDraftAttachmentPreviewMarkup).join("");
+  container.hidden = !items.length;
+  hydrateView();
+}
+
+function addHiringDraftFiles(form, files, type) {
+  if (!form || !files?.length) return;
+  const formId = form.dataset.draftId || (form.dataset.draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const config = type === "audio" ? STORAGE_UPLOAD_LIMITS.communityAudio : STORAGE_UPLOAD_LIMITS.communityImage;
+  const current = hiringDraftAttachmentsForForm(form);
+  const accepted = [];
+  [...files].forEach((file) => {
+    try {
+      validateStorageFile(file, config);
+      accepted.push({
+        id: typeof window.crypto?.randomUUID === "function" ? window.crypto.randomUUID() : generateUUID(),
+        formId,
+        type,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+    } catch (error) {
+      showToast(error.message || "Arquivo invalido.", "triangle-alert");
+    }
+  });
+  const next = type === "audio"
+    ? [...current.filter((item) => item.type !== "audio"), ...accepted.slice(0, 1)]
+    : [...current.filter((item) => item.type !== "audio"), ...accepted].slice(0, 6);
+  appState.hiring.draftAttachments = [
+    ...appState.hiring.draftAttachments.filter((item) => item.formId !== formId),
+    ...next,
+  ];
+  updateHiringAttachmentPreviews(form);
+  updateHiringPublishButton(form);
+}
+
+function removeHiringDraftAttachment(form, draftId) {
+  const item = appState.hiring.draftAttachments.find((draft) => draft.id === draftId);
+  if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  appState.hiring.draftAttachments = appState.hiring.draftAttachments.filter((draft) => draft.id !== draftId);
+  updateHiringAttachmentPreviews(form);
+  updateHiringPublishButton(form);
+}
+
+function clearHiringDraftAttachments(form) {
+  const formId = form?.dataset?.draftId || "";
+  appState.hiring.draftAttachments
+    .filter((item) => item.formId === formId)
+    .forEach((item) => item.previewUrl && URL.revokeObjectURL(item.previewUrl));
+  appState.hiring.draftAttachments = appState.hiring.draftAttachments.filter((item) => item.formId !== formId);
+  updateHiringAttachmentPreviews(form);
+}
+
 function hiringComposerMarkup() {
   const profile = profileDisplayData(activeProfile());
   const publishLabel = appState.hiring.submitting ? "Publicando..." : "Publicar";
@@ -7248,21 +7379,31 @@ function hiringComposerMarkup() {
       <label class="sr-only" for="hiringDescription">Descricao</label>
       <textarea id="hiringDescription" name="description" maxlength="1200" rows="2" placeholder="O que esta acontecendo na musica?" aria-label="O que esta acontecendo na musica?"></textarea>
       <div class="hiring-composer-chips" data-hiring-composer-chips aria-live="polite"></div>
+      <div class="hiring-attachment-previews" data-hiring-attachment-previews hidden></div>
       <div class="hiring-composer-popovers">
         ${Object.entries(hiringComposerQuickActions).map(([type, config]) => hiringComposerPopoverMarkup(type, config)).join("")}
         ${hiringComposerReferencePopoverMarkup()}
+        ${hiringComposerTextPopoverMarkup({ type: "tags", title: "Tags", description: "Separe tags por virgula.", inputId: "hiringTagsInput", placeholder: "trap, mix, urgente", action: "hiring-composer-tags-save" })}
+        ${hiringComposerTextPopoverMarkup({ type: "location", title: "Localizacao", description: "Opcional. Cidade, estudio ou remoto especifico.", inputId: "hiringLocationInput", placeholder: "Sao Paulo, remoto, estudio...", action: "hiring-composer-location-save" })}
+        ${hiringComposerSchedulePopoverMarkup()}
+        ${hiringComposerPollPopoverMarkup()}
+        ${hiringComposerEmojiPopoverMarkup()}
       </div>
+      <input type="file" data-hiring-file-input="image" accept="image/jpeg,image/png,image/webp" multiple hidden>
+      <input type="file" data-hiring-file-input="audio" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,.mp3,.wav" hidden>
       <div class="hiring-composer-tools" aria-label="Opcoes da publicacao">
         <div class="hiring-composer-action-row">
-          <button type="button" data-action="hiring-composer-soon" title="Imagem/anexo" aria-label="Imagem/anexo"><i data-lucide="image"></i></button>
-          <button type="button" data-action="hiring-composer-soon" title="Beat ou audio" aria-label="Beat ou audio"><i data-lucide="music"></i></button>
+          <button type="button" data-action="hiring-file-pick" data-file-type="image" title="Imagem/anexo" aria-label="Imagem/anexo"><i data-lucide="image"></i></button>
+          <button type="button" data-action="hiring-file-pick" data-file-type="audio" title="Beat ou audio" aria-label="Beat ou audio"><i data-lucide="music"></i></button>
           <button type="button" data-action="hiring-composer-popover" data-popover="references" title="Link ou referencia" aria-label="Link ou referencia"><i data-lucide="link"></i></button>
-          <button type="button" data-action="hiring-composer-soon" title="Enquete" aria-label="Enquete"><i data-lucide="list-checks"></i></button>
-          <button type="button" data-action="hiring-composer-soon" title="Emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="poll" title="Enquete" aria-label="Enquete"><i data-lucide="list-checks"></i></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="emoji" title="Emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
           <button type="button" data-action="hiring-composer-popover" data-popover="category" title="Categoria" aria-label="Categoria"><i data-lucide="tags"></i><span>Categoria</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="tags" title="Tags" aria-label="Tags"><i data-lucide="hash"></i><span>Tags</span></button>
           <button type="button" data-action="hiring-composer-popover" data-popover="budget" title="Orcamento" aria-label="Orcamento"><i data-lucide="badge-dollar-sign"></i><span>Orcamento</span></button>
-          <button type="button" data-action="hiring-composer-popover" data-popover="work_mode" title="Local" aria-label="Local"><i data-lucide="map-pin"></i><span>Local</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="location" title="Local" aria-label="Local"><i data-lucide="map-pin"></i><span>Local</span></button>
           <button type="button" data-action="hiring-composer-popover" data-popover="deadline" title="Prazo" aria-label="Prazo"><i data-lucide="clock"></i><span>Prazo</span></button>
+          <button type="button" data-action="hiring-composer-popover" data-popover="schedule" title="Agendar" aria-label="Agendar"><i data-lucide="calendar-clock"></i><span>Agendar</span></button>
         </div>
         <button type="submit" class="hiring-publish-btn" disabled>${publishLabel}</button>
       </div>
@@ -7273,7 +7414,7 @@ function hiringComposerMarkup() {
 function hiringFiltersMarkup() {
   const filters = appState.hiring.filters;
   const chips = [
-    ["todos", "Todos", { category: "todos", deadline: "todos", status: "todos", workMode: "todos", budget: "" }],
+    ["todos", "Todos", { category: "todos", deadline: "todos", workMode: "todos", budget: "" }],
     ["duvidas", "Duvidas", { category: "duvidas" }],
     ["contratacoes", "Pedidos profissionais", { category: "contratacoes" }],
     ["oportunidades", "Oportunidades", { category: "oportunidades" }],
@@ -7297,7 +7438,6 @@ function hiringFiltersMarkup() {
     ${ansendSelectMarkup({ id: "hiringFilterCategory", label: "Categoria", value: filters.category, options: hiringCategories, action: "hiring-filter", filter: "category" })}
     <label>Orcamento<input data-action="hiring-filter" data-filter="budget" type="number" min="0" value="${htmlEscape(filters.budget || "")}" placeholder="Max. R$"></label>
     ${ansendSelectMarkup({ id: "hiringFilterDeadline", label: "Prazo", value: filters.deadline, options: [["todos", "Todos"], ...hiringDeadlines], action: "hiring-filter", filter: "deadline" })}
-    ${ansendSelectMarkup({ id: "hiringFilterStatus", label: "Status", value: filters.status, options: [["todos", "Todos"], ...Object.entries(hiringStatusLabels)], action: "hiring-filter", filter: "status" })}
     ${ansendSelectMarkup({ id: "hiringFilterWorkMode", label: "Tipo", value: filters.workMode, options: [["todos", "Todos"], ...Object.entries(hiringWorkModes)], action: "hiring-filter", filter: "workMode" })}
   </section>`;
 }
@@ -7508,7 +7648,27 @@ function hiringComposerChipData(form) {
   if (elements.work_mode?.dataset.chipLabel) chips.push(["work_mode", elements.work_mode.dataset.chipLabel]);
   if (elements.deadline_type?.dataset.chipLabel) chips.push(["deadline", elements.deadline_type.dataset.chipLabel]);
   if (elements.references?.value) chips.push(["references", elements.references.value]);
+  if (elements.tags?.value) chips.push(["tags", elements.tags.value]);
+  if (elements.location?.value) chips.push(["location", elements.location.value]);
+  if (elements.scheduled_at?.value) chips.push(["schedule", `Agendada: ${new Date(elements.scheduled_at.value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`]);
+  if (elements.poll_question?.value) chips.push(["poll", "Enquete"]);
   return chips;
+}
+
+function hiringComposerHasContent(form) {
+  if (!form?.elements) return false;
+  return Boolean(
+    String(form.elements.description?.value || "").trim()
+    || String(form.elements.references?.value || "").trim()
+    || String(form.elements.poll_question?.value || "").trim()
+    || hiringDraftAttachmentsForForm(form).length
+  );
+}
+
+function updateHiringPublishButton(form) {
+  const button = form?.querySelector(".hiring-publish-btn");
+  if (!button) return;
+  button.disabled = Boolean(appState.hiring.submitting) || !hiringComposerHasContent(form);
 }
 
 function updateHiringComposerChips(form) {
@@ -7560,8 +7720,18 @@ function removeHiringComposerChip(form, field) {
     elements.category.dataset.chipLabel = "";
   } else if (field === "references") {
     elements.references.value = "";
+  } else if (field === "tags") {
+    elements.tags.value = "";
+  } else if (field === "location") {
+    elements.location.value = "";
+  } else if (field === "schedule") {
+    elements.scheduled_at.value = "";
+  } else if (field === "poll") {
+    elements.poll_question.value = "";
+    elements.poll_options.value = "";
   }
   updateHiringComposerChips(form);
+  updateHiringPublishButton(form);
 }
 
 function resetHiringComposerMeta(form) {
@@ -7576,7 +7746,13 @@ function resetHiringComposerMeta(form) {
   form.elements.work_mode.value = "remote";
   form.elements.work_mode.dataset.chipLabel = "";
   form.elements.references.value = "";
+  form.elements.tags.value = "";
+  form.elements.location.value = "";
+  form.elements.scheduled_at.value = "";
+  form.elements.poll_question.value = "";
+  form.elements.poll_options.value = "";
   updateHiringComposerChips(form);
+  updateHiringPublishButton(form);
 }
 
 function closeAnsendSelects(except = null) {
@@ -7638,6 +7814,62 @@ function hiringProposalPreviewMarkup(proposal) {
   return `<article class="hiring-proposal-preview"><strong>${htmlEscape(sender.name)}</strong><span>${amount} · ${htmlEscape(proposal.delivery_deadline || "Prazo a combinar")}</span><p>${htmlEscape(proposal.message)}</p>${proposal.portfolio_links ? `<small>${htmlEscape(proposal.portfolio_links)}</small>` : ""}</article>`;
 }
 
+function hiringPostAttachments(post = {}) {
+  return Array.isArray(post.attachments) ? post.attachments : [];
+}
+
+function hiringPostMediaMarkup(post = {}) {
+  const attachments = hiringPostAttachments(post);
+  const images = attachments.filter((item) => item.type === "image" && (item.publicUrl || item.url));
+  const audios = attachments.filter((item) => item.type === "audio" && (item.publicUrl || item.url));
+  return `${images.length ? `<div class="hiring-post-images">${images.map((item) => `<img src="${htmlEscape(item.publicUrl || item.url)}" alt="${htmlEscape(item.name || "Imagem da publicacao")}" loading="lazy">`).join("")}</div>` : ""}${audios.length ? `<div class="hiring-post-audio">${audios.map((item) => `<audio controls preload="metadata" src="${htmlEscape(item.publicUrl || item.url)}"></audio>`).join("")}</div>` : ""}`;
+}
+
+function hiringPostMetaMarkup(post = {}) {
+  const pieces = [];
+  if (post.reference_links) {
+    const url = safeUrl(post.reference_links, { fallback: "" });
+    pieces.push(url ? `<a href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer"><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</a>` : `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>`);
+  }
+  if (post.location) pieces.push(`<small><i data-lucide="map-pin"></i>${htmlEscape(post.location)}</small>`);
+  if (post.scheduled_at && new Date(post.scheduled_at).getTime() > Date.now()) pieces.push(`<small><i data-lucide="calendar-clock"></i>${htmlEscape(new Date(post.scheduled_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}</small>`);
+  return pieces.length ? `<div class="hiring-post-meta">${pieces.join("")}</div>` : "";
+}
+
+function hiringPostTagsMarkup(post = {}) {
+  const tags = Array.isArray(post.tags) ? post.tags.filter(Boolean).slice(0, 8) : [];
+  return tags.length ? `<div class="hiring-post-tags">${tags.map((tag) => `<span>#${htmlEscape(tag)}</span>`).join("")}</div>` : "";
+}
+
+function hiringPostPollMarkup(post = {}) {
+  const options = Array.isArray(post.poll_options) ? post.poll_options : [];
+  if (!post.poll_question || options.length < 2) return "";
+  const votes = appState.hiring.pollVotes[post.id] || [];
+  const total = Math.max(1, votes.length);
+  const currentUserId = appState.authUser?.id || "";
+  const ownVote = votes.find((vote) => vote.user_id === currentUserId);
+  return `<section class="hiring-post-poll">
+    <strong>${htmlEscape(post.poll_question)}</strong>
+    ${options.map((option, index) => {
+      const count = votes.filter((vote) => Number(vote.option_index) === index).length;
+      const percent = Math.round((count / total) * 100);
+      return `<button type="button" data-action="hiring-poll-vote" data-post-id="${htmlEscape(post.id)}" data-option-index="${index}" class="${Number(ownVote?.option_index) === index ? "is-active" : ""}">
+        <span>${htmlEscape(String(option))}</span><em>${votes.length ? `${percent}%` : ""}</em><i style="width:${votes.length ? percent : 0}%"></i>
+      </button>`;
+    }).join("")}
+  </section>`;
+}
+
+function hiringPostMenuMarkup(post = {}, isOwner = false) {
+  if (appState.hiring.openMenuPostId !== post.id) return "";
+  return `<div class="hiring-post-menu" role="menu">
+    ${isOwner ? `<button type="button" data-action="hiring-edit" data-post-id="${htmlEscape(post.id)}"><i data-lucide="pencil"></i>Editar publicacao</button>` : ""}
+    ${isOwner ? `<button type="button" data-action="hiring-delete" data-post-id="${htmlEscape(post.id)}"><i data-lucide="trash-2"></i>Excluir publicacao</button>` : ""}
+    <button type="button" data-action="hiring-share" data-post-id="${htmlEscape(post.id)}"><i data-lucide="copy"></i>Copiar link</button>
+    ${!isOwner ? `<button type="button" data-action="hiring-report" data-post-id="${htmlEscape(post.id)}"><i data-lucide="flag"></i>Denunciar</button>` : ""}
+  </div>`;
+}
+
 function hiringPostCardMarkup(post, { detail = false } = {}) {
   const author = hiringAuthorDisplay(post.user_id);
   const isOwner = appState.authUser?.id && appState.authUser.id === post.user_id;
@@ -7656,13 +7888,19 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
         <button type="button" data-action="hiring-open-profile" ${profileAttrs}><strong>${htmlEscape(author.name)}</strong>${author.verified ? `<i data-lucide="badge-check" aria-label="Verificado"></i>` : ""}<span>${htmlEscape(author.handle || "@ansend")} · ${hiringRelativeDate(post.created_at)}</span></button>
         <small>${htmlEscape(author.roleLabel || "Profissional da musica")}</small>
       </div>
-      <button type="button" class="hiring-icon-btn" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
+      <div class="hiring-post-menu-wrap">
+        <button type="button" class="hiring-icon-btn" data-action="hiring-menu-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
+        ${hiringPostMenuMarkup(post, Boolean(isOwner))}
+      </div>
     </header>
     <button type="button" class="hiring-post-body" data-action="hiring-open-post" data-post-id="${htmlEscape(post.id)}">
       ${title ? `<h2>${htmlEscape(title)}</h2>` : ""}
       ${shouldShowDescription ? `<p>${htmlEscape(description)}</p>` : ""}
-      ${post.reference_links ? `<small><i data-lucide="link"></i>${htmlEscape(post.reference_links)}</small>` : ""}
     </button>
+    ${hiringPostMetaMarkup(post)}
+    ${hiringPostTagsMarkup(post)}
+    ${hiringPostMediaMarkup(post)}
+    ${hiringPostPollMarkup(post)}
     <div class="hiring-post-actions">
       <button type="button" data-action="hiring-comment-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Comentar"><i data-lucide="message-circle"></i><span>${post.metrics?.comments || 0}</span></button>
       <button type="button" class="${post.viewer?.reposted ? "is-active" : ""}" data-action="hiring-repost" data-post-id="${htmlEscape(post.id)}" aria-label="Repostar"><i data-lucide="repeat-2"></i><span>${post.metrics?.reposts || 0}</span></button>
@@ -7674,7 +7912,6 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
     <div class="hiring-professional-actions">
       <button type="button" class="hiring-compact-cta ${post.viewer?.interested ? "is-active" : ""}" data-action="hiring-interest" data-post-id="${htmlEscape(post.id)}" ${isOwner || interestBusy ? "disabled" : ""}><i data-lucide="${interestBusy ? "loader-2" : "hand"}"></i>${interestBusy ? "Abrindo chat..." : (post.viewer?.interested ? "Interesse enviado" : "Tenho interesse")}</button>
       <button type="button" class="hiring-compact-cta ${post.viewer?.proposed ? "is-active" : ""}" data-action="hiring-proposal-open" data-post-id="${htmlEscape(post.id)}" ${isOwner || proposalBusy ? "disabled" : ""}><i data-lucide="${proposalBusy ? "loader-2" : "send"}"></i>${proposalBusy ? "Abrindo proposta..." : (post.viewer?.proposed ? "Proposta enviada" : "Enviar proposta")}</button>
-      ${isOwner ? `<label class="hiring-status-select">Status<select data-action="hiring-status" data-post-id="${htmlEscape(post.id)}">${Object.entries(hiringStatusLabels).map(([id, label]) => `<option value="${id}" ${post.status === id ? "selected" : ""}>${label}</option>`).join("")}</select></label>` : ""}
     </div>
     <section class="hiring-comments" ${detail ? "" : "hidden"}>
       <div class="hiring-comment-list">${comments.length ? comments.map(hiringCommentMarkup).join("") : `<p>Seja o primeiro a comentar.</p>`}</div>
@@ -7767,6 +8004,7 @@ async function renderHiringPage(options = {}) {
     appState.hiring.posts = cached.posts.map((post) => ({ ...post }));
     appState.hiring.comments = { ...cached.comments };
     appState.hiring.proposals = [...cached.proposals];
+    appState.hiring.pollVotes = { ...(cached.pollVotes || {}) };
     appState.hiring.error = "";
     appState.hiring.loading = false;
   } else if (!appState.hiring.posts.length || options.force || detailId) {
@@ -7794,13 +8032,37 @@ async function renderHiringPage(options = {}) {
   loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
 }
 
+async function uploadHiringDraftAttachments(form) {
+  const drafts = hiringDraftAttachmentsForForm(form);
+  const uploaded = [];
+  for (const [index, draft] of drafts.entries()) {
+    const result = await uploadStorageFile(draft.file, {
+      type: draft.type === "audio" ? "communityAudio" : "communityImage",
+      timeoutMs: draft.type === "audio" ? 120000 : 60000,
+      contentType: mimeTypeForFile(draft.file),
+    });
+    uploaded.push({
+      type: draft.type,
+      bucket: result.bucket,
+      path: result.path,
+      url: result.publicUrl,
+      publicUrl: result.publicUrl,
+      name: draft.file.name || (draft.type === "audio" ? "beat" : "imagem"),
+      size: draft.file.size || 0,
+      mime: result.contentType || draft.file.type || "",
+      sortOrder: index,
+    });
+  }
+  return uploaded;
+}
+
 async function submitHiringPost(form) {
   await waitForHiringAuthReady();
   if (!hiringRequireAuth()) return;
   if (appState.hiring.submitting) return;
   const description = String(form.elements.description?.value || "").trim();
-  if (!description) {
-    showToast("Escreva algo para publicar.", "triangle-alert");
+  if (!hiringComposerHasContent(form)) {
+    showToast("Adicione texto, midia, link ou enquete para publicar.", "triangle-alert");
     return;
   }
   const submitButton = form.querySelector('button[type="submit"]');
@@ -7809,8 +8071,13 @@ async function submitHiringPost(form) {
     submitButton.disabled = true;
     submitButton.textContent = "Publicando...";
   }
-  const title = String(form.elements.title?.value || description.split(/\s+/).slice(0, 10).join(" ")).trim();
+  const titleSource = description || form.elements.references?.value || form.elements.poll_question?.value || "Publicacao ANSEND";
+  const title = String(form.elements.title?.value || titleSource.split(/\s+/).slice(0, 10).join(" ")).trim();
   const budgetType = form.elements.budget_type?.value || "fixed";
+  const tags = String(form.elements.tags?.value || "").split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
+  const pollOptions = (() => {
+    try { return JSON.parse(form.elements.poll_options?.value || "[]"); } catch { return []; }
+  })();
   const payload = {
     user_id: appState.authUser.id,
     title: title.slice(0, 120),
@@ -7823,19 +8090,44 @@ async function submitHiringPost(form) {
     work_mode: form.elements.work_mode?.value || "remote",
     reference_links: String(form.elements.references?.value || "").trim() || null,
     attachments: [],
-    status: "open",
+    tags,
+    location: String(form.elements.location?.value || "").trim() || null,
+    scheduled_at: String(form.elements.scheduled_at?.value || "").trim() || null,
+    published_at: new Date().toISOString(),
+    poll_question: String(form.elements.poll_question?.value || "").trim() || null,
+    poll_options: pollOptions,
+    metadata: {},
     visibility: "public",
   };
   try {
+    payload.attachments = await uploadHiringDraftAttachments(form);
     const { data, error } = await withTimeout(
       supabaseClient.from("hiring_posts").insert(payload).select(HIRING_POST_SELECT).single(),
       9000,
       "A publicacao demorou para responder. Tente novamente."
     );
     if (error) throw error;
+    const attachmentRows = payload.attachments.map((attachment) => ({
+      post_id: data.id,
+      user_id: appState.authUser.id,
+      bucket_id: attachment.bucket,
+      storage_path: attachment.path,
+      public_url: attachment.publicUrl,
+      file_name: attachment.name,
+      mime_type: attachment.mime,
+      file_size_bytes: attachment.size,
+      attachment_type: attachment.type,
+      sort_order: attachment.sortOrder,
+      metadata: { source: "composer" },
+    }));
+    if (attachmentRows.length) {
+      const { error: attachmentError } = await supabaseClient.from("hiring_attachments").insert(attachmentRows);
+      if (attachmentError) console.warn("[ANSEND community] attachment metadata insert failed", attachmentError.message || attachmentError);
+    }
     invalidateHiringCache();
     form.reset();
     resetHiringComposerMeta(form);
+    clearHiringDraftAttachments(form);
     appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts.filter((post) => post.id !== data.id)];
     await loadHiringEngagement(appState.hiring.posts);
     showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
@@ -7862,7 +8154,7 @@ async function toggleHiringAction(kind, postId) {
   const isActive = Boolean(post.viewer?.[viewerKey]);
   const result = isActive
     ? await supabaseClient.from(table).delete().eq("post_id", postId).eq("user_id", appState.authUser.id)
-    : await supabaseClient.from(table).insert({ post_id: postId, user_id: appState.authUser.id });
+    : await supabaseClient.from(table).upsert({ post_id: postId, user_id: appState.authUser.id }, { onConflict: "post_id,user_id" });
   if (result.error) {
     showToast(result.error.message || "Acao nao concluida.", "triangle-alert");
     return;
@@ -7947,16 +8239,116 @@ async function deleteHiringComment(commentId) {
   renderHiringPage({ force: false });
 }
 
-async function updateHiringStatus(postId, status) {
+async function voteHiringPoll(postId, optionIndex) {
   if (!hiringRequireAuth()) return;
-  const { data, error } = await supabaseClient.from("hiring_posts").update({ status }).eq("id", postId).select().single();
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post) return;
+  const { data, error } = await supabaseClient
+    .from("hiring_poll_votes")
+    .upsert({ post_id: postId, user_id: appState.authUser.id, option_index: Number(optionIndex) }, { onConflict: "post_id,user_id" })
+    .select()
+    .single();
   if (error) {
-    showToast(error.message || "Nao foi possivel alterar status.", "triangle-alert");
+    showToast(error.message || "Nao foi possivel votar.", "triangle-alert");
     return;
   }
   invalidateHiringCache();
-  appState.hiring.posts = appState.hiring.posts.map((post) => post.id === postId ? { ...post, ...data } : post);
-  showToast("Status atualizado", "badge-check");
+  appState.hiring.pollVotes[postId] = [...(appState.hiring.pollVotes[postId] || []).filter((vote) => vote.user_id !== appState.authUser.id), data];
+  renderHiringPage({ force: false });
+}
+
+async function reportHiringPost(postId) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id === appState.authUser.id) return;
+  const { error } = await supabaseClient
+    .from("hiring_reports")
+    .upsert({ post_id: postId, reporter_id: appState.authUser.id, reason: "community_post" }, { onConflict: "post_id,reporter_id" });
+  if (error) {
+    showToast(error.message || "Nao foi possivel denunciar.", "triangle-alert");
+    return;
+  }
+  appState.hiring.openMenuPostId = "";
+  showToast("Denuncia registrada.", "flag");
+  renderHiringPage({ force: false });
+}
+
+async function deleteHiringPost(postId) {
+  if (!hiringRequireAuth()) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id !== appState.authUser.id) return;
+  if (!window.confirm("Excluir esta publicacao?")) return;
+  const attachments = hiringPostAttachments(post);
+  const byBucket = attachments.reduce((acc, item) => {
+    if (item.bucket && item.path) {
+      acc[item.bucket] = acc[item.bucket] || [];
+      acc[item.bucket].push(item.path);
+    }
+    return acc;
+  }, {});
+  const { error } = await supabaseClient.from("hiring_posts").delete().eq("id", postId).eq("user_id", appState.authUser.id);
+  if (error) {
+    showToast(error.message || "Nao foi possivel excluir.", "triangle-alert");
+    return;
+  }
+  await Promise.allSettled(Object.entries(byBucket).map(([bucket, paths]) => supabaseClient.storage.from(bucket).remove(paths)));
+  invalidateHiringCache();
+  appState.hiring.posts = appState.hiring.posts.filter((item) => item.id !== postId);
+  delete appState.hiring.comments[postId];
+  delete appState.hiring.pollVotes[postId];
+  appState.hiring.openMenuPostId = "";
+  showToast("Publicacao excluida.", "trash-2");
+  renderHiringPage({ force: false });
+}
+
+function openHiringEditModal(postId) {
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id !== appState.authUser?.id) return;
+  const categoryOptions = hiringCategories.filter(([id]) => id !== "todos").map(([id, label]) => `<option value="${id}">${htmlEscape(label)}</option>`).join("");
+  const modeOptions = Object.entries(hiringWorkModes).map(([id, label]) => `<option value="${id}">${htmlEscape(label)}</option>`).join("");
+  openModal(`<form class="hiring-edit-form" data-post-id="${htmlEscape(post.id)}">
+    <h2>Editar publicacao</h2>
+    <label>Texto<textarea name="description" rows="4" maxlength="1200">${htmlEscape(post.description || "")}</textarea></label>
+    <label>Categoria<input name="category" list="hiringEditCategories" value="${htmlEscape(post.category || "duvidas")}"><datalist id="hiringEditCategories">${categoryOptions}</datalist></label>
+    <label>Orcamento<input name="budget_amount" type="number" min="0" value="${htmlEscape(post.budget_amount || "")}"></label>
+    <label>Tipo<input name="work_mode" list="hiringEditWorkModes" value="${htmlEscape(post.work_mode || "remote")}"><datalist id="hiringEditWorkModes">${modeOptions}</datalist></label>
+    <label>Link<input name="reference_links" type="text" value="${htmlEscape(post.reference_links || "")}"></label>
+    <label>Tags<input name="tags" type="text" value="${htmlEscape((post.tags || []).join(", "))}"></label>
+    <label>Localizacao<input name="location" type="text" value="${htmlEscape(post.location || "")}"></label>
+    <footer><button type="button" data-action="close-modal">Cancelar</button><button type="submit">Salvar</button></footer>
+  </form>`);
+}
+
+async function submitHiringEdit(form) {
+  if (!hiringRequireAuth()) return;
+  const postId = form.dataset.postId;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  if (!post || post.user_id !== appState.authUser.id) return;
+  const description = String(form.elements.description?.value || "").trim();
+  if (!description && !hiringPostAttachments(post).length && !String(form.elements.reference_links?.value || "").trim()) {
+    showToast("A publicacao precisa de texto, midia ou link.", "triangle-alert");
+    return;
+  }
+  const payload = {
+    title: (description || post.title || "Publicacao ANSEND").split(/\s+/).slice(0, 10).join(" ").slice(0, 120),
+    description: description.slice(0, 1200),
+    category: form.elements.category?.value || "duvidas",
+    budget_amount: form.elements.budget_amount?.value ? Number(form.elements.budget_amount.value) : null,
+    budget_type: form.elements.budget_amount?.value ? "fixed" : "negotiable",
+    work_mode: form.elements.work_mode?.value || "remote",
+    reference_links: String(form.elements.reference_links?.value || "").trim() || null,
+    tags: String(form.elements.tags?.value || "").split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
+    location: String(form.elements.location?.value || "").trim() || null,
+  };
+  const { data, error } = await supabaseClient.from("hiring_posts").update(payload).eq("id", postId).eq("user_id", appState.authUser.id).select(HIRING_POST_SELECT).single();
+  if (error) {
+    showToast(error.message || "Nao foi possivel salvar.", "triangle-alert");
+    return;
+  }
+  invalidateHiringCache();
+  appState.hiring.posts = appState.hiring.posts.map((item) => item.id === postId ? { ...item, ...data, metrics: item.metrics, viewer: item.viewer } : item);
+  closeModal();
+  showToast("Publicacao atualizada.", "badge-check");
   renderHiringPage({ force: false });
 }
 
@@ -9001,6 +9393,24 @@ const STORAGE_UPLOAD_LIMITS = {
       "text/plain", "application/zip", "application/x-zip-compressed",
     ],
     allowedExt: ["jpg", "jpeg", "png", "webp", "mp3", "wav", "m4a", "ogg", "flac", "mp4", "webm", "pdf", "docx", "txt", "zip"],
+    upsert: false,
+  },
+  communityImage: {
+    label: "imagem da publicacao",
+    bucket: "community-images",
+    folder: "community/images",
+    maxBytes: 10 * 1024 * 1024,
+    allowedMime: ["image/jpeg", "image/png", "image/webp"],
+    allowedExt: ["jpg", "jpeg", "png", "webp"],
+    upsert: false,
+  },
+  communityAudio: {
+    label: "beat da publicacao",
+    bucket: "community-audio",
+    folder: "community/audio",
+    maxBytes: 100 * 1024 * 1024,
+    allowedMime: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"],
+    allowedExt: ["mp3", "wav"],
     upsert: false,
   },
 };
@@ -16171,11 +16581,22 @@ function seekMiniPlayerToRatio(ratio) {
   updateMiniProgress();
 }
 
-function seekMiniPlayerFromPointer(event) {
-  const waveform = event.target.closest(".mini-waveform");
-  if (!waveform) return;
-  const rect = waveform.querySelector(".mini-wave-bars")?.getBoundingClientRect() || waveform.getBoundingClientRect();
-  const ratio = (event.clientX - rect.left) / Math.max(1, rect.width);
+function miniWaveformProgressFromPointer(event, { requireInside = false } = {}) {
+  const waveform = event.target?.closest?.(".mini-waveform") || document.querySelector(".mini-waveform");
+  const progressBar = waveform?.querySelector(".mini-wave-bars");
+  if (!progressBar) return null;
+  const rect = progressBar.getBoundingClientRect();
+  if (!rect.width) return null;
+  const insideX = event.clientX >= rect.left && event.clientX <= rect.right;
+  const insideY = event.clientY >= rect.top && event.clientY <= rect.bottom;
+  if (requireInside && (!insideX || !insideY)) return null;
+  const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+  return x / rect.width;
+}
+
+function seekMiniPlayerFromPointer(event, options = {}) {
+  const ratio = miniWaveformProgressFromPointer(event, options);
+  if (ratio === null) return;
   seekMiniPlayerToRatio(ratio);
 }
 
@@ -16879,6 +17300,7 @@ document.addEventListener("pointerdown", (event) => {
   const waveform = event.target.closest(".mini-waveform");
   if (!waveform) return;
   event.preventDefault();
+  if (miniWaveformProgressFromPointer(event, { requireInside: true }) === null) return;
   seekMiniPlayerFromPointer(event);
   waveform.focus({ preventScroll: true });
   waveform.setPointerCapture?.(event.pointerId);
@@ -17049,6 +17471,92 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const hiringComposerTagsSave = event.target.closest("[data-action='hiring-composer-tags-save']");
+  if (hiringComposerTagsSave) {
+    event.preventDefault();
+    const form = hiringComposerTagsSave.closest(".hiring-composer");
+    const input = form?.querySelector("#hiringTagsInput");
+    const tags = String(input?.value || "").split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
+    if (form && tags.length) {
+      form.elements.tags.value = tags.join(", ");
+      input.value = "";
+      closeHiringComposerPopovers(form);
+      updateHiringComposerChips(form);
+      updateHiringPublishButton(form);
+    }
+    return;
+  }
+
+  const hiringComposerLocationSave = event.target.closest("[data-action='hiring-composer-location-save']");
+  if (hiringComposerLocationSave) {
+    event.preventDefault();
+    const form = hiringComposerLocationSave.closest(".hiring-composer");
+    const input = form?.querySelector("#hiringLocationInput");
+    const value = String(input?.value || "").trim();
+    if (form && value) {
+      form.elements.location.value = value.slice(0, 120);
+      input.value = "";
+      closeHiringComposerPopovers(form);
+      updateHiringComposerChips(form);
+    }
+    return;
+  }
+
+  const hiringComposerScheduleSave = event.target.closest("[data-action='hiring-composer-schedule-save']");
+  if (hiringComposerScheduleSave) {
+    event.preventDefault();
+    const form = hiringComposerScheduleSave.closest(".hiring-composer");
+    const input = form?.querySelector("#hiringScheduleInput");
+    const value = String(input?.value || "").trim();
+    if (form && value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        showToast("Escolha uma data valida.", "triangle-alert");
+      } else {
+        form.elements.scheduled_at.value = date.toISOString();
+        closeHiringComposerPopovers(form);
+        updateHiringComposerChips(form);
+      }
+    }
+    return;
+  }
+
+  const hiringComposerPollSave = event.target.closest("[data-action='hiring-composer-poll-save']");
+  if (hiringComposerPollSave) {
+    event.preventDefault();
+    const form = hiringComposerPollSave.closest(".hiring-composer");
+    const question = String(form?.querySelector("#hiringPollQuestionInput")?.value || "").trim();
+    const options = [...(form?.querySelectorAll("[data-poll-option]") || [])].map((input) => String(input.value || "").trim()).filter(Boolean).slice(0, 4);
+    if (!form || !question || options.length < 2) {
+      showToast("Informe uma pergunta e pelo menos duas opcoes.", "list-checks");
+      return;
+    }
+    form.elements.poll_question.value = question.slice(0, 160);
+    form.elements.poll_options.value = JSON.stringify(options);
+    form.querySelectorAll("#hiringPollQuestionInput, [data-poll-option]").forEach((input) => { input.value = ""; });
+    closeHiringComposerPopovers(form);
+    updateHiringComposerChips(form);
+    updateHiringPublishButton(form);
+    return;
+  }
+
+  const hiringComposerEmoji = event.target.closest("[data-action='hiring-composer-emoji']");
+  if (hiringComposerEmoji) {
+    event.preventDefault();
+    const form = hiringComposerEmoji.closest(".hiring-composer");
+    const textarea = form?.elements.description;
+    const emoji = hiringComposerEmoji.dataset.emoji || "";
+    if (textarea && emoji) {
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? textarea.value.length;
+      textarea.value = `${textarea.value.slice(0, start)}${emoji}${textarea.value.slice(end)}`;
+      textarea.focus();
+      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+      updateHiringPublishButton(form);
+    }
+    return;
+  }
+
   const hiringComposerChipRemove = event.target.closest("[data-action='hiring-composer-chip-remove']");
   if (hiringComposerChipRemove) {
     event.preventDefault();
@@ -17062,9 +17570,18 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  if (event.target.closest("[data-action='hiring-composer-soon']")) {
+  const hiringFilePick = event.target.closest("[data-action='hiring-file-pick']");
+  if (hiringFilePick) {
     event.preventDefault();
-    showToast("Recurso preparado para a proxima etapa.", "sparkles");
+    const form = hiringFilePick.closest(".hiring-composer");
+    form?.querySelector(`[data-hiring-file-input="${CSS.escape(hiringFilePick.dataset.fileType || "image")}"]`)?.click();
+    return;
+  }
+
+  const hiringAttachmentRemove = event.target.closest("[data-action='hiring-attachment-remove']");
+  if (hiringAttachmentRemove) {
+    event.preventDefault();
+    removeHiringDraftAttachment(hiringAttachmentRemove.closest(".hiring-composer"), hiringAttachmentRemove.dataset.draftId || "");
     return;
   }
 
@@ -17457,6 +17974,28 @@ document.addEventListener("click", (event) => {
     if (action === "hiring-share") {
       navigator.clipboard?.writeText(hiringPostUrl(postId));
       showToast("Link copiado", "share");
+      return;
+    }
+    if (action === "hiring-menu-toggle") {
+      appState.hiring.openMenuPostId = appState.hiring.openMenuPostId === postId ? "" : postId;
+      renderHiringPage({ force: false });
+      return;
+    }
+    if (action === "hiring-edit") {
+      appState.hiring.openMenuPostId = "";
+      openHiringEditModal(postId);
+      return;
+    }
+    if (action === "hiring-delete") {
+      deleteHiringPost(postId);
+      return;
+    }
+    if (action === "hiring-report") {
+      reportHiringPost(postId);
+      return;
+    }
+    if (action === "hiring-poll-vote") {
+      voteHiringPoll(postId, target.dataset.optionIndex);
       return;
     }
     if (action === "hiring-interest") {
@@ -18239,17 +18778,19 @@ document.addEventListener("change", (event) => {
     setChatAttachmentFromInput(chatAttachmentInput);
     return;
   }
+  const hiringFileInput = event.target.closest("[data-hiring-file-input]");
+  if (hiringFileInput) {
+    const form = hiringFileInput.closest(".hiring-composer");
+    addHiringDraftFiles(form, hiringFileInput.files, hiringFileInput.dataset.hiringFileInput || "image");
+    hiringFileInput.value = "";
+    return;
+  }
   const hiringFilter = event.target.closest('[data-action="hiring-filter"]');
   if (hiringFilter) {
     const key = hiringFilter.dataset.filter;
     if (key) appState.hiring.filters[key] = hiringFilter.value;
     appState.hiring.lastLoadedAt = 0;
     renderHiringPage({ force: true });
-    return;
-  }
-  const hiringStatus = event.target.closest('[data-action="hiring-status"]');
-  if (hiringStatus) {
-    updateHiringStatus(hiringStatus.dataset.postId, hiringStatus.value);
     return;
   }
   const profileFileInput = event.target.closest(".profile-editor-file");
@@ -18439,8 +18980,7 @@ document.addEventListener("input", (event) => {
   const hiringComposer = input.closest?.(".hiring-composer");
   if (hiringComposer) {
     const description = String(hiringComposer.elements.description?.value || "").trim();
-    const button = hiringComposer.querySelector('button[type="submit"]');
-    if (button) button.disabled = appState.hiring.submitting || !description;
+    updateHiringPublishButton(hiringComposer);
     hiringComposer.classList.toggle("is-writing", Boolean(description || document.activeElement?.closest?.(".hiring-composer")));
     if (input.matches("textarea")) {
       input.style.height = "auto";
@@ -18526,6 +19066,12 @@ document.addEventListener("submit", async (event) => {
   if (hiringComposerForm) {
     event.preventDefault();
     await submitHiringPost(hiringComposerForm);
+    return;
+  }
+  const hiringEditForm = event.target.closest(".hiring-edit-form");
+  if (hiringEditForm) {
+    event.preventDefault();
+    await submitHiringEdit(hiringEditForm);
     return;
   }
   const hiringProposalForm = event.target.closest(".hiring-proposal-form");
