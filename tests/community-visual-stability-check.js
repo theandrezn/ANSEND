@@ -182,6 +182,41 @@ async function run() {
       entering: document.body.classList.contains("community-route-enter"),
       postCount: document.querySelectorAll(".hiring-post").length,
       animations: document.querySelector(".hiring-feed-shell")?.getAnimations?.().length || 0,
+      layout: (() => {
+        const post = document.querySelector(".hiring-post");
+        const rect = (selector) => {
+          const element = post?.querySelector(selector);
+          if (!element) return null;
+          const box = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            top: Math.round(box.top),
+            right: Math.round(box.right),
+            bottom: Math.round(box.bottom),
+            left: Math.round(box.left),
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+            minHeight: style.minHeight,
+          };
+        };
+        const avatar = rect(".hiring-author-avatar .hiring-avatar");
+        const author = rect(".hiring-author-copy button");
+        const role = rect(".hiring-author-copy small");
+        const body = rect(".hiring-post-body");
+        const menu = rect(".hiring-icon-btn");
+        const actions = rect(".hiring-post-actions");
+        const professionalActions = rect(".hiring-professional-actions");
+        return {
+          avatar,
+          roleGap: role && author ? role.top - author.bottom : null,
+          bodyGap: body && role ? body.top - role.bottom : null,
+          actionsGap: actions && body ? actions.top - body.bottom : null,
+          professionalGap: professionalActions && actions ? professionalActions.top - actions.bottom : null,
+          menuRightAligned: Boolean(menu && body && menu.left >= body.left && menu.right <= body.right + 1),
+          bodyMinHeight: body?.minHeight || "",
+          actionHeight: actions?.height || 0,
+        };
+      })(),
     }));
 
     if (before.probe !== "keep" || after.probe !== "keep") {
@@ -195,6 +230,25 @@ async function run() {
     }
     if (after.postCount !== before.postCount) {
       throw new Error(`Community posts changed during visual stability check: ${before.postCount} -> ${after.postCount}`);
+    }
+    if (
+      after.layout.avatar?.width !== 40
+      || after.layout.avatar?.height !== 40
+      || after.layout.roleGap !== 2
+      || after.layout.bodyGap < 0
+      || after.layout.bodyGap > 5
+      || after.layout.actionsGap < 6
+      || after.layout.actionsGap > 10
+      || after.layout.professionalGap < 6
+      || after.layout.professionalGap > 8
+      || after.layout.bodyMinHeight !== "0px"
+      || after.layout.actionHeight > 34
+      || !after.layout.menuRightAligned
+    ) {
+      throw new Error(`Community post density regressed: ${JSON.stringify(after.layout)}`);
+    }
+    if (process.env.COMMUNITY_CAPTURE_SCREENSHOT) {
+      await page.screenshot({ path: process.env.COMMUNITY_CAPTURE_SCREENSHOT, fullPage: false });
     }
   } finally {
     await browser.close();

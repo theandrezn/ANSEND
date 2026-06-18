@@ -28860,31 +28860,42 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 .hiring-post-images,
 .hiring-post-audio,
 .hiring-post-poll {
+  margin-top: 10px;
   margin-left: 56px;
 }
 
 .hiring-post-images {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(239, 243, 244, .18);
+  border-radius: 16px;
+  background: #000;
 }
 
 .hiring-post-images img {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  min-height: 0;
+  aspect-ratio: 16 / 11;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 12px;
+  border: 0;
+  border-radius: 0;
 }
 
 .hiring-post-audio audio {
   width: 100%;
-  height: 40px;
+  height: 38px;
 }
 
 .hiring-post-poll {
   display: grid;
   gap: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(239, 243, 244, .18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+  padding: 10px;
 }
 
 .hiring-post-poll strong {
@@ -28989,25 +29000,31 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
   grid-row: 1;
   min-width: 0;
   width: 100%;
-  padding-right: 36px;
+  padding-right: 38px;
 }
 
 .hiring-native-layout .hiring-author-copy button {
   max-width: 100%;
   gap: 4px;
-  font-size: .93rem;
-  line-height: 1.25;
+  min-height: 0 !important;
+  height: auto !important;
+  font-size: .94rem;
+  line-height: 1.32;
   display: flex;
   align-items: baseline;
   flex-wrap: nowrap;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .hiring-native-layout .hiring-author-copy strong {
   max-width: min(220px, 48vw);
   overflow: hidden;
   color: #f5f5f5;
-  font-weight: 750;
+  font-weight: 700;
   flex-shrink: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -29026,9 +29043,10 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 .hiring-native-layout .hiring-author-copy small {
   display: block;
   margin-top: 2px;
+  margin-bottom: 0;
   color: #71767b;
-  font-size: .78rem;
-  line-height: 1.25;
+  font-size: 13px;
+  line-height: 17px;
 }
 
 .hiring-native-layout .hiring-author-copy svg {
@@ -29036,19 +29054,33 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
   height: 15px;
 }
 
-.hiring-native-layout .hiring-icon-btn {
+.hiring-native-layout .hiring-post-menu-wrap {
   grid-column: 2;
   grid-row: 1;
   justify-self: end;
   align-self: start;
-  width: 30px;
-  height: 30px;
-  margin-top: -4px;
+  position: relative;
+  z-index: 3;
+  margin-left: 0;
+}
+
+.hiring-native-layout .hiring-icon-btn {
+  width: 32px;
+  min-width: 32px !important;
+  height: 32px;
+  min-height: 32px !important;
+  margin-top: -5px;
   color: #71767b;
+  padding: 0;
 }
 
 .hiring-native-layout .hiring-post-body,
+.hiring-native-layout .hiring-post-meta,
 .hiring-native-layout .hiring-tags,
+.hiring-native-layout .hiring-post-tags,
+.hiring-native-layout .hiring-post-images,
+.hiring-native-layout .hiring-post-audio,
+.hiring-native-layout .hiring-post-poll,
 .hiring-native-layout .hiring-post-actions,
 .hiring-native-layout .hiring-professional-actions,
 .hiring-native-layout .hiring-comments,
@@ -29062,7 +29094,7 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
   display: grid;
   grid-row: 2;
   gap: 0;
-  margin: 10px 0 0;
+  margin: 0;
   min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
@@ -29077,16 +29109,21 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 .hiring-native-layout .hiring-post-body h2 {
   margin: 0;
   color: #f5f5f5;
-  font-size: .98rem;
-  font-weight: 700;
-  line-height: 1.35;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .hiring-native-layout .hiring-post-body p {
   margin: 0;
   color: #f1f3f5;
-  font-size: .95rem;
-  line-height: 1.42;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .hiring-native-layout .hiring-post-body small {
@@ -29105,9 +29142,63 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
   height: 14px;
 }
 
+.hiring-native-layout .hiring-post-meta {
+  gap: 6px;
+  margin-top: 8px;
+  padding: 0;
+}
+
+.hiring-native-layout .hiring-post-images,
+.hiring-native-layout .hiring-post-audio,
+.hiring-native-layout .hiring-post-poll {
+  width: 100%;
+  margin-top: 10px;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.hiring-native-layout .hiring-post-images {
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(239, 243, 244, .18);
+  border-radius: 16px;
+  background: #000;
+}
+
+.hiring-native-layout .hiring-post-images img {
+  width: 100%;
+  height: 100%;
+  min-height: 170px;
+  max-height: 340px;
+  object-fit: cover;
+  border: 0;
+  border-radius: 0;
+}
+
+.hiring-native-layout .hiring-post-images:has(img:only-child) img {
+  height: auto;
+  min-height: 0;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.hiring-native-layout .hiring-post-audio {
+  overflow: hidden;
+  border: 1px solid rgba(239, 243, 244, .18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .025);
+  padding: 8px;
+}
+
+.hiring-native-layout .hiring-post-poll {
+  padding: 10px;
+}
+
 .hiring-native-layout .hiring-tags {
   gap: 5px;
-  padding: 8px 0 2px;
+  margin-top: 8px;
+  padding: 0;
 }
 
 .hiring-native-layout .hiring-tags span {
@@ -29131,13 +29222,15 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
   justify-content: space-between;
   gap: 4px;
   max-width: 430px;
-  margin-top: 6px;
+  min-height: 32px;
+  margin-top: 8px;
   padding-left: 0;
 }
 
 .hiring-native-layout .hiring-post-actions button {
   min-width: 32px;
-  min-height: 32px;
+  min-height: 32px !important;
+  height: 32px;
   border-radius: 999px;
   color: #71767b;
   padding: 0 7px;
@@ -29172,12 +29265,13 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 }
 
 .hiring-native-layout .hiring-professional-actions .hiring-compact-cta {
-  min-height: 30px;
+  min-height: 34px !important;
+  height: 34px;
   border: 1px solid rgba(255, 255, 255, .12);
   background: transparent;
   color: #c9d1d9;
   padding: 0 12px;
-  font-size: .79rem;
+  font-size: 13px;
   font-weight: 750;
 }
 
@@ -32743,6 +32837,26 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
+}
+
+#appView.app-view .hiring-native-layout .hiring-author-copy > button {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+
+#appView.app-view .hiring-native-layout .hiring-icon-btn,
+#appView.app-view .hiring-native-layout .hiring-post-actions button {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  width: 32px;
+  height: 32px;
+}
+
+#appView.app-view .hiring-native-layout .hiring-professional-actions .hiring-compact-cta {
+  min-height: 34px !important;
+  height: 34px;
 }
 
 #appView.app-view .arrow-pair button[data-action="scroll-prev"],
