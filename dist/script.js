@@ -1324,6 +1324,7 @@ const appState = {
     railLoading: false,
     railError: "",
     routeStartedAt: 0,
+    routeAnimationShown: false,
     promotedAd: {
       item: null,
       loading: false,
@@ -7997,6 +7998,14 @@ function updateHiringBlocks() {
 async function renderHiringPage(options = {}) {
   const stop = perfStart("Community route mounted");
   appState.hiring.routeStartedAt = performance.now();
+  const shouldAnimateRoute = !appState.hiring.routeAnimationShown;
+  document.body.classList.toggle("community-route-enter", shouldAnimateRoute);
+  appState.hiring.routeAnimationShown = true;
+  if (shouldAnimateRoute) {
+    window.setTimeout(() => {
+      if (currentRoute() === COMMUNITY_ROUTE) document.body.classList.remove("community-route-enter");
+    }, 460);
+  }
   const detailId = hiringDetailIdFromHash();
   const key = hiringCacheKey(detailId);
   const cached = readHiringCache(key);
@@ -10429,6 +10438,16 @@ function registerAuthStateListener() {
         }
         if (shouldRedirectAfterOAuth) {
           redirectAfterLogin();
+          return;
+        }
+        const sameUser = oldUserId === (appState.authUser?.id || null);
+        const keepCommunityStable = currentRoute() === COMMUNITY_ROUTE
+          && sameUser
+          && event !== "SIGNED_IN"
+          && event !== "SIGNED_OUT"
+          && Boolean(document.querySelector(".hiring-page"));
+        if (keepCommunityStable) {
+          syncAccountUi();
           return;
         }
         renderApplication(oldUserId !== (appState.authUser?.id || null) || event === "SIGNED_OUT");
@@ -15670,6 +15689,7 @@ function renderRoute() {
   document.body.classList.toggle("is-authenticated", accountAccess);
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
   document.body.dataset.route = route;
+  if (route !== COMMUNITY_ROUTE) document.body.classList.remove("community-route-enter");
   document.body.classList.remove("release-mode");
   document.body.classList.toggle("chat-dm-mode", route === "chat");
   if (route !== "chat") cleanupChatRealtime();

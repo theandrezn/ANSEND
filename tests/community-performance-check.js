@@ -49,20 +49,23 @@ if (/class="hiring-composer-title"|Titulo da vaga\/pedido|hiring-composer-grid/.
 if (/await\s+loadCommunityPromotedAd/.test(renderBody)) {
   throw new Error("Community render blocks on promoted ad loading");
 }
-if (!/renderedCommunityEarly[\s\S]*currentRoute\(\) === COMMUNITY_ROUTE[\s\S]*renderRoute\(\)/.test(script)) {
+if (!/renderRoutePreservingAuthFocus\(true\);[\s\S]*initializeAuth\(\);/.test(script)) {
   throw new Error("Community route must render before auth/public data boot completes");
 }
 if (/if \(route !== COMMUNITY_ROUTE(?:\s*&&\s*route !== "chat")?\) PageTransition\(appView, route\);/.test(script) === false) {
   throw new Error("Community route should bypass section transition wrapper");
 }
-if (!/communityRouteEnter/.test(styles) || !/body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
-  throw new Error("Community route transition animation missing");
+if (!/communityRouteEnter/.test(styles)
+  || !/body\[data-route="comunidade"\]\.community-route-enter \.hiring-feed-shell/.test(styles)
+  || !/body\[data-route="comunidade"\] \.hiring-feed-shell[\s\S]*?animation:\s*none/.test(styles)
+) {
+  throw new Error("Community route transition must be gated to the first real entry only");
 }
 if (!/\.community-ad-card\s*\{[\s\S]*?aspect-ratio:\s*9\s*\/\s*16/.test(styles)
   || !/\.community-ad-card\.is-placeholder\s*\{[\s\S]*?aspect-ratio:\s*9\s*\/\s*16/.test(styles)) {
   throw new Error("Community ad banner must keep a 9:16 aspect ratio");
 }
-if (!/prefers-reduced-motion[\s\S]*communityRouteEnter|prefers-reduced-motion[\s\S]*body\[data-route="comunidade"\] \.hiring-feed-shell/.test(styles)) {
+if (!/prefers-reduced-motion[\s\S]*communityRouteEnter|prefers-reduced-motion[\s\S]*body\[data-route="comunidade"\](?:\.community-route-enter)? \.hiring-feed-shell/.test(styles)) {
   throw new Error("Community route transition must respect reduced motion");
 }
 if (!/Promise\.allSettled/.test(script)) {
