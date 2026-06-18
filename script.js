@@ -16565,11 +16565,16 @@ function seekMiniPlayerToRatio(ratio) {
   const safeRatio = Math.min(1, Math.max(0, ratio));
   const youtubePlayer = youtubeBeatPlayerState.player;
   const isYoutube = isCurrentYoutubeSource() && youtubePlayer?.seekTo && youtubePlayer?.getDuration;
-  const duration = isYoutube && Number.isFinite(Number(youtubePlayer.getDuration()))
-    ? Number(youtubePlayer.getDuration())
-    : audio && audio.src && Number.isFinite(audio.duration)
-      ? audio.duration
-      : 165;
+  const youtubeDuration = isYoutube ? Number(youtubePlayer.getDuration()) : 0;
+  const audioDuration = audio && audio.src ? Number(audio.duration) : 0;
+  const stateDuration = Number(appState.player.duration);
+  const duration = isYoutube && Number.isFinite(youtubeDuration) && youtubeDuration > 0
+    ? youtubeDuration
+    : Number.isFinite(audioDuration) && audioDuration > 0
+      ? audioDuration
+      : Number.isFinite(stateDuration) && stateDuration > 0
+        ? stateDuration
+        : 165;
   if (isYoutube) {
     youtubePlayer.seekTo(safeRatio * duration, true);
   } else if (audio && audio.src) {
@@ -16586,9 +16591,10 @@ function miniWaveformProgressFromPointer(event, { requireInside = false } = {}) 
   const progressBar = waveform?.querySelector(".mini-wave-bars");
   if (!progressBar) return null;
   const rect = progressBar.getBoundingClientRect();
-  if (!rect.width) return null;
+  const hitRect = waveform.getBoundingClientRect();
+  if (!rect.width || !hitRect.height) return null;
   const insideX = event.clientX >= rect.left && event.clientX <= rect.right;
-  const insideY = event.clientY >= rect.top && event.clientY <= rect.bottom;
+  const insideY = event.clientY >= hitRect.top && event.clientY <= hitRect.bottom;
   if (requireInside && (!insideX || !insideY)) return null;
   const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
   return x / rect.width;
@@ -17297,23 +17303,35 @@ document.querySelector(".search")?.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("pointerdown", (event) => {
-  const waveform = event.target.closest(".mini-waveform");
+  if (miniWaveformProgressFromPointer(event, { requireInside: true }) === null) return;
+  const waveform = document.querySelector(".mini-waveform");
   if (!waveform) return;
   event.preventDefault();
-  if (miniWaveformProgressFromPointer(event, { requireInside: true }) === null) return;
   seekMiniPlayerFromPointer(event);
   waveform.focus({ preventScroll: true });
-  waveform.setPointerCapture?.(event.pointerId);
-  const move = (moveEvent) => seekMiniPlayerFromPointer(moveEvent);
-  const stop = () => {
-    waveform.removeEventListener("pointermove", move);
-    waveform.removeEventListener("pointerup", stop);
-    waveform.removeEventListener("pointercancel", stop);
+  document.body.classList.add("is-seeking-mini-player");
+  try {
+    waveform.setPointerCapture?.(event.pointerId);
+  } catch {}
+  const move = (moveEvent) => {
+    if (moveEvent.pointerId !== event.pointerId) return;
+    moveEvent.preventDefault();
+    seekMiniPlayerFromPointer(moveEvent);
   };
-  waveform.addEventListener("pointermove", move);
-  waveform.addEventListener("pointerup", stop, { once: true });
-  waveform.addEventListener("pointercancel", stop, { once: true });
-});
+  const stop = (stopEvent) => {
+    if (stopEvent?.pointerId && stopEvent.pointerId !== event.pointerId) return;
+    document.body.classList.remove("is-seeking-mini-player");
+    try {
+      waveform.releasePointerCapture?.(event.pointerId);
+    } catch {}
+    document.removeEventListener("pointermove", move, true);
+    document.removeEventListener("pointerup", stop, true);
+    document.removeEventListener("pointercancel", stop, true);
+  };
+  document.addEventListener("pointermove", move, true);
+  document.addEventListener("pointerup", stop, true);
+  document.addEventListener("pointercancel", stop, true);
+}, true);
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && appState.chat.newChatOpen) {
