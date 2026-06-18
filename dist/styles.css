@@ -27754,6 +27754,10 @@ body[data-route="contratacoes"] .page::after {
   padding: 7px 0;
 }
 
+.hiring-follow-list article > div {
+  min-width: 0;
+}
+
 .hiring-rail-avatar {
   width: 40px;
   height: 40px;
@@ -29186,7 +29190,7 @@ body[data-route="comunidade"] .hiring-right-rail {
 
 @media (max-width: 1500px) and (min-width: 1181px) {
   .hiring-native-layout {
-    grid-template-columns: minmax(190px, 230px) minmax(580px, 640px) minmax(280px, 320px);
+    grid-template-columns: minmax(190px, 220px) minmax(580px, 630px) minmax(280px, 300px);
   }
 
   .community-ad-rail {
@@ -32433,22 +32437,6 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   body[data-route="feed"] .top-beat-showcase,
   body[data-route="feed"] .top-beat-card {
     margin-right: 72px !important;
-  }
-
-  body[data-route="comunidade"] #appView.app-view,
-  body[data-route="comunidade"] .hiring-native-layout,
-  body[data-route="comunidade"] .hiring-x-layout,
-  body[data-route="comunidade"] .hiring-right-rail,
-  body[data-route="comunidade"] .hiring-main-feed,
-  body[data-route="comunidade"] .hiring-feed-shell,
-  body[data-route="comunidade"] .hiring-filter-strip {
-    max-width: calc(100vw - var(--sidebar-width)) !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  body[data-route="comunidade"] .hiring-filter-strip {
-    padding-right: 24px !important;
   }
 }
 
