@@ -31612,4 +31612,859 @@ body[data-route="nexo-feed"] .nexo-feed-copy p {
   line-height: 1 !important;
 }
 
+/* ==========================================================================
+   Mobile-first responsive hardening - ANSEND
+   Keeps the desktop shell intact while making the mobile app surface native:
+   full-width content, real off-canvas drawer, safe fixed bars, and 44px targets.
+   ========================================================================== */
+:root {
+  --mobile-shell-gap: 14px;
+  --mobile-topbar-height: 64px;
+  --mobile-bottom-safe: env(safe-area-inset-bottom, 0px);
+}
 
+img,
+video,
+canvas,
+iframe,
+svg {
+  max-width: 100%;
+}
+
+a[href],
+button,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+a[href],
+[role="button"] {
+  cursor: pointer;
+}
+
+.app-modal,
+.app-modal-panel,
+.navbar-notification-dropdown,
+.nexo-assistant-panel,
+.nexo-floating-panel {
+  max-width: min(100vw - 24px, 720px) !important;
+  max-height: calc(100dvh - 24px) !important;
+}
+
+@media (max-width: 720px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+
+  body {
+    padding: 0 !important;
+  }
+
+  body:not(.requires-auth) .page,
+  .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: clip !important;
+  }
+
+  #appView.app-view,
+  #appView.app-view:not(.feed) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: calc(var(--mobile-topbar-height) + 12px) var(--mobile-shell-gap) calc(86px + var(--mobile-bottom-safe)) !important;
+    overflow-x: clip !important;
+  }
+
+  body[data-route="feed"] #appView.app-view,
+  body[data-route="nexo-feed"] #appView.app-view,
+  body[data-route="ia"] #appView.app-view,
+  body[data-route="perfil"] #appView.app-view,
+  body[data-route="perfil-publico"] #appView.app-view,
+  body[data-route="cadastrar"] #appView.app-view,
+  body[data-route="chat"] #appView.app-view {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  body:not(.requires-auth) .sidebar,
+  .sidebar {
+    width: min(84vw, 320px) !important;
+    min-width: 0 !important;
+    max-width: min(84vw, 320px) !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: translate3d(-105%, 0, 0) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: 3000 !important;
+    box-shadow: none !important;
+    transition: transform 220ms ease, opacity 180ms ease, visibility 180ms ease !important;
+  }
+
+  body.menu-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    box-shadow: 24px 0 80px rgba(0, 0, 0, 0.72) !important;
+  }
+
+  body.menu-open::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.62) !important;
+    z-index: 2990 !important;
+  }
+
+  .sidebar-header,
+  .sidebar-profile-card,
+  .sidebar-main-action,
+  .sidebar-scrollable-content,
+  .sidebar-section,
+  .sidebar-nav-item,
+  .sidebar-main-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .sidebar-menu-toggle,
+  .sidebar-nav-item,
+  .sidebar-main-btn,
+  .sidebar-profile-card,
+  .logout-btn,
+  .sidebar-lang-btn {
+    min-height: 44px !important;
+  }
+
+  .sidebar-menu-toggle {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    flex: 0 0 44px !important;
+  }
+
+  body:not(.requires-auth) .topbar,
+  .topbar,
+  body .topbar {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    left: var(--mobile-shell-gap) !important;
+    right: var(--mobile-shell-gap) !important;
+    width: auto !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0 !important;
+    display: block !important;
+    border: 0 !important;
+    background: transparent !important;
+    z-index: 2200 !important;
+    pointer-events: none !important;
+    transform: none !important;
+    justify-content: stretch !important;
+  }
+
+  .floating-navbar,
+  body .floating-navbar {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 52px !important;
+    display: grid !important;
+    grid-template-columns: minmax(72px, auto) 44px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 10px !important;
+    border-radius: 18px !important;
+    pointer-events: auto !important;
+  }
+
+  .navbar-links,
+  .navbar-language-switcher,
+  body .navbar-links,
+  body .navbar-language-switcher {
+    display: none !important;
+  }
+
+  .navbar-brand-logo,
+  body .navbar-brand-logo {
+    min-width: 72px !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .navbar-brand-logo img,
+  body .navbar-brand-logo img,
+  body .navbar-logo-wordmark {
+    width: auto !important;
+    max-width: 92px !important;
+    height: 28px !important;
+    object-fit: contain !important;
+  }
+
+  .menu-toggle,
+  .navbar-menu-toggle,
+  .navbar-auth-btn,
+  .navbar-notification-btn,
+  .icon-btn,
+  .avatar-btn,
+  body .navbar-menu-toggle,
+  body .navbar-auth-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 72px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .navbar-auth-btn {
+    width: auto !important;
+    min-width: 44px !important;
+    padding: 0 12px !important;
+  }
+
+  .navbar-auth-btn .auth-btn-text,
+  body .navbar-auth-btn .auth-btn-text {
+    display: block !important;
+    max-width: 48px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body[data-route="feed"] .ai-hero,
+  body[data-route="feed"] .feed .ai-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: calc(var(--mobile-topbar-height) + 18px) 16px 28px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-hero-copy,
+  body[data-route="feed"] .ai-hero .an-hero-copy > *,
+  body[data-route="feed"] .ai-hero .hero-morph-title,
+  body[data-route="feed"] .ai-hero .hero-morph-title *,
+  body[data-route="feed"] .ai-hero .ai-diagnostic-form,
+  body[data-route="feed"] .ai-hero .ai-input-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    left: auto !important;
+    right: auto !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    font-size: clamp(32px, 11vw, 43px) !important;
+    line-height: 0.98 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-brand,
+  body[data-route="feed"] .ai-hero .hero-morph-main,
+  body[data-route="feed"] .ai-hero .hero-morph-text {
+    display: block !important;
+    white-space: normal !important;
+  }
+
+  body[data-route="feed"] .ai-hero .ai-input-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  body[data-route="feed"] .ai-hero #aiPrompt {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 72px !important;
+  }
+
+  #appView.app-view a[href],
+  #appView.app-view button,
+  #appView.app-view [role="button"],
+  .footer a,
+  .footer button {
+    min-height: 44px !important;
+  }
+
+  #appView.app-view input,
+  #appView.app-view select,
+  #appView.app-view textarea {
+    min-height: 44px !important;
+    font-size: max(16px, 1rem) !important;
+  }
+
+  .navbar-notification-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .app-modal {
+    padding: 12px !important;
+    align-items: end !important;
+  }
+
+  .app-modal-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 18px !important;
+    overflow: auto !important;
+  }
+
+  .mini-player.is-closed,
+  .mini-player.is-closed.is-active,
+  .mini-player.is-closed.is-playing {
+    transform: translate3d(0, calc(100% + 28px), 0) !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+
+  .mini-player:not(.is-closed) {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: max(10px, var(--mobile-bottom-safe)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 20px) !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+
+  .mini-waveform {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    overflow: hidden !important;
+  }
+
+  .mini-player button,
+  .mini-close,
+  .mini-player .mini-close,
+  .mini-controls button,
+  .mini-tools button,
+  .mini-buy {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .mini-track,
+  .mini-controls,
+  .mini-tools {
+    min-width: 0 !important;
+  }
+
+  .nexo-button,
+  .nexo-floating-assistant,
+  #nexoFloatingAssistantRoot {
+    right: 18px !important;
+    bottom: calc(18px + var(--mobile-bottom-safe)) !important;
+    max-width: calc(100vw - 36px) !important;
+  }
+
+  body:has(.mini-player:not(.is-closed)) .nexo-button,
+  body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant,
+  body:has(.mini-player:not(.is-closed)) #nexoFloatingAssistantRoot {
+    bottom: calc(104px + var(--mobile-bottom-safe)) !important;
+  }
+
+  .chat-dm-page,
+  .chat-thread,
+  .chat-thread-messages,
+  .nexo-chat-page,
+  .nexo-chat-shell,
+  .nexo-chat-thread {
+    min-width: 0 !important;
+    max-width: 100vw !important;
+  }
+
+  .chat-composer,
+  .chat-composer-form,
+  .nexo-chat-form {
+    padding-bottom: max(12px, var(--mobile-bottom-safe)) !important;
+  }
+
+  .ansend-chat-audio-player {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .carousel-arrow,
+  .category-carousel-wrapper .carousel-arrow,
+  .genre-carousel-wrapper .carousel-arrow,
+  .professional-card-footer-btn,
+  .profile-action,
+  .profile-tab,
+  .chat-composer-icon,
+  .chat-composer-form button,
+  .chat-filter-pill,
+  .hiring-tabs button,
+  .hiring-filter-strip button,
+  .hiring-composer-tools button,
+  .hiring-native-layout .hiring-composer-tools .hiring-composer-action-row button,
+  .hiring-publish-btn,
+  .hiring-post-actions button,
+  .hiring-professional-actions button,
+  .footer-top-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .hiring-native-layout .hiring-composer-tools .hiring-composer-action-row,
+  .hiring-composer-action-row,
+  .hiring-filter-strip,
+  .professional-tabs,
+  .release-stepper,
+  .release-footer-actions,
+  .playlist-detail-actions,
+  .playlist-detail-meta {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .release-container,
+  .release-upload-form,
+  .release-panel,
+  .release-form-grid,
+  .release-field,
+  .playlist-detail,
+  .playlist-detail-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (min-width: 721px) {
+  .sidebar-nav-item,
+  .sidebar-main-btn,
+  .sidebar-profile-card {
+    min-height: 44px;
+  }
+
+  .mini-waveform,
+  .mini-player button,
+  .mini-close,
+  .mini-player .mini-close,
+  .mini-controls button,
+  .mini-tools button,
+  .mini-buy,
+  .professional-card-footer-btn,
+  .carousel-arrow,
+  .chat-composer-form button,
+  .hiring-composer-tools button,
+  .hiring-publish-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  body[data-route="feed"] .ai-hero,
+  body[data-route="feed"] .feed .ai-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-hero-copy,
+  body[data-route="feed"] .ai-hero .an-hero-copy > *,
+  body[data-route="feed"] .ai-hero .hero-morph-title,
+  body[data-route="feed"] .ai-hero .hero-morph-title *,
+  body[data-route="feed"] .ai-hero .ai-diagnostic-form,
+  body[data-route="feed"] .ai-hero .ai-input-shell,
+  body[data-route="feed"] .ai-hero #aiPrompt {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    left: auto !important;
+    right: auto !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    font-size: clamp(34px, 7vw, 52px) !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body[data-route="feed"] .ai-hero .ai-input-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body[data-route="feed"] .ai-hero #aiPrompt {
+    min-height: 44px !important;
+  }
+
+  #appView.app-view a[href],
+  #appView.app-view button,
+  #appView.app-view [role="button"],
+  .floating-navbar button,
+  .floating-navbar a,
+  .language-switcher button,
+  .carousel-arrow,
+  .category-carousel-wrapper .carousel-arrow,
+  .genre-carousel-wrapper .carousel-arrow,
+  .professional-tab,
+  .professional-card-hire-btn,
+  .professional-card-footer-btn,
+  .profile-action,
+  .profile-tab,
+  .chat-composer-icon,
+  .chat-composer-form button,
+  .chat-filter-pill,
+  .hiring-tabs button,
+  .hiring-filter-strip button,
+  .hiring-composer-tools button,
+  .hiring-publish-btn,
+  .release-bottom-inner button,
+  .detail-play,
+  .detail-save,
+  .detail-more,
+  .footer a,
+  .footer button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .carousel-arrow,
+  .category-carousel-wrapper .carousel-arrow,
+  .genre-carousel-wrapper .carousel-arrow,
+  .professional-card-footer-btn,
+  .chat-composer-icon,
+  .chat-composer-form button:not([type="submit"]),
+  .language-switcher button,
+  .footer-top-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  #appView.app-view input[type="checkbox"],
+  #appView.app-view input[type="radio"] {
+    min-width: 44px !important;
+    width: 44px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  body:not(.requires-auth) .sidebar,
+  .sidebar {
+    width: min(84vw, 320px) !important;
+    max-width: min(84vw, 320px) !important;
+    left: 0 !important;
+    right: auto !important;
+    transform: translate3d(-105%, 0, 0) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: 3000 !important;
+  }
+
+  body.menu-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body:not(.requires-auth) .page,
+  .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  body:not(.requires-auth) .topbar,
+  .topbar,
+  body .topbar {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    left: clamp(14px, 2vw, 20px) !important;
+    right: clamp(14px, 2vw, 20px) !important;
+    width: auto !important;
+    transform: none !important;
+    pointer-events: none !important;
+    display: block !important;
+    justify-content: stretch !important;
+  }
+
+  .floating-navbar,
+  body .floating-navbar {
+    width: 100% !important;
+    max-width: none !important;
+    display: grid !important;
+    grid-template-columns: minmax(82px, auto) 44px minmax(0, 1fr) auto !important;
+    justify-content: stretch !important;
+    pointer-events: auto !important;
+  }
+
+  body .navbar-menu-toggle,
+  .menu-toggle,
+  .navbar-menu-toggle {
+    display: inline-grid !important;
+  }
+
+  .navbar-links,
+  body .navbar-links {
+    display: none !important;
+  }
+
+  #appView.app-view,
+  #appView.app-view:not(.feed) {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-top: calc(var(--mobile-topbar-height) + 18px) !important;
+  }
+
+  body[data-route="cadastrar"] .release-bottom-bar {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+
+  body[data-route="cadastrar"] .release-bottom-inner {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  body[data-route="cadastrar"] .release-footer-track,
+  body[data-route="cadastrar"] .release-footer-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-content: stretch !important;
+    overflow-x: auto !important;
+  }
+
+  .seller-auth,
+  body.requires-auth .seller-auth {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .seller-auth-showcase {
+    display: none !important;
+  }
+
+  .seller-auth-panel,
+  .seller-auth-copy,
+  .seller-auth-form,
+  .seller-auth-actions,
+  .account-dashboard,
+  .account-hero-card,
+  .account-hero-card > div,
+  .account-grid,
+  .account-grid article {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .account-hero-card,
+  .account-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .playlist-detail-hero,
+  .playlist-detail-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .playlist-detail-copy,
+  .playlist-detail-copy > *,
+  .playlist-detail-actions,
+  .playlist-detail-meta {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+body[data-route="feed"] .ai-hero {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+body[data-route="feed"] .top-beat-showcase,
+body[data-route="feed"] .top-beat-card {
+  max-width: min(340px, 100%) !important;
+  min-width: 0 !important;
+  justify-self: end !important;
+}
+
+body[data-route="feed"] .top-beat-cover,
+body[data-route="feed"] .top-beat-copy,
+body[data-route="feed"] .top-beat-meter {
+  max-width: 100% !important;
+}
+
+#appView.app-view a[href],
+#appView.app-view button,
+#appView.app-view [role="button"],
+.floating-navbar a,
+.floating-navbar button,
+.language-switcher button,
+.settings-profile button,
+.settings-panel input[type="checkbox"],
+.settings-panel select,
+.ai-inline-submit,
+#aiPrompt,
+.section-link,
+.recommended-professional-name,
+.detail-back,
+.detail-play,
+.detail-save,
+.detail-more {
+  min-height: 44px !important;
+}
+
+.floating-navbar a,
+.floating-navbar button,
+.language-switcher button,
+.settings-panel input[type="checkbox"] {
+  min-width: 44px !important;
+}
+
+#appView.app-view input,
+#appView.app-view select,
+#appView.app-view textarea,
+.chat-dm-page input,
+.chat-dm-page select,
+.chat-dm-page textarea {
+  min-height: 44px !important;
+}
+
+#appView.app-view button[aria-label="Anterior"],
+#appView.app-view button[aria-label="Próximo"],
+#appView.app-view button[aria-label="Configuracoes"],
+#appView.app-view button[aria-label="Novo chat"],
+#appView.app-view button[aria-label="Voltar ao topo"],
+#appView.app-view .footer-top-btn,
+#appView.app-view .settings-profile button,
+#appView.app-view .carousel-arrow,
+#appView.app-view .chat-header button,
+#appView.app-view .chat-dm-header button {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+#appView.app-view .settings-profile button,
+#appView.app-view .detail-back,
+#appView.app-view a[href] {
+  min-width: 44px !important;
+}
+
+body[data-route="cadastrar"] .release-container,
+body[data-route="cadastrar"] .release-upload-form,
+body[data-route="cadastrar"] .release-panel,
+body[data-route="cadastrar"] .release-form-grid,
+body[data-route="cadastrar"] .release-field,
+body[data-route="cadastrar"] .release-stepper {
+  max-width: calc(100vw - var(--sidebar-width)) !important;
+}
+
+body[data-route="cadastrar"] .release-container {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-bar {
+  left: var(--sidebar-width) !important;
+  right: 0 !important;
+  width: auto !important;
+}
+
+body[data-route="feed"] .an-hero-art.top-beat-showcase {
+  transform: translateX(min(0px, calc(100vw - 100%))) !important;
+}
+
+@media (min-width: 1101px) {
+  body[data-route="feed"] .top-beat-showcase,
+  body[data-route="feed"] .top-beat-card {
+    justify-self: start !important;
+  }
+
+  body[data-route="cadastrar"] .release-container,
+  body[data-route="cadastrar"] .release-upload-form,
+  body[data-route="cadastrar"] .release-panel,
+  body[data-route="cadastrar"] .release-form-grid,
+  body[data-route="cadastrar"] .release-field,
+  body[data-route="cadastrar"] .release-stepper {
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 1101px) and (max-width: 1500px) {
+  body[data-route="feed"] .top-beat-showcase,
+  body[data-route="feed"] .top-beat-card {
+    margin-right: 72px !important;
+  }
+
+  body[data-route="comunidade"] #appView.app-view,
+  body[data-route="comunidade"] .hiring-native-layout,
+  body[data-route="comunidade"] .hiring-x-layout,
+  body[data-route="comunidade"] .hiring-right-rail,
+  body[data-route="comunidade"] .hiring-main-feed,
+  body[data-route="comunidade"] .hiring-feed-shell,
+  body[data-route="comunidade"] .hiring-filter-strip {
+    max-width: calc(100vw - var(--sidebar-width)) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body[data-route="comunidade"] .hiring-filter-strip {
+    padding-right: 24px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  body[data-route="cadastrar"] .release-container,
+  body[data-route="cadastrar"] .release-upload-form,
+  body[data-route="cadastrar"] .release-panel,
+  body[data-route="cadastrar"] .release-form-grid,
+  body[data-route="cadastrar"] .release-field,
+  body[data-route="cadastrar"] .release-stepper {
+    max-width: 100% !important;
+  }
+
+  body[data-route="cadastrar"] .release-bottom-bar {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+}
