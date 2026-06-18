@@ -50,6 +50,25 @@ async function main() {
     await page.goto(`http://127.0.0.1:${port}/#feed`, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForSelector(".hero-morph-title", { timeout: 15000 });
     await page.waitForTimeout(6500);
+    await page.evaluate(() => {
+      const existing = document.querySelector("[data-typography-fixture]");
+      if (existing) existing.remove();
+
+      const fixture = document.createElement("div");
+      fixture.setAttribute("data-typography-fixture", "catalog-prices");
+      fixture.style.position = "absolute";
+      fixture.style.left = "-9999px";
+      fixture.style.top = "0";
+      fixture.innerHTML = `
+        <section class="recent-activity-section">
+          <button class="airbit-buy-btn" type="button"><span>R$ 99,90</span></button>
+        </section>
+        <article class="minimal-beat-card home-catalog-beat-card">
+          <button class="beat-card-buy-btn" type="button"><span>R$ 99,90</span></button>
+        </article>
+      `;
+      document.body.appendChild(fixture);
+    });
 
     const selectors = {
       html: "html",
@@ -64,6 +83,8 @@ async function main() {
       searchInput: ".ai-input-shell textarea",
       searchButton: ".ai-inline-submit",
       topBeatCard: ".top-beat-card",
+      recentBuyButton: ".recent-activity-section .airbit-buy-btn",
+      catalogBuyButton: ".minimal-beat-card .beat-card-buy-btn",
       footer: ".cinematic-footer",
     };
 
@@ -97,6 +118,8 @@ async function main() {
       searchInput: ["plus jakarta sans", "inter"],
       searchButton: ["plus jakarta sans", "inter"],
       topBeatCard: ["plus jakarta sans", "inter", "poppins"],
+      recentBuyButton: ["plus jakarta sans", "inter"],
+      catalogBuyButton: ["plus jakarta sans", "inter"],
       footer: ["plus jakarta sans", "inter", "montserrat"],
     };
 
@@ -109,6 +132,25 @@ async function main() {
 
     if (failures.length) {
       console.error(JSON.stringify({ failures, results }, null, 2));
+      process.exitCode = 1;
+      return;
+    }
+
+    const recentBuy = results.recentBuyButton;
+    const catalogBuy = results.catalogBuyButton;
+    const recentSize = Number.parseFloat(recentBuy.size);
+    const catalogSize = Number.parseFloat(catalogBuy.size);
+    const mismatchedCatalogNumbers = [
+      catalogBuy.weight !== recentBuy.weight,
+      Number.isFinite(recentSize) && Number.isFinite(catalogSize) && Math.abs(catalogSize - recentSize) > 0.1,
+    ].some(Boolean);
+
+    if (mismatchedCatalogNumbers) {
+      console.error(JSON.stringify({
+        message: "Catalog price typography must match recent-list price typography.",
+        recentBuy,
+        catalogBuy,
+      }, null, 2));
       process.exitCode = 1;
       return;
     }
