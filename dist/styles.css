@@ -29170,15 +29170,15 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 
 @media (max-width: 640px) {
   .hiring-native-layout .hiring-post {
-    grid-template-columns: 38px minmax(0, 1fr);
-    column-gap: 9px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    column-gap: 12px;
     padding: 11px 12px 10px;
   }
 
   .hiring-native-layout .hiring-author-avatar,
   .hiring-native-layout .hiring-author-avatar .hiring-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
 
   .hiring-native-layout .hiring-post-actions {
