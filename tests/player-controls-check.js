@@ -114,22 +114,26 @@ async function run() {
       const close = document.querySelector('[data-action="close-mini-player"]');
       const root = document.querySelector("#nexoFloatingAssistantRoot");
       const nexoButton = document.querySelector(".nexo-floating-button");
+      const player = document.querySelector(".mini-player");
       const closeRect = close?.getBoundingClientRect();
       const nexoRect = nexoButton?.getBoundingClientRect();
+      const playerRect = player?.getBoundingClientRect();
       const closeStyle = close ? getComputedStyle(close) : null;
       const rootStyle = root ? getComputedStyle(root) : null;
       const buttonStyle = nexoButton ? getComputedStyle(nexoButton) : null;
       return {
         closeVisible: Boolean(closeRect && closeRect.width > 0 && closeRect.height > 0),
         nexoVisible: Boolean(nexoRect && nexoRect.width > 0 && nexoRect.height > 0),
-        verticalGap: closeRect && nexoRect ? Math.round(nexoRect.top - closeRect.bottom) : null,
+        verticalGap: closeRect && nexoRect ? Math.round(closeRect.top - nexoRect.bottom) : null,
+        horizAlignDev: closeRect && nexoRect ? Math.abs((closeRect.left + closeRect.width / 2) - (nexoRect.left + nexoRect.width / 2)) : null,
+        insidePlayer: closeRect && playerRect ? closeRect.top >= playerRect.top : false,
         closeZIndex: closeStyle?.zIndex,
         rootPointerEvents: rootStyle?.pointerEvents,
         buttonPointerEvents: buttonStyle?.pointerEvents,
       };
     });
-    if (!floatingOverlap.closeVisible || !floatingOverlap.nexoVisible || floatingOverlap.verticalGap < 12 || Number(floatingOverlap.closeZIndex) < 9600 || floatingOverlap.rootPointerEvents !== "none" || floatingOverlap.buttonPointerEvents !== "auto") {
-      throw new Error(`Mini player close button overlaps or loses clicks near NEXO: ${JSON.stringify(floatingOverlap)}`);
+    if (!floatingOverlap.closeVisible || !floatingOverlap.nexoVisible || floatingOverlap.verticalGap < 12 || floatingOverlap.horizAlignDev > 2 || !floatingOverlap.insidePlayer || Number(floatingOverlap.closeZIndex) < 9600 || floatingOverlap.rootPointerEvents !== "none" || floatingOverlap.buttonPointerEvents !== "auto") {
+      throw new Error(`Mini player close button fails refinement placement below NEXO: ${JSON.stringify(floatingOverlap)}`);
     }
     await page.evaluate(() => {
       PlayerStore.setStatus("paused");

@@ -16643,7 +16643,7 @@ function updateMiniPlayer(item, show = true) {
   player.querySelector(".mini-track strong").textContent = beat.title;
   player.querySelector(".mini-track span").textContent = `${beat.producer} - ${beat.tags?.[1] || "153 BPM"}`;
   const numericId = Number(String(beat.id).replace(/\D/g, "")) || 4;
-  player.querySelector(".mini-buy span").textContent = beat.id === topBeatOfDay.id ? "$44.95" : `$${(24.95 + (numericId % 5) * 5).toFixed(2)}`;
+  player.querySelector(".mini-buy span").textContent = "Adicionar no carrinho";
   if (beat.id !== topBeatOfDay.id && appState.player.previewTime >= 165) appState.player.previewTime = 11;
   updateMiniProgress();
   syncMiniPlayerState();

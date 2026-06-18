@@ -22006,15 +22006,15 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 .mini-player .mini-close,
 .player-close-button {
   position: absolute !important;
-  top: calc((var(--player-height) + 130px) * -1) !important;
-  right: 24px !important;
+  top: 8px !important;
+  right: 30px !important;
   bottom: auto !important;
   transform: none !important;
-  z-index: 10 !important;
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
-  z-index: 9800 !important;
+  min-height: 28px !important;
+  z-index: 9999 !important;
   pointer-events: auto !important;
   border-color: rgba(255, 255, 255, .16) !important;
   background: rgba(255, 255, 255, .04) !important;
@@ -22024,11 +22024,13 @@ body[data-route="feed"] .cinematic-footer .footer-aurora {
 @media (max-width: 1100px) {
   .mini-player .mini-close,
   .player-close-button {
-    top: calc((var(--player-height) + 126px) * -1) !important;
+    top: 8px !important;
+    right: 30px !important;
     bottom: auto !important;
     transform: none !important;
   }
 }
+
 
 
 .mini-waveform {
@@ -22171,13 +22173,49 @@ body.is-seeking-mini-player * {
 }
 
 .mini-buy {
-  min-width: 104px !important;
+  min-width: 190px !important;
   height: 42px !important;
-  padding: 0 16px !important;
+  padding: 0 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
   color: #002211 !important;
   background: linear-gradient(135deg, var(--buy-green), var(--buy-green-2)) !important;
   box-shadow: 0 12px 28px rgba(var(--buy-green-rgb), .28) !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease !important;
 }
+
+.mini-buy:hover:not(:disabled) {
+  transform: scale(1.03) !important;
+  background: linear-gradient(135deg, #16e076, #08a853) !important;
+  box-shadow: 0 14px 32px rgba(var(--buy-green-rgb), .38) !important;
+}
+
+.mini-buy:active:not(:disabled) {
+  transform: scale(0.97) !important;
+  background: linear-gradient(135deg, #0eaf5b, #057d3d) !important;
+}
+
+.mini-buy:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: 2px !important;
+  border-color: #fff !important;
+}
+
+.mini-buy:disabled {
+  opacity: 0.54 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 
 .audio-editor-popover {
   position: fixed;
@@ -32685,6 +32723,19 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   body:has(.mini-player:not(.is-closed)) .nexo-button,
   body:has(.mini-player:not(.is-closed)) .nexo-floating-assistant {
     bottom: calc(var(--player-height) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* 8. Close button position & alignment under NEXO IA */
+  .mini-player .mini-close,
+  .player-close-button {
+    top: 8px !important;
+    right: 22px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    bottom: auto !important;
+    transform: none !important;
   }
 }
 
