@@ -1,0 +1,133 @@
+insert into public.beat_licenses (
+  beat_id,
+  license_key,
+  name,
+  description,
+  price_cents,
+  currency,
+  is_default,
+  is_active,
+  is_exclusive,
+  included_mp3,
+  included_wav,
+  included_stems,
+  buyer_royalty_percentage,
+  producer_royalty_percentage,
+  stream_limit,
+  unlimited_streams,
+  music_video_limit,
+  unlimited_music_videos,
+  commercial_use,
+  monetization_allowed,
+  live_performance_allowed,
+  content_id_allowed,
+  credit_required,
+  duration,
+  territory,
+  sort_order
+)
+select
+  b.id,
+  license.license_key,
+  license.name,
+  license.description,
+  license.price_cents,
+  'BRL',
+  true,
+  true,
+  license.is_exclusive,
+  license.included_mp3,
+  license.included_wav,
+  license.included_stems,
+  license.buyer_royalty_percentage,
+  license.producer_royalty_percentage,
+  license.stream_limit,
+  license.unlimited_streams,
+  license.music_video_limit,
+  license.unlimited_music_videos,
+  true,
+  true,
+  true,
+  false,
+  true,
+  'lifetime',
+  'worldwide',
+  license.sort_order
+from public.beats b
+cross join lateral (
+  values
+    (
+      'basic',
+      'Lease Basica - MP3',
+      'Ideal para artistas que estao comecando. Inclui MP3 em alta qualidade, uso comercial e divisao de royalties de 50% para o artista e 50% para o produtor.',
+      greatest(4900, round(coalesce(b.price, 179) * 45)::integer),
+      false,
+      true,
+      false,
+      false,
+      50::numeric,
+      50::numeric,
+      50000,
+      false,
+      1,
+      false,
+      0
+    ),
+    (
+      'premium',
+      'Lease Premium - WAV',
+      'Licenca indicada para lancamentos profissionais. Inclui MP3 e WAV em alta qualidade, maior limite de streams, uso comercial e divisao de royalties de 50% para o artista e 50% para o produtor.',
+      greatest(9900, round(coalesce(b.price, 179) * 100)::integer),
+      false,
+      true,
+      true,
+      false,
+      50::numeric,
+      50::numeric,
+      250000,
+      false,
+      2,
+      false,
+      1
+    ),
+    (
+      'exclusive',
+      'Licenca Exclusiva - WAV + Stems',
+      'Licenca para lancamentos de maior escala. Inclui MP3, WAV e todas as faixas separadas do beat. O artista recebe 90% dos royalties e o produtor mantem 10%.',
+      greatest(49900, round(coalesce(b.price, 179) * 450)::integer),
+      true,
+      true,
+      true,
+      true,
+      90::numeric,
+      10::numeric,
+      null::integer,
+      true,
+      null::integer,
+      true,
+      2
+    )
+) as license(
+  license_key,
+  name,
+  description,
+  price_cents,
+  is_exclusive,
+  included_mp3,
+  included_wav,
+  included_stems,
+  buyer_royalty_percentage,
+  producer_royalty_percentage,
+  stream_limit,
+  unlimited_streams,
+  music_video_limit,
+  unlimited_music_videos,
+  sort_order
+)
+where b.status = 'published'
+  and not exists (
+    select 1
+    from public.beat_licenses existing
+    where existing.beat_id = b.id
+      and existing.license_key = license.license_key
+  );

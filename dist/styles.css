@@ -10190,7 +10190,7 @@ body.modal-open {
 
 .checkout-method-card {
   display: grid;
-  grid-template-columns: 40px 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 16px;
@@ -10201,6 +10201,59 @@ body.modal-open {
 
 .checkout-method-card svg {
   color: #22c55e;
+}
+
+.payment-brand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.payment-brand {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.payment-brand svg {
+  flex: 0 0 auto;
+}
+
+.payment-brand strong {
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.payment-brand-pix svg {
+  width: 30px;
+  height: 30px;
+}
+
+.payment-brand-pix strong {
+  color: #77b6a8;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+
+.payment-brand-mp svg {
+  width: 44px;
+  height: 30px;
+}
+
+.payment-brand-mp strong {
+  color: #2b3c78;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.payment-brand-mp strong span {
+  color: #23b7e8;
 }
 
 .checkout-method-card strong,

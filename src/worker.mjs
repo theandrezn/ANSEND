@@ -373,12 +373,12 @@ function sanitizeCartItems(cartItems = []) {
   const seen = new Set();
   for (const item of cartItems) {
     const beatId = item?.beat_id;
-    const licenseId = item?.license_id;
-    if (!isUuid(beatId) || !isUuid(licenseId)) return null;
-    const key = `${beatId}:${licenseId}`;
+    const licenseRef = String(item?.license_id || item?.license_key || "").trim();
+    if (!isUuid(beatId) || !/^[a-zA-Z0-9_-]{1,80}$/.test(licenseRef)) return null;
+    const key = `${beatId}:${licenseRef}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    cleanItems.push({ beat_id: beatId, license_id: licenseId });
+    cleanItems.push({ beat_id: beatId, license_id: licenseRef });
   }
   return cleanItems.length ? cleanItems : null;
 }
@@ -395,9 +395,8 @@ async function validateCheckoutCart(env, cartItems = [], userId = "") {
   if (!cleanItems) return { ok: false, error: "Itens do carrinho invalidos." };
 
   const beatIds = [...new Set(cleanItems.map((item) => item.beat_id))];
-  const licenseIds = [...new Set(cleanItems.map((item) => item.license_id))];
   const beatQuery = `beats?select=id,title,status,sold_exclusively&id=in.(${beatIds.join(",")})`;
-  const licenseQuery = `beat_licenses?select=id,beat_id,name,price_cents,is_active&id=in.(${licenseIds.join(",")})`;
+  const licenseQuery = `beat_licenses?select=id,beat_id,license_key,name,price_cents,is_active&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`;
   const [beatsResponse, licensesResponse] = await Promise.all([
     supabaseRest(env, beatQuery),
     supabaseRest(env, licenseQuery),
@@ -407,13 +406,17 @@ async function validateCheckoutCart(env, cartItems = [], userId = "") {
   if (licensesResponse.error) return { ok: false, error: licensesResponse.error };
 
   const beats = new Map((beatsResponse.data || []).map((beat) => [beat.id, beat]));
-  const licenses = new Map((licensesResponse.data || []).map((license) => [license.id, license]));
+  const licensesById = new Map((licensesResponse.data || []).map((license) => [license.id, license]));
+  const licensesByBeatAndKey = new Map((licensesResponse.data || []).map((license) => [`${license.beat_id}:${license.license_key}`, license]));
   const items = [];
+  const resolvedItems = [];
   let subtotalCents = 0;
 
   for (const item of cleanItems) {
     const beat = beats.get(item.beat_id);
-    const license = licenses.get(item.license_id);
+    const license = isUuid(item.license_id)
+      ? licensesById.get(item.license_id)
+      : licensesByBeatAndKey.get(`${item.beat_id}:${item.license_id}`);
     if (!beat) return { ok: false, error: "Beat nao encontrado." };
     if (beat.status !== "published" || beat.sold_exclusively) {
       return { ok: false, error: `O beat "${beat.title || "selecionado"}" nao esta mais disponivel.` };
@@ -426,9 +429,10 @@ async function validateCheckoutCart(env, cartItems = [], userId = "") {
       return { ok: false, error: "Preco invalido no carrinho." };
     }
     subtotalCents += priceCents;
+    resolvedItems.push({ beat_id: item.beat_id, license_id: license.id });
     items.push({
       beat_id: item.beat_id,
-      license_id: item.license_id,
+      license_id: license.id,
       title: beat.title || "Beat ANSEND",
       license_name: license.name || "Licenca",
       price_cents: priceCents,
@@ -437,8 +441,8 @@ async function validateCheckoutCart(env, cartItems = [], userId = "") {
 
   const serviceFeeCents = Math.round(subtotalCents * 0.12);
   const totalCents = subtotalCents + serviceFeeCents;
-  const fingerprint = await cartFingerprint(userId, cleanItems);
-  return { ok: true, cleanItems, items, subtotalCents, serviceFeeCents, totalCents, fingerprint };
+  const fingerprint = await cartFingerprint(userId, resolvedItems);
+  return { ok: true, cleanItems: resolvedItems, items, subtotalCents, serviceFeeCents, totalCents, fingerprint };
 }
 
 async function mercadoPagoRequest(env, path, init = {}) {
