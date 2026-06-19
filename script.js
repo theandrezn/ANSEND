@@ -17345,6 +17345,11 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
   logPlayerAudioTrace(beat, audio, "before audio.play");
 
   try {
+    PlayerStore.setStatus("playing", {
+      duration: Number(audio.duration) || 0,
+      currentTime: Number(audio.currentTime) || 0,
+    });
+    setTopBeatPlaying(true);
     await audio.play();
     if (!isCurrentPlaybackRequest(requestId)) {
       suppressUpcomingAudioPauseEvents(200);
@@ -17418,6 +17423,7 @@ async function toggleBeatPlayback(item) {
   if (audio.paused) {
     return playBeat(beat, { quiet: true });
   }
+  cancelCurrentPlaybackRequest();
   audio.pause();
   PlayerStore.setStatus("paused", {
     duration: Number(audio.duration) || 0,

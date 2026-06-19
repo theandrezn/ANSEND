@@ -38,7 +38,12 @@ async function run() {
   const server = http.createServer(serveStatic);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+      : {}),
+  });
   const context = await browser.newContext({ baseURL: `http://127.0.0.1:${port}` });
 
   try {
@@ -157,6 +162,60 @@ async function run() {
       if (point.rectWidth <= 0 || Math.abs(point.expected - point.actual) > 0.002) {
         throw new Error(`Mini waveform geometry mismatch: ${JSON.stringify(waveformGeometry)}`);
       }
+    }
+
+    const immediateToggle = await page.evaluate(async () => {
+      const audio = document.querySelector("#topBeatAudio");
+      const button = document.querySelector('[data-action="mini-play"]');
+      const beat = normalizePlayerBeat(topBeatOfDay);
+      let paused = true;
+      let resolvePlay;
+      const pendingPlay = new Promise((resolve) => { resolvePlay = resolve; });
+
+      Object.defineProperty(audio, "paused", { configurable: true, get: () => paused });
+      audio.play = () => {
+        paused = false;
+        return pendingPlay;
+      };
+      audio.pause = () => { paused = true; };
+      audio.load = () => {};
+      PlayerStore.setCurrent(beat, { status: "paused" });
+      updateMiniPlayer(beat);
+
+      button.click();
+      await Promise.resolve();
+      const afterPlay = {
+        icon: button.dataset.playerIcon,
+        status: appState.player.status,
+        playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
+      };
+
+      button.click();
+      await Promise.resolve();
+      const afterPause = {
+        icon: button.dataset.playerIcon,
+        status: appState.player.status,
+        playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
+      };
+
+      resolvePlay();
+      await pendingPlay;
+      await Promise.resolve();
+      const afterPendingPlay = {
+        icon: button.dataset.playerIcon,
+        status: appState.player.status,
+        playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
+      };
+      return { afterPlay, afterPause, afterPendingPlay };
+    });
+    if (immediateToggle.afterPlay.icon !== "pause" || immediateToggle.afterPlay.status !== "playing" || !immediateToggle.afterPlay.playing) {
+      throw new Error(`Play button did not switch immediately: ${JSON.stringify(immediateToggle)}`);
+    }
+    if (immediateToggle.afterPause.icon !== "play" || immediateToggle.afterPause.status !== "paused" || immediateToggle.afterPause.playing) {
+      throw new Error(`Pause button did not switch immediately: ${JSON.stringify(immediateToggle)}`);
+    }
+    if (immediateToggle.afterPendingPlay.icon !== "play" || immediateToggle.afterPendingPlay.status !== "paused" || immediateToggle.afterPendingPlay.playing) {
+      throw new Error(`Late play promise overrode pause state: ${JSON.stringify(immediateToggle)}`);
     }
 
     const hasLyricsButton = await page.locator('[data-action="lyrics"]').count();
