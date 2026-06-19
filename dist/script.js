@@ -19179,6 +19179,14 @@ document.addEventListener("click", (event) => {
     openCartCheckout();
     return;
   }
+  if (action === "copy-pix-code") {
+    copyPixCode();
+    return;
+  }
+  if (action === "check-pix-payment") {
+    checkPixPaymentStatus(target);
+    return;
+  }
   if (action === "download-secure-file") {
     const beatId = target.dataset.beatId;
     const fileType = target.dataset.fileType;
@@ -20048,7 +20056,7 @@ document.addEventListener("submit", async (event) => {
     }
     
     if (cartItems && cartItems.length) {
-      submitCheckout(cartItems, buyerName, buyerEmail);
+      submitCheckout(cartItems, buyerName, buyerEmail, checkoutForm.dataset.isCart === "true");
     } else {
       showToast("Erro: Itens inválidos no checkout.", "alert-triangle");
     }
@@ -21195,13 +21203,192 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
   lucide.createIcons();
 }
 
-async function submitCheckout(cartItems, buyerName, buyerEmail) {
+function checkoutMoney(cents) {
+  return `R$ ${(Number(cents || 0) / 100).toFixed(2)}`;
+}
+
+function renderMercadoPagoPixCheckout(result, context) {
+  const checkout = result.checkout || {};
+  const pix = result.pix || {};
+  const payment = result.payment || {};
+  const items = checkout.items || [];
+  const itemsHtml = items.map((item) => `
+    <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--beat-border-soft);">
+      <div style="width:34px; height:34px; border-radius:6px; display:grid; place-items:center; background:#101010; border:1px solid var(--beat-border); color:#fff;">
+        <i data-lucide="music-2" style="width:16px; height:16px;"></i>
+      </div>
+      <div style="min-width:0; flex:1;">
+        <strong style="display:block; color:#fff; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${htmlEscape(item.title || "Beat ANSEND")}</strong>
+        <span style="display:block; color:var(--beat-muted); font-size:11px;">${htmlEscape(item.license_name || "Licenca")}</span>
+      </div>
+      <strong style="color:#fff; font-size:13px;">${checkoutMoney(item.price_cents)}</strong>
+    </div>
+  `).join("");
+  const qrMarkup = pix.qr_code_base64
+    ? `<img src="data:image/png;base64,${pix.qr_code_base64}" alt="QR Code Pix Mercado Pago" style="width:210px; max-width:100%; height:auto; border-radius:8px; background:#fff; padding:10px;">`
+    : `<div style="width:210px; height:210px; display:grid; place-items:center; border-radius:8px; border:1px dashed var(--beat-border); color:var(--beat-muted); text-align:center; padding:16px;">Use o Pix copia e cola</div>`;
+
+  openModal(`
+    <section data-mercado-pago-pix style="display:grid; gap:18px; max-width:640px;">
+      <header style="display:flex; gap:12px; align-items:flex-start;">
+        <div style="width:42px; height:42px; border-radius:8px; display:grid; place-items:center; background:#fff; color:#020202;">
+          <i data-lucide="qr-code" style="width:22px; height:22px;"></i>
+        </div>
+        <div>
+          <span style="display:flex; align-items:center; gap:6px; color:#22c55e; font-size:11px; font-weight:800; text-transform:uppercase;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> Mercado Pago Pix</span>
+          <h2 style="font-size:22px; margin:6px 0 4px; color:#fff;">Pague com Pix para liberar a compra</h2>
+          <p data-pix-status style="font-size:12px; color:var(--beat-muted); margin:0;">Depois do pagamento, clique em verificar para liberar seus arquivos e contratos.</p>
+        </div>
+      </header>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:18px; align-items:start;">
+        <div style="display:grid; gap:10px; justify-items:center; background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:14px;">
+          ${qrMarkup}
+          <strong style="color:#fff; font-size:20px;">${checkoutMoney(checkout.total_cents)}</strong>
+          <span style="font-size:11px; color:var(--beat-muted); text-align:center;">Valor detectado automaticamente pelo carrinho ANSEND</span>
+        </div>
+
+        <div style="display:grid; gap:12px;">
+          <div style="background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; color:var(--beat-muted); font-size:12px;">
+              <span>Subtotal</span><span>${checkoutMoney(checkout.subtotal_cents)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:12px; color:var(--beat-muted); font-size:12px; margin-top:6px;">
+              <span>Taxa de servico</span><span>${checkoutMoney(checkout.service_fee_cents)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:12px; color:#fff; font-weight:800; font-size:14px; margin-top:10px; padding-top:10px; border-top:1px solid var(--beat-border-soft);">
+              <span>Total Pix</span><span>${checkoutMoney(checkout.total_cents)}</span>
+            </div>
+          </div>
+
+          <div style="background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:12px; max-height:150px; overflow:auto;">
+            ${itemsHtml}
+          </div>
+
+          <label style="display:grid; gap:6px;">
+            <span style="font-size:11px; color:var(--beat-muted); font-weight:800; text-transform:uppercase;">Pix copia e cola</span>
+            <textarea data-pix-code readonly rows="4" style="width:100%; resize:none; background:#050505; border:1px solid var(--beat-border); color:#fff; border-radius:6px; padding:10px; font-size:12px; line-height:1.35;">${htmlEscape(pix.qr_code || "")}</textarea>
+          </label>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
+            <button type="button" class="seller-submit" data-action="copy-pix-code" style="height:42px; display:flex; justify-content:center; align-items:center; gap:7px;">
+              <i data-lucide="copy" style="width:16px; height:16px;"></i> Copiar Pix
+            </button>
+            <button type="button" class="seller-submit" data-action="check-pix-payment" style="height:42px; display:flex; justify-content:center; align-items:center; gap:7px;">
+              <i data-lucide="refresh-cw" style="width:16px; height:16px;"></i> Verificar
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  `);
+
+  const pixBox = document.querySelector("[data-mercado-pago-pix]");
+  if (pixBox) {
+    pixBox.dataset.paymentId = payment.id || "";
+    pixBox.dataset.cartItems = JSON.stringify(context.cartItems || []);
+    pixBox.dataset.buyerName = context.buyerName || "";
+    pixBox.dataset.buyerEmail = context.buyerEmail || "";
+    pixBox.dataset.isCart = context.isCart ? "true" : "false";
+  }
+  lucide.createIcons();
+}
+
+async function copyPixCode() {
+  const codeEl = document.querySelector("[data-pix-code]");
+  const code = codeEl?.value || "";
+  if (!code) {
+    showToast("Codigo Pix indisponivel.", "alert-triangle");
+    return;
+  }
+  try {
+    await navigator.clipboard?.writeText(code);
+  } catch (_error) {
+    codeEl.focus();
+    codeEl.select();
+    document.execCommand("copy");
+  }
+  showToast("Codigo Pix copiado.", "copy");
+}
+
+async function checkPixPaymentStatus(button) {
+  const pixBox = document.querySelector("[data-mercado-pago-pix]");
+  if (!pixBox) return;
+  const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
+  if (!session) {
+    showToast("Voce precisa estar autenticado para verificar o Pix.", "triangle-alert");
+    return;
+  }
+
+  let cartItems = [];
+  try {
+    cartItems = JSON.parse(pixBox.dataset.cartItems || "[]");
+  } catch (_error) {
+    cartItems = [];
+  }
+  if (!pixBox.dataset.paymentId || !cartItems.length) {
+    showToast("Dados do pagamento indisponiveis.", "alert-triangle");
+    return;
+  }
+
+  const previousHtml = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = `<i data-lucide="loader-circle" class="animate-spin" style="width:16px; height:16px;"></i> Verificando`;
+    lucide.createIcons();
+  }
+
+  try {
+    const response = await fetch("/api/checkout/status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        payment_id: pixBox.dataset.paymentId,
+        cart_items: cartItems,
+        buyer_name: pixBox.dataset.buyerName || "",
+        buyer_email: pixBox.dataset.buyerEmail || "",
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      showToast(result.error || "Nao foi possivel verificar o Pix.", "alert-triangle");
+      return;
+    }
+    if (!result.paid) {
+      const statusEl = pixBox.querySelector("[data-pix-status]");
+      if (statusEl) statusEl.textContent = "Pagamento ainda nao confirmado pelo Mercado Pago.";
+      showToast("Pix ainda pendente.", "clock");
+      return;
+    }
+
+    if (pixBox.dataset.isCart === "true") clearCart();
+    await loadCatalogItems();
+    closeModal();
+    location.hash = "compras";
+    showToast("Pagamento aprovado. Compra liberada!", "check-circle");
+    renderPurchases();
+  } catch (error) {
+    console.error("Pix payment status error:", error);
+    showToast("Erro de rede ao verificar Pix.", "alert-triangle");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = previousHtml;
+      lucide.createIcons();
+    }
+  }
+}
+
+async function submitCheckout(cartItems, buyerName, buyerEmail, isCart = false) {
   const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
   if (!session) {
     showToast("Você precisa estar autenticado para finalizar a compra.", "triangle-alert");
     return;
   }
-  showToast("Processando pagamento...", "loader");
+  showToast("Gerando Pix seguro...", "loader");
   try {
     const response = await fetch("/api/checkout", {
       method: "POST",
@@ -21222,12 +21409,8 @@ async function submitCheckout(cartItems, buyerName, buyerEmail) {
       return;
     }
     
-    clearCart();
-    await loadCatalogItems();
-    closeModal();
-    location.hash = "compras";
-    showToast("Compra finalizada com sucesso!", "check-circle");
-    renderPurchases();
+    renderMercadoPagoPixCheckout(result, { cartItems, buyerName, buyerEmail, isCart });
+    showToast("Pix gerado pelo Mercado Pago.", "qr-code");
   } catch (error) {
     console.error("Checkout submit error:", error);
     showToast("Erro de rede ao processar checkout.", "alert-triangle");

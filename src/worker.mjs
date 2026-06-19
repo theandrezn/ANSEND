@@ -357,6 +357,139 @@ async function supabaseRpc(env, fn, payload, authHeader = "") {
   return { configured: true, data, error: null };
 }
 
+function centsToAmount(cents) {
+  return Number((Number(cents || 0) / 100).toFixed(2));
+}
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(String(value || ""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function sanitizeCartItems(cartItems = []) {
+  if (!Array.isArray(cartItems) || !cartItems.length || cartItems.length > 20) return null;
+  const cleanItems = [];
+  const seen = new Set();
+  for (const item of cartItems) {
+    const beatId = item?.beat_id;
+    const licenseId = item?.license_id;
+    if (!isUuid(beatId) || !isUuid(licenseId)) return null;
+    const key = `${beatId}:${licenseId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleanItems.push({ beat_id: beatId, license_id: licenseId });
+  }
+  return cleanItems.length ? cleanItems : null;
+}
+
+async function cartFingerprint(userId, cleanItems = []) {
+  const stableItems = cleanItems
+    .map((item) => ({ beat_id: item.beat_id, license_id: item.license_id }))
+    .sort((a, b) => `${a.beat_id}:${a.license_id}`.localeCompare(`${b.beat_id}:${b.license_id}`));
+  return sha256Hex(JSON.stringify({ user_id: userId, cart_items: stableItems }));
+}
+
+async function validateCheckoutCart(env, cartItems = [], userId = "") {
+  const cleanItems = sanitizeCartItems(cartItems);
+  if (!cleanItems) return { ok: false, error: "Itens do carrinho invalidos." };
+
+  const beatIds = [...new Set(cleanItems.map((item) => item.beat_id))];
+  const licenseIds = [...new Set(cleanItems.map((item) => item.license_id))];
+  const beatQuery = `beats?select=id,title,status,sold_exclusively&id=in.(${beatIds.join(",")})`;
+  const licenseQuery = `beat_licenses?select=id,beat_id,name,price_cents,is_active&id=in.(${licenseIds.join(",")})`;
+  const [beatsResponse, licensesResponse] = await Promise.all([
+    supabaseRest(env, beatQuery),
+    supabaseRest(env, licenseQuery),
+  ]);
+
+  if (beatsResponse.error) return { ok: false, error: beatsResponse.error };
+  if (licensesResponse.error) return { ok: false, error: licensesResponse.error };
+
+  const beats = new Map((beatsResponse.data || []).map((beat) => [beat.id, beat]));
+  const licenses = new Map((licensesResponse.data || []).map((license) => [license.id, license]));
+  const items = [];
+  let subtotalCents = 0;
+
+  for (const item of cleanItems) {
+    const beat = beats.get(item.beat_id);
+    const license = licenses.get(item.license_id);
+    if (!beat) return { ok: false, error: "Beat nao encontrado." };
+    if (beat.status !== "published" || beat.sold_exclusively) {
+      return { ok: false, error: `O beat "${beat.title || "selecionado"}" nao esta mais disponivel.` };
+    }
+    if (!license || license.beat_id !== item.beat_id || !license.is_active) {
+      return { ok: false, error: `Licenca indisponivel para "${beat.title || "beat"}".` };
+    }
+    const priceCents = Number(license.price_cents || 0);
+    if (!Number.isFinite(priceCents) || priceCents < 0) {
+      return { ok: false, error: "Preco invalido no carrinho." };
+    }
+    subtotalCents += priceCents;
+    items.push({
+      beat_id: item.beat_id,
+      license_id: item.license_id,
+      title: beat.title || "Beat ANSEND",
+      license_name: license.name || "Licenca",
+      price_cents: priceCents,
+    });
+  }
+
+  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const totalCents = subtotalCents + serviceFeeCents;
+  const fingerprint = await cartFingerprint(userId, cleanItems);
+  return { ok: true, cleanItems, items, subtotalCents, serviceFeeCents, totalCents, fingerprint };
+}
+
+async function mercadoPagoRequest(env, path, init = {}) {
+  const token = env.MERCADO_PAGO_ACCESS_TOKEN || env.MP_ACCESS_TOKEN || "";
+  if (!token) {
+    return { ok: false, status: 503, data: null, error: "Configure MERCADO_PAGO_ACCESS_TOKEN no Cloudflare para ativar Pix." };
+  }
+  const response = await fetch(`https://api.mercadopago.com${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=utf-8",
+      ...(init.headers || {}),
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, status: response.status, data, error: data?.message || data?.error || "Erro Mercado Pago." };
+  }
+  return { ok: true, status: response.status, data, error: null };
+}
+
+async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail, checkout }) {
+  const paymentDescription = checkout.items.length === 1
+    ? `${checkout.items[0].title} - ${checkout.items[0].license_name}`
+    : `ANSEND - ${checkout.items.length} licencas musicais`;
+  const externalReference = `ansend:${userId}:${checkout.fingerprint}`;
+  const body = {
+    transaction_amount: centsToAmount(checkout.totalCents),
+    description: paymentDescription.slice(0, 255),
+    payment_method_id: "pix",
+    external_reference: externalReference,
+    payer: {
+      email: buyerEmail,
+      first_name: buyerName,
+    },
+    metadata: {
+      ansend_user_id: userId,
+      cart_fingerprint: checkout.fingerprint,
+      subtotal_cents: checkout.subtotalCents,
+      service_fee_cents: checkout.serviceFeeCents,
+      total_cents: checkout.totalCents,
+    },
+  };
+  return mercadoPagoRequest(env, "/v1/payments", {
+    method: "POST",
+    headers: { "X-Idempotency-Key": `${userId}-${checkout.fingerprint}` },
+    body: JSON.stringify(body),
+  });
+}
+
 async function handleEmbedContent(request, env) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
   if (request.method !== "POST") {
@@ -864,20 +997,130 @@ async function handleCheckout(request, env) {
 
   const buyerName = cleanRecommendationText(payload?.buyer_name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
   const buyerEmail = cleanRecommendationText(payload?.buyer_email || auth.user.email || "", 150);
+  if (!buyerEmail || !buyerEmail.includes("@")) {
+    return jsonResponse({ success: false, error: "Informe um e-mail valido para gerar o Pix." }, { status: 400 });
+  }
 
-  // Call database RPC
+  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id);
+  if (!checkout.ok) {
+    return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
+  }
+
+  const payment = await createMercadoPagoPixPayment(env, {
+    userId: auth.user.id,
+    buyerName,
+    buyerEmail,
+    checkout,
+  });
+
+  if (!payment.ok) {
+    return jsonResponse({ success: false, error: payment.error || "Nao foi possivel gerar o Pix." }, { status: payment.status || 502 });
+  }
+
+  const pixData = payment.data?.point_of_interaction?.transaction_data || {};
+  const paymentId = String(payment.data?.id || "");
+  if (!paymentId || !pixData.qr_code) {
+    return jsonResponse({ success: false, error: "Mercado Pago nao retornou os dados do Pix." }, { status: 502 });
+  }
+
+  return jsonResponse({
+    success: true,
+    provider: "mercado_pago",
+    status: payment.data?.status || "pending",
+    payment: {
+      id: paymentId,
+      status: payment.data?.status || "pending",
+      status_detail: payment.data?.status_detail || "",
+      external_reference: payment.data?.external_reference || "",
+      expires_at: payment.data?.date_of_expiration || null,
+    },
+    checkout: {
+      items: checkout.items,
+      subtotal_cents: checkout.subtotalCents,
+      service_fee_cents: checkout.serviceFeeCents,
+      total_cents: checkout.totalCents,
+    },
+    pix: {
+      qr_code: pixData.qr_code || "",
+      qr_code_base64: pixData.qr_code_base64 || "",
+      ticket_url: pixData.ticket_url || "",
+    },
+  });
+}
+
+async function handleCheckoutStatus(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 18, windowMs: 60_000 });
+  if (limited) return limited;
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 });
+  }
+
+  const paymentId = String(payload?.payment_id || "").trim();
+  const cartItems = payload?.cart_items;
+  if (!/^\d+$/.test(paymentId)) {
+    return jsonResponse({ success: false, error: "Pagamento invalido." }, { status: 400 });
+  }
+
+  const buyerName = cleanRecommendationText(payload?.buyer_name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
+  const buyerEmail = cleanRecommendationText(payload?.buyer_email || auth.user.email || "", 150);
+  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id);
+  if (!checkout.ok) {
+    return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
+  }
+
+  const payment = await mercadoPagoRequest(env, `/v1/payments/${paymentId}`, { method: "GET" });
+  if (!payment.ok) {
+    return jsonResponse({ success: false, error: payment.error || "Nao foi possivel consultar o pagamento." }, { status: payment.status || 502 });
+  }
+
+  const expectedReference = `ansend:${auth.user.id}:${checkout.fingerprint}`;
+  if (payment.data?.external_reference !== expectedReference) {
+    return jsonResponse({ success: false, error: "Pagamento nao pertence a este carrinho." }, { status: 403 });
+  }
+
+  const paidAmountCents = Math.round(Number(payment.data?.transaction_amount || 0) * 100);
+  if (paidAmountCents !== checkout.totalCents) {
+    return jsonResponse({ success: false, error: "Valor do pagamento nao confere com o carrinho." }, { status: 409 });
+  }
+
+  const status = payment.data?.status || "pending";
+  if (status !== "approved") {
+    return jsonResponse({
+      success: true,
+      paid: false,
+      status,
+      status_detail: payment.data?.status_detail || "",
+    });
+  }
+
   const rpcResult = await supabaseRpc(env, "process_checkout", {
     p_buyer_id: auth.user.id,
     p_buyer_name: buyerName,
     p_buyer_email: buyerEmail,
-    p_cart_items: cartItems
+    p_cart_items: checkout.cleanItems,
   }, auth.authHeader);
 
   if (rpcResult.error) {
     return jsonResponse({ success: false, error: rpcResult.error }, { status: 400 });
   }
 
-  return jsonResponse({ success: true, order: rpcResult.data });
+  return jsonResponse({
+    success: true,
+    paid: true,
+    status: "approved",
+    order: rpcResult.data,
+  });
 }
 
 async function handleOrderDownload(request, env) {
@@ -997,6 +1240,11 @@ export default {
 
     if (url.pathname === "/api/checkout") {
       response = await handleCheckout(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/checkout/status") {
+      response = await handleCheckoutStatus(request, env);
       return withSecurityHeaders(response, request);
     }
 
