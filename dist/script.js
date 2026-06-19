@@ -13479,6 +13479,7 @@ function setReleaseFilePreview(form, type, meta = {}) {
   if (!form || !fields) return;
   const preview = form.querySelector(fields.preview);
   const dropzone = form.querySelector(fields.drop);
+  const card = dropzone?.closest(".release-upload-card, .release-preview-upload-section");
   const nameNode = form.querySelector(fields.nameNode);
   const sizeNode = fields.sizeNode ? form.querySelector(fields.sizeNode) : null;
   const sizeText = formatReleaseFileSize(meta.size);
@@ -13494,6 +13495,7 @@ function setReleaseFilePreview(form, type, meta = {}) {
   }
   if (preview) preview.style.display = type === "audio" ? "flex" : "block";
   dropzone?.classList.add("has-file");
+  card?.classList.add("has-file");
 }
 
 function clearReleaseFileState(form, type) {
@@ -13512,6 +13514,7 @@ function clearReleaseFileState(form, type) {
     }
   }
   dropzone?.classList.remove("has-file");
+  dropzone?.closest(".release-upload-card, .release-preview-upload-section")?.classList.remove("has-file");
   return releaseFileMetadataPatch(type, {});
 }
 
@@ -13533,6 +13536,25 @@ function releaseRequiredDeliveryTypes() {
   });
   if (!licenses.length) required.add("secure_mp3");
   return required;
+}
+
+function updateReleaseFileRequirementBadges(form = releaseFormElement()) {
+  if (!form) return;
+  const required = releaseRequiredDeliveryTypes();
+  const labels = {
+    secure_mp3: { required: "Obrigatorio", optional: "Obrigatorio" },
+    secure_wav: { required: "Obrigatorio para continuar", optional: "Opcional no momento" },
+    secure_stems: { required: "Obrigatorio para continuar", optional: "Opcional no momento" },
+  };
+  Object.entries(labels).forEach(([type, copy]) => {
+    const card = form.querySelector(`[data-delivery-card="${type}"]`);
+    const badge = card?.querySelector(".release-requirement-badge");
+    if (!badge) return;
+    const isRequired = required.has(type);
+    badge.textContent = isRequired ? copy.required : copy.optional;
+    badge.classList.toggle("is-required", isRequired);
+    badge.classList.toggle("is-conditional", !isRequired);
+  });
 }
 
 function loadImageElement(file) {
@@ -13860,27 +13882,87 @@ function prepareReleaseFilesLayout(form = releaseFormElement()) {
   const mp3Drop = layout.querySelector(".release-secure-mp3-drop");
   const wavDrop = layout.querySelector(".release-secure-wav-drop");
   const stemsDrop = layout.querySelector(".release-secure-stems-drop");
+  const audioDrop = layout.querySelector(".release-audio-drop");
+  const audioInfo = layout.querySelector(".release-requirements");
   const previewGrid = layout.querySelector(".release-audio-drop")?.parentElement;
   const mp3Row = mp3Drop?.parentElement;
   const wavRow = wavDrop?.parentElement;
   const stemsRow = stemsDrop?.parentElement;
   const secureList = mp3Row?.parentElement;
-  if (!previewGrid || !mp3Row || !wavRow || !stemsRow) return;
+  if (!previewGrid || !mp3Row || !wavRow || !stemsRow || !audioDrop || !audioInfo) return;
 
-  const main = document.createElement("div");
-  const secondary = document.createElement("div");
-  main.className = "release-files-main";
-  secondary.className = "release-files-secondary";
-  previewGrid.classList.add("release-preview-grid");
-  mp3Row.classList.add("release-secure-row", "release-secure-row-mp3");
-  wavRow.classList.add("release-secure-row", "release-secure-row-wav");
-  stemsRow.classList.add("release-secure-row", "release-secure-row-stems");
-  main.append(previewGrid, mp3Row);
-  secondary.append(wavRow, stemsRow);
-  layout.replaceChildren(main, secondary);
-  layout.classList.add("release-files-layout");
+  const makeSectionHead = (title, description, badge) => {
+    const head = document.createElement("div");
+    head.className = "release-file-section-head";
+    head.innerHTML = `<div><h3>${title}</h3><p>${description}</p></div>${badge ? `<span class="release-requirement-badge ${badge.className}">${badge.text}</span>` : ""}`;
+    return head;
+  };
+
+  const makeCard = ({ type, icon, title, description, format, badgeClass, badgeText, row }) => {
+    const drop = row.querySelector(".release-dropzone");
+    const meta = row.querySelector(":scope > div:not(.release-dropzone)");
+    const card = document.createElement("article");
+    card.className = "release-upload-card";
+    card.dataset.deliveryCard = type;
+    const head = document.createElement("div");
+    head.className = "release-upload-card-head";
+    head.innerHTML = `<div class="release-upload-icon"><i data-lucide="${icon}"></i></div><span class="release-requirement-badge ${badgeClass}">${badgeText}</span>`;
+    const copy = document.createElement("div");
+    copy.className = "release-upload-card-copy";
+    copy.innerHTML = `<strong>${title}</strong><p>${description}</p><small>Formato aceito: ${format}</small>`;
+    drop.removeAttribute("style");
+    const dropTitle = drop.querySelector(":scope > strong");
+    const dropHelp = drop.querySelector(":scope > small");
+    if (dropTitle) dropTitle.textContent = "Selecionar arquivo";
+    if (dropHelp) dropHelp.textContent = type === "secure_stems" ? "Apenas ZIP para a licenca exclusiva" : type === "secure_wav" ? "WAV masterizado para licencas premium" : "MP3 limpo para a licenca basica";
+    card.append(head, copy, drop);
+    if (meta) {
+      meta.classList.add("release-file-actions");
+      const result = meta.querySelector(".secure-mp3-preview, .secure-wav-preview, .secure-stems-preview");
+      if (result) result.classList.add("release-file-result");
+      const usePreview = meta.querySelector(".use-preview-as-delivery-btn");
+      if (usePreview) usePreview.textContent = "Usar arquivo do preview";
+      card.append(meta);
+    }
+    return card;
+  };
+
+  audioDrop.removeAttribute("style");
+  const audioTitle = audioDrop.querySelector(":scope > strong");
+  const audioHelp = audioDrop.querySelector(":scope > small");
+  if (audioTitle) audioTitle.textContent = "Enviar audio de preview";
+  if (audioHelp) audioHelp.textContent = "MP3 ou WAV - arraste o arquivo ou clique para selecionar";
+  audioInfo.classList.add("release-preview-state");
+
+  const previewSection = document.createElement("section");
+  previewSection.className = "release-preview-upload-section";
+  const previewBody = document.createElement("div");
+  previewBody.className = "release-preview-upload-grid";
+  previewBody.append(audioDrop, audioInfo);
+  previewSection.append(
+    makeSectionHead("Audio de Preview", "Arquivo publico usado no player da pagina do beat.", { className: "is-required", text: "Obrigatorio" }),
+    previewBody
+  );
+
+  const deliverySection = document.createElement("section");
+  deliverySection.className = "release-delivery-section";
+  const deliveryGrid = document.createElement("div");
+  deliveryGrid.className = "release-delivery-grid";
+  deliveryGrid.append(
+    makeCard({ type: "secure_mp3", icon: "shield-check", title: "MP3 de Alta Qualidade", description: "Arquivo sem tags para entrega ao comprador.", format: "MP3", badgeClass: "is-required", badgeText: "Obrigatorio", row: mp3Row }),
+    makeCard({ type: "secure_wav", icon: "waveform", title: "WAV Masterizado", description: "Arquivo de alta fidelidade e sem perda.", format: "WAV", badgeClass: "is-conditional", badgeText: "Exigido na Lease Premium", row: wavRow }),
+    makeCard({ type: "secure_stems", icon: "archive", title: "ZIP de Stems", description: "Pistas individuais do beat organizadas em um arquivo ZIP.", format: "ZIP", badgeClass: "is-conditional", badgeText: "Exigido na Licenca Exclusiva", row: stemsRow })
+  );
+  deliverySection.append(
+    makeSectionHead("Arquivos para entrega", "Estes arquivos serao disponibilizados ao comprador de acordo com a licenca escolhida."),
+    deliveryGrid
+  );
+
+  layout.replaceChildren(previewSection, deliverySection);
+  layout.classList.add("release-files-layout", "release-files-redesign");
   layout.dataset.enhanced = "true";
   secureList?.remove?.();
+  updateReleaseFileRequirementBadges(form);
 }
 
 function setReleaseStep(step, form = releaseFormElement()) {
@@ -20774,6 +20856,7 @@ function refreshReleaseLicensesUI() {
     `;
   }).join("");
   lucide.createIcons();
+  updateReleaseFileRequirementBadges();
 }
 
 function openLicenseTermsEditModal(idx = null) {

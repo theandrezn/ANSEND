@@ -21206,6 +21206,11 @@ body[data-route="cadastrar"] .release-footer-actions {
   gap: 14px !important;
 }
 
+body[data-route="cadastrar"] .release-footer-actions button[style*="display:none"],
+body[data-route="cadastrar"] .release-footer-actions button[style*="display: none"] {
+  display: none !important;
+}
+
 body[data-route="cadastrar"] .release-bottom-inner .release-next-btn,
 body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn {
   background: #ff6a00 !important;
@@ -31061,6 +31066,333 @@ body[data-route="cadastrar"] .release-files-layout .release-upload-error {
   body[data-route="cadastrar"] .release-preview-grid,
   body[data-route="cadastrar"] .release-secure-row {
     grid-template-columns: 1fr !important;
+  }
+}
+
+body[data-route="cadastrar"] .release-page {
+  background: #000 !important;
+}
+
+body[data-route="cadastrar"] .release-container {
+  padding: 24px 32px 140px !important;
+}
+
+body[data-route="cadastrar"] .release-stepper {
+  margin-bottom: 18px !important;
+}
+
+body[data-route="cadastrar"] .release-panel[data-panel="2"] .release-panel-header {
+  margin-bottom: 26px !important;
+}
+
+body[data-route="cadastrar"] .release-panel[data-panel="2"] .release-panel-header h2 {
+  font-size: clamp(30px, 3vw, 34px) !important;
+  line-height: 1.05 !important;
+  margin-bottom: 8px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 32px !important;
+  width: 100% !important;
+}
+
+body[data-route="cadastrar"] .release-preview-upload-section,
+body[data-route="cadastrar"] .release-upload-card {
+  background: #0d0d0d !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
+}
+
+body[data-route="cadastrar"] .release-preview-upload-section {
+  padding: 24px !important;
+}
+
+body[data-route="cadastrar"] .release-file-section-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  margin-bottom: 20px !important;
+}
+
+body[data-route="cadastrar"] .release-file-section-head h3 {
+  margin: 0 0 8px !important;
+  color: #fff !important;
+  font-size: 19px !important;
+  line-height: 1.15 !important;
+  font-weight: 850 !important;
+}
+
+body[data-route="cadastrar"] .release-file-section-head p,
+body[data-route="cadastrar"] .release-upload-card-copy p {
+  margin: 0 !important;
+  color: rgba(255, 255, 255, 0.56) !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
+body[data-route="cadastrar"] .release-requirement-badge {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 26px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+body[data-route="cadastrar"] .release-requirement-badge.is-required {
+  color: #86efac !important;
+  border-color: rgba(34, 197, 94, 0.34) !important;
+  background: rgba(34, 197, 94, 0.08) !important;
+}
+
+body[data-route="cadastrar"] .release-requirement-badge.is-conditional {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+body[data-route="cadastrar"] .release-preview-upload-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr) !important;
+  gap: 20px !important;
+  align-items: stretch !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone {
+  min-height: 154px !important;
+  height: auto !important;
+  padding: 22px !important;
+  border-radius: 10px !important;
+  border: 1px dashed rgba(255, 255, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.018) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  text-align: center !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone:hover {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background: rgba(255, 255, 255, 0.025) !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone.is-dragging {
+  border-color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.06) !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone strong {
+  color: #fff !important;
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone small,
+body[data-route="cadastrar"] .release-upload-card-copy small {
+  color: rgba(255, 255, 255, 0.46) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-upload-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: #fff !important;
+}
+
+body[data-route="cadastrar"] .release-preview-state {
+  min-height: 154px !important;
+  margin: 0 !important;
+  padding: 18px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: rgba(0, 0, 0, 0.24) !important;
+}
+
+body[data-route="cadastrar"] .release-preview-state .release-audio-preview {
+  display: none !important;
+}
+
+body[data-route="cadastrar"] .release-preview-upload-section.has-file .release-preview-state .release-audio-preview {
+  display: flex !important;
+}
+
+body[data-route="cadastrar"] .release-preview-state > strong {
+  display: block !important;
+  margin-bottom: 12px !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+}
+
+body[data-route="cadastrar"] .release-preview-state > p {
+  margin: 12px 0 0 !important;
+  color: rgba(255, 255, 255, 0.48) !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-audio-preview {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  gap: 14px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-audio-preview-header span,
+body[data-route="cadastrar"] .release-file-result-top span {
+  color: #22c55e !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  text-transform: uppercase !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-audio-meta strong,
+body[data-route="cadastrar"] .release-file-result strong {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #fff !important;
+  font-size: 14px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-audio-meta small,
+body[data-route="cadastrar"] .release-file-result small {
+  color: rgba(255, 255, 255, 0.48) !important;
+  font-size: 12px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-audio-player {
+  width: 100% !important;
+  height: 34px !important;
+}
+
+body[data-route="cadastrar"] .release-delivery-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+
+body[data-route="cadastrar"] .release-upload-card {
+  min-height: 388px !important;
+  padding: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+body[data-route="cadastrar"] .release-upload-card-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+body[data-route="cadastrar"] .release-upload-card-copy strong {
+  display: block !important;
+  margin-bottom: 8px !important;
+  color: #fff !important;
+  font-size: 16px !important;
+  line-height: 1.22 !important;
+}
+
+body[data-route="cadastrar"] .release-upload-card .release-dropzone {
+  min-height: 134px !important;
+}
+
+body[data-route="cadastrar"] .release-file-actions {
+  display: grid !important;
+  gap: 12px !important;
+  margin-top: auto !important;
+}
+
+body[data-route="cadastrar"] .release-file-result {
+  padding: 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(34, 197, 94, 0.22) !important;
+  background: rgba(34, 197, 94, 0.055) !important;
+}
+
+body[data-route="cadastrar"] .release-file-result-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 8px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .release-remove-btn {
+  min-height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 8px !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+  font-size: 12px !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .use-preview-as-delivery-btn {
+  width: 100% !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: #050505 !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+body[data-route="cadastrar"] .release-files-redesign .upload-progress-container {
+  width: min(100%, 280px) !important;
+  margin-top: 10px !important;
+}
+
+@media (max-width: 1100px) {
+  body[data-route="cadastrar"] .release-delivery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  body[data-route="cadastrar"] .release-container {
+    width: 100% !important;
+    padding: 18px 14px 180px !important;
+  }
+
+  body[data-route="cadastrar"] .release-preview-upload-section,
+  body[data-route="cadastrar"] .release-upload-card {
+    padding: 16px !important;
+  }
+
+  body[data-route="cadastrar"] .release-file-section-head,
+  body[data-route="cadastrar"] .release-preview-upload-grid,
+  body[data-route="cadastrar"] .release-delivery-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body[data-route="cadastrar"] .release-file-section-head {
+    display: grid !important;
+  }
+
+  body[data-route="cadastrar"] .release-upload-card {
+    min-height: 0 !important;
   }
 }
 

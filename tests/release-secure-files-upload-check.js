@@ -166,6 +166,8 @@ async function run() {
         uploads: window.__releaseUploads,
         drafts: window.__releaseDrafts,
         layoutColumns: getComputedStyle(document.querySelector(".release-files-layout")).gridTemplateColumns,
+        deliveryColumns: getComputedStyle(document.querySelector(".release-delivery-grid")).gridTemplateColumns,
+        deliveryCards: document.querySelectorAll(".release-upload-card").length,
       };
     });
 
@@ -183,7 +185,9 @@ async function run() {
       || !result.drafts.some((draft) => draft.payload?.stems_path)) {
       throw new Error("Release upload draft did not persist secure file paths.");
     }
-    if (!/\s/.test(result.layoutColumns) || result.layoutColumns === "none") throw new Error("Release upload layout did not become a responsive grid.");
+    if (result.layoutColumns === "none") throw new Error("Release upload layout did not become a responsive grid.");
+    if (result.deliveryCards !== 3) throw new Error("Release upload delivery grid must render three file cards.");
+    if (!/\s/.test(result.deliveryColumns) || result.deliveryColumns === "none") throw new Error("Release delivery files did not become a three-card responsive grid.");
   } finally {
     await browser.close();
     server.close();
