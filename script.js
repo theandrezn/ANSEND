@@ -16786,7 +16786,7 @@ async function playYouTubeBeat(item, { quiet = false } = {}) {
     const player = await ensureYouTubeBeatPlayer();
     applyPlayerAudioSettings();
     const playingPromise = waitForYouTubePlaying();
-    if (player.getVideoData?.().video_id !== videoId) {
+    if (player.getVideoData?.()?.video_id !== videoId) {
       player.loadVideoById(videoId);
     } else {
       player.playVideo();
@@ -16860,6 +16860,14 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
   const requestId = nextPlayerPlaybackRequest();
   const beat = normalizePlayerBeat(item);
   if (!beat) return false;
+
+  console.log("[ANSEND player] playBeat called", {
+    beatId: beat.id,
+    source: beat.audio_url,
+    sourceType: beat.source_type,
+    youtubeVideoId: beat.youtube_video_id || "",
+  });
+
   if (beat.source_type === "youtube") {
     return playYouTubeBeat(beat, { quiet });
   }
@@ -16896,6 +16904,15 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
       audio.pause();
       return false;
     }
+
+    console.log("[ANSEND player] playBeat success", {
+      beatId: beat.id,
+      currentSrc: audio.currentSrc,
+      paused: audio.paused,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+    });
+
     showMiniPlayer();
     PlayerStore.setStatus("playing", {
       duration: Number(audio.duration) || 0,
@@ -16906,7 +16923,7 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
     return true;
   } catch (error) {
     if (!isCurrentPlaybackRequest(requestId)) return false;
-    if (!suppressErrorLog) console.error("[ANSEND player] upload playback error", { error, beat });
+    if (!suppressErrorLog) console.error("[ANSEND player] upload playback error", { error, beat, audioSrc: audio.src, readyState: audio.readyState, networkState: audio.networkState });
     const message = "Não foi possível reproduzir este beat";
     PlayerStore.setStatus("error", { error: message });
     setTopBeatPlaying(false);
@@ -16920,7 +16937,7 @@ async function playTopBeat({ quiet = false } = {}) {
 }
 
 async function toggleBeatPlayback(item) {
-  const beat = normalizePlayerBeat(item);
+  const beat = normalizePlayerBeat(item || topBeatOfDay);
   if (!beat) return false;
   if (String(appState.playing || "") !== String(beat.id || "")) {
     return playBeat(beat);

@@ -1,0 +1,36 @@
+{
+  "label": "after",
+  "generatedAt": "2026-06-19T00:12:38.129Z",
+  "routes": [
+    "feed",
+    "nexo-feed",
+    "marketplace",
+    "produtores",
+    "comunidade",
+    "chat",
+    "ia",
+    "biblioteca",
+    "musicas",
+    "compras",
+    "favoritos",
+    "carrinho",
+    "perfil",
+    "cadastrar",
+    "configuracoes",
+    "vendedor",
+    "beat-1",
+    "playlist-pack-trap-essentials",
+    "suporte"
+  ],
+  "viewports": [
+    "360x800",
+    "375x812",
+    "390x844",
+    "412x915",
+    "430x932",
+    "768x1024",
+    "1024x1366",
+    "1440x900"
+  ],
+  "findings": []
+}
