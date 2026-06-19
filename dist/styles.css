@@ -16647,6 +16647,14 @@ body:has(.nexo-feed-page) .footer {
   border-radius: 999px;
 }
 
+.nexo-feed-comments-empty {
+  color: #aab2bd;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 24px 10px;
+  text-align: center;
+}
+
 .nexo-feed-comment {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 38px;

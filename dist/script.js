@@ -1379,11 +1379,19 @@ const appState = {
     minimized: false,
     unread: false,
     initialized: false,
+    historyLoaded: false,
+    historyLoadRequested: false,
     abortController: null,
   },
   recommendations: { professionals: [], feed: [], updatedAt: 0 },
   recommendationsLoading: false,
   recommendationImpressions: new Set(),
+  nexoFeed: {
+    interactions: {},
+    comments: {},
+    loading: {},
+    activeCommentsItemId: "",
+  },
   releaseMode: "",
   catalogImport: null,
   followStates: {},
@@ -3166,10 +3174,38 @@ function getRankedNexoFeed(limit = 14) {
   return pool.slice(0, limit);
 }
 
+function nexoFeedSourceRef(item = {}) {
+  const rawSourceType = item.sourceType || item.source_table || item.metadata?.sourceTable || item.type || "catalog_items";
+  const sourceType = rawSourceType === "beat" || rawSourceType === "music" || rawSourceType === "beats"
+    ? (item.source_table === "catalog_items" || item.metadata?.sourceTable === "catalog_items" ? "catalog_items" : "beats")
+    : rawSourceType === "catalog" || rawSourceType === "catalog_item" || rawSourceType === "catalog_items"
+      ? "catalog_items"
+      : String(rawSourceType || "catalog_items");
+  const sourceId = item.sourceId || item.metadata?.beatId || item.raw?.id || item.id;
+  if (!isUuid(sourceId)) return null;
+  return {
+    sourceType,
+    sourceId: String(sourceId),
+    key: `${sourceType}:${sourceId}`,
+  };
+}
+
+function nexoFeedInteractionState(item = {}) {
+  const ref = nexoFeedSourceRef(item);
+  const stored = ref ? appState.nexoFeed.interactions[ref.key] : null;
+  return {
+    liked: Boolean(stored?.liked),
+    saved: Boolean(stored?.saved),
+    likesCount: Number(stored?.likesCount ?? item.likesCount ?? 0),
+    commentsCount: Number(stored?.commentsCount ?? item.commentsCount ?? 0),
+    savesCount: Number(stored?.savesCount ?? item.savesCount ?? 0),
+  };
+}
+
 function nexoFeedCard(item, index) {
   const isBeat = item.type === "beat" || item.type === "music";
   const beatId = item.metadata?.beatId || item.id;
-  const isSavedBeat = isBeat && appState.favorites.has(beatId);
+  const interaction = nexoFeedInteractionState(item);
   const author = item.creatorName || "ANSEND";
   const authorImage = isRealFeedMedia(item.creatorAvatar) ? item.creatorAvatar : "";
   const authorAttrs = profileTargetAttrs({ id: item.creatorId, username: item.creatorUsername, title: author });
@@ -3200,10 +3236,10 @@ function nexoFeedCard(item, index) {
       <button type="button" class="nexo-feed-main-cta" data-action="nexo-feed-open" data-feed-item-id="${item.id}">${nexoFeedCta(item)}</button>
     </div>
     <div class="nexo-feed-actions" aria-label="Acoes do feed">
-      <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
+      <button type="button" class="${interaction.liked ? "is-active" : ""}" data-action="nexo-feed-like" data-feed-item-id="${item.id}" aria-label="Curtir"><i data-lucide="heart"></i><span>Curtir</span></button>
       <button type="button" data-action="nexo-feed-comments" data-feed-item-id="${item.id}" aria-label="Comentarios"><i data-lucide="message-circle"></i><span>Comentar</span></button>
       <button type="button" data-action="nexo-feed-share" data-feed-item-id="${item.id}" aria-label="Compartilhar"><i data-lucide="send"></i><span>Enviar</span></button>
-      <button type="button" class="${isSavedBeat ? "is-active" : ""}" data-action="nexo-feed-save" data-feed-item-id="${item.id}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>Salvar</span></button>
+      <button type="button" class="${interaction.saved ? "is-active" : ""}" data-action="nexo-feed-save" data-feed-item-id="${item.id}" aria-label="Salvar"><i data-lucide="bookmark"></i><span>Salvar</span></button>
     </div>
   </article>`;
 }
@@ -3245,6 +3281,7 @@ function renderNexoFeed() {
     const target = recommendationTargetFromFeedItem(item);
     recordRecommendationImpression(target.targetType, target.targetId, item.feedMatch?.score || 0, item.feedMatch?.reasons?.[0] || "");
   });
+  hydrateNexoFeedInteractions(items);
 }
 
 function nexoFeedCommentStorageKey(feedItemId) {
@@ -3389,6 +3426,328 @@ function openNexoFeedComments(item) {
 function closeNexoFeedComments() {
   document.querySelector(".nexo-feed-comments-layer")?.remove();
   document.body.classList.remove("nexo-feed-comments-open");
+  appState.nexoFeed.activeCommentsItemId = "";
+}
+
+function nexoFeedSyncCardActions(item = {}) {
+  const interaction = nexoFeedInteractionState(item);
+  document.querySelectorAll(`[data-feed-item-id="${cssEscape(item.id)}"][data-action="nexo-feed-like"]`).forEach((button) => {
+    button.classList.toggle("is-active", interaction.liked);
+    button.setAttribute("aria-pressed", interaction.liked ? "true" : "false");
+    button.setAttribute("aria-label", interaction.likesCount ? `Curtir, ${interaction.likesCount} curtidas` : "Curtir");
+  });
+  document.querySelectorAll(`[data-feed-item-id="${cssEscape(item.id)}"][data-action="nexo-feed-save"]`).forEach((button) => {
+    button.classList.toggle("is-active", interaction.saved);
+    button.setAttribute("aria-pressed", interaction.saved ? "true" : "false");
+    button.setAttribute("aria-label", interaction.savesCount ? `Salvar, ${interaction.savesCount} salvos` : "Salvar");
+  });
+  document.querySelectorAll(`[data-feed-item-id="${cssEscape(item.id)}"][data-action="nexo-feed-comments"]`).forEach((button) => {
+    button.setAttribute("aria-label", interaction.commentsCount ? `Comentarios, ${interaction.commentsCount}` : "Comentarios");
+  });
+}
+
+function nexoFeedSetInteraction(ref, patch = {}) {
+  if (!ref?.key) return;
+  const current = appState.nexoFeed.interactions[ref.key] || {};
+  appState.nexoFeed.interactions[ref.key] = { ...current, ...patch };
+}
+
+async function hydrateNexoFeedInteractions(items = []) {
+  if (!supabaseClient) return;
+  const refs = items.map(nexoFeedSourceRef).filter(Boolean);
+  const uniqueRefs = [...new Map(refs.map((ref) => [ref.key, ref])).values()];
+  if (!uniqueRefs.length) return;
+  const sourceIds = [...new Set(uniqueRefs.map((ref) => ref.sourceId))];
+  try {
+    const [likesResult, savesResult, commentsResult] = await Promise.all([
+      supabaseClient.from("nexo_feed_likes").select("source_type, source_id, user_id").in("source_id", sourceIds),
+      supabaseClient.from("nexo_feed_saves").select("source_type, source_id, user_id").in("source_id", sourceIds),
+      supabaseClient.from("nexo_feed_comments").select("source_type, source_id, id").in("source_id", sourceIds),
+    ]);
+    [likesResult, savesResult, commentsResult].forEach((result) => {
+      if (result.error) throw result.error;
+    });
+    const likesByKey = {};
+    const savesByKey = {};
+    const commentsByKey = {};
+    asArray(likesResult.data).forEach((row) => {
+      const key = `${row.source_type}:${row.source_id}`;
+      likesByKey[key] = likesByKey[key] || { count: 0, mine: false };
+      likesByKey[key].count += 1;
+      if (row.user_id === appState.authUser?.id) likesByKey[key].mine = true;
+    });
+    asArray(savesResult.data).forEach((row) => {
+      const key = `${row.source_type}:${row.source_id}`;
+      savesByKey[key] = savesByKey[key] || { count: 0, mine: false };
+      savesByKey[key].count += 1;
+      if (row.user_id === appState.authUser?.id) savesByKey[key].mine = true;
+    });
+    asArray(commentsResult.data).forEach((row) => {
+      const key = `${row.source_type}:${row.source_id}`;
+      commentsByKey[key] = (commentsByKey[key] || 0) + 1;
+    });
+    uniqueRefs.forEach((ref) => {
+      nexoFeedSetInteraction(ref, {
+        liked: Boolean(likesByKey[ref.key]?.mine),
+        saved: Boolean(savesByKey[ref.key]?.mine),
+        likesCount: likesByKey[ref.key]?.count || 0,
+        savesCount: savesByKey[ref.key]?.count || 0,
+        commentsCount: commentsByKey[ref.key] || 0,
+      });
+    });
+    items.forEach(nexoFeedSyncCardActions);
+  } catch (error) {
+    console.warn("[ANSEND NEXO feed] interactions load skipped", error?.message || error);
+  }
+}
+
+function nexoFeedCommentProfile(row = {}) {
+  const profile = profileForUserId(row.user_id) || {};
+  const display = profileDisplayData(profile);
+  const fallback = row.user_id === appState.authUser?.id ? activeProfile() : null;
+  const fallbackDisplay = fallback ? profileDisplayData(fallback) : {};
+  return {
+    user: sanitizeHandle(display.username || fallbackDisplay.username || display.name || fallbackDisplay.name || "ansend.user"),
+    avatar: display.avatar || fallbackDisplay.avatar || "",
+  };
+}
+
+function normalizeNexoFeedComment(row = {}, likedIds = new Set(), likeCounts = {}) {
+  const profile = nexoFeedCommentProfile(row);
+  return {
+    id: String(row.id || ""),
+    userId: row.user_id || "",
+    user: profile.user,
+    avatar: profile.avatar,
+    time: formatRelativeTime(row.created_at || new Date().toISOString()),
+    text: row.content || "",
+    likes: Number(likeCounts[row.id] || 0),
+    replies: 0,
+    isLiked: likedIds.has(String(row.id)),
+    isOwn: row.user_id === appState.authUser?.id,
+  };
+}
+
+function readNexoFeedComments(item) {
+  const ref = nexoFeedSourceRef(item);
+  return ref ? asArray(appState.nexoFeed.comments[ref.key]) : [];
+}
+
+async function loadNexoFeedComments(item, { force = false } = {}) {
+  const ref = nexoFeedSourceRef(item);
+  if (!supabaseClient || !ref) return readNexoFeedComments(item);
+  if (!force && appState.nexoFeed.comments[ref.key]) return appState.nexoFeed.comments[ref.key];
+  appState.nexoFeed.loading[ref.key] = true;
+  try {
+    const { data, error } = await supabaseClient
+      .from("nexo_feed_comments")
+      .select("id, source_type, source_id, user_id, content, created_at")
+      .eq("source_type", ref.sourceType)
+      .eq("source_id", ref.sourceId)
+      .order("created_at", { ascending: false })
+      .limit(120);
+    if (error) throw error;
+    const rows = asArray(data);
+    await getCommunityProfilesForIds(rows.map((row) => row.user_id));
+    const commentIds = rows.map((row) => row.id).filter(Boolean);
+    let likeRows = [];
+    if (commentIds.length) {
+      const likesResult = await supabaseClient
+        .from("nexo_feed_comment_likes")
+        .select("comment_id, user_id")
+        .in("comment_id", commentIds);
+      if (likesResult.error) throw likesResult.error;
+      likeRows = asArray(likesResult.data);
+    }
+    const likeCounts = {};
+    const likedIds = new Set();
+    likeRows.forEach((row) => {
+      likeCounts[row.comment_id] = (likeCounts[row.comment_id] || 0) + 1;
+      if (row.user_id === appState.authUser?.id) likedIds.add(String(row.comment_id));
+    });
+    const comments = rows.map((row) => normalizeNexoFeedComment(row, likedIds, likeCounts));
+    appState.nexoFeed.comments[ref.key] = comments;
+    nexoFeedSetInteraction(ref, { commentsCount: comments.length });
+    nexoFeedSyncCardActions(item);
+    return comments;
+  } catch (error) {
+    console.error("[ANSEND NEXO feed] failed to load comments", error);
+    return readNexoFeedComments(item);
+  } finally {
+    appState.nexoFeed.loading[ref.key] = false;
+  }
+}
+
+async function saveNexoFeedComment(item, text) {
+  const clean = String(text || "").trim();
+  const ref = nexoFeedSourceRef(item);
+  if (!clean || !ref) return false;
+  if (!supabaseClient || !appState.authUser?.id) {
+    showToast("Faca login para comentar.", "log-in");
+    return false;
+  }
+  try {
+    const { error } = await supabaseClient.from("nexo_feed_comments").insert({
+      source_type: ref.sourceType,
+      source_id: ref.sourceId,
+      user_id: appState.authUser.id,
+      content: clean.slice(0, 500),
+    });
+    if (error) throw error;
+    writeNexoFeedEvent(item.id, "comment", { item });
+    await loadNexoFeedComments(item, { force: true });
+    return true;
+  } catch (error) {
+    console.error("[ANSEND NEXO feed] failed to save comment", error);
+    showToast("Nao foi possivel publicar o comentario agora.", "alert-triangle");
+    return false;
+  }
+}
+
+function nexoFeedCommentsEmptyMarkup() {
+  return `<div class="nexo-feed-comments-empty">Seja o primeiro a comentar.</div>`;
+}
+
+function nexoFeedCommentMarkup(comment) {
+  return `<article class="nexo-feed-comment" data-comment-id="${htmlEscape(comment.id)}">
+    <div class="nexo-feed-comment-avatar">${nexoFeedCommentAvatar(comment)}</div>
+    <div class="nexo-feed-comment-body">
+      <p><strong>${htmlEscape(comment.user)}</strong> <time>${htmlEscape(comment.time)}</time><br>${htmlEscape(comment.text)}</p>
+      <footer>
+        <button type="button" class="${comment.isLiked ? "is-active" : ""}" data-action="nexo-feed-comment-like">${Number(comment.likes || 0).toLocaleString("pt-BR")} curtidas</button>
+        <button type="button" data-action="nexo-feed-comment-reply">Responder</button>
+      </footer>
+    </div>
+    <button type="button" class="nexo-feed-comment-heart ${comment.isLiked ? "is-active" : ""}" data-action="nexo-feed-comment-like" aria-label="Curtir comentario"><i data-lucide="heart"></i></button>
+  </article>`;
+}
+
+function renderOpenNexoFeedComments(item) {
+  const layer = document.querySelector(`.nexo-feed-comments-layer[data-feed-comments="${cssEscape(item.id)}"]`);
+  if (!layer) return;
+  const comments = readNexoFeedComments(item);
+  const list = layer.querySelector(".nexo-feed-comments-list");
+  const count = layer.querySelector("header span");
+  if (count) count.textContent = String(comments.length);
+  if (list) list.innerHTML = comments.length ? comments.map(nexoFeedCommentMarkup).join("") : nexoFeedCommentsEmptyMarkup();
+  lucide.createIcons();
+}
+
+async function openNexoFeedComments(item) {
+  if (!item) return;
+  closeNexoFeedComments();
+  appState.nexoFeed.activeCommentsItemId = item.id;
+  const comments = readNexoFeedComments(item);
+  const safeTitle = htmlEscape(item.title || "Publicacao");
+  document.body.insertAdjacentHTML("beforeend", `<section class="nexo-feed-comments-layer" data-feed-comments="${htmlEscape(item.id)}" aria-label="Comentarios do feed">
+    <button type="button" class="nexo-feed-comments-scrim" data-action="close-feed-comments" aria-label="Fechar comentarios"></button>
+    <aside class="nexo-feed-comments-panel" role="dialog" aria-modal="true" aria-labelledby="feedCommentsTitle">
+      <header>
+        <button type="button" data-action="close-feed-comments" aria-label="Fechar comentarios"><i data-lucide="x"></i></button>
+        <h2 id="feedCommentsTitle">Comentarios</h2>
+        <span>${comments.length}</span>
+      </header>
+      <div class="nexo-feed-comments-context">
+        <strong>${safeTitle}</strong>
+        <small>${htmlEscape(item.creatorName || "ANSEND")}</small>
+      </div>
+      <div class="nexo-feed-comments-list" role="list">
+        ${comments.length ? comments.map(nexoFeedCommentMarkup).join("") : nexoFeedCommentsEmptyMarkup()}
+      </div>
+      <form class="nexo-feed-comment-form" data-feed-item-id="${htmlEscape(item.id)}">
+        <div class="nexo-feed-comment-avatar is-current">${nexoFeedCommentAvatar({ user: activeProfile()?.full_name || "A", avatar: profileDisplayData(activeProfile()).avatar })}</div>
+        <label class="sr-only" for="nexoFeedCommentInput">Adicionar comentario</label>
+        <input id="nexoFeedCommentInput" name="comment" type="text" maxlength="220" placeholder="Adicione um comentario..." autocomplete="off">
+        <button type="button" data-action="nexo-feed-comment-emoji" aria-label="Emoji"><i data-lucide="smile"></i></button>
+        <button type="submit" aria-label="Enviar comentario"><i data-lucide="arrow-up"></i></button>
+      </form>
+    </aside>
+  </section>`);
+  document.body.classList.add("nexo-feed-comments-open");
+  lucide.createIcons();
+  document.querySelector(".nexo-feed-comment-form input")?.focus();
+  await loadNexoFeedComments(item, { force: true });
+  renderOpenNexoFeedComments(item);
+}
+
+async function toggleNexoFeedAction(item, action) {
+  const ref = nexoFeedSourceRef(item);
+  if (!ref) return;
+  if (!supabaseClient || !appState.authUser?.id) {
+    showToast(action === "like" ? "Faca login para curtir." : "Faca login para salvar.", "log-in");
+    return;
+  }
+  const table = action === "like" ? "nexo_feed_likes" : "nexo_feed_saves";
+  const current = nexoFeedInteractionState(item);
+  const nextActive = action === "like" ? !current.liked : !current.saved;
+  const patch = action === "like"
+    ? { liked: nextActive, likesCount: Math.max(0, current.likesCount + (nextActive ? 1 : -1)) }
+    : { saved: nextActive, savesCount: Math.max(0, current.savesCount + (nextActive ? 1 : -1)) };
+  nexoFeedSetInteraction(ref, patch);
+  nexoFeedSyncCardActions(item);
+  try {
+    const query = supabaseClient.from(table);
+    if (nextActive) {
+      const { error } = await query.upsert({
+        source_type: ref.sourceType,
+        source_id: ref.sourceId,
+        user_id: appState.authUser.id,
+      }, { onConflict: "source_type,source_id,user_id" });
+      if (error) throw error;
+    } else {
+      const { error } = await query
+        .delete()
+        .eq("source_type", ref.sourceType)
+        .eq("source_id", ref.sourceId)
+        .eq("user_id", appState.authUser.id);
+      if (error) throw error;
+    }
+    writeNexoFeedEvent(item.id, action, { item });
+  } catch (error) {
+    console.error(`[ANSEND NEXO feed] failed to ${action}`, error);
+    nexoFeedSetInteraction(ref, current);
+    nexoFeedSyncCardActions(item);
+    showToast(action === "like" ? "Nao foi possivel curtir agora." : "Nao foi possivel salvar agora.", "alert-triangle");
+  }
+}
+
+async function toggleNexoFeedCommentLike(commentId) {
+  const layer = document.querySelector(".nexo-feed-comments-layer");
+  const item = feedItemForEvent(layer?.dataset.feedComments || "");
+  const ref = nexoFeedSourceRef(item);
+  if (!item || !ref || !commentId) return;
+  if (!supabaseClient || !appState.authUser?.id) {
+    showToast("Faca login para curtir.", "log-in");
+    return;
+  }
+  const comments = readNexoFeedComments(item);
+  const current = comments.find((comment) => comment.id === commentId);
+  if (!current) return;
+  const nextLiked = !current.isLiked;
+  current.isLiked = nextLiked;
+  current.likes = Math.max(0, Number(current.likes || 0) + (nextLiked ? 1 : -1));
+  renderOpenNexoFeedComments(item);
+  try {
+    if (nextLiked) {
+      const { error } = await supabaseClient
+        .from("nexo_feed_comment_likes")
+        .upsert({ comment_id: commentId, user_id: appState.authUser.id }, { onConflict: "comment_id,user_id" });
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient
+        .from("nexo_feed_comment_likes")
+        .delete()
+        .eq("comment_id", commentId)
+        .eq("user_id", appState.authUser.id);
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("[ANSEND NEXO feed] failed to like comment", error);
+    current.isLiked = !nextLiked;
+    current.likes = Math.max(0, Number(current.likes || 0) + (nextLiked ? -1 : 1));
+    renderOpenNexoFeedComments(item);
+    showToast("Nao foi possivel curtir o comentario agora.", "alert-triangle");
+  }
 }
 
 function nexoFeedPlaybackSvg(mode = "play") {
@@ -9406,6 +9765,11 @@ async function ensureStorageAuthSession({ forceRefresh = false } = {}) {
   appState.authSession = session;
   if (appState.authUser?.id !== verifiedUser.id) {
     appState.authUser = verifiedUser;
+    appState.nexoChatConversationId = "";
+    appState.nexoChatMessages = [];
+    appState.nexoChatError = "";
+    appState.nexoAssistant.historyLoaded = false;
+    appState.nexoAssistant.historyLoadRequested = false;
     await loadProfile(verifiedUser);
     syncAccountUi();
   }
@@ -11936,7 +12300,13 @@ function syncNexoAssistantPrefsFromStorage() {
 }
 
 async function loadNexoConversationHistory() {
-  if (!supabaseClient || !appState.authUser?.id || appState.nexoChatHistoryLoading) return;
+  if (appState.nexoChatHistoryLoading) return;
+  if (!supabaseClient || !appState.authUser?.id) {
+    appState.nexoAssistant.historyLoaded = true;
+    appState.nexoAssistant.historyLoadRequested = false;
+    return;
+  }
+  appState.nexoAssistant.historyLoadRequested = true;
   appState.nexoChatHistoryLoading = true;
   renderNexoFloatingAssistant();
   try {
@@ -11980,6 +12350,8 @@ async function loadNexoConversationHistory() {
     appState.nexoChatError = "";
     appState.nexoChatMessages = appState.nexoChatMessages || [];
   } finally {
+    appState.nexoAssistant.historyLoaded = true;
+    appState.nexoAssistant.historyLoadRequested = false;
     appState.nexoChatHistoryLoading = false;
     renderNexoFloatingAssistant();
     scrollNexoAssistantToBottom();
@@ -12080,7 +12452,15 @@ function renderNexoFloatingAssistant() {
     return;
   }
   const panelOpen = appState.nexoAssistant.open && !appState.nexoAssistant.minimized;
-  if (panelOpen && !appState.nexoChatHistoryLoading && !appState.nexoChatMessages.length && !appState.nexoChatConversationId) {
+  if (
+    panelOpen
+    && !appState.nexoAssistant.historyLoaded
+    && !appState.nexoAssistant.historyLoadRequested
+    && !appState.nexoChatHistoryLoading
+    && !appState.nexoChatMessages.length
+    && !appState.nexoChatConversationId
+  ) {
+    appState.nexoAssistant.historyLoadRequested = true;
     window.setTimeout(() => loadNexoConversationHistory(), 0);
   }
   const markup = `<div id="nexoFloatingAssistantRoot" class="nexo-floating-assistant nexo-button ${panelOpen ? "is-open" : ""} ${appState.nexoAssistant.expanded ? "is-expanded" : ""}">
@@ -17129,7 +17509,6 @@ function handleFavorite(id) {
   else {
     document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`).forEach((button) => button.classList.toggle("is-favorite", appState.favorites.has(id)));
     const isFav = appState.favorites.has(id);
-    document.querySelectorAll(`[data-feed-item-id="${id}"][data-action="nexo-feed-like"], [data-feed-item-id="${id}"][data-action="nexo-feed-save"]`).forEach((btn) => btn.classList.toggle("is-active", isFav));
   }
 }
 
@@ -17995,7 +18374,14 @@ document.addEventListener("click", (event) => {
       appState.nexoAssistant.unread = false;
       writeNexoAssistantPrefs();
       renderNexoFloatingAssistant();
-      if (opening && !appState.nexoChatMessages.length) void loadNexoConversationHistory();
+      if (
+        opening
+        && !appState.nexoAssistant.historyLoaded
+        && !appState.nexoAssistant.historyLoadRequested
+        && !appState.nexoChatMessages.length
+      ) {
+        void loadNexoConversationHistory();
+      }
       window.requestAnimationFrame(() => document.querySelector(".nexo-assistant-form textarea")?.focus({ preventScroll: true }));
       return;
     }
@@ -18284,9 +18670,9 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "nexo-feed-comment-like") {
-    target.classList.toggle("is-active");
+    event.preventDefault();
     const comment = target.closest(".nexo-feed-comment");
-    comment?.querySelector(".nexo-feed-comment-heart")?.classList.toggle("is-active", target.classList.contains("is-active"));
+    toggleNexoFeedCommentLike(comment?.dataset.commentId || "");
     return;
   }
   if (action === "nexo-feed-comment-reply") {
@@ -18553,16 +18939,11 @@ document.addEventListener("click", (event) => {
       "nexo-feed-hide": "not_interested",
       "nexo-feed-similar": "view_similar",
     };
-    writeNexoFeedEvent(itemId, eventMap[action] || "click_cta", { item });
     if (action === "nexo-feed-like" || action === "nexo-feed-save") {
-      if (item.type === "beat") {
-        const beatId = item.metadata?.beatId || item.id;
-        handleFavorite(beatId);
-      } else {
-        target.classList.toggle("is-active");
-      }
+      toggleNexoFeedAction(item, action === "nexo-feed-like" ? "like" : "save");
       return;
     }
+    writeNexoFeedEvent(itemId, eventMap[action] || "click_cta", { item });
     if (action === "nexo-feed-comments") {
       openNexoFeedComments(item);
       return;
@@ -19315,8 +19696,11 @@ document.addEventListener("submit", async (event) => {
     const input = feedCommentForm.elements.comment;
     const text = input?.value?.trim();
     if (!item || !text) return;
-    saveNexoFeedComment(item, text);
-    openNexoFeedComments(item);
+    const saved = await saveNexoFeedComment(item, text);
+    if (saved) {
+      input.value = "";
+      renderOpenNexoFeedComments(item);
+    }
     return;
   }
   const hiringComposerForm = event.target.closest(".hiring-composer");
