@@ -89,12 +89,22 @@ function supabaseMock() {
           order() { return api; },
           limit() { return api; },
           range() { return api; },
-          single: async () => ({ data: rowsFor(table)[0] || null, error: null }),
-          maybeSingle: async () => ({ data: rowsFor(table)[0] || null, error: null }),
-          then(resolve) { return Promise.resolve({ data: rowsFor(table), error: null }).then(resolve); }
+          single: async () => {
+            window.__communityStabilityQueryCount += 1;
+            return { data: rowsFor(table)[0] || null, error: null };
+          },
+          maybeSingle: async () => {
+            window.__communityStabilityQueryCount += 1;
+            return { data: rowsFor(table)[0] || null, error: null };
+          },
+          then(resolve) {
+            window.__communityStabilityQueryCount += 1;
+            return Promise.resolve({ data: rowsFor(table), error: null }).then(resolve);
+          }
         };
         return api;
       }
+      window.__communityStabilityQueryCount = 0;
       window.__communityStabilitySession = session;
       window.supabase = {
         createClient() {
@@ -150,9 +160,14 @@ async function run() {
   const server = http.createServer(serveStatic);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+      : {}),
+  });
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await installMocks(page);
     await page.goto(`${baseUrl}/#comunidade`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".hiring-post", { timeout: 15000 });
@@ -172,11 +187,13 @@ async function run() {
       entering: document.body.classList.contains("community-route-enter"),
       postCount: document.querySelectorAll(".hiring-post").length,
       animations: document.querySelector(".hiring-feed-shell")?.getAnimations?.().length || 0,
+      queryCount: window.__communityStabilityQueryCount,
     }));
 
     await page.evaluate(async () => {
       for (let index = 0; index < 10; index += 1) {
         window.__communityStabilityAuthCallback?.("TOKEN_REFRESHED", window.__communityStabilitySession);
+        window.__communityStabilityAuthCallback?.("SIGNED_IN", window.__communityStabilitySession);
         window.dispatchEvent(new Event("blur"));
         document.dispatchEvent(new Event("visibilitychange"));
         window.dispatchEvent(new Event("focus"));
@@ -194,6 +211,7 @@ async function run() {
       shellProbe: document.querySelector(".hiring-feed-shell")?.dataset.shellProbe || "",
       feedProbe: document.querySelector(".hiring-feed")?.dataset.feedProbe || "",
       composerProbe: document.querySelector(".hiring-composer")?.dataset.composerProbe || "",
+      queryCount: window.__communityStabilityQueryCount,
       layout: (() => {
         const post = document.querySelector(".hiring-post");
         const rect = (selector) => {
@@ -242,6 +260,9 @@ async function run() {
     }
     if (after.postCount !== before.postCount) {
       throw new Error(`Community posts changed during visual stability check: ${before.postCount} -> ${after.postCount}`);
+    }
+    if (after.queryCount !== before.queryCount) {
+      throw new Error(`Community refetched on same-user auth wake: ${before.queryCount} -> ${after.queryCount}`);
     }
     if (after.shellProbe !== "keep" || after.feedProbe !== "keep" || after.composerProbe !== "keep") {
       throw new Error(`Community shell remounted after focus recovery: ${JSON.stringify({ shell: after.shellProbe, feed: after.feedProbe, composer: after.composerProbe })}`);

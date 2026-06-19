@@ -10895,7 +10895,21 @@ function registerAuthStateListener() {
       .catch(() => {})
       .then(async () => {
         const oldUserId = appState.authUser?.id || null;
+        const nextUserId = session?.user?.id || null;
+        const sameUser = Boolean(oldUserId && oldUserId === nextUserId);
+        const isPassiveSessionWake = sameUser && (
+          event === "TOKEN_REFRESHED"
+          || (event === "SIGNED_IN" && !hasOAuthRedirectIntent())
+        );
         debugAuth("auth_state_change", { event, session });
+        if (isPassiveSessionWake) {
+          appState.authSession = session;
+          appState.authUser = session.user;
+          appState.authReady = true;
+          appState.authLoading = false;
+          syncAccountUi();
+          return;
+        }
         await applySession(session || null, {
           source: event,
           touchLogin: event === "SIGNED_IN",
@@ -10911,9 +10925,8 @@ function registerAuthStateListener() {
           redirectAfterLogin();
           return;
         }
-        const sameUser = oldUserId === (appState.authUser?.id || null);
         const keepCommunityStable = currentRoute() === COMMUNITY_ROUTE
-          && sameUser
+          && oldUserId === (appState.authUser?.id || null)
           && event !== "SIGNED_IN"
           && event !== "SIGNED_OUT"
           && Boolean(document.querySelector(".hiring-page"));

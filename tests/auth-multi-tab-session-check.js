@@ -309,7 +309,12 @@ async function run() {
     console.warn("ANSEND_E2E_EMAIL/PASSWORD not set; running multi-tab auth against local Supabase Auth mock.");
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+      : {}),
+  });
   const context = await browser.newContext({ baseURL });
 
   try {
