@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120" role="img" aria-labelledby="title">
+  <title id="title">Boleto</title>
+  <rect width="220" height="120" rx="14" fill="#f8fafc"/>
+  <rect x="16" y="18" width="188" height="84" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <path fill="#0f172a" d="M28 32h5v56h-5zM38 32h2v56h-2zM45 32h7v56h-7zM58 32h3v56h-3zM67 32h9v56h-9zM82 32h2v56h-2zM90 32h5v56h-5zM101 32h2v56h-2zM109 32h8v56h-8zM123 32h3v56h-3zM132 32h6v56h-6zM145 32h2v56h-2zM153 32h9v56h-9zM168 32h4v56h-4zM178 32h2v56h-2zM187 32h5v56h-5z"/>
+  <text x="28" y="108" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800">boleto</text>
+</svg>

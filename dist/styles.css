@@ -10218,8 +10218,12 @@ body.modal-open {
   gap: 7px;
 }
 
+.payment-brand img,
 .payment-brand svg {
   flex: 0 0 auto;
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .payment-brand strong {
@@ -10228,9 +10232,10 @@ body.modal-open {
   line-height: 1;
 }
 
+.payment-brand-pix img,
 .payment-brand-pix svg {
-  width: 30px;
-  height: 30px;
+  width: 78px;
+  height: 28px;
 }
 
 .payment-brand-pix strong {
@@ -10240,9 +10245,10 @@ body.modal-open {
   letter-spacing: .02em;
 }
 
+.payment-brand-mp img,
 .payment-brand-mp svg {
-  width: 44px;
-  height: 30px;
+  width: 118px;
+  height: 42px;
 }
 
 .payment-brand-mp strong {
@@ -10254,6 +10260,14 @@ body.modal-open {
 
 .payment-brand-mp strong span {
   color: #23b7e8;
+}
+
+.payment-brand-card img,
+.payment-brand-boleto img,
+.payment-brand-debit img {
+  width: 76px;
+  height: 42px;
+  border-radius: 6px;
 }
 
 .checkout-method-card strong,

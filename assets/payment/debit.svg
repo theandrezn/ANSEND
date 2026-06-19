@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120" role="img" aria-labelledby="title">
+  <title id="title">Débito</title>
+  <rect x="18" y="24" width="184" height="72" rx="14" fill="#0f766e"/>
+  <path fill="#14b8a6" d="M18 72h184v10c0 7.7-6.3 14-14 14H32c-7.7 0-14-6.3-14-14V72Z"/>
+  <rect x="34" y="42" width="32" height="22" rx="4" fill="#f8fafc"/>
+  <rect x="78" y="50" width="52" height="8" rx="4" fill="#ccfbf1"/>
+  <rect x="78" y="66" width="80" height="8" rx="4" fill="#99f6e4"/>
+  <text x="34" y="88" fill="#f8fafc" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800">débito</text>
+</svg>

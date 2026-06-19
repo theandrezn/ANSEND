@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120" role="img" aria-labelledby="title">
+  <title id="title">Cartão</title>
+  <rect x="16" y="22" width="188" height="76" rx="14" fill="#111827"/>
+  <rect x="16" y="42" width="188" height="14" fill="#374151"/>
+  <rect x="32" y="68" width="54" height="10" rx="5" fill="#e5e7eb"/>
+  <rect x="32" y="82" width="84" height="8" rx="4" fill="#9ca3af"/>
+  <text x="137" y="80" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900">VISA</text>
+  <circle cx="154" cy="38" r="14" fill="#eb001b" opacity=".92"/>
+  <circle cx="172" cy="38" r="14" fill="#f79e1b" opacity=".92"/>
+</svg>
