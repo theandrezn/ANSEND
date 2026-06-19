@@ -160,6 +160,9 @@ async function run() {
 
     await page.evaluate(() => {
       document.querySelector(".hiring-page").dataset.stabilityProbe = "keep";
+      document.querySelector(".hiring-feed-shell").dataset.shellProbe = "keep";
+      document.querySelector(".hiring-feed").dataset.feedProbe = "keep";
+      document.querySelector(".hiring-composer")?.setAttribute("data-composer-probe", "keep");
       window.scrollTo(0, 220);
     });
     await page.waitForTimeout(650);
@@ -171,8 +174,14 @@ async function run() {
       animations: document.querySelector(".hiring-feed-shell")?.getAnimations?.().length || 0,
     }));
 
-    await page.evaluate(() => {
-      window.__communityStabilityAuthCallback?.("TOKEN_REFRESHED", window.__communityStabilitySession);
+    await page.evaluate(async () => {
+      for (let index = 0; index < 10; index += 1) {
+        window.__communityStabilityAuthCallback?.("TOKEN_REFRESHED", window.__communityStabilitySession);
+        window.dispatchEvent(new Event("blur"));
+        document.dispatchEvent(new Event("visibilitychange"));
+        window.dispatchEvent(new Event("focus"));
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
     });
     await page.waitForTimeout(900);
 
@@ -182,6 +191,9 @@ async function run() {
       entering: document.body.classList.contains("community-route-enter"),
       postCount: document.querySelectorAll(".hiring-post").length,
       animations: document.querySelector(".hiring-feed-shell")?.getAnimations?.().length || 0,
+      shellProbe: document.querySelector(".hiring-feed-shell")?.dataset.shellProbe || "",
+      feedProbe: document.querySelector(".hiring-feed")?.dataset.feedProbe || "",
+      composerProbe: document.querySelector(".hiring-composer")?.dataset.composerProbe || "",
       layout: (() => {
         const post = document.querySelector(".hiring-post");
         const rect = (selector) => {
@@ -231,6 +243,85 @@ async function run() {
     if (after.postCount !== before.postCount) {
       throw new Error(`Community posts changed during visual stability check: ${before.postCount} -> ${after.postCount}`);
     }
+    if (after.shellProbe !== "keep" || after.feedProbe !== "keep" || after.composerProbe !== "keep") {
+      throw new Error(`Community shell remounted after focus recovery: ${JSON.stringify({ shell: after.shellProbe, feed: after.feedProbe, composer: after.composerProbe })}`);
+    }
+
+    const menuMetrics = await page.evaluate(async () => {
+      const pageNode = document.querySelector(".hiring-page");
+      const shellNode = document.querySelector(".hiring-feed-shell");
+      const feedNode = document.querySelector(".hiring-feed");
+      const firstPost = document.querySelector(".hiring-post");
+      firstPost.dataset.postProbe = "keep";
+      const button = firstPost.querySelector("[data-action='hiring-menu-toggle']");
+      const click = (node) => node.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      click(button);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const open = {
+        pageProbe: pageNode.dataset.stabilityProbe || "",
+        shellProbe: shellNode.dataset.shellProbe || "",
+        feedProbe: feedNode.dataset.feedProbe || "",
+        postProbe: firstPost.dataset.postProbe || "",
+        menuOpen: Boolean(firstPost.querySelector(".hiring-post-menu")),
+        entering: document.body.classList.contains("community-route-enter"),
+      };
+      click(button);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return {
+        ...open,
+        menuClosed: !firstPost.querySelector(".hiring-post-menu"),
+        postCount: document.querySelectorAll(".hiring-post").length,
+      };
+    });
+    if (
+      menuMetrics.pageProbe !== "keep"
+      || menuMetrics.shellProbe !== "keep"
+      || menuMetrics.feedProbe !== "keep"
+      || menuMetrics.postProbe !== "keep"
+      || !menuMetrics.menuOpen
+      || !menuMetrics.menuClosed
+      || menuMetrics.entering
+      || menuMetrics.postCount !== before.postCount
+    ) {
+      throw new Error(`Community menu toggle caused a remount or visual refresh: ${JSON.stringify(menuMetrics)}`);
+    }
+
+    const tabMetrics = await page.evaluate(async () => {
+      const pageNode = document.querySelector(".hiring-page");
+      const shellNode = document.querySelector(".hiring-feed-shell");
+      const feedNode = document.querySelector(".hiring-feed");
+      const composerNode = document.querySelector(".hiring-composer");
+      const tabs = [...document.querySelectorAll("[data-action='hiring-tab']")];
+      for (let index = 0; index < 9; index += 1) {
+        const tab = tabs[index % tabs.length];
+        tab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        await new Promise((resolve) => setTimeout(resolve, 35));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      return {
+        pageProbe: pageNode?.dataset.stabilityProbe || "",
+        shellProbe: shellNode?.dataset.shellProbe || "",
+        feedProbe: feedNode?.dataset.feedProbe || "",
+        composerProbe: composerNode?.dataset.composerProbe || "",
+        entering: document.body.classList.contains("community-route-enter"),
+        skeletonVisible: Boolean(document.querySelector(".hiring-skeleton")),
+        scrollY: window.scrollY,
+        activeTabs: document.querySelectorAll(".hiring-tabs .is-active").length,
+      };
+    });
+    if (
+      tabMetrics.pageProbe !== "keep"
+      || tabMetrics.shellProbe !== "keep"
+      || tabMetrics.feedProbe !== "keep"
+      || tabMetrics.composerProbe !== "keep"
+      || tabMetrics.entering
+      || tabMetrics.skeletonVisible
+      || tabMetrics.activeTabs !== 1
+      || Math.abs(tabMetrics.scrollY - after.scrollY) > 2
+    ) {
+      throw new Error(`Community tabs caused remount, skeleton, animation or scroll jump: ${JSON.stringify(tabMetrics)}`);
+    }
+
     if (
       after.layout.avatar?.width !== 40
       || after.layout.avatar?.height !== 40

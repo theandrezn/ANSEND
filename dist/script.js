@@ -6138,7 +6138,7 @@ async function handleCommunityChatAction({ postId, action = "interest" } = {}) {
   const actionKey = `${postId}:${action}`;
   if (appState.chat.pendingActions[actionKey]) return "";
   appState.chat.pendingActions[actionKey] = true;
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
   try {
     if (action === "interest") {
       const { error: interestError } = await supabaseClient
@@ -6170,7 +6170,7 @@ async function handleCommunityChatAction({ postId, action = "interest" } = {}) {
     return "";
   } finally {
     delete appState.chat.pendingActions[actionKey];
-    if (currentRoute() === COMMUNITY_ROUTE) renderHiringPage({ force: false });
+    if (currentRoute() === COMMUNITY_ROUTE) updateHiringFeedOnly();
   }
 }
 
@@ -7048,16 +7048,25 @@ async function queryHiringPosts(detailId = hiringDetailIdFromHash()) {
   return posts;
 }
 
-async function loadHiringPosts({ force = false, render = false } = {}) {
+async function loadHiringPosts({ force = false, render = false, silent = false } = {}) {
   const detailId = hiringDetailIdFromHash();
   const key = hiringCacheKey(detailId);
   const cached = readHiringCache(key);
+  const renderLoadedPosts = () => {
+    if (!render) return;
+    if (silent) {
+      updateHiringFeedOnly();
+      updateHiringRightRailOnly();
+    } else {
+      updateHiringBlocks();
+    }
+  };
   if (!supabaseClient) {
     appState.hiring.posts = [];
     appState.hiring.error = "";
     appState.hiring.loading = false;
     appState.hiring.lastLoadedAt = Date.now();
-    if (render) updateHiringBlocks();
+    renderLoadedPosts();
     return [];
   }
   if (!force && cached) {
@@ -7068,14 +7077,15 @@ async function loadHiringPosts({ force = false, render = false } = {}) {
     appState.hiring.error = "";
     appState.hiring.loading = false;
     appState.hiring.lastLoadedAt = cached.updatedAt;
-    if (render) updateHiringBlocks();
+    renderLoadedPosts();
     if (Date.now() - cached.updatedAt < 12000) return appState.hiring.posts;
   }
 
   const requestId = ++appState.hiring.activeRequestId;
-  appState.hiring.loading = true;
+  const hasVisiblePosts = appState.hiring.posts.length > 0;
+  appState.hiring.loading = !silent && !hasVisiblePosts;
   appState.hiring.error = "";
-  if (render) updateHiringBlocks();
+  if (render && !silent && !hasVisiblePosts) updateHiringBlocks();
 
   try {
     const posts = await queryHiringPosts(detailId);
@@ -7110,7 +7120,7 @@ async function loadHiringPosts({ force = false, render = false } = {}) {
   } finally {
     if (requestId === appState.hiring.activeRequestId) {
       appState.hiring.loading = false;
-      if (render) updateHiringBlocks();
+      renderLoadedPosts();
       if (perfEnabled() && appState.hiring.routeStartedAt) {
         console.info(`[PERF] Community fully interactive: ${Math.round(performance.now() - appState.hiring.routeStartedAt)}ms`);
       }
@@ -7890,7 +7900,7 @@ function hiringPostCardMarkup(post, { detail = false } = {}) {
         <small>${htmlEscape(author.roleLabel || "Profissional da musica")}</small>
       </div>
       <div class="hiring-post-menu-wrap">
-        <button type="button" class="hiring-icon-btn" data-action="hiring-menu-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Mais opcoes"><i data-lucide="more-horizontal"></i></button>
+        <button type="button" class="hiring-icon-btn" data-action="hiring-menu-toggle" data-post-id="${htmlEscape(post.id)}" aria-label="Mais opcoes" aria-expanded="${appState.hiring.openMenuPostId === post.id ? "true" : "false"}"><i data-lucide="more-horizontal"></i></button>
         ${hiringPostMenuMarkup(post, Boolean(isOwner))}
       </div>
     </header>
@@ -7995,6 +8005,83 @@ function updateHiringBlocks() {
   hydrateView();
 }
 
+function updateHiringFeedOnly() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  const feed = document.querySelector(".hiring-feed");
+  if (!feed) return;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const previousHeight = Math.max(Number(feed.dataset.stableMinHeight || 0), feed.getBoundingClientRect().height);
+  if (previousHeight > 0) {
+    feed.dataset.stableMinHeight = String(Math.ceil(previousHeight));
+    feed.style.minHeight = `${Math.ceil(previousHeight)}px`;
+  }
+  feed.innerHTML = hiringFeedMarkup();
+  hydrateView();
+  window.scrollTo(scrollX, scrollY);
+}
+
+function updateHiringRightRailOnly() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  const rail = document.querySelector(".hiring-right-rail");
+  if (!rail) return;
+  rail.innerHTML = hiringRightRailMarkup().replace(/^<aside\b[^>]*>|<\/aside>$/g, "");
+  hydrateView();
+}
+
+function updateHiringTabsUi() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  document.querySelectorAll(".hiring-tabs [data-action='hiring-tab']").forEach((button) => {
+    const active = button.dataset.tab === appState.hiring.activeTab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function updateHiringFilterControls() {
+  if (currentRoute() !== COMMUNITY_ROUTE) return;
+  document.querySelectorAll("[data-action='hiring-filter']").forEach((control) => {
+    const key = control.dataset.filter;
+    if (key && Object.prototype.hasOwnProperty.call(appState.hiring.filters, key)) {
+      control.value = appState.hiring.filters[key];
+    }
+  });
+  document.querySelectorAll("[data-action='hiring-filter-chip'][data-filter-payload]").forEach((button) => {
+    try {
+      const payload = JSON.parse(button.dataset.filterPayload || "{}");
+      const active = Object.entries(payload).every(([key, value]) => appState.hiring.filters?.[key] === value);
+      button.classList.toggle("is-active", active);
+    } catch {
+      button.classList.remove("is-active");
+    }
+  });
+}
+
+function updateHiringPostMenu(postId) {
+  if (!postId || currentRoute() !== COMMUNITY_ROUTE) return;
+  const post = appState.hiring.posts.find((item) => item.id === postId);
+  const article = document.querySelector(`.hiring-post[data-post-id="${cssEscape(postId)}"]`);
+  const wrap = article?.querySelector(".hiring-post-menu-wrap");
+  if (!wrap) return;
+  const isOpen = appState.hiring.openMenuPostId === postId;
+  const button = wrap.querySelector("[data-action='hiring-menu-toggle']");
+  button?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  wrap.querySelector(".hiring-post-menu")?.remove();
+  if (post && isOpen) {
+    wrap.insertAdjacentHTML("beforeend", hiringPostMenuMarkup(post, appState.authUser?.id === post.user_id));
+  }
+  hydrateView();
+}
+
+function updateHiringOpenMenus(previousPostId = "", nextPostId = appState.hiring.openMenuPostId) {
+  if (previousPostId && previousPostId !== nextPostId) updateHiringPostMenu(previousPostId);
+  if (nextPostId) updateHiringPostMenu(nextPostId);
+}
+
+function refreshHiringPostsSilently({ force = false } = {}) {
+  loadHiringPosts({ force, render: true, silent: true });
+}
+
 async function renderHiringPage(options = {}) {
   const stop = perfStart("Community route mounted");
   appState.hiring.routeStartedAt = performance.now();
@@ -8038,7 +8125,7 @@ async function renderHiringPage(options = {}) {
   hydrateView();
   stop();
   loadCommunityPromotedAd({ render: true });
-  loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true });
+  loadHiringPosts({ force: Boolean(options.force || detailId || !cached), render: true, silent: Boolean(cached || appState.hiring.posts.length) });
 }
 
 async function uploadHiringDraftAttachments(form) {
@@ -8140,7 +8227,8 @@ async function submitHiringPost(form) {
     appState.hiring.posts = [{ ...data, metrics: {}, viewer: {} }, ...appState.hiring.posts.filter((post) => post.id !== data.id)];
     await loadHiringEngagement(appState.hiring.posts);
     showToast("Publicacao criada na Comunidade ANSEND", "messages-square");
-    renderHiringPage({ force: false });
+    updateHiringFeedOnly();
+    updateHiringRightRailOnly();
   } catch (error) {
     console.warn("[ANSEND community] post insert failed", error?.message || error);
     showToast(error.message || "Nao foi possivel publicar na comunidade.", "triangle-alert");
@@ -8171,7 +8259,7 @@ async function toggleHiringAction(kind, postId) {
   invalidateHiringCache();
   post.viewer[viewerKey] = !isActive;
   post.metrics[metricKey] = Math.max(0, Number(post.metrics[metricKey] || 0) + (isActive ? -1 : 1));
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
 }
 
 async function sendHiringInterest(postId) {
@@ -8213,7 +8301,7 @@ async function submitHiringProposal(form) {
   post.metrics.proposals = Number(post.metrics.proposals || 0) + 1;
   closeModal();
   showToast("Proposta enviada", "send");
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
 }
 
 async function submitHiringComment(form) {
@@ -8231,7 +8319,7 @@ async function submitHiringComment(form) {
   const post = appState.hiring.posts.find((item) => item.id === postId);
   if (post) post.metrics.comments = Number(post.metrics.comments || 0) + 1;
   form.reset();
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
 }
 
 async function deleteHiringComment(commentId) {
@@ -8245,7 +8333,7 @@ async function deleteHiringComment(commentId) {
   Object.keys(appState.hiring.comments).forEach((postId) => {
     appState.hiring.comments[postId] = appState.hiring.comments[postId].filter((comment) => comment.id !== commentId);
   });
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
 }
 
 async function voteHiringPoll(postId, optionIndex) {
@@ -8263,7 +8351,7 @@ async function voteHiringPoll(postId, optionIndex) {
   }
   invalidateHiringCache();
   appState.hiring.pollVotes[postId] = [...(appState.hiring.pollVotes[postId] || []).filter((vote) => vote.user_id !== appState.authUser.id), data];
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
 }
 
 async function reportHiringPost(postId) {
@@ -8279,7 +8367,7 @@ async function reportHiringPost(postId) {
   }
   appState.hiring.openMenuPostId = "";
   showToast("Denuncia registrada.", "flag");
-  renderHiringPage({ force: false });
+  updateHiringPostMenu(postId);
 }
 
 async function deleteHiringPost(postId) {
@@ -8307,7 +8395,8 @@ async function deleteHiringPost(postId) {
   delete appState.hiring.pollVotes[postId];
   appState.hiring.openMenuPostId = "";
   showToast("Publicacao excluida.", "trash-2");
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
+  updateHiringRightRailOnly();
 }
 
 function openHiringEditModal(postId) {
@@ -8358,7 +8447,8 @@ async function submitHiringEdit(form) {
   appState.hiring.posts = appState.hiring.posts.map((item) => item.id === postId ? { ...item, ...data, metrics: item.metrics, viewer: item.viewer } : item);
   closeModal();
   showToast("Publicacao atualizada.", "badge-check");
-  renderHiringPage({ force: false });
+  updateHiringFeedOnly();
+  updateHiringRightRailOnly();
 }
 
 async function openHiringChat(postId) {
@@ -17937,14 +18027,18 @@ document.addEventListener("click", (event) => {
   if (action?.startsWith("hiring-")) {
     const postId = target.dataset.postId || target.closest("[data-post-id]")?.dataset.postId || "";
     if (action === "hiring-tab") {
-      appState.hiring.activeTab = target.dataset.tab || "for-you";
+      const nextTab = target.dataset.tab || "for-you";
+      if (appState.hiring.activeTab === nextTab) return;
+      appState.hiring.activeTab = nextTab;
+      appState.hiring.openMenuPostId = "";
       appState.hiring.lastLoadedAt = 0;
-      renderHiringPage({ force: true });
+      updateHiringTabsUi();
+      refreshHiringPostsSilently({ force: false });
       return;
     }
     if (action === "hiring-refresh") {
       appState.hiring.lastLoadedAt = 0;
-      renderHiringPage({ force: true });
+      refreshHiringPostsSilently({ force: true });
       return;
     }
     if (action === "hiring-focus-composer") {
@@ -17969,7 +18063,8 @@ document.addEventListener("click", (event) => {
         const payload = JSON.parse(target.dataset.filterPayload || "{}");
         appState.hiring.filters = { ...appState.hiring.filters, ...payload };
         appState.hiring.lastLoadedAt = 0;
-        renderHiringPage({ force: true });
+        updateHiringFilterControls();
+        refreshHiringPostsSilently({ force: true });
       } catch (error) {
         console.error("[ANSEND hiring] invalid filter chip", error);
       }
@@ -18015,20 +18110,33 @@ document.addEventListener("click", (event) => {
       return;
     }
     if (action === "hiring-menu-toggle") {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousPostId = appState.hiring.openMenuPostId;
       appState.hiring.openMenuPostId = appState.hiring.openMenuPostId === postId ? "" : postId;
-      renderHiringPage({ force: false });
+      updateHiringOpenMenus(previousPostId, appState.hiring.openMenuPostId);
       return;
     }
     if (action === "hiring-edit") {
+      event.preventDefault();
+      event.stopPropagation();
       appState.hiring.openMenuPostId = "";
+      updateHiringPostMenu(postId);
       openHiringEditModal(postId);
       return;
     }
     if (action === "hiring-delete") {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousPostId = appState.hiring.openMenuPostId;
+      appState.hiring.openMenuPostId = "";
+      updateHiringOpenMenus(previousPostId, "");
       deleteHiringPost(postId);
       return;
     }
     if (action === "hiring-report") {
+      event.preventDefault();
+      event.stopPropagation();
       reportHiringPost(postId);
       return;
     }
@@ -18828,7 +18936,8 @@ document.addEventListener("change", (event) => {
     const key = hiringFilter.dataset.filter;
     if (key) appState.hiring.filters[key] = hiringFilter.value;
     appState.hiring.lastLoadedAt = 0;
-    renderHiringPage({ force: true });
+    updateHiringFilterControls();
+    refreshHiringPostsSilently({ force: true });
     return;
   }
   const profileFileInput = event.target.closest(".profile-editor-file");
@@ -19030,7 +19139,10 @@ document.addEventListener("input", (event) => {
   if (hiringFilterInput) {
     appState.hiring.filters.budget = hiringFilterInput.value;
     window.clearTimeout(appState.hiring.filterTimer);
-    appState.hiring.filterTimer = window.setTimeout(() => renderHiringPage({ force: true }), 350);
+    appState.hiring.filterTimer = window.setTimeout(() => {
+      updateHiringFilterControls();
+      refreshHiringPostsSilently({ force: true });
+    }, 350);
     return;
   }
   if (input.closest(".profile-editor-shell")) {
