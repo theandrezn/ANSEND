@@ -31489,7 +31489,7 @@ body[data-route="nexo-feed"] .nexo-feed-copy p {
   }
 
   body[data-route="nexo-feed"] .nexo-feed-copy h2 {
-    font-size: clamp(2rem, 8vw, 2.375rem) !important;
+    font-size: clamp(1.5rem, 5.5vw, 1.875rem) !important;
     line-height: 1.0 !important;
     font-weight: 700 !important;
     letter-spacing: -0.025em !important;
