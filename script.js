@@ -16560,7 +16560,7 @@ function pauseYouTubeBeat({ quiet = false } = {}) {
 }
 
 function applyPlayerAudioSettings() {
-  const audio = topBeatAudio();
+  const audio = ensureGlobalPlayerAudio();
   if (!Number.isFinite(appState.player.volume)) appState.player.volume = .82;
   if (!Number.isFinite(appState.player.speed)) appState.player.speed = 1;
   if (!Number.isFinite(appState.player.pitch)) appState.player.pitch = 0;
@@ -16760,6 +16760,72 @@ function topBeatAudio() {
   return document.querySelector("#topBeatAudio");
 }
 
+function logPlayerAudioTrace(beat, audio, label = "trace") {
+  console.log("[ANSEND player]", label, {
+    beatId: beat?.id,
+    source: beat?.audioUrl || beat?.audio_url || beat?.audio || "",
+    currentSrc: audio?.currentSrc || audio?.src || "",
+    paused: audio?.paused,
+    readyState: audio?.readyState,
+    networkState: audio?.networkState,
+  });
+}
+
+function ensureGlobalPlayerAudio() {
+  const audios = [...document.querySelectorAll("#topBeatAudio")];
+  const audio = audios[0] || null;
+  audios.slice(1).forEach((duplicate) => {
+    duplicate.pause?.();
+    duplicate.remove();
+  });
+  if (!audio) console.error("[ANSEND player] missing stable #topBeatAudio instance");
+  return audio;
+}
+
+function syncAudioElementState(eventType = "") {
+  const audio = ensureGlobalPlayerAudio();
+  if (!audio || isCurrentYoutubeSource()) return;
+  const current = currentPlayingBeat();
+  const meta = {
+    duration: Number(audio.duration) || Number(appState.player.duration) || 0,
+    currentTime: Number(audio.currentTime) || Number(appState.player.currentTime) || 0,
+  };
+  if (eventType === "playing") {
+    PlayerStore.setStatus("playing", meta);
+    setTopBeatPlaying(true);
+    return;
+  }
+  if (eventType === "play" || eventType === "waiting") {
+    updateMiniProgress();
+    return;
+  }
+  if (eventType === "pause") {
+    if (appState.player.status === "ended" || isAudioPauseEventSuppressed()) return;
+    PlayerStore.setStatus("paused", meta);
+    setTopBeatPlaying(false);
+    return;
+  }
+  if (eventType === "ended") {
+    PlayerStore.setStatus("ended", { duration: meta.duration, currentTime: meta.duration });
+    setTopBeatPlaying(false);
+    return;
+  }
+  if (eventType === "error") {
+    const error = audio.error;
+    console.error("[ANSEND player] audio element error", {
+      beatId: current?.id,
+      source: current?.audio_url || "",
+      currentSrc: audio.currentSrc || audio.src,
+      code: error?.code,
+      message: error?.message,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+    });
+    PlayerStore.setStatus("error", { ...meta, error: "Nao foi possivel reproduzir este beat" });
+    setTopBeatPlaying(false);
+  }
+}
+
 async function playYouTubeBeat(item, { quiet = false } = {}) {
   const requestId = nextPlayerPlaybackRequest();
   const beat = normalizePlayerBeat(item);
@@ -16861,19 +16927,13 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
   const beat = normalizePlayerBeat(item);
   if (!beat) return false;
 
-  console.log("[ANSEND player] playBeat called", {
-    beatId: beat.id,
-    source: beat.audio_url,
-    sourceType: beat.source_type,
-    youtubeVideoId: beat.youtube_video_id || "",
-  });
-
   if (beat.source_type === "youtube") {
     return playYouTubeBeat(beat, { quiet });
   }
-  const audio = topBeatAudio();
+  const audio = ensureGlobalPlayerAudio();
   if (!audio) return false;
   const audioUrl = beat.audio_url || "";
+  logPlayerAudioTrace(beat, audio, "playBeat click");
 
   if (!audioUrl) {
     const message = "Não foi possível reproduzir este beat";
@@ -16886,16 +16946,23 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
 
   pauseYouTubeBeat({ quiet: true });
   suppressUpcomingAudioPauseEvents();
-  audio.pause();
-  PlayerStore.setCurrent(beat, { status: "loading" });
-  updateMiniPlayer(beat);
-
-  const currentUrl = audio.src ? new URL(audio.src, window.location.href).href : "";
+  const currentUrl = audio.currentSrc || audio.src ? new URL(audio.currentSrc || audio.src, window.location.href).href : "";
   const targetUrl = new URL(audioUrl, window.location.href).href;
+  const isSameLoadedBeat = String(appState.playing || "") === String(beat.id || "") && currentUrl === targetUrl;
+  if (!isSameLoadedBeat && !audio.paused) audio.pause();
+  PlayerStore.setCurrent(beat, { status: "paused" });
+  updateMiniPlayer(beat);
   if (currentUrl !== targetUrl) {
-    audio.src = audioUrl;
+    audio.src = targetUrl;
     audio.load();
+  } else if (!isSameLoadedBeat) {
+    audio.currentTime = 0;
   }
+  audio.muted = false;
+  if (!Number.isFinite(appState.player.volume) || appState.player.volume <= 0) appState.player.volume = .82;
+  applyPlayerAudioSettings();
+  showMiniPlayer();
+  logPlayerAudioTrace(beat, audio, "before audio.play");
 
   try {
     await audio.play();
@@ -16913,7 +16980,6 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
       networkState: audio.networkState,
     });
 
-    showMiniPlayer();
     PlayerStore.setStatus("playing", {
       duration: Number(audio.duration) || 0,
       currentTime: Number(audio.currentTime) || 0,
@@ -16923,7 +16989,7 @@ async function playBeat(item, { quiet = false, suppressErrorLog = false } = {}) 
     return true;
   } catch (error) {
     if (!isCurrentPlaybackRequest(requestId)) return false;
-    if (!suppressErrorLog) console.error("[ANSEND player] upload playback error", { error, beat, audioSrc: audio.src, readyState: audio.readyState, networkState: audio.networkState });
+    if (!suppressErrorLog) console.error("[ANSEND player] upload playback error", { error, beat, audioSrc: audio.src, currentSrc: audio.currentSrc, readyState: audio.readyState, networkState: audio.networkState, muted: audio.muted, volume: audio.volume });
     const message = "Não foi possível reproduzir este beat";
     PlayerStore.setStatus("error", { error: message });
     setTopBeatPlaying(false);
@@ -17011,30 +17077,19 @@ function playBeatByOffset(offset) {
 }
 
 window.addEventListener("load", () => {
-  topBeatAudio()?.addEventListener("ended", () => {
-    const audio = topBeatAudio();
-    PlayerStore.setStatus("ended", {
-      duration: Number(audio?.duration) || 0,
-      currentTime: Number(audio?.duration) || 0,
-    });
-    setTopBeatPlaying(false);
-  });
-  topBeatAudio()?.addEventListener("pause", () => {
-    if (isCurrentYoutubeSource() || appState.player.status === "ended") return;
-    if (isAudioPauseEventSuppressed()) return;
-    const audio = topBeatAudio();
-    PlayerStore.setStatus("paused", {
-      duration: Number(audio?.duration) || 0,
-      currentTime: Number(audio?.currentTime) || 0,
-    });
-    setTopBeatPlaying(false);
-  });
-  topBeatAudio()?.addEventListener("timeupdate", updateMiniProgress);
-  topBeatAudio()?.addEventListener("loadedmetadata", () => {
-    const audio = topBeatAudio();
+  const audio = ensureGlobalPlayerAudio();
+  audio?.addEventListener("play", () => syncAudioElementState("play"));
+  audio?.addEventListener("playing", () => syncAudioElementState("playing"));
+  audio?.addEventListener("waiting", () => syncAudioElementState("waiting"));
+  audio?.addEventListener("pause", () => syncAudioElementState("pause"));
+  audio?.addEventListener("ended", () => syncAudioElementState("ended"));
+  audio?.addEventListener("error", () => syncAudioElementState("error"));
+  audio?.addEventListener("timeupdate", updateMiniProgress);
+  audio?.addEventListener("loadedmetadata", () => {
+    const currentAudio = topBeatAudio();
     PlayerStore.setStatus(appState.player.status, {
-      duration: Number(audio?.duration) || 0,
-      currentTime: Number(audio?.currentTime) || 0,
+      duration: Number(currentAudio?.duration) || 0,
+      currentTime: Number(currentAudio?.currentTime) || 0,
     });
     updateMiniProgress();
   });
