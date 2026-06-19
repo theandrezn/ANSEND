@@ -31807,7 +31807,7 @@ body[data-route="nexo-feed"] .nexo-feed-copy h2 {
   -webkit-box-orient: vertical !important;
   -webkit-line-clamp: 4 !important;
   color: #fff !important;
-  font-size: clamp(24px, 5.8vw, 38px) !important;
+  font-size: clamp(22px, 5vw, 34px) !important;
   line-height: 1.04 !important;
   letter-spacing: 0 !important;
   text-overflow: ellipsis !important;
@@ -31830,7 +31830,7 @@ body[data-route="nexo-feed"] .nexo-feed-copy p {
 
 @media (min-width: 821px) {
   body[data-route="nexo-feed"] .nexo-feed-copy h2 {
-    font-size: clamp(28px, 2.6vw, 38px) !important;
+    font-size: clamp(26px, 2.3vw, 34px) !important;
     line-height: 1.04 !important;
   }
 }
@@ -31844,7 +31844,7 @@ body[data-route="nexo-feed"] .nexo-feed-copy p {
   }
 
   body[data-route="nexo-feed"] .nexo-feed-copy h2 {
-    font-size: clamp(1rem, 4vw, 1.25rem) !important;
+    font-size: clamp(0.9375rem, 3.6vw, 1.125rem) !important;
     line-height: 1.08 !important;
     font-weight: 700 !important;
     letter-spacing: 0 !important;
