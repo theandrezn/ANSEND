@@ -15553,9 +15553,6 @@ async function publishCatalogImport() {
 }
 
 function renderMusicUpload(mode = appState.releaseMode || "selector") {
-  if (mode === "selector" && appState.authUser?.email === "artist@example.com") {
-    mode = "upload";
-  }
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
@@ -15570,6 +15567,22 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     lucide.createIcons();
     return;
   }
+  if (mode === "selector") {
+    appState.releaseMode = "";
+    renderReleaseModeSelector();
+    return;
+  }
+  if (mode === "youtube") {
+    appState.releaseMode = "youtube";
+    renderYouTubeBeatUpload();
+    return;
+  }
+  if (mode === "catalog") {
+    appState.releaseMode = "catalog";
+    renderCatalogImportPage();
+    return;
+  }
+  appState.releaseMode = "upload";
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const releaseProducerName = display.name || profile?.artistic_name || profile?.full_name || profile?.username || appState.authUser?.email?.split("@")[0] || "ANSEND";
@@ -16319,7 +16332,7 @@ function renderRoute() {
   if (route === "perfil-publico") renderPublicProfile();
   if (route === "cadastrar") {
     try {
-      renderMusicUpload();
+      renderMusicUpload("selector");
     } catch (err) {
       renderMusicUploadFallback(err);
     }

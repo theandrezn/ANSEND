@@ -130,8 +130,12 @@ async function run() {
     });
 
     await page.goto(`http://127.0.0.1:${server.address().port}/#cadastrar`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".release-mode-selector", { timeout: 10000 });
+    const modeChoices = await page.$$eval('[data-action="release-mode-choice"]', (buttons) => buttons.map((button) => button.dataset.mode).join(","));
+    if (modeChoices !== "upload,youtube,catalog") throw new Error(`Release mode selector must show upload, youtube, and catalog choices before the form. Got: ${modeChoices}`);
+    if (await page.locator(".release-upload-form").count()) throw new Error("Release upload form should not render before a mode is selected.");
     const uploadModeButton = page.locator('[data-action="release-mode-choice"][data-mode="upload"]').first();
-    if (await uploadModeButton.count()) await uploadModeButton.click();
+    await uploadModeButton.click();
     await page.waitForSelector(".release-upload-form", { timeout: 10000 });
 
     await page.evaluate(() => {
