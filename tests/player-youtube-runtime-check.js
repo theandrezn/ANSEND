@@ -79,6 +79,7 @@ function youtubeIframeMock() {
           this.volume = 82;
           this.state = state.UNSTARTED;
           this.getVideoData = () => ({ video_id: this.videoId });
+          this.getPlayerState = () => this.state;
           this.getDuration = () => this.duration;
           this.getCurrentTime = () => this.currentTime;
           this.setVolume = (value) => { this.volume = value; };
@@ -119,7 +120,12 @@ async function run() {
     server.listen(0, "127.0.0.1", resolve);
   });
   const port = server.address().port;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
+      : {}),
+  });
   const context = await browser.newContext({ baseURL: `http://127.0.0.1:${port}` });
 
   await context.addInitScript(() => {
@@ -175,9 +181,28 @@ async function run() {
         audioSrc: document.querySelector("#topBeatAudio")?.getAttribute("src"),
       };
 
+      const interruptedYouTubePlay = window.playBeat(youtubeBeat);
+      await Promise.resolve();
+      const youtubeImmediateState = {
+        status: appState.player.status,
+        icon: document.querySelector('[data-action="mini-play"]')?.dataset.playerIcon,
+        playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
+        loading: document.querySelector(".mini-player")?.classList.contains("is-loading"),
+      };
+      document.querySelector('[data-action="mini-play"]')?.click();
+      await interruptedYouTubePlay;
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const youtubeInterruptedState = {
+        status: appState.player.status,
+        icon: document.querySelector('[data-action="mini-play"]')?.dataset.playerIcon,
+        playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
+        loading: document.querySelector(".mini-player")?.classList.contains("is-loading"),
+      };
+
       const youtubeStarted = await window.playBeat(youtubeBeat);
       const youtubeState = {
         started: youtubeStarted,
+        status: appState.player.status,
         sourceType: document.querySelector(".mini-player")?.dataset.sourceType,
         title: document.querySelector(".mini-track strong")?.textContent,
         playing: document.querySelector(".mini-player")?.classList.contains("is-playing"),
@@ -186,15 +211,23 @@ async function run() {
       };
 
       document.querySelector('[data-action="mini-play"]')?.click();
-      const paused = !document.querySelector(".mini-player")?.classList.contains("is-playing");
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const pauseState = {
+        paused: !document.querySelector(".mini-player")?.classList.contains("is-playing"),
+        status: appState.player.status,
+        icon: document.querySelector('[data-action="mini-play"]')?.dataset.playerIcon,
+        events: window.__ytEvents.slice(),
+      };
       window.seekMiniPlayerToRatio(0.5);
       const seeked = window.__ytEvents.some((entry) => entry[0] === "seek" && entry[1] > 80 && entry[1] < 100);
       const invalidStarted = await window.playBeat({ id: "bad-youtube", source_type: "youtube", youtube_video_id: "bad" });
 
       return {
         uploadState,
+        youtubeImmediateState,
+        youtubeInterruptedState,
         youtubeState,
-        paused,
+        pauseState,
         seeked,
         invalidStarted,
         finalTitle: document.querySelector(".mini-track strong")?.textContent,
@@ -203,10 +236,12 @@ async function run() {
 
     const failures = [];
     if (!result.uploadState.started || result.uploadState.sourceType !== "upload" || !result.uploadState.playing) failures.push("upload did not play through HTMLAudioElement");
+    if (result.youtubeImmediateState.icon !== "pause" || !result.youtubeImmediateState.playing || result.youtubeImmediateState.loading) failures.push("youtube play did not switch to pause immediately");
+    if (result.youtubeInterruptedState.status !== "paused" || result.youtubeInterruptedState.icon !== "play" || result.youtubeInterruptedState.playing || result.youtubeInterruptedState.loading) failures.push("youtube pause during startup was overridden by a late callback");
     if (!result.youtubeState.started || result.youtubeState.sourceType !== "youtube" || !result.youtubeState.playing) failures.push("youtube did not play through iframe api");
     if (result.youtubeState.audioSrc) failures.push("youtube playback left an audio src on #topBeatAudio");
     if (!result.youtubeState.events.some((entry) => entry[0] === "load" && entry[1] === "dQw4w9WgXcQ")) failures.push("youtube video id was not loaded");
-    if (!result.paused) failures.push("mini player pause did not sync");
+    if (!result.pauseState.paused || result.pauseState.status !== "paused" || result.pauseState.icon !== "play") failures.push("mini player pause did not sync");
     if (!result.seeked) failures.push("youtube seek did not sync");
     if (result.invalidStarted) failures.push("invalid youtube id started playback");
     if (result.finalTitle !== "YouTube Runtime") failures.push("invalid youtube id replaced current beat unexpectedly");

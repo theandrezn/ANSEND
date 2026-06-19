@@ -87,6 +87,8 @@ async function run() {
         hidden: player?.hidden,
         active: player?.classList.contains("is-active"),
         loading: player?.classList.contains("is-loading"),
+        playing: player?.classList.contains("is-playing"),
+        playIcon: player?.querySelector('[data-action="mini-play"]')?.dataset.playerIcon,
         display: player ? getComputedStyle(player).display : "",
         controls: selectors.map((selector) => {
           const element = player?.querySelector(selector);
@@ -101,7 +103,7 @@ async function run() {
       };
     });
     const missingLoadingControls = loadingControls.controls.filter((control) => !control.exists || !control.visible || !control.hasSvg);
-    if (loadingControls.hidden || !loadingControls.active || !loadingControls.loading || loadingControls.display === "none" || missingLoadingControls.length) {
+    if (loadingControls.hidden || !loadingControls.active || loadingControls.loading || !loadingControls.playing || loadingControls.playIcon !== "pause" || loadingControls.display === "none" || missingLoadingControls.length) {
       throw new Error(`Mini player controls are not stable during loading: ${JSON.stringify({ loadingControls, missingLoadingControls })}`);
     }
     await page.evaluate(() => {

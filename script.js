@@ -17082,12 +17082,12 @@ function syncMiniPlayerState() {
   favoriteButton?.classList.toggle("is-active", appState.favorites.has(current?.id));
   loopButton?.classList.toggle("is-active", appState.player.loop);
   player.classList.toggle("is-looping", appState.player.loop);
-  player.classList.toggle("is-loading", appState.player.status === "loading");
+  const playRequested = appState.player.status === "loading" || appState.player.status === "playing";
+  player.classList.remove("is-loading");
   player.classList.toggle("has-error", appState.player.status === "error");
-  player.classList.toggle("is-playing", appState.player.status === "playing");
+  player.classList.toggle("is-playing", playRequested);
   if (miniButton) {
-    const status = appState.player.status;
-    const icon = status === "loading" && current?.id ? "loading" : status === "playing" ? "pause" : "play";
+    const icon = playRequested && current?.id ? "pause" : "play";
     setPlayerControlIcon(miniButton, icon, { label: icon === "pause" ? "Pausar" : "Tocar" });
   }
   if (volumeButton) {
