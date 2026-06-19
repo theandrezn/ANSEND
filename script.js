@@ -16483,65 +16483,130 @@ function pixLogoMarkup() {
 function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents, totalCents, prefillName, prefillEmail, termsMarkup }) {
   return `
     <form class="checkout-form" data-is-cart="${isCart ? "true" : "false"}">
-      <div class="checkout-shell">
-        <aside class="checkout-side">
-          <span><i data-lucide="shopping-cart"></i> Checkout seguro ANSEND</span>
-          <h2>Finalizar compra</h2>
-          <p>Revise os dados, confirme a licenca e gere um Pix integrado pelo Mercado Pago dentro da ANSEND.</p>
-          <div class="checkout-method">
-            <article class="checkout-method-card">
-              <div>
-                <div class="payment-brand-row">
-                  ${pixLogoMarkup()}
-                  ${mercadoPagoLogoMarkup()}
-                </div>
-                <small>Confirmacao consultada antes de liberar arquivos e contratos.</small>
-              </div>
-              <span class="checkout-pill">Ativo</span>
-            </article>
+      <div class="checkout-page checkout-shell">
+        <aside class="checkout-sidebar">
+          <div class="checkout-sidebar-inner">
+            <header class="checkout-sidebar-header">
+              <span class="checkout-heading-icon"><i data-lucide="wallet-cards"></i></span>
+              <h2>Finalizar compra</h2>
+            </header>
+
+            <div class="checkout-divider"></div>
+
+            <label class="checkout-country">
+              <span>Selecione seu pais</span>
+              <button type="button" class="checkout-country-select" aria-label="Pais selecionado: Brasil, BRL">
+                <span class="checkout-flag">BR</span>
+                <strong>Brasil - BRL</strong>
+                <i data-lucide="chevron-down"></i>
+              </button>
+            </label>
+
+            <div class="checkout-method-grid" aria-label="Formas de pagamento">
+              <button type="button" class="payment-method is-selected" aria-pressed="true">
+                ${pixLogoMarkup()}
+                <small>Instantaneo</small>
+                <i data-lucide="check" class="payment-method-check"></i>
+              </button>
+              <button type="button" class="payment-method" aria-pressed="false">
+                <i data-lucide="credit-card"></i>
+                <strong>Cartao</strong>
+                <small>Em breve</small>
+              </button>
+              <button type="button" class="payment-method" aria-pressed="false">
+                ${mercadoPagoLogoMarkup()}
+                <small>Checkout seguro</small>
+              </button>
+              <button type="button" class="payment-method" aria-pressed="false">
+                <i data-lucide="barcode"></i>
+                <strong>Boleto</strong>
+                <small>Em breve</small>
+              </button>
+              <button type="button" class="payment-method" aria-pressed="false">
+                <i data-lucide="badge-dollar-sign"></i>
+                <strong>Debito</strong>
+                <small>Em breve</small>
+              </button>
+              <button type="button" class="payment-method" aria-pressed="false">
+                <i data-lucide="ellipsis"></i>
+                <strong>Outros</strong>
+                <small>Disponivel em breve</small>
+              </button>
+            </div>
+
+            <div class="checkout-divider"></div>
+            <p class="checkout-method-note">Todos os metodos disponiveis para sua regiao aparecem aqui.</p>
           </div>
         </aside>
 
-        <section class="checkout-main">
-          <span><i data-lucide="shield-check"></i> Pagamento</span>
-          <div class="checkout-items">
-            ${itemMarkup}
+        <section class="checkout-content">
+          <div class="checkout-main-content">
+            <div class="checkout-coupon">
+              <div class="checkout-coupon-art"><i data-lucide="badge-percent"></i></div>
+              <div>
+                <span>CUPOM ANSEND</span>
+                <strong>Economize na sua compra</strong>
+              </div>
+              <label>
+                <span class="sr-only">Codigo promocional</span>
+                <input type="text" placeholder="Digite o codigo promocional">
+              </label>
+              <button type="button">Aplicar</button>
+            </div>
+
+            <div class="checkout-panel">
+              <section class="checkout-section">
+                <div class="checkout-section-title">
+                  <h3>Produto e licenca</h3>
+                  <button type="button" data-route="carrinho">Editar</button>
+                </div>
+                <div class="checkout-items">
+                  ${itemMarkup}
+                </div>
+              </section>
+
+              <section class="checkout-section">
+                <h3>Dados do comprador</h3>
+                <div class="checkout-fields">
+                  <label class="checkout-field">
+                    <span>Nome</span>
+                    <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
+                  </label>
+                  <label class="checkout-field">
+                    <span>E-mail</span>
+                    <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required>
+                  </label>
+                </div>
+              </section>
+
+              <section class="checkout-section checkout-method-content">
+                <h3>Forma de pagamento</h3>
+                <div class="checkout-method-inline">
+                  <div class="payment-brand-row">
+                    ${pixLogoMarkup()}
+                    ${mercadoPagoLogoMarkup()}
+                  </div>
+                  <p>O Pix sera gerado pelo Mercado Pago e confirmado antes de liberar arquivos e contratos.</p>
+                </div>
+              </section>
+
+              <label class="checkout-terms">
+                <input type="checkbox" name="accept_terms" required>
+                <span>${termsMarkup}</span>
+              </label>
+              <div class="checkout-error" role="alert" aria-live="polite"></div>
+            </div>
           </div>
 
-          <div class="checkout-fields">
-            <label class="checkout-field">
-              <span>Seu nome *</span>
-              <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
-            </label>
-            <label class="checkout-field">
-              <span>Seu e-mail *</span>
-              <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required>
-            </label>
-          </div>
-
-          <div class="checkout-total">
-            <div class="checkout-total-row">
-              <span>Subtotal</span>
-              <strong>${checkoutMoney(subtotalCents)}</strong>
+          <footer class="checkout-footer">
+            <div class="checkout-footer-total">
+              <strong>Total: ${checkoutMoney(totalCents)}</strong>
+              <span>${checkoutMoney(subtotalCents)} + taxa ${checkoutMoney(serviceFeeCents)}</span>
             </div>
-            <div class="checkout-total-row">
-              <span>Taxa de servico (12%)</span>
-              <strong>${checkoutMoney(serviceFeeCents)}</strong>
-            </div>
-            <div class="checkout-total-row is-final">
-              <span>Total Pix</span>
-              <strong>${checkoutMoney(totalCents)}</strong>
-            </div>
-          </div>
-
-          <label class="checkout-terms">
-            <input type="checkbox" name="accept_terms" required>
-            <span>${termsMarkup}</span>
-          </label>
-          <div class="checkout-error" role="alert" aria-live="polite"></div>
-          <button class="seller-submit" type="submit">
-            Gerar Pix agora <i data-lucide="arrow-right"></i>
-          </button>
+            <button class="seller-submit" type="submit">
+              Gerar Pix - ${checkoutMoney(totalCents)}
+            </button>
+          </footer>
         </section>
       </div>
     </form>
@@ -21280,73 +21345,100 @@ function renderMercadoPagoPixCheckout(result, context) {
   const payment = result.payment || {};
   const items = checkout.items || [];
   const itemsHtml = items.map((item) => `
-    <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--beat-border-soft);">
-      <div style="width:34px; height:34px; border-radius:6px; display:grid; place-items:center; background:#101010; border:1px solid var(--beat-border); color:#fff;">
-        <i data-lucide="music-2" style="width:16px; height:16px;"></i>
-      </div>
-      <div style="min-width:0; flex:1;">
-        <strong style="display:block; color:#fff; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${htmlEscape(item.title || "Beat ANSEND")}</strong>
-        <span style="display:block; color:var(--beat-muted); font-size:11px;">${htmlEscape(item.license_name || "Licenca")}</span>
-      </div>
-      <strong style="color:#fff; font-size:13px;">${checkoutMoney(item.price_cents)}</strong>
-    </div>
+    ${checkoutItemMarkup({
+      cover: "assets/ansend-logo-square.png",
+      title: item.title || "Beat ANSEND",
+      licenseName: item.license_name || "Licenca",
+      priceCents: item.price_cents || 0,
+    })}
   `).join("");
   const qrMarkup = pix.qr_code_base64
-    ? `<img src="data:image/png;base64,${pix.qr_code_base64}" alt="QR Code Pix Mercado Pago" style="width:210px; max-width:100%; height:auto; border-radius:8px; background:#fff; padding:10px;">`
-    : `<div style="width:210px; height:210px; display:grid; place-items:center; border-radius:8px; border:1px dashed var(--beat-border); color:var(--beat-muted); text-align:center; padding:16px;">Use o Pix copia e cola</div>`;
+    ? `<img src="data:image/png;base64,${pix.qr_code_base64}" alt="QR Code Pix Mercado Pago">`
+    : `<div class="pix-qr-placeholder">Use o Pix copia e cola</div>`;
 
   openModal(`
-    <section data-mercado-pago-pix style="display:grid; gap:18px; max-width:640px;">
-      <header style="display:flex; gap:12px; align-items:flex-start;">
-        <div style="width:42px; height:42px; border-radius:8px; display:grid; place-items:center; background:#fff; color:#020202;">
-          <i data-lucide="qr-code" style="width:22px; height:22px;"></i>
-        </div>
-        <div>
-          <span style="display:flex; align-items:center; gap:6px; color:#22c55e; font-size:11px; font-weight:800; text-transform:uppercase;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> Mercado Pago Pix</span>
-          <h2 style="font-size:22px; margin:6px 0 4px; color:#fff;">Pague com Pix para liberar a compra</h2>
-          <p data-pix-status style="font-size:12px; color:var(--beat-muted); margin:0;">Depois do pagamento, clique em verificar para liberar seus arquivos e contratos.</p>
-        </div>
-      </header>
-
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:18px; align-items:start;">
-        <div style="display:grid; gap:10px; justify-items:center; background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:14px;">
-          ${qrMarkup}
-          <strong style="color:#fff; font-size:20px;">${checkoutMoney(checkout.total_cents)}</strong>
-          <span style="font-size:11px; color:var(--beat-muted); text-align:center;">Valor detectado automaticamente pelo carrinho ANSEND</span>
-        </div>
-
-        <div style="display:grid; gap:12px;">
-          <div style="background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:12px;">
-            <div style="display:flex; justify-content:space-between; gap:12px; color:var(--beat-muted); font-size:12px;">
-              <span>Subtotal</span><span>${checkoutMoney(checkout.subtotal_cents)}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; gap:12px; color:var(--beat-muted); font-size:12px; margin-top:6px;">
-              <span>Taxa de servico</span><span>${checkoutMoney(checkout.service_fee_cents)}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; gap:12px; color:#fff; font-weight:800; font-size:14px; margin-top:10px; padding-top:10px; border-top:1px solid var(--beat-border-soft);">
-              <span>Total Pix</span><span>${checkoutMoney(checkout.total_cents)}</span>
-            </div>
-          </div>
-
-          <div style="background:#050505; border:1px solid var(--beat-border); border-radius:8px; padding:12px; max-height:150px; overflow:auto;">
-            ${itemsHtml}
-          </div>
-
-          <label style="display:grid; gap:6px;">
-            <span style="font-size:11px; color:var(--beat-muted); font-weight:800; text-transform:uppercase;">Pix copia e cola</span>
-            <textarea data-pix-code readonly rows="4" style="width:100%; resize:none; background:#050505; border:1px solid var(--beat-border); color:#fff; border-radius:6px; padding:10px; font-size:12px; line-height:1.35;">${htmlEscape(pix.qr_code || "")}</textarea>
-          </label>
-
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
-            <button type="button" class="seller-submit" data-action="copy-pix-code" style="height:42px; display:flex; justify-content:center; align-items:center; gap:7px;">
-              <i data-lucide="copy" style="width:16px; height:16px;"></i> Copiar Pix
-            </button>
-            <button type="button" class="seller-submit" data-action="check-pix-payment" style="height:42px; display:flex; justify-content:center; align-items:center; gap:7px;">
-              <i data-lucide="refresh-cw" style="width:16px; height:16px;"></i> Verificar
+    <section data-mercado-pago-pix class="pix-checkout-page checkout-page checkout-shell">
+      <aside class="checkout-sidebar">
+        <div class="checkout-sidebar-inner">
+          <header class="checkout-sidebar-header">
+            <span class="checkout-heading-icon"><i data-lucide="qr-code"></i></span>
+            <h2>Pagamento Pix</h2>
+          </header>
+          <div class="checkout-divider"></div>
+          <div class="checkout-method-grid" aria-label="Forma de pagamento selecionada">
+            <button type="button" class="payment-method is-selected" aria-pressed="true">
+              ${pixLogoMarkup()}
+              <small>Mercado Pago</small>
+              <i data-lucide="check" class="payment-method-check"></i>
             </button>
           </div>
+          <div class="checkout-divider"></div>
+          <p class="checkout-method-note" data-pix-status>Depois do pagamento, clique em verificar para liberar seus arquivos e contratos.</p>
         </div>
-      </div>
+      </aside>
+
+      <section class="checkout-content">
+        <div class="checkout-main-content">
+          <div class="checkout-coupon pix-status-banner">
+            <div class="checkout-coupon-art"><i data-lucide="shield-check"></i></div>
+            <div>
+              <span>Mercado Pago Pix</span>
+              <strong>Pague com Pix para liberar a compra</strong>
+            </div>
+          </div>
+
+          <div class="checkout-panel pix-payment-panel">
+            <section class="checkout-section pix-payment-grid">
+              <div class="pix-qr-card">
+                ${qrMarkup}
+                <strong>${checkoutMoney(checkout.total_cents)}</strong>
+                <span>Valor detectado automaticamente pelo carrinho ANSEND</span>
+              </div>
+
+              <div class="pix-payment-details">
+                <div class="checkout-total">
+                  <div class="checkout-total-row">
+                    <span>Subtotal</span>
+                    <strong>${checkoutMoney(checkout.subtotal_cents)}</strong>
+                  </div>
+                  <div class="checkout-total-row">
+                    <span>Taxa de servico</span>
+                    <strong>${checkoutMoney(checkout.service_fee_cents)}</strong>
+                  </div>
+                  <div class="checkout-total-row is-final">
+                    <span>Total Pix</span>
+                    <strong>${checkoutMoney(checkout.total_cents)}</strong>
+                  </div>
+                </div>
+
+                <div class="checkout-items">
+                  ${itemsHtml}
+                </div>
+
+                <label class="pix-copy-field">
+                  <span>Pix copia e cola</span>
+                  <textarea data-pix-code readonly rows="4">${htmlEscape(pix.qr_code || "")}</textarea>
+                </label>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <footer class="checkout-footer">
+          <div class="checkout-footer-total">
+            <strong>Total: ${checkoutMoney(checkout.total_cents)}</strong>
+            <span>Aguardando confirmacao do Mercado Pago</span>
+          </div>
+          <div class="checkout-footer-actions">
+            <button type="button" class="seller-submit" data-action="copy-pix-code">
+              <i data-lucide="copy"></i> Copiar Pix
+            </button>
+            <button type="button" class="seller-submit" data-action="check-pix-payment">
+              <i data-lucide="refresh-cw"></i> Verificar
+            </button>
+          </div>
+        </footer>
+      </section>
     </section>
   `);
 

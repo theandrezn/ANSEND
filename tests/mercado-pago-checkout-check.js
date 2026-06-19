@@ -24,7 +24,11 @@ const checks = [
   [script.includes('fetch("/api/checkout/status"'), "Frontend verifies Pix status before release"],
   [script.includes("checkoutFormMarkup"), "Frontend uses the redesigned checkout markup"],
   [script.includes("checkout-shell"), "Frontend renders checkout shell layout"],
+  [script.includes("checkout-footer"), "Frontend renders sticky checkout footer"],
+  [script.includes("checkout-method-grid"), "Frontend renders payment method grid"],
   [styles.includes(".checkout-shell"), "Styles include responsive glass checkout shell"],
+  [styles.includes(".checkout-page"), "Styles include fullscreen checkout page"],
+  [styles.includes("grid-template-columns: minmax(400px, 42%)"), "Desktop checkout uses reference-like two column split"],
   [!styles.includes(".app-modal,\n.app-modal-panel"), "Modal overlay is not constrained by max-width hardening"],
 ];
 
