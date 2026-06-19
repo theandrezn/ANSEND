@@ -31,7 +31,7 @@
       <div class="glow-blob glow-3"></div>
     </div>
 
-    <aside class="sidebar" aria-label="Navegação principal">
+    <aside class="sidebar" id="mobileNavigationDrawer" aria-label="Navegação principal">
       <!-- Topo da sidebar -->
       <div class="sidebar-header">
         <button class="sidebar-menu-toggle" type="button" aria-label="Fechar menu">
@@ -154,7 +154,7 @@
           </a>
           
           <!-- Hamburger menu (mobile only) -->
-          <button class="menu-toggle navbar-menu-toggle" type="button" aria-label="Abrir menu">
+          <button class="menu-toggle navbar-menu-toggle" type="button" aria-label="Abrir menu" aria-controls="mobileNavigationDrawer" aria-expanded="false">
             <i data-lucide="menu"></i>
           </button>
 
@@ -238,6 +238,10 @@
               </div>
             </div>
           </div>
+
+          <a class="navbar-mobile-profile" href="#perfil" data-route="perfil" aria-label="Abrir perfil">
+            <img class="navbar-mobile-avatar app-optimized-image" src="assets/ansend-logo-square.png" alt="" width="44" height="44" decoding="async" loading="eager" data-fallback-src="assets/ansend-logo-square.png" />
+          </a>
 
           <div class="navbar-auth-container">
             <button class="navbar-auth-btn" type="button" aria-expanded="false" aria-haspopup="true">
@@ -471,7 +475,7 @@
     <script src="https://unpkg.com/three@0.124.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.min.js"></script>
     <script>
-      window.ANSEND_BUILD_ID = "20260619002620-e1efa15";
+      window.ANSEND_BUILD_ID = "20260619003444-6dd8e90";
       window.ANSEND_SUPABASE = {
         url: "https://qxujynzqdursxaehchik.supabase.co",
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",

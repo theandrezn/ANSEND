@@ -282,6 +282,361 @@ body.requires-auth .seller-auth-panel {
   }
 }
 
+/* Home mobile product pass: fixes the mobile-only compressed hero/search/blur issues
+   without changing desktop sizing or layout. */
+.navbar-mobile-profile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  body[data-route="feed"] {
+    --mobile-shell-gap: clamp(10px, 3.4vw, 14px);
+    --mobile-topbar-height: 60px;
+  }
+
+  body[data-route="feed"] #appView.app-view.feed {
+    padding: 0 0 calc(104px + var(--mobile-bottom-safe)) !important;
+    overflow-x: clip !important;
+  }
+
+  body[data-route="feed"] .topbar {
+    height: 56px !important;
+    min-height: 56px !important;
+    top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    left: var(--mobile-shell-gap) !important;
+    right: var(--mobile-shell-gap) !important;
+    z-index: 3200 !important;
+  }
+
+  body[data-route="feed"] .floating-navbar {
+    height: 56px !important;
+    min-height: 56px !important;
+    grid-template-columns: minmax(74px, 1fr) 44px 44px 44px !important;
+    gap: 8px !important;
+    padding: 6px 8px !important;
+    border-radius: 18px !important;
+    background: rgba(16, 16, 16, .94) !important;
+    border-color: rgba(255, 255, 255, .09) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .42) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  body[data-route="feed"] .navbar-brand-logo {
+    min-width: 0 !important;
+    width: auto !important;
+    overflow: hidden !important;
+  }
+
+  body[data-route="feed"] .navbar-logo-wordmark,
+  body[data-route="feed"] .navbar-brand-logo img {
+    width: auto !important;
+    max-width: clamp(70px, 22vw, 92px) !important;
+    height: 24px !important;
+  }
+
+  body[data-route="feed"] .navbar-menu-toggle,
+  body[data-route="feed"] .navbar-notification-btn,
+  body[data-route="feed"] .navbar-mobile-profile {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 999px !important;
+  }
+
+  body[data-route="feed"] .navbar-menu-toggle,
+  body[data-route="feed"] .navbar-notification-btn {
+    border: 1px solid rgba(255, 255, 255, .12) !important;
+    background: rgba(255, 255, 255, .035) !important;
+  }
+
+  body[data-route="feed"] .navbar-notification-container {
+    display: block !important;
+    grid-column: 3 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  body[data-route="feed"] .navbar-notification-container[hidden] {
+    display: block !important;
+  }
+
+  body[data-route="feed"] .navbar-notification-btn {
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  body[data-route="feed"] .navbar-auth-container {
+    display: none !important;
+  }
+
+  body[data-route="feed"] .navbar-mobile-profile {
+    grid-column: 4 !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    border: 1px solid rgba(255, 255, 255, .18) !important;
+    text-decoration: none !important;
+  }
+
+  body[data-route="feed"] .navbar-mobile-avatar {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: cover !important;
+    border-radius: inherit !important;
+  }
+
+  body[data-route="feed"] .sidebar {
+    z-index: 4300 !important;
+  }
+
+  body[data-route="feed"].menu-open::before {
+    z-index: 4200 !important;
+  }
+
+  body[data-route="feed"].menu-open .nexo-button,
+  body[data-route="feed"].menu-open .nexo-floating-assistant,
+  body[data-route="feed"].menu-open #nexoFloatingAssistantRoot {
+    z-index: 2100 !important;
+  }
+
+  body[data-route="feed"] .sidebar-profile-card {
+    min-height: 64px !important;
+    align-items: center !important;
+  }
+
+  body[data-route="feed"] .sidebar-profile-info {
+    min-width: 0 !important;
+  }
+
+  body[data-route="feed"] .sidebar-lang-btn::after {
+    content: "PT / EN";
+    margin-left: auto;
+    color: rgba(255, 255, 255, .62);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  body[data-route="feed"] .playlist-hero.an-theater-hero.ai-hero {
+    width: 100% !important;
+    min-height: clamp(470px, 122vw, 590px) !important;
+    height: auto !important;
+    padding: calc(var(--mobile-topbar-height) + 28px) 14px 22px !important;
+    display: block !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .ai-hero-layout {
+    width: 100% !important;
+    max-width: 420px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    gap: 18px !important;
+    justify-items: center !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-hero-copy {
+    display: grid !important;
+    justify-items: center !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-kicker,
+  body[data-route="feed"] .ai-hero .an-hero-copy > p,
+  body[data-route="feed"] .ai-hero .ai-diagnostic-form,
+  body[data-route="feed"] .ai-hero .ai-input-shell,
+  body[data-route="feed"] .ai-hero .ai-chip-row,
+  body[data-route="feed"] .ai-hero .ai-actions,
+  body[data-route="feed"] .ai-hero .an-benefits,
+  body[data-route="feed"] .ai-hero .hero-playlist-card {
+    display: none !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    max-width: min(100%, 330px) !important;
+    margin: 0 auto 8px !important;
+    font-size: clamp(2rem, 10vw, 3rem) !important;
+    line-height: .92 !important;
+    letter-spacing: 0 !important;
+    text-align: center !important;
+    text-wrap: balance !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-brand {
+    color: var(--orange) !important;
+    font-size: clamp(2.25rem, 11vw, 3.4rem) !important;
+    line-height: .9 !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-main,
+  body[data-route="feed"] .ai-hero .hero-morph-text {
+    font-size: clamp(1.55rem, 7.8vw, 2.55rem) !important;
+    line-height: .95 !important;
+    white-space: normal !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-showcase {
+    position: static !important;
+    width: 100% !important;
+    max-width: min(100%, 320px) !important;
+    margin: 12px auto 0 !important;
+    opacity: 1 !important;
+    transform: none !important;
+    justify-self: center !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-cover {
+    aspect-ratio: 1.48 / 1 !important;
+    min-height: 0 !important;
+    border-radius: 13px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-cover img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: cover !important;
+    filter: none !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-play {
+    width: 50px !important;
+    height: 50px !important;
+    right: 14px !important;
+    bottom: 14px !important;
+  }
+
+  body[data-route="feed"] .home-parallax,
+  body[data-route="feed"] .home-parallax__layer--base,
+  body[data-route="feed"] .home-parallax__layer--base > .nexo-blocks-container,
+  body[data-route="feed"] .home-parallax__layer--base > .home-section,
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .nexo-blocks-container .home-section,
+  body[data-route="feed"] .recent-activity-section,
+  body[data-route="feed"] .featured-professionals-section,
+  body[data-route="feed"] .home-track-list,
+  body[data-route="feed"] .featured-catalog-row,
+  body[data-route="feed"] .featured-professional-grid {
+    filter: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+  }
+
+  body[data-route="feed"] .home-parallax {
+    width: 100% !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 14px !important;
+  }
+
+  body[data-route="feed"] .home-parallax__layer--base {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .home-parallax__layer--back,
+  body[data-route="feed"] .home-parallax__layer--deep,
+  body[data-route="feed"] .home-parallax-glow {
+    pointer-events: none !important;
+  }
+
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .home-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .section-head.clean-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 12px !important;
+    align-items: end !important;
+    padding-inline: 0 !important;
+  }
+
+  body[data-route="feed"] .section-head.clean-head h2 {
+    font-size: clamp(1.25rem, 6vw, 1.65rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  body[data-route="feed"] .section-head.clean-head p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .featured-catalog-row,
+  body[data-route="feed"] .featured-professional-grid,
+  body[data-route="feed"] .home-track-list {
+    gap: 14px !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .featured-catalog-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .home-catalog-beat-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-cover-wrapper {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+
+  body[data-route="feed"] .recent-activity-section {
+    padding-inline: 0 !important;
+  }
+
+  body[data-route="feed"] .nexo-button,
+  body[data-route="feed"] .nexo-floating-assistant,
+  body[data-route="feed"] #nexoFloatingAssistantRoot {
+    right: 14px !important;
+    bottom: calc(20px + var(--mobile-bottom-safe)) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .navbar-mobile-profile {
+    display: none !important;
+  }
+
+  body[data-route="feed"] .home-parallax__layer--base {
+    filter: none !important;
+  }
+
+  body[data-route="feed"] .home-parallax,
+  body[data-route="feed"] .home-parallax__layer--base,
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .home-section {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+
 /* Permanent Dark Premium theme overrides for the feed route and global components */
 body[data-route="feed"] {
   background: #000000 !important;
@@ -32874,4 +33229,239 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   min-width: 44px !important;
   height: 44px !important;
   min-height: 44px !important;
+}
+
+/* Final Home mobile overrides. Kept last intentionally so older broad mobile
+   rules cannot reintroduce the diagnostic search or parallax blur. */
+@media (max-width: 767px) {
+  body[data-route="feed"] #appView.app-view.feed {
+    padding: 0 0 calc(104px + var(--mobile-bottom-safe)) !important;
+  }
+
+  body[data-route="feed"] .topbar {
+    height: 56px !important;
+    min-height: 56px !important;
+    top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    left: var(--mobile-shell-gap) !important;
+    right: var(--mobile-shell-gap) !important;
+    z-index: 3200 !important;
+  }
+
+  body[data-route="feed"] .floating-navbar {
+    height: 56px !important;
+    min-height: 56px !important;
+    grid-template-columns: minmax(74px, 1fr) 44px 44px 44px !important;
+    gap: 8px !important;
+    padding: 6px 8px !important;
+  }
+
+  body[data-route="feed"] .navbar-auth-container,
+  body[data-route="feed"] .navbar-auth-btn {
+    display: none !important;
+  }
+
+  body[data-route="feed"] .navbar-mobile-profile {
+    display: grid !important;
+    place-items: center !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    background: #fff !important;
+  }
+
+  body[data-route="feed"] .navbar-mobile-avatar {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: cover !important;
+    border-radius: inherit !important;
+  }
+
+  body[data-route="feed"] .navbar-notification-container,
+  body[data-route="feed"] .navbar-notification-container[hidden] {
+    display: block !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+
+  body[data-route="feed"] .playlist-hero.an-theater-hero.ai-hero {
+    min-height: clamp(470px, 122vw, 590px) !important;
+    padding: calc(var(--mobile-topbar-height) + 28px) 14px 22px !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .ai-hero .ai-hero-layout {
+    width: 100% !important;
+    max-width: 420px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    display: grid !important;
+    gap: 18px !important;
+    justify-items: center !important;
+    align-items: start !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-hero-copy {
+    display: grid !important;
+    justify-items: center !important;
+    align-items: start !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .an-kicker,
+  body[data-route="feed"] .ai-hero .an-hero-copy > p,
+  body[data-route="feed"] .ai-hero .ai-diagnostic-form,
+  body[data-route="feed"] .ai-hero .ai-input-shell,
+  body[data-route="feed"] .ai-hero .ai-chip-row,
+  body[data-route="feed"] .ai-hero .ai-actions,
+  body[data-route="feed"] .ai-hero .an-benefits,
+  body[data-route="feed"] .ai-hero .hero-playlist-card,
+  body[data-route="feed"] .ai-hero .ai-map-card {
+    display: none !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    max-width: min(100%, 340px) !important;
+    margin: 0 auto 18px !important;
+    font-size: clamp(1.8rem, 8.5vw, 2.65rem) !important;
+    line-height: .98 !important;
+    text-align: center !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-brand {
+    font-size: clamp(2.15rem, 10.5vw, 3.2rem) !important;
+    line-height: .9 !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-main,
+  body[data-route="feed"] .ai-hero .hero-morph-text {
+    font-size: clamp(1.35rem, 6.6vw, 2.1rem) !important;
+    line-height: 1.02 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-showcase,
+  body[data-route="feed"] .ai-hero .an-hero-art {
+    position: static !important;
+    width: 100% !important;
+    max-width: min(100%, 320px) !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    margin: 12px auto 0 !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-cover {
+    aspect-ratio: 1.48 / 1 !important;
+    border-radius: 13px !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-cover img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: cover !important;
+    filter: none !important;
+  }
+
+  body[data-route="feed"] .ai-hero .top-beat-play {
+    width: 50px !important;
+    min-width: 50px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+  }
+
+  body[data-route="feed"] .home-parallax,
+  body[data-route="feed"] .home-parallax__layer--base,
+  body[data-route="feed"] .home-parallax__layer--base > .nexo-blocks-container,
+  body[data-route="feed"] .home-parallax__layer--base > .home-section,
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .nexo-blocks-container .home-section,
+  body[data-route="feed"] .recent-activity-section,
+  body[data-route="feed"] .featured-professionals-section,
+  body[data-route="feed"] .home-track-list,
+  body[data-route="feed"] .featured-catalog-row,
+  body[data-route="feed"] .featured-professional-grid {
+    filter: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+  }
+
+  body[data-route="feed"] .home-parallax {
+    width: 100% !important;
+    padding: 0 14px !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .home-parallax__layer--base {
+    position: relative !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .home-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .featured-catalog-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .home-catalog-beat-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .card-cover-wrapper {
+    width: 100% !important;
+  }
+
+  body[data-route="feed"] .nexo-button,
+  body[data-route="feed"] .nexo-floating-assistant,
+  body[data-route="feed"] #nexoFloatingAssistantRoot {
+    z-index: 2500 !important;
+    right: 14px !important;
+    bottom: calc(20px + var(--mobile-bottom-safe)) !important;
+  }
+
+  body[data-route="feed"].menu-open .nexo-button,
+  body[data-route="feed"].menu-open .nexo-floating-assistant,
+  body[data-route="feed"].menu-open #nexoFloatingAssistantRoot {
+    z-index: 2100 !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  body[data-route="feed"] .home-parallax__layer--base,
+  body[data-route="feed"] .nexo-blocks-container,
+  body[data-route="feed"] .home-section {
+    filter: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
 }

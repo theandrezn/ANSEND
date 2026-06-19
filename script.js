@@ -4708,6 +4708,7 @@ function animateHeadlineReveal(titleElement, line1, line2) {
   if (!titleElement) return;
   const nextKey = `${appLocale.current}|${line1}|${line2}`;
   const existingText = titleElement.querySelector(".hero-morph-text");
+  const shouldUseStaticMobileHeadline = window.matchMedia?.("(max-width: 767px)")?.matches && currentRoute() === "feed";
 
   if (titleElement.dataset.revealKey !== nextKey || !existingText) {
     titleElement.dataset.revealKey = nextKey;
@@ -4719,7 +4720,13 @@ function animateHeadlineReveal(titleElement, line1, line2) {
         <span class="hero-morph-text"></span>
       </strong>
     `;
-    runHeroTypewriter(titleElement.querySelector(".hero-morph-text"), line2);
+    const morphText = titleElement.querySelector(".hero-morph-text");
+    if (shouldUseStaticMobileHeadline) {
+      stopHeroMorphTitle();
+      if (morphText) morphText.textContent = line2;
+    } else {
+      runHeroTypewriter(morphText, line2);
+    }
     requestAnimationFrame(() => titleElement.classList.add("is-ready"));
   }
 }
@@ -10343,6 +10350,8 @@ function syncAccountUi() {
 
   // Update premium navbar auth button text based on login state
   const authBtnText = document.querySelector(".navbar-auth-btn .auth-btn-text");
+  const mobileProfile = document.querySelector(".navbar-mobile-profile");
+  const mobileAvatar = document.querySelector(".navbar-mobile-avatar");
   if (authBtnText) {
     if (authPending) {
       authBtnText.textContent = appLocale.current === "pt-BR" ? "Carregando" : "Loading";
@@ -10353,6 +10362,15 @@ function syncAccountUi() {
     } else {
       authBtnText.textContent = appLocale.current === "pt-BR" ? "Entrar" : "Sign In";
     }
+  }
+  if (mobileProfile) {
+    const labelName = profile?.display_name || profile?.username || profile?.full_name || profile?.artistic_name || "Perfil ANSEND";
+    mobileProfile.setAttribute("aria-label", hasAccountAccess() ? `Abrir perfil de ${labelName}` : "Entrar ou criar conta");
+    mobileProfile.setAttribute("href", hasAccountAccess() ? "#perfil" : "#vendedor");
+  }
+  if (mobileAvatar) {
+    mobileAvatar.src = profile?.avatar_url || profile?.avatar || "assets/ansend-logo-square.png";
+    mobileAvatar.alt = "";
   }
 
   const notifContainer = document.getElementById("navbarNotificationContainer");
@@ -17393,11 +17411,25 @@ function scrollCatalog(button, direction) {
 }
 
 const menuToggle = document.querySelector(".menu-toggle");
-menuToggle?.addEventListener("click", () => document.body.classList.toggle("menu-open"));
+function setMobileMenuOpen(open) {
+  document.body.classList.toggle("menu-open", Boolean(open));
+  document.querySelectorAll(".menu-toggle, .navbar-menu-toggle").forEach((button) => {
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+}
+menuToggle?.addEventListener("click", () => setMobileMenuOpen(!document.body.classList.contains("menu-open")));
 window.addEventListener("hashchange", () => renderRoutePreservingAuthFocus());
 document.addEventListener("pointerdown", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
 }, true);
+
+document.addEventListener("click", (event) => {
+  if (!document.body.classList.contains("menu-open")) return;
+  const clickedDrawer = event.target.closest?.(".sidebar");
+  const clickedToggle = event.target.closest?.(".menu-toggle, .navbar-menu-toggle, .sidebar-menu-toggle");
+  const clickedNavigation = event.target.closest?.(".sidebar a[href], .sidebar button[data-action='logout-account']");
+  if ((!clickedDrawer && !clickedToggle) || clickedNavigation) setMobileMenuOpen(false);
+});
 
 document.addEventListener("focusin", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
@@ -17443,6 +17475,10 @@ document.addEventListener("pointerdown", (event) => {
 }, true);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.body.classList.contains("menu-open")) {
+    setMobileMenuOpen(false);
+    return;
+  }
   if (event.key === "Escape" && appState.chat.newChatOpen) {
     appState.chat.newChatOpen = false;
     renderChatPage({ preserveActive: true });
@@ -19641,7 +19677,7 @@ function initSidebarListeners() {
   
   // Hamburger toggle inside the sidebar to close the mobile menu
   document.querySelector(".sidebar-menu-toggle")?.addEventListener("click", () => {
-    document.body.classList.remove("menu-open");
+    setMobileMenuOpen(false);
   });
 }
 
