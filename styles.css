@@ -29631,6 +29631,7 @@ body[data-route="comunidade"].community-route-enter .hiring-right-rail {
 .hiring-native-layout .hiring-post-actions button svg {
   width: 17px;
   height: 17px;
+  flex-shrink: 0;
 }
 
 .hiring-native-layout .hiring-post-actions button:hover,
@@ -33245,11 +33246,17 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   padding: 0 !important;
 }
 
-#appView.app-view .hiring-native-layout .hiring-icon-btn,
-#appView.app-view .hiring-native-layout .hiring-post-actions button {
+#appView.app-view .hiring-native-layout .hiring-icon-btn {
   min-width: 32px !important;
   min-height: 32px !important;
   width: 32px;
+  height: 32px;
+}
+
+#appView.app-view .hiring-native-layout .hiring-post-actions button {
+  min-width: 32px !important;
+  min-height: 32px !important;
+  width: auto;
   height: 32px;
 }
 
