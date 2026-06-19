@@ -4,6 +4,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const worker = fs.readFileSync(path.join(root, "src", "worker.mjs"), "utf8");
 const script = fs.readFileSync(path.join(root, "script.js"), "utf8");
+const styles = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 
 const checks = [
   [worker.includes("MERCADO_PAGO_ACCESS_TOKEN"), "Worker requires Mercado Pago access token secret"],
@@ -17,6 +18,10 @@ const checks = [
   [script.includes('data-action="copy-pix-code"'), "Frontend exposes copy Pix action"],
   [script.includes('data-action="check-pix-payment"'), "Frontend exposes Pix verification action"],
   [script.includes('fetch("/api/checkout/status"'), "Frontend verifies Pix status before release"],
+  [script.includes("checkoutFormMarkup"), "Frontend uses the redesigned checkout markup"],
+  [script.includes("checkout-shell"), "Frontend renders checkout shell layout"],
+  [styles.includes(".checkout-shell"), "Styles include responsive glass checkout shell"],
+  [!styles.includes(".app-modal,\n.app-modal-panel"), "Modal overlay is not constrained by max-width hardening"],
 ];
 
 const failures = checks.filter(([ok]) => !ok).map(([, message]) => message);

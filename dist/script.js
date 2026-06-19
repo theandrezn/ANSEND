@@ -16441,6 +16441,85 @@ function openProfessionalContract(name) {
   </form>`);
 }
 
+function checkoutItemMarkup({ cover, title, licenseName, priceCents }) {
+  return `
+    <article class="checkout-item">
+      <img src="${htmlEscape(cover || IMAGE_FALLBACK_SRC)}" alt="">
+      <div>
+        <strong>${htmlEscape(title || "Beat ANSEND")}</strong>
+        <span>${htmlEscape(licenseName || "Licenca")}</span>
+      </div>
+      <strong>${checkoutMoney(priceCents)}</strong>
+    </article>
+  `;
+}
+
+function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents, totalCents, prefillName, prefillEmail, termsMarkup }) {
+  return `
+    <form class="checkout-form" data-is-cart="${isCart ? "true" : "false"}">
+      <div class="checkout-shell">
+        <aside class="checkout-side">
+          <span><i data-lucide="shopping-cart"></i> Checkout seguro ANSEND</span>
+          <h2>Finalizar compra</h2>
+          <p>Revise os dados, confirme a licenca e gere um Pix integrado pelo Mercado Pago dentro da ANSEND.</p>
+          <div class="checkout-method">
+            <article class="checkout-method-card">
+              <i data-lucide="qr-code"></i>
+              <div>
+                <strong>Pix Mercado Pago</strong>
+                <small>Confirmacao consultada antes de liberar arquivos e contratos.</small>
+              </div>
+              <span class="checkout-pill">Ativo</span>
+            </article>
+          </div>
+        </aside>
+
+        <section class="checkout-main">
+          <span><i data-lucide="shield-check"></i> Pagamento</span>
+          <div class="checkout-items">
+            ${itemMarkup}
+          </div>
+
+          <div class="checkout-fields">
+            <label class="checkout-field">
+              <span>Seu nome *</span>
+              <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
+            </label>
+            <label class="checkout-field">
+              <span>Seu e-mail *</span>
+              <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required>
+            </label>
+          </div>
+
+          <div class="checkout-total">
+            <div class="checkout-total-row">
+              <span>Subtotal</span>
+              <strong>${checkoutMoney(subtotalCents)}</strong>
+            </div>
+            <div class="checkout-total-row">
+              <span>Taxa de servico (12%)</span>
+              <strong>${checkoutMoney(serviceFeeCents)}</strong>
+            </div>
+            <div class="checkout-total-row is-final">
+              <span>Total Pix</span>
+              <strong>${checkoutMoney(totalCents)}</strong>
+            </div>
+          </div>
+
+          <label class="checkout-terms">
+            <input type="checkbox" name="accept_terms" required>
+            <span>${termsMarkup}</span>
+          </label>
+          <div class="checkout-error" role="alert" aria-live="polite"></div>
+          <button class="seller-submit" type="submit">
+            Gerar Pix agora <i data-lucide="arrow-right"></i>
+          </button>
+        </section>
+      </div>
+    </form>
+  `;
+}
+
 async function openCheckout(id, selectedPlan = "premium") {
   openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
   lucide.createIcons();
@@ -16464,61 +16543,21 @@ async function openCheckout(id, selectedPlan = "premium") {
     const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
     const prefillEmail = appState.authUser?.email || "";
 
-    const card = `<div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; gap:10px; align-items:center;">
-      <img src="${item.cover}" style="width:48px; height:48px; border-radius:4px; object-fit:cover;">
-      <div style="flex:1;">
-        <strong style="font-size:14px; color:#fff; display:block;">${htmlEscape(item.title)}</strong>
-        <span style="font-size:11px; color:var(--beat-muted);">${htmlEscape(selectedLicense.name)}</span>
-      </div>
-      <strong style="font-size:14px; color:#fff;">R$ ${(subtotalCents / 100).toFixed(2)}</strong>
-    </div>`;
-
-    openModal(`
-      <form class="checkout-form" data-beat-id="${item.id}" data-is-cart="false">
-        <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
-        <h2 style="font-size:18px; margin: 10px 0 4px; color:#fff;">Finalizar Compra</h2>
-        <p style="font-size:12px; color:var(--beat-muted); margin-bottom:14px;">Preencha seus dados e concorde com os termos da licença.</p>
-        
-        ${card}
-        
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:11px; color:var(--beat-muted);">Seu Nome *</span>
-            <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:11px; color:var(--beat-muted);">Seu E-mail *</span>
-            <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
-          </label>
-        </div>
-
-        <div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; font-size:12px;">
-          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
-            <span>Subtotal:</span>
-            <span>R$ ${(subtotalCents / 100).toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
-            <span>Taxa de serviço (12%):</span>
-            <span>R$ ${(serviceFeeCents / 100).toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:#fff; font-weight:bold; font-size:14px; border-top:1px solid var(--beat-border-soft); padding-top:6px; margin-top:4px;">
-            <span>Total:</span>
-            <span>R$ ${(totalCents / 100).toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--beat-muted); cursor:pointer;">
-            <input type="checkbox" name="accept_terms" required style="margin-top:2px;">
-            <span>Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.id}" data-license-id="${selectedLicense.id}" style="color:var(--beat-blue); text-decoration:underline;">termos e contrato de licença</a> correspondentes a esta compra.</span>
-          </label>
-        </div>
-
-        <button class="seller-submit" type="submit" style="width:100%; height:42px; display:flex; justify-content:center; align-items:center; font-size:14px;">
-          Finalizar pagamento <i data-lucide="arrow-right" style="width:16px; height:16px; margin-left:6px;"></i>
-        </button>
-      </form>
-    `);
+    openModal(checkoutFormMarkup({
+      isCart: false,
+      itemMarkup: checkoutItemMarkup({
+        cover: item.cover,
+        title: item.title,
+        licenseName: selectedLicense.name,
+        priceCents: subtotalCents,
+      }),
+      subtotalCents,
+      serviceFeeCents,
+      totalCents,
+      prefillName,
+      prefillEmail,
+      termsMarkup: `Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.id}" data-license-id="${selectedLicense.id}">termos e contrato de licenca</a> correspondentes a esta compra.`,
+    }));
     const formEl = document.querySelector(".checkout-form");
     if (formEl) {
       formEl.dataset.cartItems = JSON.stringify([{ beat_id: item.id, license_id: selectedLicense.id }]);
@@ -20056,7 +20095,7 @@ document.addEventListener("submit", async (event) => {
     }
     
     if (cartItems && cartItems.length) {
-      submitCheckout(cartItems, buyerName, buyerEmail, checkoutForm.dataset.isCart === "true");
+      submitCheckout(cartItems, buyerName, buyerEmail, checkoutForm.dataset.isCart === "true", checkoutForm);
     } else {
       showToast("Erro: Itens inválidos no checkout.", "alert-triangle");
     }
@@ -21382,11 +21421,20 @@ async function checkPixPaymentStatus(button) {
   }
 }
 
-async function submitCheckout(cartItems, buyerName, buyerEmail, isCart = false) {
+async function submitCheckout(cartItems, buyerName, buyerEmail, isCart = false, form = null) {
   const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
   if (!session) {
     showToast("Você precisa estar autenticado para finalizar a compra.", "triangle-alert");
     return;
+  }
+  const submitButton = form?.querySelector(".seller-submit");
+  const errorBox = form?.querySelector(".checkout-error");
+  if (errorBox) errorBox.textContent = "";
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.dataset.loading = "true";
+    submitButton.innerHTML = `<i data-lucide="loader-circle"></i> Gerando Pix`;
+    lucide.createIcons();
   }
   showToast("Gerando Pix seguro...", "loader");
   try {
@@ -21405,6 +21453,7 @@ async function submitCheckout(cartItems, buyerName, buyerEmail, isCart = false) 
     
     const result = await response.json();
     if (!response.ok || !result.success) {
+      if (errorBox) errorBox.textContent = result.error || "Erro no checkout.";
       showToast(result.error || "Erro no checkout.", "alert-triangle");
       return;
     }
@@ -21413,7 +21462,15 @@ async function submitCheckout(cartItems, buyerName, buyerEmail, isCart = false) 
     showToast("Pix gerado pelo Mercado Pago.", "qr-code");
   } catch (error) {
     console.error("Checkout submit error:", error);
+    if (errorBox) errorBox.textContent = "Erro de rede ao processar checkout.";
     showToast("Erro de rede ao processar checkout.", "alert-triangle");
+  } finally {
+    if (submitButton && document.body.contains(submitButton)) {
+      submitButton.disabled = false;
+      submitButton.dataset.loading = "false";
+      submitButton.innerHTML = `Gerar Pix agora <i data-lucide="arrow-right"></i>`;
+      lucide.createIcons();
+    }
   }
 }
 
@@ -21453,65 +21510,23 @@ async function openCartCheckout() {
     const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
     const prefillEmail = appState.authUser?.email || "";
     
-    const itemsHtml = items.map(item => `
-      <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px; border-bottom:1px solid var(--beat-border-soft); padding-bottom:8px;">
-        <img src="${item.beat.cover}" style="width:40px; height:40px; border-radius:4px; object-fit:cover;">
-        <div style="flex:1;">
-          <strong style="font-size:13px; color:#fff; display:block;">${htmlEscape(item.beat.title)}</strong>
-          <span style="font-size:11px; color:var(--beat-muted);">${htmlEscape(item.license.name)}</span>
-        </div>
-        <strong style="font-size:13px; color:#fff;">R$ ${(item.license.price_cents / 100).toFixed(2)}</strong>
-      </div>
-    `).join("");
-    
-    openModal(`
-      <form class="checkout-form" data-is-cart="true">
-        <span><i data-lucide="shopping-cart"></i>Checkout seguro ANSEND</span>
-        <h2 style="font-size:18px; margin: 10px 0 4px; color:#fff;">Finalizar Compra</h2>
-        <p style="font-size:12px; color:var(--beat-muted); margin-bottom:14px;">Preencha seus dados e concorde com os termos das licenças.</p>
-        
-        <div style="margin-bottom:14px; max-height:180px; overflow-y:auto; background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:10px;">
-          ${itemsHtml}
-        </div>
-        
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:11px; color:var(--beat-muted);">Seu Nome *</span>
-            <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px;">
-            <span style="font-size:11px; color:var(--beat-muted);">Seu E-mail *</span>
-            <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required style="background:#050505; border:1px solid var(--beat-border); color:#fff; padding:8px 10px; border-radius:5px; font-size:13px;">
-          </label>
-        </div>
+    const itemMarkup = items.map((item) => checkoutItemMarkup({
+      cover: item.beat.cover,
+      title: item.beat.title,
+      licenseName: item.license.name,
+      priceCents: item.license.price_cents || 0,
+    })).join("");
 
-        <div style="background:#050505; border:1px solid var(--beat-border); border-radius:6px; padding:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; font-size:12px;">
-          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
-            <span>Subtotal:</span>
-            <span>R$ ${(subtotalCents / 100).toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:var(--beat-muted);">
-            <span>Taxa de serviço (12%):</span>
-            <span>R$ ${(serviceFeeCents / 100).toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:#fff; font-weight:bold; font-size:14px; border-top:1px solid var(--beat-border-soft); padding-top:6px; margin-top:4px;">
-            <span>Total:</span>
-            <span>R$ ${(totalCents / 100).toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <label style="display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--beat-muted); cursor:pointer;">
-            <input type="checkbox" name="accept_terms" required style="margin-top:2px;">
-            <span>Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-is-cart="true" style="color:var(--beat-blue); text-decoration:underline;">termos e contratos de licença</a> correspondentes a cada beat selecionado.</span>
-          </label>
-        </div>
-
-        <button class="seller-submit" type="submit" style="width:100%; height:42px; display:flex; justify-content:center; align-items:center; font-size:14px;">
-          Finalizar pagamento <i data-lucide="arrow-right" style="width:16px; height:16px; margin-left:6px;"></i>
-        </button>
-      </form>
-    `);
+    openModal(checkoutFormMarkup({
+      isCart: true,
+      itemMarkup,
+      subtotalCents,
+      serviceFeeCents,
+      totalCents,
+      prefillName,
+      prefillEmail,
+      termsMarkup: 'Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-is-cart="true">termos e contratos de licenca</a> correspondentes a cada beat selecionado.',
+    }));
     
     const formEl = document.querySelector(".checkout-form");
     if (formEl) {
