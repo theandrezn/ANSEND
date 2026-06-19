@@ -7051,9 +7051,9 @@ body.onboarding-open { overflow: hidden; }
 }
 
 .beat-market-detail {
-  --beat-bg: #050505;
-  --beat-card: #0f0f0f;
-  --beat-card-hover: #151515;
+  --beat-bg: #0f0f0f;
+  --beat-card: #141414;
+  --beat-card-hover: #1c1c1c;
   --beat-border: #242424;
   --beat-border-soft: #1c1c1c;
   --beat-text: #ffffff;
@@ -7069,6 +7069,20 @@ body.onboarding-open { overflow: hidden; }
   color: var(--beat-text) !important;
   display: grid !important;
   gap: 18px !important;
+  min-height: 100dvh !important;
+}
+
+body[data-route="detalhe"] {
+  background: var(--beat-bg, #0f0f0f) !important;
+}
+body[data-route="detalhe"] .page {
+  background: var(--beat-bg, #0f0f0f) !important;
+  min-height: 100dvh !important;
+}
+body[data-route="detalhe"] #appView.app-view {
+  background: var(--beat-bg, #0f0f0f) !important;
+  min-height: 100dvh !important;
+  padding: 0 !important;
 }
 
 .beat-market-detail .beat-detail-shell {
@@ -7534,6 +7548,7 @@ body.onboarding-open { overflow: hidden; }
   border-radius: 6px !important;
   color: var(--beat-muted) !important;
   font-size: 12px !important;
+  background: #0b0b0b !important;
 }
 
 .beat-market-detail .beat-about-strip {
@@ -7594,7 +7609,7 @@ body.onboarding-open { overflow: hidden; }
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 800px) {
   .beat-market-detail {
     padding: 86px 12px 34px !important;
   }
@@ -22301,11 +22316,12 @@ body[data-route="cadastrar"] .review-audio-section {
 body[data-route="cadastrar"] .release-bottom-bar {
   position: fixed !important;
   bottom: 0 !important;
-  left: 260px !important;
+  left: 0 !important;
   right: 0 !important;
+  width: 100% !important;
   height: 88px !important;
-  background: rgba(15, 15, 15, 0.94) !important;
-  backdrop-filter: blur(18px) !important;
+  background: #000000 !important;
+  backdrop-filter: none !important;
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   display: flex !important;
   justify-content: center !important;
@@ -22313,7 +22329,7 @@ body[data-route="cadastrar"] .release-bottom-bar {
   z-index: 9999 !important;
   box-sizing: border-box !important;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.95) !important;
-  transition: left 0.3s ease;
+  transition: none !important;
 }
 
 body[data-route="cadastrar"] .release-bottom-inner {
@@ -32057,7 +32073,7 @@ body[data-route="cadastrar"] .review-header-info p {
 
 /* Fixed Bottom Action Bar */
 body[data-route="cadastrar"] .release-bottom-bar {
-  background: rgba(8, 8, 8, 0.95) !important;
+  background: #000000 !important;
   border-top-color: #1F1F1F !important;
 }
 
@@ -32137,83 +32153,156 @@ body[data-route="cadastrar"] .release-panel[data-panel="2"] .release-panel-heade
   max-width: 760px !important;
 }
 
-body[data-route="cadastrar"] .release-files-layout {
+body[data-route="cadastrar"] .release-files-grid-preview {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr) !important;
+  grid-template-columns: 1.5fr 1fr !important;
   align-items: stretch !important;
-  gap: 24px !important;
+  gap: 20px !important;
   width: 100% !important;
+  max-width: 1080px !important;
+  margin: 0 auto 24px auto !important;
+  box-sizing: border-box !important;
 }
 
-body[data-route="cadastrar"] .release-files-main,
-body[data-route="cadastrar"] .release-files-secondary {
+body[data-route="cadastrar"] .release-files-grid-delivery {
   display: grid !important;
-  gap: 18px !important;
-  min-width: 0 !important;
-}
-
-body[data-route="cadastrar"] .release-preview-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.82fr) !important;
-  gap: 18px !important;
+  grid-template-columns: repeat(3, 1fr) !important;
   align-items: stretch !important;
+  gap: 20px !important;
+  width: 100% !important;
+  max-width: 1080px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+body[data-route="cadastrar"] .release-files-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
   min-width: 0 !important;
 }
 
-body[data-route="cadastrar"] .release-secure-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.42fr) !important;
-  gap: 18px !important;
-  align-items: stretch !important;
-  min-width: 0 !important;
-}
-
-body[data-route="cadastrar"] .release-files-layout .release-dropzone,
-body[data-route="cadastrar"] .release-files-layout .release-requirements,
-body[data-route="cadastrar"] .release-files-layout .secure-mp3-preview,
-body[data-route="cadastrar"] .release-files-layout .secure-wav-preview,
-body[data-route="cadastrar"] .release-files-layout .secure-stems-preview {
-  border-radius: 8px !important;
-}
-
-body[data-route="cadastrar"] .release-files-layout .release-dropzone {
-  min-height: 176px !important;
-  padding: 24px !important;
-}
-
-body[data-route="cadastrar"] .release-files-layout .release-requirements,
-body[data-route="cadastrar"] .release-files-layout .secure-mp3-preview,
-body[data-route="cadastrar"] .release-files-layout .secure-wav-preview,
-body[data-route="cadastrar"] .release-files-layout .secure-stems-preview {
-  min-height: 176px !important;
-  padding: 18px !important;
+body[data-route="cadastrar"] .release-file-card {
   background: #0D0D0D !important;
   border: 1px solid #1F1F1F !important;
-}
-
-body[data-route="cadastrar"] .release-files-secondary .release-secure-row {
-  grid-template-columns: 1fr !important;
-}
-
-body[data-route="cadastrar"] .release-files-secondary .release-dropzone {
-  min-height: 188px !important;
-}
-
-body[data-route="cadastrar"] .release-files-layout .an-secondary.use-preview-as-delivery-btn {
+  border-radius: 12px !important;
+  padding: 16px 20px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  min-height: 140px !important;
+  position: relative !important;
   width: 100% !important;
-  min-height: 38px !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone {
+  border: 1.5px dashed rgba(255, 106, 0, 0.24) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+  text-align: center !important;
+  align-items: center !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone:not(.has-file):hover {
+  border-color: rgba(255, 106, 0, 0.6) !important;
+  background: rgba(255, 106, 0, 0.02) !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone.has-file {
+  border: 1px solid #1F1F1F !important;
+  border-style: solid !important;
+  background: #0D0D0D !important;
+  cursor: default !important;
+  align-items: stretch !important;
+  text-align: left !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone.has-file:hover {
+  border-color: #1F1F1F !important;
+  background: #0D0D0D !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.has-file .dropzone-unuploaded,
+body[data-route="cadastrar"] .release-file-card.has-file .use-preview-as-delivery-btn {
+  display: none !important;
+}
+
+body[data-route="cadastrar"] .file-card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  margin-bottom: 6px !important;
+}
+
+body[data-route="cadastrar"] .file-badge {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.5px !important;
+  display: inline-block !important;
+}
+
+body[data-route="cadastrar"] .file-badge-required {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #22c55e !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+body[data-route="cadastrar"] .file-badge-optional {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #a3a3a3 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body[data-route="cadastrar"] .release-file-card .release-upload-icon {
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 auto 6px auto !important;
+}
+
+body[data-route="cadastrar"] .release-file-card .release-upload-error {
   margin-top: 10px !important;
-  border-color: #2A2A2A !important;
+  font-size: 11px !important;
+}
+
+body[data-route="cadastrar"] .release-file-card .an-secondary.use-preview-as-delivery-btn {
+  width: 100% !important;
+  min-height: 36px !important;
+  margin-top: 10px !important;
+  border: 1px solid #2A2A2A !important;
   color: #FFFFFF !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-body[data-route="cadastrar"] .release-files-layout .release-upload-icon {
-  width: 44px !important;
-  height: 44px !important;
+body[data-route="cadastrar"] .release-file-card .an-secondary.use-preview-as-delivery-btn:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-body[data-route="cadastrar"] .release-files-layout .release-upload-error {
-  margin-top: 12px !important;
+body[data-route="cadastrar"] .secure-mp3-preview,
+body[data-route="cadastrar"] .secure-wav-preview,
+body[data-route="cadastrar"] .secure-stems-preview,
+body[data-route="cadastrar"] .release-audio-preview {
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
 }
 
 @media (max-width: 980px) {
@@ -32221,9 +32310,8 @@ body[data-route="cadastrar"] .release-files-layout .release-upload-error {
     width: min(100%, calc(100vw - 24px)) !important;
   }
 
-  body[data-route="cadastrar"] .release-files-layout,
-  body[data-route="cadastrar"] .release-preview-grid,
-  body[data-route="cadastrar"] .release-secure-row {
+  body[data-route="cadastrar"] .release-files-grid-preview,
+  body[data-route="cadastrar"] .release-files-grid-delivery {
     grid-template-columns: 1fr !important;
   }
 }
