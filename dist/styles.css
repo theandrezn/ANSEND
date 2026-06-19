@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #000000;
   --bg-2: #080604;
   --sidebar: #000000;
@@ -31489,9 +31489,18 @@ body[data-route="nexo-feed"] .nexo-feed-copy p {
   }
 
   body[data-route="nexo-feed"] .nexo-feed-copy h2 {
-    max-width: min(100%, 13ch) !important;
-    font-size: clamp(28px, 7vw, 38px) !important;
-    line-height: 1.02 !important;
+    font-size: clamp(2rem, 8vw, 2.375rem) !important;
+    line-height: 1.0 !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+
+    max-width: calc(100% - 72px) !important;
   }
 
   body[data-route="nexo-feed"] .nexo-feed-actions {

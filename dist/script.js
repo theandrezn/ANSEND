@@ -3182,7 +3182,6 @@ function nexoFeedCard(item, index) {
     ${adminBeatItem ? adminDeleteButton("beat", adminBeatItem) : ""}
     <div class="nexo-feed-media">
       ${hasVisualMedia ? `<img src="${htmlEscape(media)}" alt="${htmlEscape(item.title)}">` : `<div class="nexo-feed-official-fallback"><i data-lucide="radio-tower"></i><span>ANSEND</span></div>`}
-      ${isBeat && item.audioUrl ? "" : `<span class="nexo-feed-type-icon"><i data-lucide="${typeIcon}"></i></span>`}
     </div>
     <div class="nexo-feed-copy">
       <div class="nexo-feed-author">
