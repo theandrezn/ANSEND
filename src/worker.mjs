@@ -390,7 +390,7 @@ async function cartFingerprint(userId, cleanItems = []) {
   return sha256Hex(JSON.stringify({ user_id: userId, cart_items: stableItems }));
 }
 
-async function validateCheckoutCart(env, cartItems = [], userId = "") {
+async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader = "") {
   const cleanItems = sanitizeCartItems(cartItems);
   if (!cleanItems) return { ok: false, error: "Itens do carrinho invalidos." };
 
@@ -398,8 +398,8 @@ async function validateCheckoutCart(env, cartItems = [], userId = "") {
   const beatQuery = `beats?select=id,title,status,sold_exclusively&id=in.(${beatIds.join(",")})`;
   const licenseQuery = `beat_licenses?select=id,beat_id,license_key,name,price_cents,is_active&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`;
   const [beatsResponse, licensesResponse] = await Promise.all([
-    supabaseRest(env, beatQuery),
-    supabaseRest(env, licenseQuery),
+    supabaseAuthedRest(env, beatQuery, authHeader),
+    supabaseAuthedRest(env, licenseQuery, authHeader),
   ]);
 
   if (beatsResponse.error) return { ok: false, error: beatsResponse.error };
@@ -1005,7 +1005,7 @@ async function handleCheckout(request, env) {
     return jsonResponse({ success: false, error: "Informe um e-mail valido para gerar o Pix." }, { status: 400 });
   }
 
-  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id);
+  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id, auth.authHeader);
   if (!checkout.ok) {
     return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
   }
@@ -1078,7 +1078,7 @@ async function handleCheckoutStatus(request, env) {
 
   const buyerName = cleanRecommendationText(payload?.buyer_name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
   const buyerEmail = cleanRecommendationText(payload?.buyer_email || auth.user.email || "", 150);
-  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id);
+  const checkout = await validateCheckoutCart(env, cartItems, auth.user.id, auth.authHeader);
   if (!checkout.ok) {
     return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
   }

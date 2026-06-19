@@ -14,6 +14,7 @@ const checks = [
   [worker.includes('url.pathname === "/api/checkout/status"'), "Worker exposes checkout status endpoint"],
   [worker.includes('external_reference'), "Worker binds payment to cart external reference"],
   [worker.includes("licensesByBeatAndKey"), "Worker resolves license_key values like premium to real license IDs"],
+  [worker.includes("supabaseAuthedRest(env, beatQuery, authHeader)"), "Worker validates checkout cart with authenticated Supabase REST"],
   [worker.includes('"process_checkout"'), "Worker only finalizes order through checkout RPC"],
   [script.includes("data-mercado-pago-pix"), "Frontend renders Mercado Pago Pix modal"],
   [script.includes("mercadoPagoLogoMarkup"), "Frontend renders Mercado Pago brand mark"],
