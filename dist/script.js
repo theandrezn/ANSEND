@@ -4,6 +4,7 @@ const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
 const SUPABASE_KEY_PLACEHOLDER = "COLE_SUA_SUPABASE_ANON_OU_PUBLISHABLE_KEY_AQUI";
 const NEXO_DIAGNOSIS_STORAGE_KEY = "ansend_nexo_last_diagnosis";
 const NEXO_QUIZ_STORAGE_KEY = "ansend_nexo_last_quiz";
+const NEXO_HISTORY_TTL_MS = 6 * 60 * 60 * 1000;
 const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansendmusic.site";
@@ -12715,6 +12716,16 @@ async function loadNexoConversationHistory() {
   appState.nexoChatHistoryLoading = true;
   renderNexoFloatingAssistant();
   try {
+    const { data: historyExpired, error: resetError } = await withTimeout(
+      supabaseClient.rpc("reset_expired_nexo_history"),
+      3500,
+      "A verificacao do historico da NEXO demorou para responder."
+    );
+    if (resetError) throw resetError;
+    if (historyExpired) {
+      appState.nexoChatConversationId = "";
+      appState.nexoChatMessages = [];
+    }
     const { data: conversations, error } = await withTimeout(
       supabaseClient
         .from("nexo_conversations")
@@ -12728,6 +12739,12 @@ async function loadNexoConversationHistory() {
     if (error) throw error;
     const conversation = conversations?.[0] || null;
     if (!conversation) {
+      appState.nexoChatConversationId = "";
+      appState.nexoChatMessages = [];
+      return;
+    }
+    const lastAccess = Date.parse(conversation.last_accessed_at || conversation.updated_at || "");
+    if (!Number.isFinite(lastAccess) || Date.now() - lastAccess >= NEXO_HISTORY_TTL_MS) {
       appState.nexoChatConversationId = "";
       appState.nexoChatMessages = [];
       return;
@@ -12806,11 +12823,70 @@ function renderNexoAssistantWelcome() {
   </section>`;
 }
 
+function nexoAnalyticsSessionId() {
+  if (!appState.nexoAssistant.analyticsSessionId) appState.nexoAssistant.analyticsSessionId = crypto.randomUUID();
+  return appState.nexoAssistant.analyticsSessionId;
+}
+
+async function logNexoAnalytics(eventName, details = {}) {
+  if (!appState.authUser?.id) return;
+  try {
+    const headers = await recommendationAuthHeaders();
+    const idempotencyKey = details.idempotencyKey || `${nexoAnalyticsSessionId()}:${eventName}:${details.entityId || "none"}:${details.requestId || crypto.randomUUID()}`;
+    await fetch("/api/analytics/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
+      body: JSON.stringify({ events: [{
+        idempotency_key: idempotencyKey,
+        session_id: nexoAnalyticsSessionId(),
+        event_name: eventName,
+        entity_type: details.entityType || null,
+        entity_id: details.entityId || null,
+        route_key: details.routeKey || currentRoute(),
+        metadata: details.metadata || {},
+      }] }),
+    });
+  } catch (error) {
+    console.warn("[ANSEND NEXO] analytics skipped", error?.message || error);
+  }
+}
+
+function renderNexoAssistantCards(response = {}) {
+  const items = asArray(response.items).slice(0, 3);
+  if (!items.length) return "";
+  items.forEach((item, rank) => {
+    const key = `${response.request_id}:${item.impression_id || item.entity_id}:${rank}`;
+    if (!appState.recommendationImpressions.has(key)) {
+      appState.recommendationImpressions.add(key);
+      void logNexoAnalytics("RECOMMENDATION_IMPRESSION", {
+        idempotencyKey: key,
+        requestId: response.request_id,
+        entityType: item.entity_type,
+        entityId: item.entity_id,
+        metadata: { rank, score: item.score, impression_id: item.impression_id },
+      });
+    }
+  });
+  return `<div class="nexo-assistant-cards">${items.map((item) => {
+    const primary = item.primary_action || {};
+    const secondary = item.secondary_action || {};
+    return `<article class="nexo-assistant-card" data-impression-id="${htmlEscape(item.impression_id || "")}">
+      <div><strong>${htmlEscape(item.title || "Opcao ANSEND")}</strong>${item.subtitle ? `<small>${htmlEscape(item.subtitle)}</small>` : ""}</div>
+      ${asArray(item.badges).length ? `<div class="nexo-assistant-card-badges">${asArray(item.badges).map((badge) => `<span>${htmlEscape(badge)}</span>`).join("")}</div>` : ""}
+      <p>${htmlEscape(item.reason || "")}</p>
+      <footer>
+        ${primary.label ? `<button type="button" data-action="nexo-card-primary" data-nexo-primary-action data-route-key="${htmlEscape(primary.route_key || "")}" data-params="${htmlEscape(JSON.stringify(primary.params || {}))}" data-entity-type="${htmlEscape(item.entity_type || "")}" data-entity-id="${htmlEscape(item.entity_id || "")}" data-request-id="${htmlEscape(response.request_id || "")}">${htmlEscape(primary.label)}</button>` : ""}
+        ${secondary.label ? `<button type="button" data-action="nexo-card-secondary" data-action-key="${htmlEscape(secondary.action_key || "")}" data-params="${htmlEscape(JSON.stringify(secondary.params || {}))}" data-entity-type="${htmlEscape(item.entity_type || "")}" data-entity-id="${htmlEscape(item.entity_id || "")}" data-request-id="${htmlEscape(response.request_id || "")}">${htmlEscape(secondary.label)}</button>` : ""}
+      </footer>
+    </article>`;
+  }).join("")}</div>`;
+}
+
 function renderNexoAssistantMessage(message) {
   const isUser = message.role === "user";
   return `<article class="nexo-assistant-message ${isUser ? "is-user" : "is-assistant"}">
     ${isUser ? "" : nexoIconMarkup("nexo-assistant-message-icon")}
-    <div class="nexo-assistant-bubble"><p>${nexoFormatMessage(message.content || "")}</p></div>
+    <div class="nexo-assistant-bubble"><p>${nexoFormatMessage(message.content || "")}</p>${isUser ? "" : renderNexoAssistantCards(message.response || {})}</div>
   </article>`;
 }
 
@@ -12915,7 +12991,7 @@ async function callNexoChatApi(messages, { signal } = {}) {
   if (!response.ok || !data?.success) {
     throw new Error(data?.error || "Nao consegui responder agora. Verifique a conexao da NEXO IA ou tente novamente em alguns instantes.");
   }
-  return { message: data.message, actions: Array.isArray(data.actions) ? data.actions : [], meta: data.meta || null };
+  return { message: data.message, response: data.response || null, actions: Array.isArray(data.actions) ? data.actions : [], meta: data.meta || null };
 }
 
 async function extractNexoIntent(message) {
@@ -12955,6 +13031,7 @@ async function sendNexoChatMessage(rawMessage) {
   }
   const messages = nexoChatMessages();
   const userMessage = { id: nexoChatId("user"), role: "user", content, createdAt: new Date().toISOString() };
+  void logNexoAnalytics("NEXO_MESSAGE_SENT", { metadata: { message_length: content.length } });
   messages.push(userMessage);
   appState.nexoChatLoading = true;
   appState.nexoChatError = "";
@@ -12973,6 +13050,7 @@ async function sendNexoChatMessage(rawMessage) {
       role: "assistant",
       content: answer?.message?.content || "Nao consegui responder agora. Tente novamente em alguns instantes.",
       createdAt: answer?.message?.createdAt || new Date().toISOString(),
+      response: answer?.response || null,
     };
     messages.push(assistantMessage);
     saveNexoMessage("assistant", assistantMessage.content, conversationId).catch((error) => console.warn("[ANSEND NEXO] assistant message persist failed", error?.message || error));
@@ -19079,6 +19157,36 @@ document.addEventListener("click", (event) => {
     publishCatalogImport();
     return;
   }
+  if (action === "nexo-card-primary" || action === "nexo-card-secondary") {
+    event.preventDefault();
+    let params = {};
+    try { params = JSON.parse(target.dataset.params || "{}"); } catch (_error) { params = {}; }
+    void logNexoAnalytics("RECOMMENDATION_CLICK", {
+      requestId: target.dataset.requestId,
+      entityType: target.dataset.entityType,
+      entityId: target.dataset.entityId,
+      routeKey: target.dataset.routeKey || target.dataset.actionKey,
+      metadata: { impression_id: target.closest("[data-impression-id]")?.dataset.impressionId || "" },
+    });
+    if (action === "nexo-card-secondary" && target.dataset.actionKey === "ADD_TO_CART") {
+      addToCart(params.beatId || target.dataset.entityId, "premium");
+      void logNexoAnalytics("ADD_TO_CART", { entityType: "beat", entityId: params.beatId || target.dataset.entityId });
+      renderCart();
+      return;
+    }
+    const routeMap = {
+      BEAT_DETAIL: params.beatId ? `beat-${params.beatId}` : "marketplace",
+      PROFILE_DETAIL: params.profileId ? `perfil-${params.profileId}` : "produtores",
+      MARKETPLACE: "marketplace",
+      PROFESSIONALS: "produtores",
+      CART: "carrinho",
+      LIBRARY: "biblioteca",
+      PURCHASES: "compras",
+      MY_PROFILE: "perfil",
+    };
+    location.hash = routeMap[target.dataset.routeKey] || "feed";
+    return;
+  }
   if (action?.startsWith("nexo-assistant-")) {
     event.preventDefault();
     if (action === "nexo-assistant-toggle") {
@@ -19088,6 +19196,7 @@ document.addEventListener("click", (event) => {
       appState.nexoAssistant.unread = false;
       writeNexoAssistantPrefs();
       renderNexoFloatingAssistant();
+      if (opening) void logNexoAnalytics("NEXO_OPENED", { idempotencyKey: `${nexoAnalyticsSessionId()}:NEXO_OPENED` });
       if (
         opening
         && !appState.nexoAssistant.historyLoaded
