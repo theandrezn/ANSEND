@@ -11692,12 +11692,20 @@ function mapCatalogItemToBeat(item) {
 }
 
 function splitCartEntry(entry = "") {
-  const [beatId, licenseId = "premium"] = String(entry || "").split("::");
+  const [beatId, licenseId = ""] = String(entry || "").split("::");
   return { beatId, licenseId };
 }
 
-function cartEntryKey(id, licenseId = "premium") {
+function cartEntryKey(id, licenseId = "") {
   return `${id}::${licenseId}`;
+}
+
+function openBeatDetailForLicenseSelection(beatId, source = "cart-button") {
+  if (!beatId) return false;
+  const item = findBeat(beatId);
+  trackUserEvent("click_cta", "beat", item?.raw?.id || item?.id || beatId, { source, requiresLicenseSelection: true });
+  location.hash = `beat-${beatId}`;
+  return true;
 }
 
 function findBeat(id) {
@@ -11875,14 +11883,57 @@ async function renderPurchases() {
 
 }
 
-function addToCart(id, licenseId = "premium") {
-  const entry = cartEntryKey(id, licenseId);
-  if (!appState.cart.includes(entry)) {
-    appState.cart.push(entry);
-    localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
-    syncNavbarCartBadge();
-    showToast("Adicionado ao carrinho", "shopping-cart");
+function addToCart(id, licenseId = "", options = {}) {
+  if (!id || !licenseId) {
+    showToast("Selecione uma licenca para continuar.", "alert-triangle");
+    return false;
   }
+  const entry = cartEntryKey(id, licenseId);
+  if (appState.cart.includes(entry)) {
+    showToast("Esta licenca ja esta no seu carrinho.", "shopping-cart");
+    return false;
+  }
+  const existingForBeat = appState.cart.find((item) => splitCartEntry(item).beatId === String(id));
+  if (existingForBeat && splitCartEntry(existingForBeat).licenseId !== String(licenseId)) {
+    const shouldReplace = options.replaceExisting === true
+      || confirm("Voce ja adicionou outra licenca deste beat. Deseja substitui-la pela licenca selecionada?");
+    if (!shouldReplace) return false;
+    appState.cart = appState.cart.filter((item) => splitCartEntry(item).beatId !== String(id));
+  }
+  appState.cart.push(entry);
+  localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
+  syncNavbarCartBadge();
+  showToast("Adicionado ao carrinho", "shopping-cart");
+  return true;
+}
+
+function showBeatLicenseRequired(page) {
+  const panel = page?.querySelector(".beat-licensing-panel");
+  if (!panel) return;
+  panel.classList.add("requires-license-attention");
+  const error = panel.querySelector("[data-license-error]");
+  if (error) error.hidden = false;
+  panel.scrollIntoView({ behavior: "smooth", block: "center" });
+  panel.querySelector(".beat-license-card")?.focus({ preventScroll: true });
+}
+
+function clearBeatLicenseRequired(page) {
+  const panel = page?.querySelector(".beat-licensing-panel");
+  if (!panel) return;
+  panel.classList.remove("requires-license-attention");
+  const error = panel.querySelector("[data-license-error]");
+  if (error) error.hidden = true;
+}
+
+function selectedBeatLicenseFromPage(button) {
+  const page = button?.closest(".beat-market-detail");
+  const licenseId = button?.dataset.license || page?.dataset.selectedLicense || "";
+  if (!page || !licenseId) {
+    showBeatLicenseRequired(page);
+    showToast("Selecione uma licenca para continuar.", "alert-triangle");
+    return null;
+  }
+  return { page, beatId: page.dataset.beatId || button.dataset.id, licenseId };
 }
 
 function removeFromCart(id) {
@@ -12593,40 +12644,44 @@ async function renderCart() {
           <div class="checkout-billing-bar">
             <span>Informações sobre faturamento e licenciamento</span>
             <button class="checkout-add-info-btn" type="button" data-action="add-billing-info">
-        
-        <div class="checkout-main-grid">
-          <div class="checkout-left-col">
-            ${sellerGroupsHtml}
+              <i data-lucide="plus"></i>
+              <span>${appState.billingInfo ? 'Editar informações' : 'Adicionar informações'}</span>
+            </button>
           </div>
-          <div class="checkout-right-col">
-            ${cartSummaryHtml}
+          
+          <div class="checkout-main-grid">
+            <div class="checkout-left-col">
+              ${sellerGroupsHtml}
+            </div>
+            <div class="checkout-right-col">
+              ${cartSummaryHtml}
+            </div>
           </div>
+          
+          ${promotedCarouselHtml}
         </div>
-        
-        ${promotedCarouselHtml}
       </div>
-    </div>
-  `;
+    `;
 
-  appView.innerHTML = contentMarkup;
-  lucide.createIcons();
-  initPromotedCarousel();
-  observeCartPromotedAds();
-  if (shouldRequestPromotedAds) void loadCartPromotedAds({ render: true });
-} catch (error) {
-  console.error("Error rendering cart:", error);
-  appView.innerHTML = `
-    <div class="checkout-page">
-      <div class="checkout-container">
-        <div class="view-header-carrinho checkout-title-wrapper">
-          <h1>Carrinho</h1>
+    appView.innerHTML = contentMarkup;
+    lucide.createIcons();
+    initPromotedCarousel();
+    observeCartPromotedAds();
+    if (shouldRequestPromotedAds) void loadCartPromotedAds({ render: true });
+  } catch (error) {
+    console.error("Error rendering cart:", error);
+    appView.innerHTML = `
+      <div class="checkout-page">
+        <div class="checkout-container">
+          <div class="view-header-carrinho checkout-title-wrapper">
+            <h1>Carrinho</h1>
+          </div>
+          <div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>
         </div>
-        <div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>
       </div>
-    </div>
-  `;
-  lucide.createIcons();
-}
+    `;
+    lucide.createIcons();
+  }
 }
 
 async function renderDirectCheckout() {
@@ -12749,26 +12804,378 @@ async function renderDirectCheckout() {
         </div>
         <div class="checkout-direct-header-right">
           <span class="protected-badge"><i data-lucide="lock"></i>Pagamento protegido</span>
-                </div>
+        </div>
+      </div>
+
+      <div class="checkout-container">
+        <div class="checkout-main-grid">
+          <!-- Left Column: Order Summary -->
+          <div class="checkout-order-summary-col" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="order-summary-header-row">
+              <h2 class="order-summary-title">Order Summary</h2>
+              <span class="order-summary-badge">${itemCount} ${itemCount === 1 ? 'item' : 'items'}</span>
+            </div>
+
+            <!-- Items List -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              ${itemsHtml}
+            </div>
+
+            <!-- Coupon Block -->
+            <div class="discount-code-block">
+              <div class="discount-left-shield">
+                <i data-lucide="tag" style="width: 18px; height: 18px;"></i>
               </div>
+              <div class="discount-text-col">
+                <h4 class="discount-label">Discount code</h4>
+                <span class="discount-subtitle" style="color: ${state.discountApplied ? '#00e676' : '#8fa89b'};">${discountText}</span>
+              </div>
+              <button class="discount-add-btn" id="add-discount-code-btn" type="button">
+                <i data-lucide="wallet" style="width: 13px; height: 13px;"></i>
+                <span>${state.discountApplied ? 'Applied' : 'Add code'}</span>
+              </button>
+            </div>
+
+            <!-- Totals Block -->
+            <div class="totals-block">
+              <div class="totals-row">
+                <span class="totals-row-label white-label">Subtotal</span>
+                <span class="totals-row-val white-val">$${subtotal.toFixed(2)}</span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-row-label">Shipping</span>
+                <span class="totals-row-val gray-val">Free</span>
+              </div>
+              <div class="totals-row">
+                <span class="totals-row-label">Tax <i data-lucide="info" title="Taxa estimada"></i></span>
+                <span class="totals-row-val gray-val">$${tax.toFixed(2)}</span>
+              </div>
+              ${discountRowHtml}
+              <hr class="totals-divider">
+              <div class="totals-total-row">
+                <span class="totals-total-label">Total</span>
+                <span class="totals-total-val">$${total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <!-- Recommended Section -->
+            <div class="recommended-section">
+              <h3 class="recommended-section-title">Recommended for you</h3>
+              <div class="recommended-card">
+                <div class="recommended-left">
+                  <div class="recommended-thumb-box">
+                    <img src="assets/psvr2.png" alt="PS VR2" class="recommended-image">
+                    <div class="recommended-dot"></div>
+                  </div>
+                  <button class="recommended-add-btn" id="add-recommended-btn" type="button" ${state.recommendedAdded ? 'disabled style="opacity:0.6; cursor:not-allowed;"' : ''}>
+                    <i data-lucide="${state.recommendedAdded ? 'check' : 'plus'}"></i>
+                  </button>
+                </div>
+                <div class="recommended-center">
+                  <h4 class="recommended-item-title">Sony PlayStation VR2</h4>
+                  <p class="recommended-item-desc">Dive into a world of unrivaled gaming experiences with PlayStation VR2.</p>
+                </div>
+                <div class="recommended-right">
+                  <span class="recommended-crossed-price">$599.99</span>
+                  <span class="recommended-promo-price">$320.99</span>
+                </div>
+                <button class="recommended-next-btn" type="button" aria-label="Next">
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Payment Form -->
+          <div class="checkout-payment-form-col" style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Tabs -->
+            <div class="payment-tabs">
+              <button class="payment-tab-btn ${state.paymentTab === 'card' ? 'is-active' : ''}" data-tab="card" type="button">Pay by Card</button>
+              <button class="payment-tab-btn ${state.paymentTab === 'paypal' ? 'is-active' : ''}" data-tab="paypal" type="button">Pay with PayPal</button>
+            </div>
+
+            <!-- Card Payment Content -->
+            <div id="payment-tab-content-card" style="display: ${state.paymentTab === 'card' ? 'flex' : 'none'}; flex-direction: column; gap: 16px;">
+              <!-- Sub-tabs -->
+              <div class="payment-sub-tabs">
+                <button class="payment-sub-tab-btn ${state.paymentMethod === 'card' ? 'is-active' : ''}" data-method="card" type="button">
+                  <i data-lucide="credit-card"></i>
+                  <span>Card</span>
+                </button>
+                <button class="payment-sub-tab-btn ${state.paymentMethod === 'applepay' ? 'is-active' : ''}" data-method="applepay" type="button">
+                  <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/applepay.svg" alt="Apple Pay" style="height: 12px; margin-top: 2px;">
+                  <span>Apple Pay</span>
+                </button>
+                <button class="payment-sub-tab-btn ${state.paymentMethod === 'googlepay' ? 'is-active' : ''}" data-method="googlepay" type="button">
+                  <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/googlepay.svg" alt="Google Pay" style="height: 12px; margin-top: 2px;">
+                  <span>Google Pay</span>
+                </button>
+                <button class="payment-sub-tab-btn ${state.paymentMethod === 'alipay' ? 'is-active' : ''}" data-method="alipay" type="button">
+                  <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/alipay.svg" alt="Alipay" style="height: 12px; margin-top: 2px;">
+                  <span>Alipay</span>
+                </button>
+              </div>
+
+              <!-- Secure Link Bar -->
+              <div class="payment-secure-link-bar">
+                <span class="payment-secure-link-label">
+                  <i data-lucide="lock" style="width: 12px; height: 12px;"></i> Secure payment link <i data-lucide="chevron-down" style="width: 10px; height: 10px; margin-left: 2px;"></i>
+                </span>
+                <a href="#" class="payment-learn-more" onclick="event.preventDefault();">Learn more</a>
+              </div>
+
+              <!-- Input Fields -->
+              <div class="payment-form-group">
+                <label class="payment-form-field">
+                  <span>Email address</span>
+                  <input type="email" class="payment-form-input" id="pay-email-input" value="${state.email}">
+                </label>
+
+                <label class="payment-form-field">
+                  <span>Card information</span>
+                  <div class="payment-input-wrapper">
+                    <input type="text" class="payment-form-input" id="pay-card-number-input" value="${state.cardNumber}" style="padding-right: 110px;">
+                    <div class="payment-input-card-logos">
+                      <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/visa.svg" alt="Visa">
+                      <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/mastercard.svg" alt="Mastercard">
+                      <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/jcb.svg" alt="JCB">
+                    </div>
+                  </div>
+                </label>
+
+                <div class="payment-form-row">
+                  <label class="payment-form-field">
+                    <span>Expiration date</span>
+                    <input type="text" class="payment-form-input" id="pay-expiry-input" value="${state.expiry}" placeholder="MM / YY">
+                  </label>
+                  <label class="payment-form-field">
+                    <span>Security code</span>
+                    <div class="payment-input-wrapper">
+                      <input type="text" class="payment-form-input" id="pay-cvc-input" value="${state.cvc}" placeholder="CVC">
+                      <div class="payment-input-icon-right"><i data-lucide="credit-card" style="width:14px; height:14px;"></i></div>
+                    </div>
+                  </label>
+                </div>
+
+                <label class="payment-form-field">
+                  <span>Cardholder name</span>
+                  <input type="text" class="payment-form-input" id="pay-name-input" value="${state.cardholderName}">
+                </label>
+
+                <label class="payment-form-field">
+                  <span>Country or region</span>
+                  <select class="payment-form-select" id="pay-country-select">
+                    <option value="US" ${state.country === 'US' ? 'selected' : ''}>United States</option>
+                    <option value="BR" ${state.country === 'BR' ? 'selected' : ''}>Brazil</option>
+                    <option value="PT" ${state.country === 'PT' ? 'selected' : ''}>Portugal</option>
+                  </select>
+                </label>
+
+                <label class="payment-form-field">
+                  <span>Billing address</span>
+                  <div class="payment-input-wrapper">
+                    <input type="text" class="payment-form-input" id="pay-address-input" value="${state.address}" style="padding-right: 60px;">
+                    <button class="payment-input-clear-btn" id="pay-address-clear-btn" type="button">Clear</button>
+                  </div>
+                </label>
+
+                <label class="payment-form-field">
+                  <select class="payment-form-select" id="pay-state-select">
+                    <option value="California" ${state.state === 'California' ? 'selected' : ''}>California</option>
+                    <option value="New York" ${state.state === 'New York' ? 'selected' : ''}>New York</option>
+                    <option value="Texas" ${state.state === 'Texas' ? 'selected' : ''}>Texas</option>
+                  </select>
+                </label>
+
+                <div class="payment-form-row">
+                  <input type="text" class="payment-form-input" id="pay-city-input" value="${state.city}" placeholder="City">
+                  <input type="text" class="payment-form-input" id="pay-zip-input" value="${state.zip}" placeholder="ZIP">
+                </div>
+
+                <label class="payment-form-field">
+                  <span>Tax ID number (optional)</span>
+                  <input type="text" class="payment-form-input" id="pay-taxid-input" value="${state.taxId}">
+                </label>
+              </div>
+            </div>
+
+            <!-- PayPal Payment Content -->
+            <div id="payment-tab-content-paypal" style="display: ${state.paymentTab === 'paypal' ? 'flex' : 'none'}; flex-direction: column; gap: 16px; align-items: center; justify-content: center; padding: 40px 20px; background: #16161a; border: 1px solid #26262b; border-radius: 12px; min-height: 250px;">
+              <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/paypal.svg" alt="PayPal" style="height: 40px; margin-bottom: 12px;">
+              <p style="font-size: 13px; color: #8a8a93; text-align: center; max-width: 280px; margin-bottom: 12px; line-height: 1.4;">You will be redirected to PayPal to complete your purchase securely.</p>
+            </div>
+
+            <!-- Summary Totals -->
+            <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #26262b; padding-top: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; color: #8a8a93;">
+                <span>Subtotal</span>
+                <span>$${total.toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: #ffffff;">
+                <span>Total</span>
+                <span>$${total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <!-- Submit Pay Button -->
+            <button class="payment-pay-btn" id="pay-submit-btn" type="button" ${state.items.length === 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+              <span id="pay-btn-text">Pay $${total.toFixed(2)}</span>
+              <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+            </button>
+
+            <!-- Footer links -->
+            <div class="payment-footer-row">
+              <span>Powered by Stripe</span>
+              <span>&bull;</span>
+              <a href="#" class="payment-footer-link" onclick="event.preventDefault();">Terms</a>
+              <span>&bull;</span>
+              <a href="#" class="payment-footer-link" onclick="event.preventDefault();">Privacy</a>
             </div>
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
-    lucide.createIcons();
-  } catch (err) {
-    console.error("Error rendering direct checkout:", err);
-    appView.innerHTML = `
-      <div class="direct-checkout-page">
-        <div class="checkout-container">
-          <div class="empty-state"><p>Erro ao carregar detalhes da compra. Verifique se o beat é válido.</p></div>
-        </div>
-      </div>
-    `;
-    lucide.createIcons();
-  }
+  // Hydrate Lucide Icons
+  lucide.createIcons();
+
+  // Bind Event Listeners
+  const bindInput = (id, stateProp) => {
+    const el = document.getElementById(id);
+    el?.addEventListener("input", (e) => {
+      state[stateProp] = e.target.value;
+    });
+  };
+
+  bindInput("pay-email-input", "email");
+  bindInput("pay-card-number-input", "cardNumber");
+  bindInput("pay-expiry-input", "expiry");
+  bindInput("pay-cvc-input", "cvc");
+  bindInput("pay-name-input", "cardholderName");
+  bindInput("pay-address-input", "address");
+  bindInput("pay-city-input", "city");
+  bindInput("pay-zip-input", "zip");
+  bindInput("pay-taxid-input", "taxId");
+
+  document.getElementById("pay-country-select")?.addEventListener("change", (e) => {
+    state.country = e.target.value;
+  });
+  document.getElementById("pay-state-select")?.addEventListener("change", (e) => {
+    state.state = e.target.value;
+  });
+
+  // Remove Item Close Buttons
+  document.querySelectorAll(".checkout-item-close").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      state.items = state.items.filter(item => item.id !== id);
+      showToast("Item removed from cart", "trash-2");
+      renderDirectCheckout();
+    });
+  });
+
+  // Apply Coupon Discount
+  document.getElementById("add-discount-code-btn")?.addEventListener("click", () => {
+    if (!state.discountApplied) {
+      state.discountApplied = true;
+      showToast("Discount code applied: 20% off!", "check-circle-2");
+    } else {
+      state.discountApplied = false;
+      showToast("Discount code removed", "info");
+    }
+    renderDirectCheckout();
+  });
+
+  // Add Recommended VR2 Item
+  document.getElementById("add-recommended-btn")?.addEventListener("click", () => {
+    if (!state.recommendedAdded) {
+      state.items.push({
+        id: "ps-vr2",
+        title: "Sony PlayStation VR2",
+        category: "Virtual Reality",
+        specs: ["VR headset ▾", "OLED ▾", "White ▾"],
+        qty: 1,
+        price: 320.99,
+        image: "assets/psvr2.png",
+        itemNum: 3
+      });
+      state.recommendedAdded = true;
+      showToast("Sony PlayStation VR2 added to order!", "plus-circle");
+      renderDirectCheckout();
+    }
+  });
+
+  // Address Clear Button
+  document.getElementById("pay-address-clear-btn")?.addEventListener("click", () => {
+    state.address = "";
+    const input = document.getElementById("pay-address-input");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  });
+
+  // Tab Switch buttons
+  document.querySelectorAll(".payment-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.paymentTab = btn.dataset.tab;
+      renderDirectCheckout();
+    });
+  });
+
+  // Sub-method buttons
+  document.querySelectorAll(".payment-sub-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.paymentMethod = btn.dataset.method;
+      renderDirectCheckout();
+    });
+  });
+
+  // Pay Button Click Submission
+  document.getElementById("pay-submit-btn")?.addEventListener("click", () => {
+    const btn = document.getElementById("pay-submit-btn");
+    const textSpan = document.getElementById("pay-btn-text");
+    if (!btn || !textSpan) return;
+
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    textSpan.innerHTML = "Processing payment...";
+
+    setTimeout(() => {
+      // Simulate successful payment
+      showToast("Payment completed successfully! Order placed.", "check-circle-2");
+      
+      // Reset items and checkout state
+      state.items = [
+        {
+          id: "ps5-pro",
+          title: "Sony PlayStation 5 Pro",
+          category: "PlayStation consoles",
+          specs: ["Game console ▾", "2 TB ▾", "Gray ▾"],
+          qty: 1,
+          price: 499.99,
+          image: "assets/ps5pro.png",
+          itemNum: 1
+        },
+        {
+          id: "pulse-3d",
+          title: "Sony PlayStation Pulse 3D Wireless Headset",
+          category: "Standard Edition",
+          specs: ["Standard Edition ▾", "Wireless ▾", "White ▾"],
+          qty: 1,
+          price: 99.99,
+          image: "assets/pulse3d.png",
+          itemNum: 2
+        }
+      ];
+      state.recommendedAdded = false;
+      state.discountApplied = false;
+
+      // Navigate back to feed
+      location.hash = "#feed";
+    }, 1500);
+  });
 }
 
 function renderLibraryLegacy() {
@@ -13643,12 +14050,15 @@ function beatDetailMiniCard(beat, context = "related") {
     <small>${htmlEscape(beat.producer || "ANSEND")}</small>
     <div>
       <strong>${htmlEscape(price)}</strong>
-      <button type="button" data-action="buy" data-license="basic" data-id="${htmlEscape(beat.id)}" aria-label="Comprar ${htmlEscape(beat.title)}"><i data-lucide="shopping-bag"></i></button>
+      <button type="button" data-action="buy" data-id="${htmlEscape(beat.id)}" aria-label="Escolher licenca de ${htmlEscape(beat.title)}"><i data-lucide="shopping-bag"></i></button>
     </div>
   </article>`;
 }
 
 function licenseTermsMarkup(lic) {
+  if (!lic) {
+    return `<span><i data-lucide="mouse-pointer-click"></i>Selecione uma licenca para visualizar os termos de uso, formatos e royalties.</span>`;
+  }
   const terms = [];
   if (lic.included_mp3) terms.push("MP3 incluso");
   if (lic.included_wav) terms.push("WAV incluso");
@@ -13692,9 +14102,8 @@ function renderBeatDetail() {
   const ownerProfessional = ownerProfile ? profileToProfessional(ownerProfile) : null;
   const producerName = String(item.producer || "ANSEND").replace(/^prod\.\s*/i, "");
   
-  const selectedLicense = "premium";
+  const selectedLicense = "";
   const defaultLicenses = generateDefaultLicensesForBeat(item);
-  const selectedPlan = defaultLicenses.find(l => l.license_key === "premium") || defaultLicenses[0];
   
   const catalog = marketplaceBeats();
   const sameProducer = catalog
@@ -13741,10 +14150,10 @@ function renderBeatDetail() {
     ? related.map((beat) => beatDetailMiniCard(beat, "related")).join("")
     : `<div class="beat-detail-empty">Sem relacionados por enquanto.</div>`;
 
-  const fallbackPriceText = `R$ ${(selectedPlan.price_cents / 100).toFixed(2)}`;
+  const fallbackPriceText = "Selecione";
 
   appView.innerHTML = `
-    <main class="beat-detail-page beat-market-detail" data-beat-id="${htmlEscape(item.id)}" data-selected-license="${selectedLicense}">
+    <main class="beat-detail-page beat-market-detail" data-beat-id="${htmlEscape(item.id)}" data-selected-license="">
       <div class="beat-detail-shell">
         <aside class="beat-sidebar-card" aria-label="Preview do beat">
           ${adminDeleteButton("beat", item)}
@@ -13782,15 +14191,16 @@ function renderBeatDetail() {
                 <small>Total</small>
                 <strong data-license-total>${fallbackPriceText}</strong>
               </div>
-              <button class="beat-cart-cta" type="button" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Adicionar ao carrinho</button>
-              <button class="beat-buy-cta" type="button" data-action="detail-buy-now" data-id="${htmlEscape(item.id)}" data-license="${selectedLicense}">Comprar agora</button>
+              <button class="beat-cart-cta" type="button" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}">Adicionar ao carrinho</button>
+              <button class="beat-buy-cta" type="button" data-action="detail-buy-now" data-id="${htmlEscape(item.id)}">Comprar agora</button>
             </header>
+            <p class="beat-license-error" data-license-error hidden>Selecione uma licenca para continuar.</p>
             <div class="beat-license-grid">${licenseCards}</div>
           </section>
 
           <section class="beat-terms-panel">
             <header><h3>Termos de uso</h3><button type="button" aria-label="Expandir termos"><i data-lucide="chevron-up"></i></button></header>
-            <div class="beat-terms-list" data-license-terms>${licenseTermsMarkup(selectedPlan)}</div>
+            <div class="beat-terms-list" data-license-terms>${licenseTermsMarkup(null)}</div>
           </section>
 
           <section class="beat-rail-section">
@@ -17344,13 +17754,13 @@ function checkoutProcessorNoteMarkup(message = "Pix processado com seguranca pel
 
 function checkoutRecommendationsMarkup() {
   const excludedIds = new Set((appState.cart || []).map((entry) => splitCartEntry(entry).beatId));
-  const recommendations = preferredBeats(8).filter((item) => !excludedIds.has(String(item.id))).slice(0, 6);
+  const recommendations = preferredBeats(8).filter((item) => !excludedIds.has(String(item.id))).slice(0, 3);
   if (!recommendations.length) return "";
   return `
     <section class="checkout-recommendations" aria-labelledby="checkout-recommendations-title">
       <header>
-        <div><span>Descubra mais</span><h3 id="checkout-recommendations-title">Voce tambem pode gostar</h3></div>
-        <div class="checkout-recommendation-nav" aria-hidden="true"><i data-lucide="chevron-left"></i><i data-lucide="chevron-right"></i></div>
+        <h3 id="checkout-recommendations-title">Recomendado para voce</h3>
+        <div class="checkout-recommendation-nav" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
       </header>
       <div class="checkout-recommendation-track">
         ${recommendations.map((item) => `
@@ -17359,7 +17769,7 @@ function checkoutRecommendationsMarkup() {
               <img src="${htmlEscape(item.cover || IMAGE_FALLBACK_SRC)}" alt="Capa de ${htmlEscape(item.title)}" loading="lazy">
             </button>
             <div><small>${htmlEscape(item.producer || "ANSEND")}</small><strong title="${htmlEscape(item.title)}">${htmlEscape(item.title)}</strong></div>
-            <button type="button" class="recommended-beat-add" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}" data-license="premium" aria-label="Adicionar ${htmlEscape(item.title)} ao carrinho"><i data-lucide="shopping-cart"></i><span>${htmlEscape(item.price || licensePlans.premium.price)}</span></button>
+            <button type="button" class="recommended-beat-add" data-action="open-beat" data-id="${htmlEscape(item.id)}" aria-label="Escolher licenca de ${htmlEscape(item.title)}"><i data-lucide="shopping-cart"></i><span>${htmlEscape(item.price || licensePlans.premium.price)}</span></button>
           </article>
         `).join("")}
       </div>
@@ -17370,139 +17780,124 @@ function checkoutRecommendationsMarkup() {
 function checkoutFormMarkup({ isCart, itemMarkup, itemCount = 1, subtotalCents, serviceFeeCents, totalCents, prefillName, prefillEmail, termsMarkup }) {
   return `
     <form class="checkout-form" data-is-cart="${isCart ? "true" : "false"}">
-      <div class="checkout-page checkout-shell">
-        ${checkoutHeaderMarkup()}
+      <div class="checkout-page">
+        <div class="checkout-shell">
+          ${checkoutHeaderMarkup()}
+          <span class="checkout-license-bar checkout-method-grid checkout-trust-strip checkout-compat-anchor" hidden></span>
 
-        <main class="checkout-layout checkout-marketplace-layout">
-          <section class="checkout-primary">
-            <header class="checkout-titlebar">
-              <div>
-                <h2>Finalizar compra</h2>
-                <p>Revise seu pedido, escolha o pagamento e conclua sua compra.</p>
+          <main class="checkout-layout checkout-marketplace-layout">
+            <section class="checkout-primary">
+              <header class="checkout-titlebar">
+                <div>
+                  <h2>Resumo do pedido <span>${itemCount} ${itemCount === 1 ? "item" : "itens"}</span></h2>
+                </div>
+              </header>
+
+              <section class="checkout-product-list" aria-label="Produtos do carrinho">
+                ${itemMarkup}
+              </section>
+
+              <div class="checkout-coupon checkout-coupon-card">
+                <div class="checkout-coupon-title">
+                  <i data-lucide="badge-percent"></i>
+                  <div>
+                    <span>Codigo de desconto</span>
+                    <small>Economize quando houver cupom ativo</small>
+                  </div>
+                </div>
+                <button type="button"><i data-lucide="ticket"></i> Adicionar codigo</button>
               </div>
-            </header>
 
-            <div class="checkout-license-bar">
-              <div><i data-lucide="file-check-2"></i><span>Informacoes de cobranca e licenca</span></div>
-              <button type="button">${isCart ? "Adicionar informacoes" : "Editar"}</button>
-            </div>
+              <div class="checkout-total checkout-left-total" aria-label="Valores do pedido">
+                <div class="checkout-total-row">
+                  <span>Subtotal</span>
+                  <strong>${checkoutMoney(subtotalCents)}</strong>
+                </div>
+                <div class="checkout-total-row">
+                  <span>Taxa de servico</span>
+                  <strong>${checkoutMoney(serviceFeeCents)}</strong>
+                </div>
+                <div class="checkout-total-row">
+                  <span>Desconto</span>
+                  <strong>${checkoutMoney(0)}</strong>
+                </div>
+                <div class="checkout-total-row is-final">
+                  <span>Total</span>
+                  <strong>${checkoutMoney(totalCents)}</strong>
+                </div>
+              </div>
 
-            <section class="checkout-product-list" aria-label="Produtos do carrinho">
-              ${itemMarkup}
+              ${checkoutRecommendationsMarkup()}
             </section>
 
-            <div class="checkout-panel checkout-flow-panel">
-              <section class="checkout-section">
-                <div class="checkout-section-title">
-                  <h3>Forma de pagamento</h3>
-                  <span><i data-lucide="check-circle-2"></i> Pix selecionado</span>
+            <aside class="checkout-summary-panel checkout-payment-panel" aria-label="Pagamento">
+              <div class="checkout-payment-tabs" role="tablist" aria-label="Forma de pagamento">
+                <button type="button" class="is-active" aria-selected="true">Pix</button>
+              </div>
+
+              <div class="checkout-payment-options" aria-label="Metodo disponivel">
+                <button type="button" class="payment-method is-selected" aria-pressed="true">
+                  ${pixLogoMarkup()}
+                  <strong>Pix</strong>
+                  <small>Instantaneo</small>
+                </button>
+              </div>
+
+              <div class="checkout-secure-link"><i data-lucide="lock-keyhole"></i><span>Pagamento seguro via Mercado Pago</span></div>
+
+              <div class="checkout-panel checkout-flow-panel">
+                <section class="checkout-section">
+                  <div class="checkout-fields">
+                    <label class="checkout-field">
+                      <span>E-mail</span>
+                      <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required>
+                    </label>
+                    <label class="checkout-field">
+                      <span>Nome completo</span>
+                      <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
+                    </label>
+                  </div>
+                </section>
+
+                <label class="checkout-terms" tabindex="0">
+                  <input type="checkbox" name="accept_terms" required>
+                  <span>${termsMarkup}</span>
+                </label>
+                <div class="checkout-error" role="alert" aria-live="polite"></div>
+              </div>
+
+              ${checkoutProcessorNoteMarkup("A confirmacao acontece antes da liberacao dos arquivos.")}
+
+              <div class="checkout-total">
+                <div class="checkout-total-row">
+                  <span>Subtotal</span>
+                  <strong>${checkoutMoney(subtotalCents)}</strong>
                 </div>
-                <div class="checkout-method-grid" aria-label="Formas de pagamento">
-                  <button type="button" class="payment-method is-selected" aria-pressed="true">
-                    ${pixLogoMarkup()}
-                    <strong>Pix</strong>
-                    <small>Instantaneo</small>
-                    <i data-lucide="check" class="payment-method-check"></i>
-                  </button>
-                  <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
-                    ${cardLogoMarkup()}
-                    <strong>Cartao</strong>
-                    <small>Em breve</small>
-                  </button>
-                  <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
-                    ${boletoLogoMarkup()}
-                    <strong>Boleto</strong>
-                    <small>Em breve</small>
-                  </button>
-                  <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
-                    ${debitLogoMarkup()}
-                    <strong>Debito</strong>
-                    <small>Em breve</small>
-                  </button>
-                  <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
-                    <i data-lucide="ellipsis"></i>
-                    <strong>Outros</strong>
-                    <small>Em breve</small>
-                  </button>
+                <div class="checkout-total-row">
+                  <span>Taxa de servico</span>
+                  <strong>${checkoutMoney(serviceFeeCents)}</strong>
                 </div>
-                ${checkoutProcessorNoteMarkup()}
-              </section>
-
-              <section class="checkout-section">
-                <h3>Dados do comprador</h3>
-                <div class="checkout-fields">
-                  <label class="checkout-field">
-                    <span>Nome completo</span>
-                    <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
-                  </label>
-                  <label class="checkout-field">
-                    <span>E-mail</span>
-                    <input name="buyer_email" type="email" value="${htmlEscape(prefillEmail)}" placeholder="email@exemplo.com" required>
-                  </label>
+                <div class="checkout-total-row">
+                  <span>Desconto</span>
+                  <strong>${checkoutMoney(0)}</strong>
                 </div>
-              </section>
-
-              <label class="checkout-terms" tabindex="0">
-                <input type="checkbox" name="accept_terms" required>
-                <span>${termsMarkup}</span>
-              </label>
-              <div class="checkout-trust-strip"><i data-lucide="shield-check"></i><span><strong>Pagamento protegido.</strong> Os arquivos serao liberados apos a confirmacao.</span></div>
-              <div class="checkout-error" role="alert" aria-live="polite"></div>
-            </div>
-          </section>
-
-          <aside class="checkout-summary-panel" aria-label="Resumo do pedido">
-            <div class="checkout-summary-header">
-              <div>
-                <span>Resumo do pedido</span>
-                <strong>${itemCount} ${itemCount === 1 ? "item" : "itens"}</strong>
+                <div class="checkout-total-row is-final">
+                  <span>Total</span>
+                  <strong>${checkoutMoney(totalCents)}</strong>
+                </div>
               </div>
-              <button type="button" data-route="carrinho">Editar</button>
-            </div>
 
-            <div class="checkout-items">
-              ${itemMarkup}
-            </div>
-
-            <div class="checkout-coupon">
-              <div class="checkout-coupon-title">
-                <i data-lucide="tag"></i>
-                <span>Cupom</span>
+              <button class="seller-submit" type="submit">
+                <span>Gerar Pix</span> <b aria-hidden="true">&middot;</b> <span>${checkoutMoney(totalCents)}</span><i data-lucide="lock-keyhole"></i>
+              </button>
+              <div class="checkout-legal-links" aria-label="Links legais">
+                <span>Pagamento seguro</span>
+                <a href="#">Termos</a>
+                <a href="#">Privacidade</a>
               </div>
-              <label>
-                <span class="sr-only">Codigo promocional</span>
-                <input type="text" placeholder="Digite seu codigo" aria-label="Codigo promocional">
-              </label>
-              <button type="button">Aplicar</button>
-            </div>
-
-            ${checkoutProcessorNoteMarkup("A confirmacao acontece antes da liberacao dos arquivos.")}
-
-            <div class="checkout-total">
-              <div class="checkout-total-row">
-                <span>Subtotal</span>
-                <strong>${checkoutMoney(subtotalCents)}</strong>
-              </div>
-              <div class="checkout-total-row">
-                <span>Taxa de servico</span>
-                <strong>${checkoutMoney(serviceFeeCents)}</strong>
-              </div>
-              <div class="checkout-total-row">
-                <span>Desconto</span>
-                <strong>${checkoutMoney(0)}</strong>
-              </div>
-              <div class="checkout-total-row is-final">
-                <span>Total</span>
-                <strong>${checkoutMoney(totalCents)}</strong>
-              </div>
-            </div>
-
-            <button class="seller-submit" type="submit">
-              Gerar Pix <b aria-hidden="true">&middot;</b> <span>${checkoutMoney(totalCents)}</span>
-            </button>
-          </aside>
-        </main>
-        ${checkoutRecommendationsMarkup()}
+            </aside>
+          </main>
+        </div>
       </div>
     </form>
   `;
@@ -18668,8 +19063,7 @@ function handleFavorite(id) {
 function handleBuy(id, selectedPlan = "premium") {
   const item = findBeat(id);
   trackUserEvent("buy", "beat", item?.raw?.id || item?.id || id, { source: "buy-button", selectedPlan });
-  addToCart(id, selectedPlan);
-  location.hash = "carrinho";
+  openBeatDetailForLicenseSelection(id, "buy-button");
 }
 
 function profileFromAccountForm(form, email) {
@@ -19556,9 +19950,9 @@ document.addEventListener("click", async (event) => {
       metadata: { impression_id: target.closest("[data-impression-id]")?.dataset.impressionId || "" },
     });
     if (action === "nexo-card-secondary" && target.dataset.actionKey === "ADD_TO_CART") {
-      addToCart(params.beatId || target.dataset.entityId, "premium");
-      void logNexoAnalytics("ADD_TO_CART", { entityType: "beat", entityId: params.beatId || target.dataset.entityId });
-      renderCart();
+      const beatId = params.beatId || target.dataset.entityId;
+      openBeatDetailForLicenseSelection(beatId, "nexo-add-to-cart");
+      void logNexoAnalytics("ADD_TO_CART", { entityType: "beat", entityId: beatId, metadata: { redirectedToLicenseSelection: true } });
       return;
     }
     const routeMap = {
@@ -20231,30 +20625,54 @@ document.addEventListener("click", async (event) => {
   if (action === "favorite") handleFavorite(target.dataset.id);
   if (action === "select-beat-license") {
     const page = target.closest(".beat-market-detail");
-    const licenseId = target.dataset.license || "premium";
-    const plan = licensePlans[licenseId] || licensePlans.premium;
-    if (!page || !plan) return;
+    const licenseId = target.dataset.license || "";
+    const beatId = page?.dataset.beatId || target.closest("[data-beat-id]")?.dataset.beatId || "";
+    if (!page || !licenseId || !beatId) return;
+    const licenses = await fetchBeatLicenses(beatId);
+    const plan = licenses.find((license) => license.id === licenseId || license.license_key === licenseId);
+    if (!plan) {
+      showToast("Licenca indisponivel para este beat.", "alert-triangle");
+      return;
+    }
     page.dataset.selectedLicense = licenseId;
     page.querySelectorAll(".beat-license-card").forEach((card) => {
       const selected = card === target;
       card.classList.toggle("is-selected", selected);
       card.setAttribute("aria-pressed", selected ? "true" : "false");
     });
-    page.querySelector("[data-license-total]").textContent = plan.price;
+    page.querySelector("[data-license-total]").textContent = `R$ ${(Number(plan.price_cents || 0) / 100).toFixed(2)}`;
     page.querySelector("[data-license-terms]").innerHTML = licenseTermsMarkup(plan);
     page.querySelectorAll("[data-action='detail-add-cart'], [data-action='detail-buy-now']").forEach((button) => {
       button.dataset.license = licenseId;
     });
+    const termsHeader = page.querySelector(".beat-terms-panel header");
+    if (termsHeader) {
+      termsHeader.innerHTML = `
+        <h3>Termos de uso</h3>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <a href="#" class="view-contract-modal-trigger" data-beat-id="${beatId}" data-license-id="${licenseId}" style="font-size:11px; color:var(--beat-blue); text-decoration:underline; font-weight:bold;">Ver termos completos</a>
+          <button type="button" aria-label="Expandir termos"><i data-lucide="chevron-up"></i></button>
+        </div>
+      `;
+    }
+    clearBeatLicenseRequired(page);
     lucide.createIcons();
     return;
   }
   if (action === "detail-add-cart") {
-    addToCart(target.dataset.id, target.dataset.license || "premium");
-    location.hash = "carrinho";
+    const selection = selectedBeatLicenseFromPage(target);
+    if (!selection) return;
+    if (addToCart(selection.beatId, selection.licenseId)) {
+      location.hash = "carrinho";
+    }
     return;
   }
   if (action === "detail-buy-now") {
-    location.hash = `checkout?beatId=${target.dataset.id}&licenseId=${target.dataset.license || "premium"}`;
+    const selection = selectedBeatLicenseFromPage(target);
+    if (!selection) return;
+    localStorage.setItem("ansend-direct-checkout-beatId", selection.beatId);
+    localStorage.setItem("ansend-direct-checkout-licenseId", selection.licenseId);
+    location.hash = `checkout?beatId=${selection.beatId}&licenseId=${selection.licenseId}`;
     return;
   }
   if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
@@ -20314,6 +20732,11 @@ document.addEventListener("click", async (event) => {
 
     const beatId = localStorage.getItem("ansend-direct-checkout-beatId");
     const licenseId = localStorage.getItem("ansend-direct-checkout-licenseId");
+    if (!beatId || !licenseId) {
+      showToast("Selecione uma licenca para continuar.", "alert-triangle");
+      if (beatId) location.hash = `beat-${beatId}`;
+      return;
+    }
 
     (async () => {
       const btn = target.closest("button");
@@ -20412,8 +20835,7 @@ document.addEventListener("click", async (event) => {
   if (action === "buy-promoted-beat") {
     const adId = target.dataset.adId || target.closest("[data-cart-promoted-ad-id]")?.dataset.cartPromotedAdId || "";
     if (adId) trackCartPromotedAdEvent("click", adId, "add_to_cart");
-    addToCart(target.dataset.id, "premium");
-    renderCart();
+    openBeatDetailForLicenseSelection(target.dataset.id, "cart-promoted");
     return;
   }
   if (action === "copy-cart-link") {
@@ -20570,7 +20992,7 @@ document.addEventListener("click", async (event) => {
   if (action === "buy-current") {
     const current = currentPlayingBeat();
     if (!current?.id) return;
-    handleBuy(current.id, "premium");
+    openBeatDetailForLicenseSelection(current.id, "global-player");
     return;
   }
   if (action === "edit-beat") {
@@ -22414,21 +22836,20 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
     licenses = generateDefaultLicensesForBeat(beat);
   }
   
-  let selectedId = container.dataset.selectedLicense || "premium";
-  let selectedLicense = licenses.find(l => l.id === selectedId || l.license_key === selectedId);
-  if (!selectedLicense) {
-    selectedLicense = licenses.find(l => l.license_key === "premium") || licenses[0];
-  }
-  
-  selectedId = selectedLicense.id;
+  let selectedId = container.dataset.selectedLicense || "";
+  let selectedLicense = selectedId
+    ? licenses.find(l => l.id === selectedId || l.license_key === selectedId)
+    : null;
+  if (!selectedLicense) selectedId = "";
   container.dataset.selectedLicense = selectedId;
   
-  const priceFormatted = `R$ ${(selectedLicense.price_cents / 100).toFixed(2)}`;
+  const priceFormatted = selectedLicense ? `R$ ${(selectedLicense.price_cents / 100).toFixed(2)}` : "Selecione";
   
   container.querySelector("[data-license-total]").textContent = priceFormatted;
   
   container.querySelectorAll("[data-action='detail-add-cart'], [data-action='detail-buy-now']").forEach(btn => {
-    btn.dataset.license = selectedId;
+    if (selectedId) btn.dataset.license = selectedId;
+    else delete btn.dataset.license;
   });
   
   const cardsHtml = renderBeatLicenseCards(licenses, selectedId);
@@ -22441,7 +22862,7 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
     termsHeader.innerHTML = `
       <h3>Termos de uso</h3>
       <div style="display:flex; align-items:center; gap:12px;">
-        <a href="#" class="view-contract-modal-trigger" data-beat-id="${beat.id}" data-license-id="${selectedId}" style="font-size:11px; color:var(--beat-blue); text-decoration:underline; font-weight:bold;">Ver termos completos</a>
+        ${selectedId ? `<a href="#" class="view-contract-modal-trigger" data-beat-id="${beat.id}" data-license-id="${selectedId}" style="font-size:11px; color:var(--beat-blue); text-decoration:underline; font-weight:bold;">Ver termos completos</a>` : ""}
         <button type="button" aria-label="Expandir termos"><i data-lucide="chevron-up"></i></button>
       </div>
     `;
@@ -22477,99 +22898,101 @@ function renderMercadoPagoPixCheckout(result, context) {
     : `<div class="pix-qr-placeholder">Use o Pix copia e cola</div>`;
 
   openModal(`
-    <section data-mercado-pago-pix class="pix-checkout-page checkout-page checkout-shell">
-      ${checkoutHeaderMarkup()}
+    <section data-mercado-pago-pix class="pix-checkout-page checkout-page">
+      <div class="checkout-shell">
+        ${checkoutHeaderMarkup()}
 
-      <main class="checkout-layout pix-layout">
-        <section class="checkout-primary">
-          <header class="checkout-titlebar">
-            <span class="checkout-heading-icon"><i data-lucide="qr-code"></i></span>
-            <div>
-              <h2>Pagamento via Pix</h2>
-              <p>Escaneie o QR Code ou copie o codigo Pix para concluir.</p>
-            </div>
-          </header>
-
-          <div class="checkout-panel pix-payment-panel">
-            <div class="payment-status-card" role="status" aria-live="polite">
-              <i data-lucide="clock-3"></i>
+        <main class="checkout-layout pix-layout">
+          <section class="checkout-primary">
+            <header class="checkout-titlebar">
+              <span class="checkout-heading-icon"><i data-lucide="qr-code"></i></span>
               <div>
-                <strong>Aguardando pagamento</strong>
-                <span data-pix-status>A confirmacao acontece pelo Mercado Pago.</span>
+                <h2>Pagamento via Pix</h2>
+                <p>Escaneie o QR Code ou copie o codigo Pix para concluir.</p>
               </div>
-            </div>
+            </header>
 
-            <section class="checkout-section pix-payment-grid">
-              <div class="pix-qr-card">
-                ${qrMarkup}
-                <strong>${checkoutMoney(checkout.total_cents)}</strong>
-                <span>Escaneie com o aplicativo do seu banco.</span>
+            <div class="checkout-panel pix-payment-panel">
+              <div class="payment-status-card" role="status" aria-live="polite">
+                <i data-lucide="clock-3"></i>
+                <div>
+                  <strong>Aguardando pagamento</strong>
+                  <span data-pix-status>A confirmacao acontece pelo Mercado Pago.</span>
+                </div>
               </div>
 
-              <div class="pix-payment-details">
-                <div class="pix-instructions">
-                  <h3>Como pagar</h3>
-                  <ol>
-                    <li>Abra o aplicativo do seu banco.</li>
-                    <li>Escolha pagar com Pix.</li>
-                    <li>Escaneie o QR Code ou cole o codigo.</li>
-                    <li>Aguarde a confirmacao automatica.</li>
-                  </ol>
+              <section class="checkout-section pix-payment-grid">
+                <div class="pix-qr-card">
+                  ${qrMarkup}
+                  <strong>${checkoutMoney(checkout.total_cents)}</strong>
+                  <span>Escaneie com o aplicativo do seu banco.</span>
                 </div>
 
-                <label class="pix-copy-field">
-                  <span>Pix copia e cola</span>
-                  <div class="pix-copy-control">
-                    <textarea data-pix-code readonly rows="2">${htmlEscape(pix.qr_code || "")}</textarea>
-                    <button type="button" data-action="copy-pix-code"><i data-lucide="copy"></i> Copiar codigo</button>
+                <div class="pix-payment-details">
+                  <div class="pix-instructions">
+                    <h3>Como pagar</h3>
+                    <ol>
+                      <li>Abra o aplicativo do seu banco.</li>
+                      <li>Escolha pagar com Pix.</li>
+                      <li>Escaneie o QR Code ou cole o codigo.</li>
+                      <li>Aguarde a confirmacao automatica.</li>
+                    </ol>
                   </div>
-                </label>
 
-                <button type="button" class="seller-submit is-secondary" data-action="check-pix-payment">
-                  <i data-lucide="refresh-cw"></i> Verificar pagamento
-                </button>
+                  <label class="pix-copy-field">
+                    <span>Pix copia e cola</span>
+                    <div class="pix-copy-control">
+                      <textarea data-pix-code readonly rows="2">${htmlEscape(pix.qr_code || "")}</textarea>
+                      <button type="button" data-action="copy-pix-code"><i data-lucide="copy"></i> Copiar codigo</button>
+                    </div>
+                  </label>
+
+                  <button type="button" class="seller-submit is-secondary" data-action="check-pix-payment">
+                    <i data-lucide="refresh-cw"></i> Verificar pagamento
+                  </button>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <aside class="checkout-summary-panel" aria-label="Resumo do pagamento Pix">
+            <div class="checkout-summary-header">
+              <div>
+                <span>Resumo do pedido</span>
+                <strong>${items.length || 1} item</strong>
               </div>
-            </section>
-          </div>
-        </section>
-
-        <aside class="checkout-summary-panel" aria-label="Resumo do pagamento Pix">
-          <div class="checkout-summary-header">
-            <div>
-              <span>Resumo do pedido</span>
-              <strong>${items.length || 1} item</strong>
+              <span class="checkout-status-pill">Pix gerado</span>
             </div>
-            <span class="checkout-status-pill">Pix gerado</span>
-          </div>
 
-          <div class="checkout-items">
-            ${itemsHtml}
-          </div>
-
-          ${checkoutProcessorNoteMarkup("Arquivos e contratos sao liberados apos a confirmacao.")}
-
-          <div class="checkout-total">
-            <div class="checkout-total-row">
-              <span>Subtotal</span>
-              <strong>${checkoutMoney(checkout.subtotal_cents)}</strong>
+            <div class="checkout-items">
+              ${itemsHtml}
             </div>
-            <div class="checkout-total-row">
-              <span>Taxa de servico</span>
-              <strong>${checkoutMoney(checkout.service_fee_cents)}</strong>
-            </div>
-            <div class="checkout-total-row is-final">
-              <span>Total Pix</span>
-              <strong>${checkoutMoney(checkout.total_cents)}</strong>
-            </div>
-          </div>
 
-          <div class="checkout-footer-actions">
-            <button type="button" class="seller-submit" data-action="copy-pix-code"><i data-lucide="copy"></i> Copiar Pix</button>
-            <button type="button" class="seller-submit is-secondary" data-action="check-pix-payment"><i data-lucide="refresh-cw"></i> Verificar</button>
-          </div>
-        </aside>
-      </main>
-      ${checkoutRecommendationsMarkup()}
+            ${checkoutProcessorNoteMarkup("Arquivos e contratos sao liberados apos a confirmacao.")}
+
+            <div class="checkout-total">
+              <div class="checkout-total-row">
+                <span>Subtotal</span>
+                <strong>${checkoutMoney(checkout.subtotal_cents)}</strong>
+              </div>
+              <div class="checkout-total-row">
+                <span>Taxa de servico</span>
+                <strong>${checkoutMoney(checkout.service_fee_cents)}</strong>
+              </div>
+              <div class="checkout-total-row is-final">
+                <span>Total Pix</span>
+                <strong>${checkoutMoney(checkout.total_cents)}</strong>
+              </div>
+            </div>
+
+            <div class="checkout-footer-actions">
+              <button type="button" class="seller-submit" data-action="copy-pix-code"><i data-lucide="copy"></i> Copiar Pix</button>
+              <button type="button" class="seller-submit is-secondary" data-action="check-pix-payment"><i data-lucide="refresh-cw"></i> Verificar</button>
+            </div>
+          </aside>
+        </main>
+        ${checkoutRecommendationsMarkup()}
+      </div>
     </section>
   `);
 
