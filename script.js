@@ -4216,6 +4216,7 @@ function currentRouteFromHash() {
     "configuracoes",
     "admin",
     "carrinho",
+    "checkout",
     "vendedor",
     "confirmar-email",
     "email-confirmed",
@@ -12067,7 +12068,11 @@ function openBillingModal() {
     localStorage.setItem("ansend-billing-info", JSON.stringify(appState.billingInfo));
     closeModal();
     showToast("Informações de faturamento salvas!", "check-circle");
-    renderCart();
+    if (currentRoute() === "checkout") {
+      renderDirectCheckout();
+    } else {
+      renderCart();
+    }
   });
 }
 
@@ -12422,6 +12427,303 @@ async function renderCart() {
             <h1>Carrinho</h1>
           </div>
           <div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  }
+}
+
+async function renderDirectCheckout() {
+  function getDirectQueryParam(name) {
+    const hash = location.hash;
+    const qIdx = hash.indexOf("?");
+    if (qIdx === -1) return null;
+    const searchParams = new URLSearchParams(hash.substring(qIdx));
+    return searchParams.get(name);
+  }
+
+  const beatId = getDirectQueryParam("beatId") || localStorage.getItem("ansend-direct-checkout-beatId");
+  const licenseId = getDirectQueryParam("licenseId") || localStorage.getItem("ansend-direct-checkout-licenseId") || "premium";
+
+  if (!beatId) {
+    appView.innerHTML = `
+      <div class="direct-checkout-page">
+        <div class="checkout-container" style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:75vh;">
+          <div class="empty-state" style="border:none; background:transparent; padding:0; text-align:center;">
+            <i data-lucide="shopping-cart" style="width:48px; height:48px; color:#737373; margin-bottom:16px;"></i>
+            <h2 style="font-size:14px; font-weight:700; color:#fff; margin-bottom:8px;">Nenhum item selecionado</h2>
+            <p style="font-size:11px; color:#a3a3a3; margin-bottom:20px; max-width:320px;">Selecione um beat na loja para finalizar a compra.</p>
+            <a href="#explorar" data-route="explorar" class="checkout-main-btn" style="width:auto; padding:0 24px; display:inline-flex; align-items:center; height:36px; font-size:11px;">Explorar catálogo</a>
+          </div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  // Save for page updates/refreshes persistence
+  localStorage.setItem("ansend-direct-checkout-beatId", beatId);
+  localStorage.setItem("ansend-direct-checkout-licenseId", licenseId);
+
+  // Render initial loading skeleton
+  appView.innerHTML = `
+    <div class="direct-checkout-page">
+      <div class="checkout-direct-header">
+        <div class="checkout-direct-header-left">
+          <span class="checkout-direct-logo">ANSEND <span>Checkout seguro</span></span>
+        </div>
+        <div class="checkout-direct-header-right">
+          <span class="protected-badge"><i data-lucide="lock"></i>Pagamento protegido</span>
+          <a href="#beat-${beatId}" class="checkout-direct-close-btn" aria-label="Voltar"><i data-lucide="x"></i></a>
+        </div>
+      </div>
+      <div class="checkout-container">
+        <div class="cart-skeleton">
+          <div class="cart-skeleton-item">
+            <div class="cart-skeleton-cover"></div>
+            <div class="cart-skeleton-info">
+              <div class="cart-skeleton-line1"></div>
+              <div class="cart-skeleton-line2"></div>
+            </div>
+            <div class="cart-skeleton-price"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  lucide.createIcons();
+
+  try {
+    const beat = findBeat(beatId);
+    if (!beat) {
+      throw new Error("Beat não encontrado");
+    }
+    const licenses = await fetchBeatLicenses(beatId);
+    const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                    generateDefaultLicensesForBeat(beat).find(l => l.id === licenseId || l.license_key === licenseId);
+    if (!license) {
+      throw new Error("Licença não encontrada");
+    }
+
+    const subtotalCents = license.price_cents || 0;
+    const serviceFeeCents = Math.round(subtotalCents * 0.12);
+    
+    // Calculate direct checkout coupon discount
+    const couponCode = appState.directCheckoutCoupon || "";
+    let couponDiscountCents = 0;
+    if (couponCode) {
+      let pct = 0;
+      if (couponCode.endsWith("10")) pct = 10;
+      else if (couponCode.endsWith("20")) pct = 20;
+      else pct = 15;
+      couponDiscountCents = Math.round(subtotalCents * (pct / 100));
+    }
+
+    const totalCents = Math.max(0, subtotalCents - couponDiscountCents) + serviceFeeCents;
+
+    const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
+    const prefillEmail = appState.authUser?.email || "";
+
+    const producerName = String(beat.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+    const streamLimit = license.unlimited_streams ? "Vitalícia" : (license.stream_limit ? license.stream_limit.toLocaleString("pt-BR") : "50.000");
+    const filesIncluded = [
+      license.included_mp3 ? "MP3" : "",
+      license.included_wav ? "WAV" : "",
+      license.included_stems ? "Stems" : ""
+    ].filter(Boolean).join(" + ") || "MP3, WAV";
+    
+    const royalties = license.producer_royalty_percentage ? `${license.producer_royalty_percentage}% royalties` : "Royalties definidos pelo produtor";
+    const specs = `${htmlEscape(license.name)} · ${htmlEscape(royalties)} · ${htmlEscape(streamLimit)} · ${htmlEscape(filesIncluded)}`;
+
+    appView.innerHTML = `
+      <div class="direct-checkout-page">
+        <div class="checkout-direct-header">
+          <div class="checkout-direct-header-left">
+            <span class="checkout-direct-logo">ANSEND <span>Checkout seguro</span></span>
+          </div>
+          <div class="checkout-direct-header-right">
+            <span class="protected-badge"><i data-lucide="lock"></i>Pagamento protegido</span>
+            <a href="#beat-${beatId}" class="checkout-direct-close-btn" aria-label="Voltar"><i data-lucide="x"></i></a>
+          </div>
+        </div>
+
+        <div class="checkout-container">
+          <div class="view-header-carrinho checkout-title-wrapper" style="width: 100%; text-align: left; margin-bottom: 24px;">
+            <h1 style="font-size: 20px; font-weight: 700;">Finalizar compra</h1>
+            <p style="font-size: 11px; color: #a3a3a3; margin-top: 4px;">Revise seu pedido, escolha o pagamento e conclua sua compra.</p>
+          </div>
+
+          <div class="checkout-billing-bar" style="margin-top: 16px;">
+            <span>Informações sobre faturamento e licenciamento</span>
+            <button class="checkout-add-info-btn" type="button" data-action="direct-checkout-billing">
+              <i data-lucide="${appState.billingInfo ? 'pencil' : 'plus'}"></i>
+              <span>${appState.billingInfo ? 'Editar informações' : 'Adicionar informações'}</span>
+            </button>
+          </div>
+
+          <div class="checkout-main-grid" style="margin-top: 20px;">
+            <div class="checkout-left-col">
+              <div class="checkout-product-row" style="margin-bottom: 24px;">
+                <img src="${htmlEscape(beat.cover)}" alt="Capa" class="checkout-product-cover">
+                <div class="checkout-product-info">
+                  <div class="checkout-product-title-line">
+                    <h3>${htmlEscape(beat.title)}</h3>
+                  </div>
+                  <span class="checkout-product-specs">${specs}</span>
+                  <a class="checkout-product-contract-link view-contract-modal-trigger" data-beat-id="${htmlEscape(beat.id)}" data-license-id="${htmlEscape(license.id)}">Ver licença</a>
+                </div>
+                <div class="checkout-product-right">
+                  <span class="checkout-product-price" style="font-weight: 700;">R$ ${(subtotalCents / 100).toFixed(2)}</span>
+                  <a href="#beat-${beatId}" class="checkout-product-remove-btn" aria-label="Remover">
+                    <i data-lucide="x"></i>
+                  </a>
+                </div>
+              </div>
+
+              <section class="checkout-payment-section">
+                <div class="checkout-payment-section-header">
+                  <h3>Forma de pagamento</h3>
+                  <span class="checkout-payment-status"><i data-lucide="check-circle-2"></i> Pix selecionado</span>
+                </div>
+                <div class="checkout-payment-grid">
+                  <div class="checkout-payment-card is-active" data-method="pix">
+                    <div class="checkout-payment-card-logo-row">
+                      <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:16px;">
+                      <div class="checkout-payment-card-check"><i data-lucide="check"></i></div>
+                    </div>
+                    <span class="checkout-payment-card-title">Pix</span>
+                    <span class="checkout-payment-card-sub">Instantâneo</span>
+                  </div>
+                  <div class="checkout-payment-card is-disabled" data-method="card">
+                    <div class="checkout-payment-card-logo-row">
+                      <i data-lucide="credit-card"></i>
+                    </div>
+                    <span class="checkout-payment-card-title">Cartão</span>
+                    <span class="checkout-payment-card-sub">Em breve</span>
+                  </div>
+                  <div class="checkout-payment-card is-disabled" data-method="boleto">
+                    <div class="checkout-payment-card-logo-row">
+                      <i data-lucide="barcode"></i>
+                    </div>
+                    <span class="checkout-payment-card-title">Boleto</span>
+                    <span class="checkout-payment-card-sub">Em breve</span>
+                  </div>
+                  <div class="checkout-payment-card is-disabled" data-method="debit">
+                    <div class="checkout-payment-card-logo-row">
+                      <i data-lucide="wallet"></i>
+                    </div>
+                    <span class="checkout-payment-card-title">Débito</span>
+                    <span class="checkout-payment-card-sub">Em breve</span>
+                  </div>
+                  <div class="checkout-payment-card is-disabled" data-method="other">
+                    <div class="checkout-payment-card-logo-row">
+                      <i data-lucide="more-horizontal"></i>
+                    </div>
+                    <span class="checkout-payment-card-title">Outros</span>
+                    <span class="checkout-payment-card-sub">Em breve</span>
+                  </div>
+                </div>
+                <div class="checkout-secure-banner">
+                  <div class="checkout-secure-banner-left">
+                    <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:12px;">
+                    <span>Pix processado com segurança pelo Mercado Pago.</span>
+                  </div>
+                  <div class="checkout-secure-banner-right">
+                    <img src="assets/payment/mercado-pago-user.png" alt="Mercado Pago logo" style="height:14px;">
+                  </div>
+                </div>
+              </section>
+
+              <section class="checkout-buyer-section" style="margin-bottom: 40px;">
+                <h3>Dados do comprador</h3>
+                <div class="checkout-buyer-grid">
+                  <label class="checkout-buyer-field">
+                    <span>Nome completo</span>
+                    <input type="text" id="direct-buyer-name" required value="${htmlEscape(prefillName)}" placeholder="Nome completo">
+                  </label>
+                  <label class="checkout-buyer-field">
+                    <span>E-mail</span>
+                    <input type="email" id="direct-buyer-email" required value="${htmlEscape(prefillEmail)}" placeholder="seu-email@dominio.com">
+                  </label>
+                </div>
+              </section>
+            </div>
+
+            <div class="checkout-right-col">
+              <div class="checkout-summary-card checkout-direct-sticky">
+                <div class="checkout-summary-header">
+                  <h2>Resumo do pedido</h2>
+                  <a href="#beat-${beatId}" class="checkout-summary-edit-btn">Editar</a>
+                </div>
+                
+                <div class="checkout-summary-product-box">
+                  <img src="${htmlEscape(beat.cover)}" alt="Capa" class="checkout-summary-product-cover">
+                  <div class="checkout-summary-product-info">
+                    <h4>${htmlEscape(beat.title)}</h4>
+                    <span>${htmlEscape(license.name)}</span>
+                  </div>
+                  <span class="checkout-summary-product-price">R$ ${(subtotalCents / 100).toFixed(2)}</span>
+                </div>
+
+                <div class="checkout-summary-coupon-wrapper">
+                  <span class="checkout-summary-coupon-label"><i data-lucide="tag"></i>CUPOM</span>
+                  <div class="checkout-summary-coupon-row">
+                    <input type="text" placeholder="Digite seu código" value="${htmlEscape(couponCode)}" id="direct-coupon-input">
+                    <button type="button" data-action="direct-apply-coupon">Aplicar</button>
+                  </div>
+                </div>
+
+                <div class="checkout-summary-notice-box">
+                  <i data-lucide="info"></i>
+                  <span>A confirmação acontece antes da liberação dos arquivos.</span>
+                </div>
+
+                <div class="checkout-summary-row">
+                  <span>Subtotal</span>
+                  <strong>R$ ${(subtotalCents / 100).toFixed(2)}</strong>
+                </div>
+                <div class="checkout-summary-row">
+                  <span>Taxa de serviço</span>
+                  <strong>R$ ${(serviceFeeCents / 100).toFixed(2)}</strong>
+                </div>
+                ${couponDiscountCents > 0 ? `
+                <div class="checkout-summary-row" style="color:#00e676;">
+                  <span>Desconto</span>
+                  <strong>- R$ ${(couponDiscountCents / 100).toFixed(2)}</strong>
+                </div>` : ""}
+                <div class="checkout-summary-row subtotal">
+                  <span>Total</span>
+                  <strong>R$ ${(totalCents / 100).toFixed(2)}</strong>
+                </div>
+
+                <button class="checkout-main-btn" type="button" data-action="direct-submit-payment" style="margin-top: 16px;">
+                  Gerar Pix <b aria-hidden="true">&middot;</b> R$ ${(totalCents / 100).toFixed(2)}
+                </button>
+
+                <div class="checkout-terms-hint">
+                  Ao clicar em “Gerar Pix”, você concorda com nossos <a href="#" class="view-contract-modal-trigger" data-beat-id="${htmlEscape(beatId)}" data-license-id="${htmlEscape(license.id)}">termos e condições</a>.
+                  <br>
+                  <a href="#suporte">Política de reembolso da ANSEND</a>, <a href="#suporte">Termos de Serviço da ANSEND</a> e <a href="#suporte">Política de Privacidade da ANSEND</a>.
+                </div>
+                <div class="checkout-tax-hint">
+                  Podem ser aplicados impostos.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    lucide.createIcons();
+  } catch (err) {
+    console.error("Error rendering direct checkout:", err);
+    appView.innerHTML = `
+      <div class="direct-checkout-page">
+        <div class="checkout-container">
+          <div class="empty-state"><p>Erro ao carregar detalhes da compra. Verifique se o beat é válido.</p></div>
         </div>
       </div>
     `;
@@ -16821,6 +17123,7 @@ function renderRoute() {
   if (route === "configuracoes") renderSettings();
   if (route === "admin") renderAdmin();
   if (route === "carrinho") renderCart();
+  if (route === "checkout") renderDirectCheckout();
   if (route === "vendedor") renderSellerAuth();
   if (route === "confirmar-email" || route === "email-confirmed") renderEmailConfirmation();
   if (route === "playlist") renderPlaylistDetail();
@@ -19881,10 +20184,11 @@ document.addEventListener("click", (event) => {
   }
   if (action === "detail-add-cart") {
     addToCart(target.dataset.id, target.dataset.license || "premium");
+    location.hash = "carrinho";
     return;
   }
   if (action === "detail-buy-now") {
-    openCheckout(target.dataset.id, target.dataset.license || "premium");
+    location.hash = `checkout?beatId=${target.dataset.id}&licenseId=${target.dataset.license || "premium"}`;
     return;
   }
   if (action === "buy") handleBuy(target.dataset.id, target.dataset.license || "premium");
@@ -19918,6 +20222,95 @@ document.addEventListener("click", (event) => {
   }
   if (action === "add-billing-info") {
     openBillingModal();
+    return;
+  }
+  if (action === "direct-checkout-billing") {
+    openBillingModal();
+    return;
+  }
+  if (action === "direct-apply-coupon") {
+    const input = document.getElementById("direct-coupon-input");
+    if (input) {
+      const code = input.value.trim().toUpperCase();
+      appState.directCheckoutCoupon = code;
+      showToast(code ? "Cupom aplicado com sucesso!" : "Cupom removido.", code ? "check" : "info");
+      renderDirectCheckout();
+    }
+    return;
+  }
+  if (action === "direct-submit-payment") {
+    const buyerName = document.getElementById("direct-buyer-name")?.value.trim();
+    const buyerEmail = document.getElementById("direct-buyer-email")?.value.trim();
+    if (!buyerName || !buyerEmail) {
+      showToast("Por favor, preencha o nome e e-mail.", "alert-triangle");
+      return;
+    }
+
+    const beatId = localStorage.getItem("ansend-direct-checkout-beatId");
+    const licenseId = localStorage.getItem("ansend-direct-checkout-licenseId");
+
+    (async () => {
+      const btn = target.closest("button");
+      let origText = "Gerar Pix";
+      if (btn) {
+        origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-circle" class="animate-spin" style="width:14px; height:14px; margin-right:6px; vertical-align:middle; display:inline-block;"></i>Processando...`;
+        lucide.createIcons();
+      }
+      try {
+        const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
+        if (!session) {
+          showToast("Você precisa estar autenticado para finalizar a compra.", "alert-triangle");
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+            lucide.createIcons();
+          }
+          return;
+        }
+
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Authorization": `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            cart_items: [{ beat_id: beatId, license_id: licenseId }],
+            buyer_name: buyerName,
+            buyer_email: buyerEmail
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          showToast(result.error || "Erro no checkout.", "alert-triangle");
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+            lucide.createIcons();
+          }
+          return;
+        }
+
+        renderMercadoPagoPixCheckout(result, { 
+          cartItems: [{ beat_id: beatId, license_id: licenseId }], 
+          buyerName, 
+          buyerEmail, 
+          isCart: false 
+        });
+        showToast("Pix gerado pelo Mercado Pago.", "qr-code");
+      } catch (err) {
+        console.error("Direct checkout submit error:", err);
+        showToast("Erro de rede ao processar checkout.", "alert-triangle");
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+          lucide.createIcons();
+        }
+      }
+    })();
     return;
   }
   if (action === "toggle-coupon-input") {
