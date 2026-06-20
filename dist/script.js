@@ -4139,10 +4139,10 @@ function trackRow(item, i) {
     username: item.owner_username || item.profile_username || item.raw?.profile_username || item.raw?.username || item.raw?.owner_username || "",
     title: item.producer,
   });
-  const coverHtml = `<button class="airbit-cover" type="button" data-action="play" data-id="${item.id}" aria-label="Tocar ${item.title}">
+  const coverHtml = `<button class="airbit-cover" type="button" data-action="play" data-id="${item.id}" data-player-icon="play" aria-label="Tocar ${item.title}">
     <div class="airbit-cover-placeholder"><i data-lucide="music"></i></div>
     ${optimizedImageMarkup({ src: item.cover, alt: `Mini capa ${item.title}`, width: 64, height: 64 })}
-    <div class="airbit-cover-hover"><i data-lucide="play"></i></div>
+    <div class="airbit-cover-hover"><span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup("play")}</span></div>
   </button>`;
 
   const verifiedBadge = `<span class="airbit-verified"><i data-lucide="crown"></i></span>`;
@@ -17397,12 +17397,17 @@ function playerControlIconMarkup(iconName = "play") {
 
 function setPlayerControlIcon(button, iconName, { label = "" } = {}) {
   if (!button || !iconName) return false;
-  const changed = button.dataset.playerIcon !== iconName || !button.querySelector(".player-state-icon svg");
+  const iconSlot = button.querySelector(".player-state-icon");
+  const changed = button.dataset.playerIcon !== iconName || !iconSlot?.querySelector("svg");
   button.dataset.playerIcon = iconName;
   button.classList.toggle("is-loading", iconName === "loading");
   if (label) button.setAttribute("aria-label", label);
   if (changed) {
-    button.innerHTML = `<span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup(iconName)}</span>`;
+    if (iconSlot) {
+      iconSlot.innerHTML = playerControlIconMarkup(iconName);
+    } else {
+      button.innerHTML = `<span class="player-state-icon" aria-hidden="true">${playerControlIconMarkup(iconName)}</span>`;
+    }
   }
   return changed;
 }
@@ -17996,6 +18001,8 @@ function setTopBeatPlaying(isPlaying) {
     const isThisPlaying = id && String(id) === String(appState.playing) && isPlaying;
     
     // Procura por um ícone dentro do botão
+    const iconOnlyControl = button.childElementCount === 1 && Boolean(button.firstElementChild?.matches("i[data-lucide], svg, .player-state-icon"));
+    if (!button.querySelector(".player-state-icon") && !iconOnlyControl) return;
     setPlayerControlIcon(button, isThisPlaying ? "pause" : "play");
   });
 

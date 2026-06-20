@@ -106,6 +106,29 @@ async function run() {
     if (loadingControls.hidden || !loadingControls.active || loadingControls.loading || !loadingControls.playing || loadingControls.playIcon !== "pause" || loadingControls.display === "none" || missingLoadingControls.length) {
       throw new Error(`Mini player controls are not stable during loading: ${JSON.stringify({ loadingControls, missingLoadingControls })}`);
     }
+
+    const recentListPlayback = await page.evaluate(() => {
+      const host = document.createElement("section");
+      host.className = "recent-activity-section";
+      host.innerHTML = `<div class="home-track-list">${trackRow(topBeatOfDay, 0)}</div>`;
+      document.body.dataset.route = "feed";
+      document.body.appendChild(host);
+      const cover = host.querySelector(".airbit-cover");
+      const title = host.querySelector(".airbit-track-title");
+      const titleBefore = title?.textContent?.trim() || "";
+      appState.playing = topBeatOfDay.id;
+      setTopBeatPlaying(true);
+      return {
+        coverImageCount: cover?.querySelectorAll("img").length || 0,
+        titleBefore,
+        titleAfter: title?.textContent?.trim() || "",
+        coverIcon: cover?.dataset.playerIcon || "",
+        coverHasPauseIcon: Boolean(cover?.querySelector('.player-state-icon svg rect')),
+      };
+    });
+    if (recentListPlayback.coverImageCount !== 1 || recentListPlayback.titleAfter !== recentListPlayback.titleBefore || recentListPlayback.coverIcon !== "pause" || !recentListPlayback.coverHasPauseIcon) {
+      throw new Error(`Recent list artwork or title disappeared during playback: ${JSON.stringify(recentListPlayback)}`);
+    }
     await page.evaluate(() => {
       if (!document.querySelector("#nexoFloatingAssistantRoot")) {
         document.body.insertAdjacentHTML("beforeend", `
