@@ -8,6 +8,7 @@ for (const marker of [
   "loadCartPromotedAds",
   "renderCartPromotedSection",
   "normalizeCartPromotedAd",
+  "cartCatalogAdFallbacks",
   ".from(\"promoted_beats\")",
   "increment_promoted_beat_impression",
   "increment_promoted_beat_click",
@@ -25,7 +26,7 @@ if (script.includes("getPromotedBeatsForCart(12)")) {
 
 for (const marker of [
   "body[data-route=\"carrinho\"] .checkout-container",
-  "max-width: 1120px !important",
+  "max-width: none !important",
   "grid-template-columns: minmax(0, 1fr) 310px !important",
   ".checkout-promoted-section",
   ".checkout-carousel-track",

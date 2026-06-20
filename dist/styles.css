@@ -36895,24 +36895,27 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   }
 }
 
-/* Cart route visual reconstruction: controlled content width after the sidebar. */
+/* Cart route: occupy the full useful area after the sidebar, with no internal black gutter. */
 body[data-route="carrinho"] #appView.app-view {
-  padding: clamp(20px, 2.3vw, 36px) clamp(18px, 2.5vw, 32px) 96px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
 }
 
 body[data-route="carrinho"] .checkout-page {
   width: 100% !important;
   max-width: none !important;
-  min-height: calc(100dvh - 36px) !important;
+  min-height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
 body[data-route="carrinho"] .checkout-container {
-  width: calc(100% - 48px) !important;
-  max-width: 1120px !important;
-  margin: 0 auto !important;
-  padding: 28px 0 64px !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 32px 40px 64px !important;
 }
 
 body[data-route="carrinho"] .checkout-main-grid {
@@ -37084,13 +37087,13 @@ body[data-route="carrinho"] .checkout-promoted-play-btn {
 
 @media (max-width: 900px) {
   body[data-route="carrinho"] #appView.app-view {
-    padding: 16px 12px 80px !important;
+    padding: 0 !important;
   }
 
   body[data-route="carrinho"] .checkout-container {
     width: 100% !important;
     max-width: none !important;
-    padding: 20px 0 56px !important;
+    padding: 20px 14px 56px !important;
   }
 
   body[data-route="carrinho"] .checkout-main-grid {

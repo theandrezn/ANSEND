@@ -12024,7 +12024,35 @@ function normalizeCartPromotedAd(row = {}) {
     startsAt: row.starts_at || null,
     endsAt: row.ends_at || null,
     userId: row.user_id || "",
+    source: "promoted",
   };
+}
+
+function cartCatalogAdFallbacks(limit = 12) {
+  const cartIds = cartBeatIdSet();
+  return dedupeById([...marketplaceBeats(), ...userCatalogBeats()])
+    .filter((beat) => beat?.id && !cartIds.has(String(beat.id)))
+    .slice(0, limit)
+    .map((beat) => ({
+      adId: `catalog-${beat.id}`,
+      campaignId: `catalog-${beat.id}`,
+      beatId: String(beat.id),
+      coverUrl: beat.cover || beat.youtube_thumbnail_url || IMAGE_FALLBACK_SRC,
+      beatTitle: beat.title || "Beat ANSEND",
+      producerName: beat.producer || "Produtor ANSEND",
+      producerAvatar: "",
+      price: beat.price || licensePlans.premium.price,
+      currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+      licenseName: "Licenca Premium",
+      audioUrl: beat.audio || beat.audio_url || "",
+      beatRoute: `beat-${beat.id}`,
+      producerRoute: beat.user_id ? `perfil-${beat.user_id}` : "produtores",
+      genre: beat.tags?.[0] || beat.genre || "",
+      startsAt: null,
+      endsAt: null,
+      userId: beat.user_id || "",
+      source: "catalog",
+    }));
 }
 
 function cartPromotedAdIsValid(ad = {}) {
@@ -12079,17 +12107,17 @@ async function loadCartPromotedAds({ render = false, force = false } = {}) {
       .map((ad) => ({ ...ad, cartScore: scoreCartPromotedAd(ad) }))
       .sort((a, b) => b.cartScore - a.cartScore)
       .slice(0, 12);
-    adState.items = items;
+    adState.items = items.length ? items : cartCatalogAdFallbacks(12);
     adState.loadedAt = Date.now();
     adState.error = "";
-    return items;
+    return adState.items;
   } catch (error) {
     console.warn("[ANSEND cart ads] load skipped", error?.message || error);
     if (requestId === adState.activeRequestId) {
-      adState.items = [];
+      adState.items = cartCatalogAdFallbacks(12);
       adState.error = error?.message || "Nao foi possivel carregar anuncios.";
     }
-    return [];
+    return adState.items;
   } finally {
     if (requestId === adState.activeRequestId) {
       adState.loading = false;
@@ -12113,13 +12141,14 @@ function cartPromotedSkeletonMarkup() {
 
 function cartPromotedCardMarkup(ad = {}) {
   const inCart = cartBeatIdSet().has(String(ad.beatId));
+  const tagLabel = ad.source === "catalog" ? "CATALOGO" : "ANUNCIO";
   return `<article class="checkout-promoted-card" data-cart-promoted-ad-id="${htmlEscape(ad.adId)}" data-campaign-id="${htmlEscape(ad.campaignId)}" data-beat-id="${htmlEscape(ad.beatId)}">
     <a class="checkout-promoted-card-cover-wrapper" href="#${htmlEscape(ad.beatRoute)}" data-action="cart-promoted-open" data-ad-id="${htmlEscape(ad.adId)}" aria-label="Abrir ${htmlEscape(ad.beatTitle)}">
       <img src="${htmlEscape(ad.coverUrl || IMAGE_FALLBACK_SRC)}" alt="Capa de ${htmlEscape(ad.beatTitle)}" class="checkout-promoted-card-cover" loading="lazy" decoding="async" onerror="this.src='${IMAGE_FALLBACK_SRC}'">
     </a>
     <div class="checkout-promoted-card-info">
       <div class="checkout-promoted-tag-row">
-        <span class="checkout-promoted-tag">ANUNCIO</span>
+        <span class="checkout-promoted-tag">${tagLabel}</span>
       </div>
       <a class="checkout-promoted-title" href="#${htmlEscape(ad.beatRoute)}" data-action="cart-promoted-open" data-ad-id="${htmlEscape(ad.adId)}" title="${htmlEscape(ad.beatTitle)}">${htmlEscape(ad.beatTitle)}</a>
     </div>
@@ -12147,9 +12176,10 @@ function renderCartPromotedSection() {
   }
   const items = adState.items || [];
   if (!items.length) return "";
+  const title = items.some((item) => item.source === "promoted") ? "Promovido" : "Catalogo de beats";
   return `<section class="checkout-promoted-section" data-cart-promoted-section>
     <div class="checkout-promoted-header">
-      <h2>Promovido</h2>
+      <h2>${title}</h2>
       <div class="checkout-carousel-nav">
         <button class="checkout-carousel-prev" type="button" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
         <button class="checkout-carousel-next" type="button" aria-label="Proximo"><i data-lucide="chevron-right"></i></button>
@@ -12191,7 +12221,7 @@ function trackCartPromotedAdEvent(kind, adId, action = kind) {
     appState.cartPromotedAdImpressions.add(key);
   }
   const rpcName = kind === "click" ? "increment_promoted_beat_click" : "increment_promoted_beat_impression";
-  if (supabaseClient) {
+  if (supabaseClient && ad.source === "promoted") {
     supabaseClient.rpc(rpcName, { p_ad_id: ad.adId }).catch((error) => {
       console.warn("[ANSEND cart ads] tracking skipped", error?.message || error);
     });

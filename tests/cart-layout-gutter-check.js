@@ -15,13 +15,24 @@ for (const marker of [
 
 const containerRule = styles.match(/body\[data-route="carrinho"\] \.checkout-container\s*\{[\s\S]*?\}/)?.[0] || "";
 for (const marker of [
-  "width: calc(100% - 48px) !important",
-  "max-width: 1120px !important",
-  "margin: 0 auto !important",
-  "padding: 28px 0 64px !important",
+  "width: 100% !important",
+  "max-width: none !important",
+  "margin: 0 !important",
+  "padding: 32px 40px 64px !important",
 ]) {
   if (!containerRule.includes(marker)) {
-    throw new Error(`Cart container must use the controlled reference width: ${marker}`);
+    throw new Error(`Cart container must occupy the full useful area: ${marker}`);
+  }
+}
+
+const appViewRule = styles.match(/body\[data-route="carrinho"\] #appView\.app-view\s*\{[\s\S]*?\}/)?.[0] || "";
+for (const marker of [
+  "padding: 0 !important",
+  "margin: 0 !important",
+  "max-width: none !important",
+]) {
+  if (!appViewRule.includes(marker)) {
+    throw new Error(`Cart app view must remove the sidebar/top gutter: ${marker}`);
   }
 }
 
