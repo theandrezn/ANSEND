@@ -11880,141 +11880,533 @@ function clearPurchases() {
   if (currentRoute() === "compras") renderPurchases();
 }
 
+appState.appliedCoupons = appState.appliedCoupons || JSON.parse(localStorage.getItem("ansend-applied-coupons") || "{}");
+appState.openCouponInputs = appState.openCouponInputs || {};
+appState.billingInfo = appState.billingInfo || JSON.parse(localStorage.getItem("ansend-billing-info") || "null");
+
+async function calculateCartPrices() {
+  const items = [];
+  for (const entry of appState.cart) {
+    const { beatId, licenseId } = splitCartEntry(entry);
+    const beatItem = findBeat(beatId);
+    if (!beatItem) continue;
+    const licenses = await fetchBeatLicenses(beatId);
+    const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
+                    generateDefaultLicensesForBeat(beatItem).find(l => l.id === licenseId || l.license_key === licenseId);
+    if (license) {
+      items.push({
+        beat: beatItem,
+        cartId: entry,
+        licenseId: license.id,
+        licenseLabel: license.name,
+        priceValCents: license.price_cents,
+        priceText: `R$ ${(license.price_cents / 100).toFixed(2)}`
+      });
+    }
+  }
+
+  // Calculate seller promotions
+  let promoDiscountCents = 0;
+  const sellerGroups = {};
+  items.forEach(item => {
+    const seller = item.beat.producer || "Produtor";
+    if (!sellerGroups[seller]) sellerGroups[seller] = [];
+    sellerGroups[seller].push(item);
+  });
+
+  Object.entries(sellerGroups).forEach(([seller, groupItems]) => {
+    groupItems.sort((a, b) => a.priceValCents - b.priceValCents);
+    const sellerLower = seller.toLowerCase();
+    if (sellerLower.includes("golamixaya")) {
+      if (groupItems.length >= 5) {
+        for (let i = 0; i < Math.min(4, groupItems.length - 1); i++) {
+          promoDiscountCents += groupItems[i].priceValCents;
+        }
+      }
+    } else {
+      if (groupItems.length >= 3) {
+        const freeCount = Math.floor(groupItems.length / 3);
+        for (let i = 0; i < freeCount; i++) {
+          promoDiscountCents += groupItems[i].priceValCents;
+        }
+      }
+    }
+  });
+
+  // Calculate coupon discount
+  let couponDiscountCents = 0;
+  Object.entries(appState.appliedCoupons || {}).forEach(([seller, code]) => {
+    const groupItems = sellerGroups[seller] || [];
+    if (!groupItems.length || !code) return;
+    const sellerSubtotal = groupItems.reduce((sum, item) => sum + item.priceValCents, 0);
+    let pct = 0;
+    if (code.endsWith("10")) pct = 10;
+    else if (code.endsWith("20")) pct = 20;
+    else pct = 15;
+    couponDiscountCents += Math.round(sellerSubtotal * (pct / 100));
+  });
+
+  const rawSubtotalCents = items.reduce((sum, item) => sum + item.priceValCents, 0);
+  const totalDiscountsCents = promoDiscountCents + couponDiscountCents;
+  const subtotalCents = Math.max(0, rawSubtotalCents - totalDiscountsCents);
+  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const totalCents = subtotalCents + serviceFeeCents;
+
+  return {
+    items,
+    rawSubtotalCents,
+    promoDiscountCents,
+    couponDiscountCents,
+    totalDiscountsCents,
+    subtotalCents,
+    serviceFeeCents,
+    totalCents,
+    sellerGroups
+  };
+}
+
+function getPromotedBeatsForCart(limit = 12) {
+  const pool = searchableBeatPool();
+  const cartBeatIds = appState.cart.map(c => splitCartEntry(c).beatId);
+  const candidates = pool.filter(b => !cartBeatIds.includes(b.id));
+  
+  if (cartBeatIds.length === 0) {
+    return candidates.slice(0, limit);
+  }
+
+  const cartBeats = cartBeatIds.map(findBeat).filter(Boolean);
+  const cartGenres = new Set(cartBeats.map(b => b.tags?.[0] || b.genre).filter(Boolean));
+  const cartProducers = new Set(cartBeats.map(b => b.producer).filter(Boolean));
+
+  const scored = candidates.map(beat => {
+    let score = 0;
+    const genre = beat.tags?.[0] || beat.genre;
+    if (cartGenres.has(genre)) score += 10;
+    if (cartProducers.has(beat.producer)) score += 5;
+    if (beat.is_promoted || beat.is_sponsored) score += 20;
+    return { beat, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map(s => s.beat).slice(0, limit);
+}
+
+function openBillingModal() {
+  const name = appState.billingInfo?.name || "";
+  const taxId = appState.billingInfo?.taxId || "";
+  const address = appState.billingInfo?.address || "";
+  const country = appState.billingInfo?.country || "Brasil";
+  const licensee = appState.billingInfo?.licensee || "";
+
+  openModal(`
+    <form class="billing-modal-form" id="billingModalForm">
+      <h2>Informações de Faturamento</h2>
+      <p style="font-size: 11px; color: #a3a3a3; margin-top: -6px; margin-bottom: 12px;">Preencha os dados abaixo para licenciamento e cobrança.</p>
+      <div class="billing-modal-grid">
+        <label class="billing-modal-field full-width">
+          <span>Nome Completo / Razão Social</span>
+          <input type="text" name="billing_name" required value="${htmlEscape(name)}" placeholder="Nome usado no contrato">
+        </label>
+        <label class="billing-modal-field">
+          <span>CPF / CNPJ</span>
+          <input type="text" name="billing_tax_id" required value="${htmlEscape(taxId)}" placeholder="000.000.000-00">
+        </label>
+        <label class="billing-modal-field">
+          <span>País</span>
+          <select name="billing_country">
+            <option value="Brasil" ${country === "Brasil" ? "selected" : ""}>Brasil</option>
+            <option value="Portugal" ${country === "Portugal" ? "selected" : ""}>Portugal</option>
+            <option value="Angola" ${country === "Angola" ? "selected" : ""}>Angola</option>
+            <option value="Moçambique" ${country === "Moçambique" ? "selected" : ""}>Moçambique</option>
+            <option value="Outro" ${country === "Outro" ? "selected" : ""}>Outro</option>
+          </select>
+        </label>
+        <label class="billing-modal-field full-width">
+          <span>Endereço de Cobrança</span>
+          <input type="text" name="billing_address" required value="${htmlEscape(address)}" placeholder="Rua, número, complemento, cidade e estado">
+        </label>
+        <label class="billing-modal-field full-width">
+          <span>Nome para Licenciamento (Nome Artístico)</span>
+          <input type="text" name="billing_licensee" required value="${htmlEscape(licensee)}" placeholder="Nome que constará como Licenciado">
+        </label>
+      </div>
+      <button type="submit" class="billing-modal-submit-btn">Salvar Informações</button>
+    </form>
+  `);
+
+  const form = document.getElementById("billingModalForm");
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    appState.billingInfo = {
+      name: formData.get("billing_name"),
+      taxId: formData.get("billing_tax_id"),
+      country: formData.get("billing_country"),
+      address: formData.get("billing_address"),
+      licensee: formData.get("billing_licensee")
+    };
+    localStorage.setItem("ansend-billing-info", JSON.stringify(appState.billingInfo));
+    closeModal();
+    showToast("Informações de faturamento salvas!", "check-circle");
+    renderCart();
+  });
+}
+
+function initPromotedCarousel() {
+  const container = document.querySelector(".checkout-carousel-container");
+  const btnPrev = document.querySelector(".checkout-carousel-prev");
+  const btnNext = document.querySelector(".checkout-carousel-next");
+  if (!container || !btnPrev || !btnNext) return;
+
+  btnPrev.addEventListener("click", () => {
+    container.scrollBy({ left: -240, behavior: "smooth" });
+  });
+
+  btnNext.addEventListener("click", () => {
+    container.scrollBy({ left: 240, behavior: "smooth" });
+  });
+
+  const updateArrows = () => {
+    const isAtStart = container.scrollLeft <= 2;
+    const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 2;
+    btnPrev.disabled = isAtStart;
+    btnNext.disabled = isAtEnd;
+  };
+
+  container.addEventListener("scroll", updateArrows);
+  setTimeout(updateArrows, 150);
+
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  container.addEventListener("mousedown", (e) => {
+    isDown = true;
+    startX = e.pageX - container.offsetLeft;
+    scrollLeft = container.scrollLeft;
+    container.style.cursor = "grabbing";
+  });
+
+  container.addEventListener("mouseleave", () => {
+    isDown = false;
+    container.style.cursor = "default";
+  });
+
+  container.addEventListener("mouseup", () => {
+    isDown = false;
+    container.style.cursor = "default";
+  });
+
+  container.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  });
+}
+
 async function renderCart() {
   const hasItems = appState.cart.length > 0;
   
   if (!hasItems) {
-    appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho está vazio", "Adicione beats ou serviços ao carrinho para finalizar seu pedido.")}`;
+    appView.innerHTML = `
+      <div class="checkout-page">
+        <div class="checkout-container" style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:75vh;">
+          <div class="view-header-carrinho checkout-title-wrapper" style="width: 100%; text-align: left;">
+            <h1>Carrinho</h1>
+          </div>
+          <div class="empty-state" style="border:none; background:transparent; padding:0; text-align:center;">
+            <i data-lucide="shopping-cart" style="width:48px; height:48px; color:#737373; margin-bottom:16px;"></i>
+            <h2 style="font-size:14px; font-weight:700; color:#fff; margin-bottom:8px;">Seu carrinho está vazio</h2>
+            <p style="font-size:11px; color:#a3a3a3; margin-bottom:20px; max-width:320px;">Adicione beats ou serviços ao carrinho para finalizar seu pedido.</p>
+            <a href="#explorar" data-route="explorar" class="checkout-main-btn" style="width:auto; padding:0 24px; display:inline-flex; align-items:center; height:36px; font-size:11px;">Explorar catálogo</a>
+          </div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
     return;
   }
 
-  appView.innerHTML = `${pageIntro("carrinho")}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
+  appView.innerHTML = `
+    <div class="checkout-page">
+      <div class="checkout-container">
+        <div class="view-header-carrinho checkout-title-wrapper">
+          <h1>Carrinho</h1>
+        </div>
+        <div class="checkout-billing-bar">
+          <span>Informações sobre faturamento e licenciamento</span>
+          <button class="checkout-add-info-btn" type="button" disabled>
+            <i data-lucide="loader-circle" class="animate-spin"></i>
+          </button>
+        </div>
+        <div class="cart-skeleton">
+          <div class="cart-skeleton-item">
+            <div class="cart-skeleton-cover"></div>
+            <div class="cart-skeleton-info">
+              <div class="cart-skeleton-line1"></div>
+              <div class="cart-skeleton-line2"></div>
+            </div>
+            <div class="cart-skeleton-price"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
   lucide.createIcons();
 
-
   try {
-    const items = [];
-    for (const entry of appState.cart) {
-      const { beatId, licenseId } = splitCartEntry(entry);
-      const beatItem = findBeat(beatId);
-      if (!beatItem) continue;
-      const licenses = await fetchBeatLicenses(beatId);
-      const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
-                      generateDefaultLicensesForBeat(beatItem).find(l => l.id === licenseId || l.license_key === licenseId);
-      if (license) {
-        items.push({
-          beat: beatItem,
-          cartId: entry,
-          licenseId: license.id,
-          licenseLabel: license.name,
-          priceValCents: license.price_cents,
-          priceText: `R$ ${(license.price_cents / 100).toFixed(2)}`
-        });
-      }
-    }
+    const {
+      items,
+      rawSubtotalCents,
+      promoDiscountCents,
+      couponDiscountCents,
+      totalDiscountsCents,
+      subtotalCents,
+      serviceFeeCents,
+      totalCents,
+      sellerGroups
+    } = await calculateCartPrices();
 
     if (!items.length) {
-      appView.innerHTML = `${pageIntro("carrinho")}${emptyState("shopping-cart", "Seu carrinho está vazio", "Adicione beats ou serviços ao carrinho para finalizar seu pedido.")}`;
+      appView.innerHTML = `
+        <div class="checkout-page">
+          <div class="checkout-container" style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:75vh;">
+            <div class="view-header-carrinho checkout-title-wrapper" style="width: 100%; text-align: left;">
+              <h1>Carrinho</h1>
+            </div>
+            <div class="empty-state" style="border:none; background:transparent; padding:0; text-align:center;">
+              <i data-lucide="shopping-cart" style="width:48px; height:48px; color:#737373; margin-bottom:16px;"></i>
+              <h2 style="font-size:14px; font-weight:700; color:#fff; margin-bottom:8px;">Seu carrinho está vazio</h2>
+              <p style="font-size:11px; color:#a3a3a3; margin-bottom:20px; max-width:320px;">Adicione beats ou serviços ao carrinho para finalizar seu pedido.</p>
+              <a href="#explorar" data-route="explorar" class="checkout-main-btn" style="width:auto; padding:0 24px; display:inline-flex; align-items:center; height:36px; font-size:11px;">Explorar catálogo</a>
+            </div>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
       return;
     }
 
-    const subtotalCents = items.reduce((sum, item) => sum + item.priceValCents, 0);
-    const serviceFeeCents = Math.round(subtotalCents * 0.12);
-    const totalCents = subtotalCents + serviceFeeCents;
-    const itemCountLabel = items.length === 1 ? t("cart.itemSingular") : t("cart.itemPlural");
-
-    const itemMarkup = items.map(item => `
-      <article class="cart-item" data-id="${item.beat.id}" data-cart-id="${item.cartId}">
-        <img src="${item.beat.cover}" alt="Capa de ${item.beat.title}" class="cart-item-art">
-        <div class="cart-item-details">
-          <h3>${htmlEscape(item.beat.title)}</h3>
-          <span>${htmlEscape(item.licenseLabel)} · <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.beat.id}" data-license-id="${item.licenseId}" style="color:var(--beat-blue); text-decoration:underline;">Revisar licença</a></span>
-          <small class="cart-item-producer">${t("cart.byProducer")} ${htmlEscape(item.beat.producer)}</small>
-        </div>
-        <div class="cart-item-price">${item.priceText}</div>
-        <button class="cart-item-remove" type="button" aria-label="Remover" data-action="remove-from-cart" data-id="${item.cartId}">
-          <i data-lucide="x"></i>
-        </button>
-      </article>
-    `).join("");
-
-    const promotedBeatsHtml = preferredBeats(6).map(item => `
-      <div class="promoted-beat-card" data-beat-id="${htmlEscape(item.id)}">
-        ${adminDeleteButton("beat", item, "admin-delete-beat-mini")}
-        <img src="${item.cover}" alt="${item.title}">
-        <div class="promoted-beat-info">
-          <strong>${item.title}</strong>
-          <span>${item.producer}</span>
-        </div>
-        <button type="button" data-action="buy" data-id="${item.id}">
-          <i data-lucide="shopping-cart"></i>
-          <span>${item.price || "$35.00"}</span>
-        </button>
-      </div>
-    `).join("");
-
-    const contentMarkup = `
-      <section class="cart-page-layout">
-        <div class="cart-left-col">
-          <div class="cart-billing-header">
-            <span>${t("cart.billing")}</span>
-            <div class="cart-header-actions">
-              <button type="button" class="cart-add-info-btn"><i data-lucide="plus"></i> ${t("cart.addInfo")}</button>
-              <button type="button" class="commerce-clear-btn" data-action="clear-cart"><i data-lucide="trash-2"></i> Limpar carrinho</button>
-            </div>
-          </div>
-          <div class="cart-items-list">
-            ${itemMarkup}
-          </div>
-          <div class="cart-discount-banner">
-            ${t("cart.discount")}
-          </div>
-        </div>
-        
-        <div class="cart-right-col">
-          <div class="cart-summary-card">
-            <div class="cart-summary-head">
-              <h3>${t("cart.summary")}</h3>
-              <button class="cart-share-btn" type="button"><i data-lucide="share-2"></i> ${t("cart.share")}</button>
-            </div>
-            <div class="cart-summary-row">
-              <span>${t("cart.itemsTotal")}</span>
-              <strong>R$ ${(subtotalCents / 100).toFixed(2)}</strong>
-            </div>
-            <div class="cart-summary-row">
-              <span>${t("cart.serviceFee")}</span>
-              <strong>R$ ${(serviceFeeCents / 100).toFixed(2)}</strong>
-            </div>
-            <div class="cart-summary-row cart-total-row">
-              <span>${t("cart.subtotal")} (${items.length} ${itemCountLabel})</span>
-              <strong>R$ ${(totalCents / 100).toFixed(2)}</strong>
-            </div>
-            <div class="cart-auth-hint">
-              ${t("cart.authHint")} <a href="#vendedor">${t("cart.signIn")}</a> ${t("cart.or")} <a href="#vendedor">${t("cart.signUp")}</a>
-            </div>
-            <button class="cart-checkout-btn" type="button" data-action="finalize-cart">
-              ${t("cart.checkout")}
-            </button>
-            <div class="cart-terms-hint">
-              ${t("cart.terms")}
-            </div>
-          </div>
-        </div>
-      </section>
+    const groupsArray = Object.entries(sellerGroups);
+    const sellerGroupsHtml = groupsArray.map(([sellerName, groupItems], groupIdx) => {
+      const count = groupItems.length;
+      const groupSubtotalCents = groupItems.reduce((sum, item) => sum + item.priceValCents, 0);
       
-      <section class="cart-promoted-section">
-        <h3>${t("cart.promoted")}</h3>
-        <div class="cart-promoted-grid">
-          ${promotedBeatsHtml}
+      const sellerProf = findProfessional(sellerName);
+      const avatarUrl = sellerProf?.avatar || sellerProf?.avatar_url || 'assets/ansend-logo-square.png';
+      
+      const showCouponInput = appState.openCouponInputs[sellerName];
+      const couponValue = appState.appliedCoupons[sellerName] || "";
+      
+      const couponHtml = showCouponInput ? `
+        <div class="checkout-coupon-input-area">
+          <input type="text" placeholder="Digite o código" value="${htmlEscape(couponValue)}" id="coupon-input-${htmlEscape(sellerName)}">
+          <button type="button" data-action="apply-coupon-code" data-seller="${htmlEscape(sellerName)}">Aplicar</button>
         </div>
-      </section>
+      ` : "";
+
+      const productsHtml = groupItems.map(item => {
+        const streamLimit = item.beat.license_stream_limit || "Vitalícia";
+        const filesIncluded = item.beat.license_files || "Stems, WAV e MP3";
+        const royalties = item.beat.royalties_percentage || "Royalties definidos pelo produtor";
+        const specs = `${htmlEscape(item.licenseLabel)} · ${htmlEscape(royalties)} · ${htmlEscape(streamLimit)} · ${htmlEscape(filesIncluded)}`;
+        
+        return `
+          <div class="checkout-product-row" data-id="${htmlEscape(item.beat.id)}" data-cart-id="${htmlEscape(item.cartId)}">
+            <img src="${htmlEscape(item.beat.cover)}" alt="Capa" class="checkout-product-cover">
+            <div class="checkout-product-info">
+              <div class="checkout-product-title-line">
+                <h3>${htmlEscape(item.beat.title)}</h3>
+              </div>
+              <span class="checkout-product-specs">${specs}</span>
+              <a class="checkout-product-contract-link view-contract-modal-trigger" data-beat-id="${htmlEscape(item.beat.id)}" data-license-id="${htmlEscape(item.licenseId)}">Analisar licença</a>
+            </div>
+            <div class="checkout-product-right">
+              <span class="checkout-product-price">${item.priceText}</span>
+              <button class="checkout-product-remove-btn" type="button" aria-label="Remover" data-action="confirm-remove-product" data-id="${htmlEscape(item.cartId)}">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      let promoNoticeHtml = "";
+      const sellerLower = sellerName.toLowerCase();
+      if (sellerLower.includes("golamixaya")) {
+        if (count < 5) {
+          promoNoticeHtml = `<div class="checkout-promo-notice">Adicione mais ${5 - count} beats deste produtor ao carrinho para desbloquear o desconto “Compre 1 faixa, leve 4 grátis”.</div>`;
+        } else {
+          promoNoticeHtml = `<div class="checkout-promo-notice" style="background:#003b22; color:#00e676;">Desconto “Compre 1 faixa, leve 4 grátis” ativado!</div>`;
+        }
+      } else {
+        if (count < 3) {
+          promoNoticeHtml = `<div class="checkout-promo-notice">Adicione mais ${3 - count} beats deste produtor ao carrinho para desbloquear o desconto “Compre 2 e leve 1 grátis”.</div>`;
+        } else {
+          promoNoticeHtml = `<div class="checkout-promo-notice" style="background:#003b22; color:#00e676;">Desconto “Compre 2 e leve 1 grátis” ativado!</div>`;
+        }
+      }
+
+      const isLast = groupIdx === groupsArray.length - 1;
+      const divisorHtml = isLast ? "" : `<hr class="checkout-seller-divider">`;
+
+      return `
+        <div class="checkout-seller-group">
+          <div class="checkout-seller-line">
+            <div class="checkout-seller-left">
+              <img src="${avatarUrl}" class="checkout-seller-avatar" alt="">
+              <span class="checkout-seller-name">${htmlEscape(sellerName)}</span>
+            </div>
+            <div class="checkout-seller-right">
+              <span>${count} ${count === 1 ? 'item' : 'itens'} · R$ ${(groupSubtotalCents / 100).toFixed(2)}</span>
+              <i data-lucide="tag"></i>
+              <a class="checkout-coupon-link" data-action="toggle-coupon-input" data-seller="${htmlEscape(sellerName)}">
+                ${appState.appliedCoupons[sellerName] ? 'Cupom aplicado' : 'Aplicar cupom'}
+              </a>
+            </div>
+          </div>
+          ${couponHtml}
+          ${productsHtml}
+          ${promoNoticeHtml}
+        </div>
+        ${divisorHtml}
+      `;
+    }).join("");
+
+    const cartSummaryHtml = `
+      <div class="checkout-summary-card">
+        <div class="checkout-summary-header">
+          <h2>Resumo do carrinho</h2>
+          <button class="checkout-share-btn" type="button" data-action="copy-cart-link">
+            <i data-lucide="share-2"></i>
+            <span>Carrinho de partilha</span>
+          </button>
+        </div>
+        <div class="checkout-summary-row">
+          <span>Total dos itens</span>
+          <strong>R$ ${(rawSubtotalCents / 100).toFixed(2)}</strong>
+        </div>
+        <div class="checkout-summary-row">
+          <span>
+            Taxa de serviço
+            <span class="info-trigger" title="Taxa operacional de conveniência da plataforma"><i data-lucide="info"></i></span>
+          </span>
+          <strong>R$ ${(serviceFeeCents / 100).toFixed(2)}</strong>
+        </div>
+        ${totalDiscountsCents > 0 ? `
+        <div class="checkout-summary-row" style="color:#00e676;">
+          <span>Descontos aplicados</span>
+          <strong>- R$ ${(totalDiscountsCents / 100).toFixed(2)}</strong>
+        </div>` : ""}
+        <div class="checkout-summary-row subtotal">
+          <span>Subtotal (${items.length} ${items.length === 1 ? 'item' : 'itens'})</span>
+          <strong>R$ ${(totalCents / 100).toFixed(2)}</strong>
+        </div>
+        <div class="checkout-account-actions">
+          Continuar como convidado, <a href="#vendedor">Entrar</a> ou <a href="#vendedor">Inscrever-se</a>
+        </div>
+        <button class="checkout-main-btn" type="button" data-action="finalize-cart">
+          Fazer o checkout
+        </button>
+        <div class="checkout-terms-hint">
+          Ao clicar em “Finalizar compra”, você concorda com nossos <a href="#" class="view-contract-modal-trigger" data-is-cart="true">termos e condições</a>.
+          <br>
+          <a href="#suporte">Política de reembolso da ANSEND</a>, <a href="#suporte">Termos de Serviço da ANSEND</a> e <a href="#suporte">Política de Privacidade da ANSEND</a>.
+        </div>
+        <div class="checkout-tax-hint">
+          Podem ser aplicados impostos.
+        </div>
+      </div>
     `;
 
-    appView.innerHTML = `${pageIntro("carrinho")}${contentMarkup}`;
+    const promotedBeats = getPromotedBeatsForCart(12);
+    const promotedCardsHtml = promotedBeats.map(beat => {
+      const price = beat.price || "R$ 29,95";
+      const isAlreadyInCart = items.some(item => item.beat.id === beat.id);
+      
+      return `
+        <div class="checkout-promoted-card">
+          <div class="checkout-promoted-card-cover-wrapper">
+            <img src="${htmlEscape(beat.cover)}" alt="Capa" class="checkout-promoted-card-cover">
+          </div>
+          <div class="checkout-promoted-card-info">
+            <div class="checkout-promoted-tag-row">
+              <span class="checkout-promoted-tag">ANÚNCIO</span>
+            </div>
+            <h3>${htmlEscape(beat.title)}</h3>
+          </div>
+          <button class="checkout-promoted-price-btn" type="button" data-action="buy-promoted-beat" data-id="${htmlEscape(beat.id)}" ${isAlreadyInCart ? 'disabled style="border-color:#525252; color:#737373;"' : ''}>
+            <i data-lucide="shopping-bag"></i>
+            <span>${isAlreadyInCart ? 'No Carrinho' : htmlEscape(price)}</span>
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    const promotedCarouselHtml = promotedBeats.length ? `
+      <section class="checkout-promoted-section">
+        <div class="checkout-promoted-header">
+          <h2>Promovido</h2>
+          <div class="checkout-carousel-nav">
+            <button class="checkout-carousel-prev" type="button" aria-label="Anterior" disabled><i data-lucide="chevron-left"></i></button>
+            <button class="checkout-carousel-next" type="button" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="checkout-carousel-container">
+          <div class="checkout-carousel-track">
+            ${promotedCardsHtml}
+          </div>
+        </div>
+      </section>
+    ` : "";
+
+    const contentMarkup = `
+      <div class="checkout-page">
+        <div class="checkout-container">
+          <div class="view-header-carrinho checkout-title-wrapper">
+            <h1>Carrinho</h1>
+          </div>
+          
+          <div class="checkout-billing-bar">
+            <span>Informações sobre faturamento e licenciamento</span>
+            <button class="checkout-add-info-btn" type="button" data-action="add-billing-info">
+              <i data-lucide="plus"></i>
+              <span>${appState.billingInfo ? 'Editar informações' : 'Adicionar informações'}</span>
+            </button>
+          </div>
+          
+          <div class="checkout-main-grid">
+            <div class="checkout-left-col">
+              ${sellerGroupsHtml}
+            </div>
+            <div class="checkout-right-col">
+              ${cartSummaryHtml}
+            </div>
+          </div>
+          
+          ${promotedCarouselHtml}
+        </div>
+      </div>
+    `;
+
+    appView.innerHTML = contentMarkup;
     lucide.createIcons();
+    initPromotedCarousel();
   } catch (error) {
     console.error("Error rendering cart:", error);
-    appView.innerHTML = `${pageIntro("carrinho")}<div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>`;
+    appView.innerHTML = `
+      <div class="checkout-page">
+        <div class="checkout-container">
+          <div class="view-header-carrinho checkout-title-wrapper">
+            <h1>Carrinho</h1>
+          </div>
+          <div class="empty-state"><p>Erro ao carregar itens do carrinho.</p></div>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
   }
 }
 
@@ -19390,6 +19782,54 @@ document.addEventListener("click", (event) => {
     openCartCheckout();
     return;
   }
+  if (action === "add-billing-info") {
+    openBillingModal();
+    return;
+  }
+  if (action === "toggle-coupon-input") {
+    const seller = target.dataset.seller;
+    appState.openCouponInputs[seller] = !appState.openCouponInputs[seller];
+    renderCart();
+    return;
+  }
+  if (action === "apply-coupon-code") {
+    const seller = target.dataset.seller;
+    const input = document.getElementById(`coupon-input-${seller}`);
+    if (input) {
+      const code = input.value.trim().toUpperCase();
+      if (code) {
+        appState.appliedCoupons[seller] = code;
+        localStorage.setItem("ansend-applied-coupons", JSON.stringify(appState.appliedCoupons));
+        showToast("Cupom aplicado com sucesso!", "check");
+      } else {
+        delete appState.appliedCoupons[seller];
+        localStorage.setItem("ansend-applied-coupons", JSON.stringify(appState.appliedCoupons));
+        showToast("Cupom removido.", "info");
+      }
+      renderCart();
+    }
+    return;
+  }
+  if (action === "confirm-remove-product") {
+    if (confirm("Deseja realmente remover este beat do carrinho?")) {
+      removeFromCart(target.dataset.id);
+    }
+    return;
+  }
+  if (action === "buy-promoted-beat") {
+    addToCart(target.dataset.id, "premium");
+    renderCart();
+    return;
+  }
+  if (action === "copy-cart-link") {
+    const link = window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+      showToast("Link do carrinho copiado!", "link");
+    }).catch(() => {
+      showToast("Erro ao copiar link.", "alert-triangle");
+    });
+    return;
+  }
   if (action === "copy-pix-code") {
     copyPixCode(target);
     return;
@@ -21710,31 +22150,27 @@ async function openCartCheckout() {
   lucide.createIcons();
 
   try {
-    const items = [];
-    const cartItemsPayload = [];
-    
-    for (const entry of appState.cart) {
-      const { beatId, licenseId } = splitCartEntry(entry);
-      const beat = findBeat(beatId);
-      const licenses = await fetchBeatLicenses(beatId);
-      const license = licenses.find(l => l.id === licenseId || l.license_key === licenseId) || 
-                      generateDefaultLicensesForBeat(beat).find(l => l.id === licenseId || l.license_key === licenseId);
-      
-      if (beat && license) {
-        items.push({ beat, license });
-        cartItemsPayload.push({ beat_id: beatId, license_id: license.id });
-      }
-    }
-    
+    const {
+      items,
+      rawSubtotalCents,
+      promoDiscountCents,
+      couponDiscountCents,
+      totalDiscountsCents,
+      subtotalCents,
+      serviceFeeCents,
+      totalCents,
+    } = await calculateCartPrices();
+
     if (!items.length) {
       showToast("Erro ao carregar itens do carrinho.", "alert-triangle");
       closeModal();
       return;
     }
-    
-    const subtotalCents = items.reduce((sum, item) => sum + (item.license.price_cents || 0), 0);
-    const serviceFeeCents = Math.round(subtotalCents * 0.12);
-    const totalCents = subtotalCents + serviceFeeCents;
+
+    const cartItemsPayload = items.map(item => ({
+      beat_id: item.beat.id,
+      license_id: item.licenseId
+    }));
     
     const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
     const prefillEmail = appState.authUser?.email || "";
@@ -21742,12 +22178,12 @@ async function openCartCheckout() {
     const itemMarkup = items.map((item) => checkoutItemMarkup({
       cover: item.beat.cover,
       title: item.beat.title,
-      licenseName: item.license.name,
-      priceCents: item.license.price_cents || 0,
+      licenseName: item.licenseLabel,
+      priceCents: item.priceValCents,
       producer: item.beat.producer,
-      formats: item.license.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+      formats: item.licenseLabel?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
       beatId: item.beat.id,
-      licenseId: item.license.id,
+      licenseId: item.licenseId,
       cartId: item.cartId,
     })).join("");
 
