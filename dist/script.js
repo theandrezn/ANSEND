@@ -16434,15 +16434,26 @@ function openProfessionalContract(name) {
   </form>`);
 }
 
-function checkoutItemMarkup({ cover, title, licenseName, priceCents }) {
+function checkoutItemMarkup({ cover, title, licenseName, priceCents, producer = "ANSEND", formats = "MP3, WAV", beatId = "", licenseId = "", cartId = "" }) {
+  const licenseLink = beatId && licenseId
+    ? `<a href="#" class="view-contract-modal-trigger" data-beat-id="${htmlEscape(beatId)}" data-license-id="${htmlEscape(licenseId)}">Ver licenca</a>`
+    : "";
+  const removeButton = cartId
+    ? `<button class="checkout-product-remove" type="button" data-action="checkout-remove-from-cart" data-id="${htmlEscape(cartId)}" aria-label="Remover ${htmlEscape(title || "beat")} do carrinho"><i data-lucide="x"></i></button>`
+    : "";
   return `
-    <article class="checkout-item">
-      <img src="${htmlEscape(cover || IMAGE_FALLBACK_SRC)}" alt="">
-      <div>
+    <article class="checkout-item checkout-product-row" data-beat-id="${htmlEscape(beatId)}">
+      <img src="${htmlEscape(cover || IMAGE_FALLBACK_SRC)}" alt="Capa de ${htmlEscape(title || "Beat ANSEND")}" loading="lazy">
+      <div class="checkout-product-copy">
+        <small>${htmlEscape(producer || "ANSEND")}</small>
         <strong>${htmlEscape(title || "Beat ANSEND")}</strong>
-        <span>${htmlEscape(licenseName || "Licenca")}</span>
+        <span>${htmlEscape(licenseName || "Licenca")} <b aria-hidden="true">&middot;</b> ${htmlEscape(formats)}</span>
+        ${licenseLink}
       </div>
-      <strong>${checkoutMoney(priceCents)}</strong>
+      <div class="checkout-product-actions">
+        <strong>${checkoutMoney(priceCents)}</strong>
+        ${removeButton}
+      </div>
     </article>
   `;
 }
@@ -16475,64 +16486,97 @@ function debitLogoMarkup() {
   return paymentAssetMarkup("assets/payment/debit.svg", "Debito", "payment-brand-debit");
 }
 
-function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents, totalCents, prefillName, prefillEmail, termsMarkup }) {
+function checkoutHeaderMarkup() {
+  return `
+    <header class="checkout-topbar">
+      <div class="checkout-brand">
+        <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
+        <span>Checkout seguro</span>
+      </div>
+      <div class="checkout-header-actions">
+        <div class="checkout-secure-note"><i data-lucide="lock-keyhole"></i><span>Pagamento protegido</span></div>
+        <button type="button" class="checkout-close" data-action="close-modal" aria-label="Fechar checkout"><i data-lucide="x"></i></button>
+      </div>
+    </header>
+  `;
+}
+
+function checkoutProcessorNoteMarkup(message = "Pix processado com seguranca pelo Mercado Pago.") {
+  return `
+    <div class="checkout-processor-note">
+      ${pixLogoMarkup()}
+      <span>${htmlEscape(message)}</span>
+      ${mercadoPagoLogoMarkup()}
+    </div>
+  `;
+}
+
+function checkoutRecommendationsMarkup() {
+  const excludedIds = new Set((appState.cart || []).map((entry) => splitCartEntry(entry).beatId));
+  const recommendations = preferredBeats(8).filter((item) => !excludedIds.has(String(item.id))).slice(0, 6);
+  if (!recommendations.length) return "";
+  return `
+    <section class="checkout-recommendations" aria-labelledby="checkout-recommendations-title">
+      <header>
+        <div><span>Descubra mais</span><h3 id="checkout-recommendations-title">Voce tambem pode gostar</h3></div>
+        <div class="checkout-recommendation-nav" aria-hidden="true"><i data-lucide="chevron-left"></i><i data-lucide="chevron-right"></i></div>
+      </header>
+      <div class="checkout-recommendation-track">
+        ${recommendations.map((item) => `
+          <article class="recommended-beat-card">
+            <button type="button" class="recommended-beat-open" data-action="open-beat" data-id="${htmlEscape(item.id)}" aria-label="Abrir ${htmlEscape(item.title)}">
+              <img src="${htmlEscape(item.cover || IMAGE_FALLBACK_SRC)}" alt="Capa de ${htmlEscape(item.title)}" loading="lazy">
+            </button>
+            <div><small>${htmlEscape(item.producer || "ANSEND")}</small><strong title="${htmlEscape(item.title)}">${htmlEscape(item.title)}</strong></div>
+            <button type="button" class="recommended-beat-add" data-action="detail-add-cart" data-id="${htmlEscape(item.id)}" data-license="premium" aria-label="Adicionar ${htmlEscape(item.title)} ao carrinho"><i data-lucide="shopping-cart"></i><span>${htmlEscape(item.price || licensePlans.premium.price)}</span></button>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function checkoutFormMarkup({ isCart, itemMarkup, itemCount = 1, subtotalCents, serviceFeeCents, totalCents, prefillName, prefillEmail, termsMarkup }) {
   return `
     <form class="checkout-form" data-is-cart="${isCart ? "true" : "false"}">
       <div class="checkout-page checkout-shell">
-        <header class="checkout-topbar">
-          <div class="checkout-brand">
-            <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
-            <span>Checkout seguro</span>
-          </div>
-          <div class="checkout-secure-note">
-            <i data-lucide="lock-keyhole"></i>
-            <span>Pagamento protegido</span>
-          </div>
-        </header>
+        ${checkoutHeaderMarkup()}
 
-        <main class="checkout-layout">
+        <main class="checkout-layout checkout-marketplace-layout">
           <section class="checkout-primary">
             <header class="checkout-titlebar">
-              <span class="checkout-heading-icon"><i data-lucide="wallet-cards"></i></span>
               <div>
                 <h2>Finalizar compra</h2>
-                <p>Escolha uma forma de pagamento para concluir o pedido.</p>
+                <p>Revise seu pedido, escolha o pagamento e conclua sua compra.</p>
               </div>
             </header>
 
-            <div class="checkout-panel checkout-flow-panel">
-              <label class="checkout-country">
-                <span>Pais e moeda</span>
-                <button type="button" class="checkout-country-select" aria-label="Pais selecionado: Brasil, moeda BRL">
-                  <span class="checkout-flag">BR</span>
-                  <strong>Brasil</strong>
-                  <em>BRL</em>
-                  <i data-lucide="chevron-down"></i>
-                </button>
-              </label>
+            <div class="checkout-license-bar">
+              <div><i data-lucide="file-check-2"></i><span>Informacoes de cobranca e licenca</span></div>
+              <button type="button">${isCart ? "Adicionar informacoes" : "Editar"}</button>
+            </div>
 
+            <section class="checkout-product-list" aria-label="Produtos do carrinho">
+              ${itemMarkup}
+            </section>
+
+            <div class="checkout-panel checkout-flow-panel">
               <section class="checkout-section">
                 <div class="checkout-section-title">
-                  <h3>Metodo de pagamento</h3>
-                  <span>1 ativo</span>
+                  <h3>Forma de pagamento</h3>
+                  <span><i data-lucide="check-circle-2"></i> Pix selecionado</span>
                 </div>
                 <div class="checkout-method-grid" aria-label="Formas de pagamento">
                   <button type="button" class="payment-method is-selected" aria-pressed="true">
                     ${pixLogoMarkup()}
                     <strong>Pix</strong>
-                    <small>Aprovacao rapida</small>
-                    <span class="payment-method-badge">Instantaneo</span>
+                    <small>Instantaneo</small>
                     <i data-lucide="check" class="payment-method-check"></i>
                   </button>
                   <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
                     ${cardLogoMarkup()}
                     <strong>Cartao</strong>
                     <small>Em breve</small>
-                  </button>
-                  <button type="button" class="payment-method is-processor" aria-pressed="false" disabled>
-                    ${mercadoPagoLogoMarkup()}
-                    <strong>Mercado Pago</strong>
-                    <small>Processador do Pix</small>
                   </button>
                   <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
                     ${boletoLogoMarkup()}
@@ -16547,23 +16591,17 @@ function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents
                   <button type="button" class="payment-method is-disabled" aria-pressed="false" disabled>
                     <i data-lucide="ellipsis"></i>
                     <strong>Outros</strong>
-                    <small>Disponivel em breve</small>
+                    <small>Em breve</small>
                   </button>
                 </div>
-                <div class="checkout-trust-strip">
-                  <i data-lucide="shield-check"></i>
-                  <div>
-                    <strong>Pagamento protegido e processado com seguranca.</strong>
-                    <span>Arquivos e contratos sao liberados somente apos confirmacao.</span>
-                  </div>
-                </div>
+                ${checkoutProcessorNoteMarkup()}
               </section>
 
               <section class="checkout-section">
                 <h3>Dados do comprador</h3>
                 <div class="checkout-fields">
                   <label class="checkout-field">
-                    <span>Nome</span>
+                    <span>Nome completo</span>
                     <input name="buyer_name" type="text" value="${htmlEscape(prefillName)}" placeholder="Nome completo" required>
                   </label>
                   <label class="checkout-field">
@@ -16577,6 +16615,7 @@ function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents
                 <input type="checkbox" name="accept_terms" required>
                 <span>${termsMarkup}</span>
               </label>
+              <div class="checkout-trust-strip"><i data-lucide="shield-check"></i><span><strong>Pagamento protegido.</strong> Os arquivos serao liberados apos a confirmacao.</span></div>
               <div class="checkout-error" role="alert" aria-live="polite"></div>
             </div>
           </section>
@@ -16585,7 +16624,7 @@ function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents
             <div class="checkout-summary-header">
               <div>
                 <span>Resumo do pedido</span>
-                <strong>${isCart ? "Itens no carrinho" : "1 item"}</strong>
+                <strong>${itemCount} ${itemCount === 1 ? "item" : "itens"}</strong>
               </div>
               <button type="button" data-route="carrinho">Editar</button>
             </div>
@@ -16606,13 +16645,7 @@ function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents
               <button type="button">Aplicar</button>
             </div>
 
-            <div class="checkout-method-inline">
-              <div class="payment-brand-row">
-                ${pixLogoMarkup()}
-                ${mercadoPagoLogoMarkup()}
-              </div>
-              <p>Pix processado pelo Mercado Pago. A confirmacao acontece antes da liberacao.</p>
-            </div>
+            ${checkoutProcessorNoteMarkup("A confirmacao acontece antes da liberacao dos arquivos.")}
 
             <div class="checkout-total">
               <div class="checkout-total-row">
@@ -16634,10 +16667,11 @@ function checkoutFormMarkup({ isCart, itemMarkup, subtotalCents, serviceFeeCents
             </div>
 
             <button class="seller-submit" type="submit">
-              Gerar Pix <span>${checkoutMoney(totalCents)}</span>
+              Gerar Pix <b aria-hidden="true">&middot;</b> <span>${checkoutMoney(totalCents)}</span>
             </button>
           </aside>
         </main>
+        ${checkoutRecommendationsMarkup()}
       </div>
     </form>
   `;
@@ -16673,7 +16707,12 @@ async function openCheckout(id, selectedPlan = "premium") {
         title: item.title,
         licenseName: selectedLicense.name,
         priceCents: subtotalCents,
+        producer: item.producer,
+        formats: selectedLicense.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+        beatId: item.id,
+        licenseId: selectedLicense.id,
       }),
+      itemCount: 1,
       subtotalCents,
       serviceFeeCents,
       totalCents,
@@ -19327,6 +19366,16 @@ document.addEventListener("click", (event) => {
     removeFromCart(target.dataset.id);
     return;
   }
+  if (action === "checkout-remove-from-cart") {
+    removeFromCart(target.dataset.id);
+    if (appState.cart.length) {
+      openCartCheckout();
+    } else {
+      closeModal();
+      showToast("Seu carrinho esta vazio.", "shopping-cart");
+    }
+    return;
+  }
   if (action === "clear-cart") {
     clearCart();
     showToast("Carrinho limpo", "trash-2");
@@ -21384,6 +21433,8 @@ function renderMercadoPagoPixCheckout(result, context) {
       title: item.title || "Beat ANSEND",
       licenseName: item.license_name || "Licenca",
       priceCents: item.price_cents || 0,
+      producer: item.producer || "ANSEND",
+      formats: item.formats || "MP3, WAV",
     })}
   `).join("");
   const qrMarkup = pix.qr_code_base64
@@ -21392,16 +21443,7 @@ function renderMercadoPagoPixCheckout(result, context) {
 
   openModal(`
     <section data-mercado-pago-pix class="pix-checkout-page checkout-page checkout-shell">
-      <header class="checkout-topbar">
-        <div class="checkout-brand">
-          <img src="assets/ansend-logo-horizontal.png" alt="ANSEND">
-          <span>Checkout seguro</span>
-        </div>
-        <div class="checkout-secure-note">
-          <i data-lucide="lock-keyhole"></i>
-          <span>Pagamento protegido</span>
-        </div>
-      </header>
+      ${checkoutHeaderMarkup()}
 
       <main class="checkout-layout pix-layout">
         <section class="checkout-primary">
@@ -21469,13 +21511,7 @@ function renderMercadoPagoPixCheckout(result, context) {
             ${itemsHtml}
           </div>
 
-          <div class="checkout-method-inline">
-            <div class="payment-brand-row">
-              ${pixLogoMarkup()}
-              ${mercadoPagoLogoMarkup()}
-            </div>
-            <p>Arquivos e contratos sao liberados apos a confirmacao.</p>
-          </div>
+          ${checkoutProcessorNoteMarkup("Arquivos e contratos sao liberados apos a confirmacao.")}
 
           <div class="checkout-total">
             <div class="checkout-total-row">
@@ -21498,6 +21534,7 @@ function renderMercadoPagoPixCheckout(result, context) {
           </div>
         </aside>
       </main>
+      ${checkoutRecommendationsMarkup()}
     </section>
   `);
 
@@ -21707,11 +21744,17 @@ async function openCartCheckout() {
       title: item.beat.title,
       licenseName: item.license.name,
       priceCents: item.license.price_cents || 0,
+      producer: item.beat.producer,
+      formats: item.license.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+      beatId: item.beat.id,
+      licenseId: item.license.id,
+      cartId: item.cartId,
     })).join("");
 
     openModal(checkoutFormMarkup({
       isCart: true,
       itemMarkup,
+      itemCount: items.length,
       subtotalCents,
       serviceFeeCents,
       totalCents,
