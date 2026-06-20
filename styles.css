@@ -34559,13 +34559,15 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
    PREMIUM GLASSMORPHIC NOTIFICATION DROP-DOWN
    ========================================== */
 
-.navbar-notification-container {
+.navbar-notification-container,
+.navbar-cart-container {
   position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
 }
 
-.navbar-notification-btn {
+.navbar-notification-btn,
+.navbar-cart-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -34580,28 +34582,33 @@ body[data-route="cadastrar"] .catalog-import-mode-tabs button.is-active {
   position: relative !important;
   transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1) !important;
   padding: 0 !important;
+  text-decoration: none !important;
 }
 
-.navbar-notification-btn:hover {
+.navbar-notification-btn:hover,
+.navbar-cart-btn:hover {
   background: rgba(255, 255, 255, 0.09) !important;
   color: #ffffff !important;
   transform: translateY(-1px) !important;
 }
 
 .navbar-notification-btn.dropdown-open,
-.navbar-notification-btn:focus-visible {
+.navbar-notification-btn:focus-visible,
+.navbar-cart-btn:focus-visible {
   background: rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
 }
 
-.navbar-notification-btn svg {
+.navbar-notification-btn svg,
+.navbar-cart-btn svg {
   width: 20px !important;
   height: 20px !important;
   stroke-width: 2px !important;
   display: block !important;
 }
 
-.notification-badge {
+.notification-badge,
+.cart-badge {
   position: absolute !important;
   top: -2px !important;
   right: -2px !important;
@@ -35752,6 +35759,7 @@ a[href],
   .navbar-menu-toggle,
   .navbar-auth-btn,
   .navbar-notification-btn,
+  .navbar-cart-btn,
   .icon-btn,
   .avatar-btn,
   body .navbar-menu-toggle,

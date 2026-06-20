@@ -10746,10 +10746,25 @@ function syncAccountUi() {
       notifContainer.setAttribute("hidden", "true");
     }
   }
+  syncNavbarCartBadge();
 }
 
 function hasAccountAccess() {
   return Boolean(appState.authUser);
+}
+
+function syncNavbarCartBadge() {
+  const badge = document.getElementById("navbarCartBadge");
+  const button = document.getElementById("navbarCartBtn");
+  const count = Array.isArray(appState.cart) ? appState.cart.length : 0;
+  if (badge) {
+    badge.textContent = count > 99 ? "99+" : String(count);
+    if (count > 0) badge.removeAttribute("hidden");
+    else badge.setAttribute("hidden", "true");
+  }
+  if (button) {
+    button.setAttribute("aria-label", count > 0 ? `Abrir carrinho com ${count} ${count === 1 ? "item" : "itens"}` : "Abrir carrinho");
+  }
 }
 
 function protectedRoute(route) {
@@ -11856,6 +11871,7 @@ function addToCart(id, licenseId = "premium") {
   if (!appState.cart.includes(entry)) {
     appState.cart.push(entry);
     localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
+    syncNavbarCartBadge();
     showToast("Adicionado ao carrinho", "shopping-cart");
   }
 }
@@ -11863,6 +11879,7 @@ function addToCart(id, licenseId = "premium") {
 function removeFromCart(id) {
   appState.cart = appState.cart.filter(item => item !== id);
   localStorage.setItem("ansend-cart", JSON.stringify(appState.cart));
+  syncNavbarCartBadge();
   showToast("Removido do carrinho", "trash");
   if (currentRoute() === "carrinho") renderCart();
 }
@@ -11870,6 +11887,7 @@ function removeFromCart(id) {
 function clearCart() {
   appState.cart = [];
   localStorage.setItem("ansend-cart", JSON.stringify([]));
+  syncNavbarCartBadge();
 }
 
 function clearPurchases() {
