@@ -15,18 +15,24 @@ for (const marker of [
 
 const containerRule = styles.match(/body\[data-route="carrinho"\] \.checkout-container\s*\{[\s\S]*?\}/)?.[0] || "";
 for (const marker of [
-  "width: 100% !important",
-  "max-width: none !important",
-  "margin: 0 !important",
-  "padding:",
+  "width: calc(100% - 48px) !important",
+  "max-width: 1120px !important",
+  "margin: 0 auto !important",
+  "padding: 28px 0 64px !important",
 ]) {
   if (!containerRule.includes(marker)) {
-    throw new Error(`Cart container must use full available width and no centered gutter: ${marker}`);
+    throw new Error(`Cart container must use the controlled reference width: ${marker}`);
   }
 }
 
-if (/body\[data-route="carrinho"\] \\.checkout-container\s*\{[\s\S]*?margin:\s*0\s+auto/i.test(styles)) {
-  throw new Error("Cart container must not be centered with margin: 0 auto.");
+const gridRule = styles.match(/body\[data-route="carrinho"\] \.checkout-main-grid\s*\{[\s\S]*?\}/)?.[0] || "";
+for (const marker of [
+  "grid-template-columns: minmax(0, 1fr) 310px !important",
+  "gap: 24px !important",
+]) {
+  if (!gridRule.includes(marker)) {
+    throw new Error(`Cart grid must match the reference layout: ${marker}`);
+  }
 }
 
 console.log("Cart layout gutter check passed");

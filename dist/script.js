@@ -1387,6 +1387,14 @@ const appState = {
   recommendations: { professionals: [], feed: [], updatedAt: 0 },
   recommendationsLoading: false,
   recommendationImpressions: new Set(),
+  cartPromotedAds: {
+    items: [],
+    loading: false,
+    error: "",
+    loadedAt: 0,
+    activeRequestId: 0,
+  },
+  cartPromotedAdImpressions: new Set(),
   nexoFeed: {
     interactions: {},
     comments: {},
@@ -11985,30 +11993,226 @@ async function calculateCartPrices() {
   };
 }
 
-function getPromotedBeatsForCart(limit = 12) {
-  const pool = searchableBeatPool();
-  const cartBeatIds = appState.cart.map(c => splitCartEntry(c).beatId);
-  const candidates = pool.filter(b => !cartBeatIds.includes(b.id));
-  
-  if (cartBeatIds.length === 0) {
-    return candidates.slice(0, limit);
+function cartBeatIdSet() {
+  return new Set((appState.cart || []).map((entry) => splitCartEntry(entry).beatId).filter(Boolean));
+}
+
+function normalizeCartPromotedAd(row = {}) {
+  const beat = row.beat_id ? findBeat(row.beat_id) : null;
+  const beatId = row.beat_id || beat?.id || "";
+  const priceLabel = row.price_label || beat?.price || (Number(row.price || 0)
+    ? Number(row.price).toLocaleString(appLocale.current === "pt-BR" ? "pt-BR" : "en-US", {
+      style: "currency",
+      currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+    })
+    : licensePlans.premium.price);
+  return {
+    adId: row.id || "",
+    campaignId: row.campaign_id || row.id || "",
+    beatId,
+    coverUrl: row.cover_url || row.youtube_thumbnail_url || beat?.cover || "",
+    beatTitle: row.title || beat?.title || "Beat ANSEND",
+    producerName: row.producer_name || row.artist_name || beat?.producer || "Produtor ANSEND",
+    producerAvatar: row.producer_avatar_url || row.avatar_url || "",
+    price: priceLabel,
+    currency: appLocale.current === "pt-BR" ? "BRL" : "USD",
+    licenseName: row.license_name || "Licenca Premium",
+    audioUrl: row.audio_url || row.preview_url || row.audio_preview_url || row.track_url || beat?.audio || beat?.audio_url || "",
+    beatRoute: beatId ? `beat-${beatId}` : String(row.target_url || "#marketplace").replace(/^#/, ""),
+    producerRoute: beat?.user_id ? `perfil-${beat.user_id}` : "produtores",
+    genre: row.genre || beat?.genre || beat?.tags?.[0] || "",
+    startsAt: row.starts_at || null,
+    endsAt: row.ends_at || null,
+    userId: row.user_id || "",
+  };
+}
+
+function cartPromotedAdIsValid(ad = {}) {
+  if (!ad.adId || !ad.beatId || !ad.coverUrl) return false;
+  if (cartBeatIdSet().has(String(ad.beatId))) return false;
+  if (appState.authUser?.id && ad.userId === appState.authUser.id) return false;
+  return true;
+}
+
+function scoreCartPromotedAd(ad = {}) {
+  const cartBeats = [...cartBeatIdSet()].map(findBeat).filter(Boolean);
+  const cartGenres = new Set(cartBeats.map((beat) => beat.tags?.[0] || beat.genre).filter(Boolean));
+  let score = 0;
+  if (ad.genre && cartGenres.has(ad.genre)) score += 20;
+  if (ad.coverUrl) score += 4;
+  if (ad.audioUrl) score += 2;
+  return score;
+}
+
+async function loadCartPromotedAds({ render = false, force = false } = {}) {
+  const adState = appState.cartPromotedAds;
+  if (!supabaseClient) {
+    adState.items = [];
+    adState.loading = false;
+    adState.error = "";
+    if (render) updateCartPromotedSection();
+    return [];
   }
+  const isFresh = Date.now() - Number(adState.loadedAt || 0) < 90_000;
+  if (!force && isFresh && adState.items.length) {
+    if (render) updateCartPromotedSection();
+    return adState.items;
+  }
+  const requestId = ++adState.activeRequestId;
+  adState.loading = true;
+  adState.error = "";
+  if (render) updateCartPromotedSection();
+  try {
+    const query = supabaseClient
+      .from("promoted_beats")
+      .select("id,beat_id,user_id,title,artist_name,producer_name,cover_url,youtube_thumbnail_url,target_url,price,price_label,tagline,genre,status,starts_at,ends_at,impressions,clicks,audio_url,preview_url,audio_preview_url,track_url,created_at")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(24);
+    const { data, error } = await withTimeout(query, 2200, "Anuncios do carrinho demoraram para responder.");
+    if (requestId !== adState.activeRequestId) return adState.items;
+    if (error) throw error;
+    const items = (data || [])
+      .filter(validPromotedBeatWindow)
+      .map(normalizeCartPromotedAd)
+      .filter(cartPromotedAdIsValid)
+      .map((ad) => ({ ...ad, cartScore: scoreCartPromotedAd(ad) }))
+      .sort((a, b) => b.cartScore - a.cartScore)
+      .slice(0, 12);
+    adState.items = items;
+    adState.loadedAt = Date.now();
+    adState.error = "";
+    return items;
+  } catch (error) {
+    console.warn("[ANSEND cart ads] load skipped", error?.message || error);
+    if (requestId === adState.activeRequestId) {
+      adState.items = [];
+      adState.error = error?.message || "Nao foi possivel carregar anuncios.";
+    }
+    return [];
+  } finally {
+    if (requestId === adState.activeRequestId) {
+      adState.loading = false;
+      if (render) updateCartPromotedSection();
+    }
+  }
+}
 
-  const cartBeats = cartBeatIds.map(findBeat).filter(Boolean);
-  const cartGenres = new Set(cartBeats.map(b => b.tags?.[0] || b.genre).filter(Boolean));
-  const cartProducers = new Set(cartBeats.map(b => b.producer).filter(Boolean));
+function cartPromotedSkeletonMarkup() {
+  return Array.from({ length: 6 }, (_, index) => `
+    <article class="checkout-promoted-card is-skeleton" aria-hidden="true">
+      <div class="checkout-promoted-card-cover-wrapper"></div>
+      <div class="checkout-promoted-card-info">
+        <span class="checkout-promoted-tag">ANUNCIO</span>
+        <h3>Carregando ${index + 1}</h3>
+      </div>
+      <div class="checkout-promoted-price-btn"></div>
+    </article>
+  `).join("");
+}
 
-  const scored = candidates.map(beat => {
-    let score = 0;
-    const genre = beat.tags?.[0] || beat.genre;
-    if (cartGenres.has(genre)) score += 10;
-    if (cartProducers.has(beat.producer)) score += 5;
-    if (beat.is_promoted || beat.is_sponsored) score += 20;
-    return { beat, score };
-  });
+function cartPromotedCardMarkup(ad = {}) {
+  const inCart = cartBeatIdSet().has(String(ad.beatId));
+  return `<article class="checkout-promoted-card" data-cart-promoted-ad-id="${htmlEscape(ad.adId)}" data-campaign-id="${htmlEscape(ad.campaignId)}" data-beat-id="${htmlEscape(ad.beatId)}">
+    <a class="checkout-promoted-card-cover-wrapper" href="#${htmlEscape(ad.beatRoute)}" data-action="cart-promoted-open" data-ad-id="${htmlEscape(ad.adId)}" aria-label="Abrir ${htmlEscape(ad.beatTitle)}">
+      <img src="${htmlEscape(ad.coverUrl || IMAGE_FALLBACK_SRC)}" alt="Capa de ${htmlEscape(ad.beatTitle)}" class="checkout-promoted-card-cover" loading="lazy" decoding="async" onerror="this.src='${IMAGE_FALLBACK_SRC}'">
+    </a>
+    <div class="checkout-promoted-card-info">
+      <div class="checkout-promoted-tag-row">
+        <span class="checkout-promoted-tag">ANUNCIO</span>
+      </div>
+      <a class="checkout-promoted-title" href="#${htmlEscape(ad.beatRoute)}" data-action="cart-promoted-open" data-ad-id="${htmlEscape(ad.adId)}" title="${htmlEscape(ad.beatTitle)}">${htmlEscape(ad.beatTitle)}</a>
+    </div>
+    <div class="checkout-promoted-actions">
+      <button class="checkout-promoted-price-btn" type="button" data-action="buy-promoted-beat" data-id="${htmlEscape(ad.beatId)}" data-ad-id="${htmlEscape(ad.adId)}" ${inCart ? "disabled" : ""}>
+        <i data-lucide="shopping-bag"></i>
+        <span>${inCart ? "No carrinho" : htmlEscape(ad.price || licensePlans.premium.price)}</span>
+      </button>
+      ${ad.audioUrl ? `<button class="checkout-promoted-play-btn" type="button" data-action="cart-promoted-play" data-ad-id="${htmlEscape(ad.adId)}" aria-label="Ouvir ${htmlEscape(ad.beatTitle)}"><i data-lucide="play"></i></button>` : ""}
+    </div>
+  </article>`;
+}
 
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map(s => s.beat).slice(0, limit);
+function renderCartPromotedSection() {
+  const adState = appState.cartPromotedAds;
+  if (adState.loading && !adState.items.length) {
+    return `<section class="checkout-promoted-section" data-cart-promoted-section aria-busy="true">
+      <div class="checkout-promoted-header">
+        <h2>Promovido</h2>
+      </div>
+      <div class="checkout-carousel-container" tabindex="0">
+        <div class="checkout-carousel-track">${cartPromotedSkeletonMarkup()}</div>
+      </div>
+    </section>`;
+  }
+  const items = adState.items || [];
+  if (!items.length) return "";
+  return `<section class="checkout-promoted-section" data-cart-promoted-section>
+    <div class="checkout-promoted-header">
+      <h2>Promovido</h2>
+      <div class="checkout-carousel-nav">
+        <button class="checkout-carousel-prev" type="button" aria-label="Anterior"><i data-lucide="chevron-left"></i></button>
+        <button class="checkout-carousel-next" type="button" aria-label="Proximo"><i data-lucide="chevron-right"></i></button>
+      </div>
+    </div>
+    <div class="checkout-carousel-container" tabindex="0">
+      <div class="checkout-carousel-track">
+        ${items.map(cartPromotedCardMarkup).join("")}
+      </div>
+    </div>
+  </section>`;
+}
+
+function updateCartPromotedSection() {
+  if (currentRoute() !== "carrinho") return;
+  const existing = document.querySelector("[data-cart-promoted-section]");
+  const markup = renderCartPromotedSection();
+  if (existing) {
+    if (markup) existing.outerHTML = markup;
+    else existing.remove();
+  } else if (markup) {
+    document.querySelector(".checkout-container")?.insertAdjacentHTML("beforeend", markup);
+  }
+  lucide.createIcons();
+  initPromotedCarousel();
+  observeCartPromotedAds();
+}
+
+function cartPromotedAdById(adId = "") {
+  return (appState.cartPromotedAds.items || []).find((ad) => String(ad.adId) === String(adId)) || null;
+}
+
+function trackCartPromotedAdEvent(kind, adId, action = kind) {
+  const ad = cartPromotedAdById(adId);
+  if (!ad?.adId) return;
+  if (kind === "impression") {
+    const key = `cart_promoted:${ad.adId}`;
+    if (appState.cartPromotedAdImpressions.has(key)) return;
+    appState.cartPromotedAdImpressions.add(key);
+  }
+  const rpcName = kind === "click" ? "increment_promoted_beat_click" : "increment_promoted_beat_impression";
+  if (supabaseClient) {
+    supabaseClient.rpc(rpcName, { p_ad_id: ad.adId }).catch((error) => {
+      console.warn("[ANSEND cart ads] tracking skipped", error?.message || error);
+    });
+  }
+  if (kind === "click") {
+    trackUserEvent("ad_click", "beat", ad.beatId, { adId: ad.adId, campaignId: ad.campaignId, placement: "cart_promoted", action });
+  }
+}
+
+function observeCartPromotedAds() {
+  const cards = [...document.querySelectorAll("[data-cart-promoted-ad-id]")];
+  if (!cards.length || typeof IntersectionObserver !== "function") return;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting || entry.intersectionRatio < 0.45) return;
+      const adId = entry.target.dataset.cartPromotedAdId || "";
+      trackCartPromotedAdEvent("impression", adId, "view");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: [0.45], rootMargin: "0px 0px -8% 0px" });
+  cards.forEach((card) => observer.observe(card));
 }
 
 function openBillingModal() {
@@ -12345,46 +12549,9 @@ async function renderCart() {
       </div>
     `;
 
-    const promotedBeats = getPromotedBeatsForCart(12);
-    const promotedCardsHtml = promotedBeats.map(beat => {
-      const price = beat.price || "R$ 29,95";
-      const isAlreadyInCart = items.some(item => item.beat.id === beat.id);
-      
-      return `
-        <div class="checkout-promoted-card">
-          <div class="checkout-promoted-card-cover-wrapper">
-            <img src="${htmlEscape(beat.cover)}" alt="Capa" class="checkout-promoted-card-cover">
-          </div>
-          <div class="checkout-promoted-card-info">
-            <div class="checkout-promoted-tag-row">
-              <span class="checkout-promoted-tag">ANÚNCIO</span>
-            </div>
-            <h3>${htmlEscape(beat.title)}</h3>
-          </div>
-          <button class="checkout-promoted-price-btn" type="button" data-action="buy-promoted-beat" data-id="${htmlEscape(beat.id)}" ${isAlreadyInCart ? 'disabled style="border-color:#525252; color:#737373;"' : ''}>
-            <i data-lucide="shopping-bag"></i>
-            <span>${isAlreadyInCart ? 'No Carrinho' : htmlEscape(price)}</span>
-          </button>
-        </div>
-      `;
-    }).join("");
-
-    const promotedCarouselHtml = promotedBeats.length ? `
-      <section class="checkout-promoted-section">
-        <div class="checkout-promoted-header">
-          <h2>Promovido</h2>
-          <div class="checkout-carousel-nav">
-            <button class="checkout-carousel-prev" type="button" aria-label="Anterior" disabled><i data-lucide="chevron-left"></i></button>
-            <button class="checkout-carousel-next" type="button" aria-label="Próximo"><i data-lucide="chevron-right"></i></button>
-          </div>
-        </div>
-        <div class="checkout-carousel-container">
-          <div class="checkout-carousel-track">
-            ${promotedCardsHtml}
-          </div>
-        </div>
-      </section>
-    ` : "";
+    const shouldRequestPromotedAds = !appState.cartPromotedAds.loading
+      && (!appState.cartPromotedAds.loadedAt || Date.now() - appState.cartPromotedAds.loadedAt > 90_000);
+    const promotedCarouselHtml = renderCartPromotedSection();
 
     const contentMarkup = `
       <div class="checkout-page">
@@ -12418,6 +12585,8 @@ async function renderCart() {
     appView.innerHTML = contentMarkup;
     lucide.createIcons();
     initPromotedCarousel();
+    observeCartPromotedAds();
+    if (shouldRequestPromotedAds) void loadCartPromotedAds({ render: true });
   } catch (error) {
     console.error("Error rendering cart:", error);
     appView.innerHTML = `
@@ -18987,7 +19156,7 @@ document.addEventListener("pointerdown", (event) => {
   if (event.target.closest?.(".seller-auth-form")) sellerAuthInteractionAt = Date.now();
 }, true);
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   if (!document.body.classList.contains("menu-open")) return;
   const clickedDrawer = event.target.closest?.(".sidebar");
   const clickedToggle = event.target.closest?.(".menu-toggle, .navbar-menu-toggle, .sidebar-menu-toggle");
@@ -19151,7 +19320,7 @@ document.addEventListener("keydown", (event) => {
   seekMiniPlayerToRatio(keyMap[event.key] / Math.max(1, duration));
 });
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const ansendSelectToggle = event.target.closest("[data-action='ansend-select-toggle']");
   if (ansendSelectToggle) {
     event.preventDefault();
@@ -19328,6 +19497,32 @@ document.addEventListener("click", (event) => {
   if (communityAdLink) {
     const adId = communityAdLink.dataset.adId || communityAdLink.closest("[data-promoted-ad-id]")?.dataset.promotedAdId || "";
     trackCommunityAdEvent("click", adId);
+    return;
+  }
+
+  const cartPromotedOpen = event.target.closest("[data-action='cart-promoted-open']");
+  if (cartPromotedOpen) {
+    const adId = cartPromotedOpen.dataset.adId || cartPromotedOpen.closest("[data-cart-promoted-ad-id]")?.dataset.cartPromotedAdId || "";
+    trackCartPromotedAdEvent("click", adId, "open_beat");
+    return;
+  }
+
+  const cartPromotedPlay = event.target.closest("[data-action='cart-promoted-play']");
+  if (cartPromotedPlay) {
+    event.preventDefault();
+    const adId = cartPromotedPlay.dataset.adId || cartPromotedPlay.closest("[data-cart-promoted-ad-id]")?.dataset.cartPromotedAdId || "";
+    const ad = cartPromotedAdById(adId);
+    if (!ad) return;
+    trackCartPromotedAdEvent("click", adId, "play");
+    await toggleBeatPlayback({
+      id: ad.beatId,
+      title: ad.beatTitle,
+      producer: ad.producerName,
+      cover: ad.coverUrl,
+      audio: ad.audioUrl,
+      audio_url: ad.audioUrl,
+      price: ad.price,
+    });
     return;
   }
 
@@ -20344,6 +20539,8 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (action === "buy-promoted-beat") {
+    const adId = target.dataset.adId || target.closest("[data-cart-promoted-ad-id]")?.dataset.cartPromotedAdId || "";
+    if (adId) trackCartPromotedAdEvent("click", adId, "add_to_cart");
     addToCart(target.dataset.id, "premium");
     renderCart();
     return;

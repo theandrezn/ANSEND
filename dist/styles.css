@@ -36895,9 +36895,9 @@ body[data-route="feed"] .an-hero-art.top-beat-showcase {
   }
 }
 
-/* Cart route width fix: remove the old centered gutter between sidebar and content. */
+/* Cart route visual reconstruction: controlled content width after the sidebar. */
 body[data-route="carrinho"] #appView.app-view {
-  padding: clamp(18px, 2vw, 28px) clamp(16px, 2.2vw, 32px) 96px !important;
+  padding: clamp(20px, 2.3vw, 36px) clamp(18px, 2.5vw, 32px) 96px !important;
 }
 
 body[data-route="carrinho"] .checkout-page {
@@ -36909,22 +36909,188 @@ body[data-route="carrinho"] .checkout-page {
 }
 
 body[data-route="carrinho"] .checkout-container {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: clamp(16px, 1.8vw, 28px) 0 40px !important;
+  width: calc(100% - 48px) !important;
+  max-width: 1120px !important;
+  margin: 0 auto !important;
+  padding: 28px 0 64px !important;
 }
 
 body[data-route="carrinho"] .checkout-main-grid {
   width: 100% !important;
-  max-width: none !important;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important;
-  gap: clamp(16px, 1.8vw, 28px) !important;
+  max-width: 100% !important;
+  grid-template-columns: minmax(0, 1fr) 310px !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+body[data-route="carrinho"] .checkout-title-wrapper h1 {
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+}
+
+body[data-route="carrinho"] .checkout-billing-bar {
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+}
+
+body[data-route="carrinho"] .checkout-add-info-btn {
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 11px !important;
+}
+
+body[data-route="carrinho"] .checkout-seller-row {
+  margin: 18px 0 10px !important;
+}
+
+body[data-route="carrinho"] .checkout-seller-avatar {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+body[data-route="carrinho"] .checkout-seller-name {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+body[data-route="carrinho"] .checkout-product-row {
+  min-height: 84px !important;
+  gap: 14px !important;
+  padding: 10px 0 18px !important;
+}
+
+body[data-route="carrinho"] .checkout-product-cover,
+body[data-route="carrinho"] .checkout-product-row img {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  border-radius: 4px !important;
+  object-fit: cover !important;
+}
+
+body[data-route="carrinho"] .checkout-product-title-line h3 {
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+}
+
+body[data-route="carrinho"] .checkout-product-specs,
+body[data-route="carrinho"] .checkout-product-license {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+body[data-route="carrinho"] .checkout-product-price {
+  font-size: 14px !important;
+}
+
+body[data-route="carrinho"] .checkout-summary-card {
+  padding: 20px !important;
+  border-radius: 6px !important;
+}
+
+body[data-route="carrinho"] .checkout-summary-header h2 {
+  font-size: 15px !important;
+}
+
+body[data-route="carrinho"] .checkout-summary-row {
+  font-size: 13px !important;
+}
+
+body[data-route="carrinho"] .checkout-summary-row.subtotal {
+  font-size: 14px !important;
+}
+
+body[data-route="carrinho"] .checkout-main-btn {
+  min-height: 46px !important;
+  font-size: 14px !important;
+}
+
+body[data-route="carrinho"] .checkout-main-btn svg,
+body[data-route="carrinho"] .checkout-add-info-btn svg,
+body[data-route="carrinho"] .checkout-product-remove-btn svg,
+body[data-route="carrinho"] .checkout-share-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-section {
+  margin-top: 56px !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-header h2 {
+  font-size: 18px !important;
+  line-height: 1.25 !important;
+}
+
+body[data-route="carrinho"] .checkout-carousel-container {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x mandatory !important;
+}
+
+body[data-route="carrinho"] .checkout-carousel-track {
+  display: grid !important;
+  grid-auto-flow: column !important;
+  grid-auto-columns: minmax(145px, 1fr) !important;
+  gap: 18px !important;
+  min-width: max-content !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-card {
+  width: 145px !important;
+  min-width: 145px !important;
+  scroll-snap-align: start !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-card-cover-wrapper {
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-card-cover {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-tag {
+  font-size: 9px !important;
+  letter-spacing: 0.02em !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-title {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-actions {
+  gap: 6px !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-price-btn {
+  min-height: 34px !important;
+  font-size: 12px !important;
+}
+
+body[data-route="carrinho"] .checkout-promoted-play-btn {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
 }
 
 @media (max-width: 900px) {
   body[data-route="carrinho"] #appView.app-view {
     padding: 16px 12px 80px !important;
+  }
+
+  body[data-route="carrinho"] .checkout-container {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 20px 0 56px !important;
   }
 
   body[data-route="carrinho"] .checkout-main-grid {
@@ -37383,5 +37549,17 @@ body[data-route="carrinho"] .checkout-main-grid {
   }
   .checkout-buyer-field.full-width {
     grid-column: span 1 !important;
+  }
+}
+
+@media (max-width: 600px) {
+  body[data-route="carrinho"] .checkout-carousel-track {
+    grid-auto-columns: 138px !important;
+    gap: 14px !important;
+  }
+
+  body[data-route="carrinho"] .checkout-promoted-card {
+    width: 138px !important;
+    min-width: 138px !important;
   }
 }
