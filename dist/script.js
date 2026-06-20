@@ -12789,7 +12789,7 @@ async function renderDirectCheckout() {
                 <div class="checkout-payment-grid">
                   <div class="checkout-payment-card is-active" data-method="pix">
                     <div class="checkout-payment-card-logo-row">
-                      <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:16px;">
+                      <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:24px;">
                       <div class="checkout-payment-card-check"><i data-lucide="check"></i></div>
                     </div>
                     <span class="checkout-payment-card-title">Pix</span>
@@ -12826,11 +12826,11 @@ async function renderDirectCheckout() {
                 </div>
                 <div class="checkout-secure-banner">
                   <div class="checkout-secure-banner-left">
-                    <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:12px;">
+                    <img src="assets/payment/pix-user.png" alt="Pix logo" style="height:18px;">
                     <span>Pix processado com segurança pelo Mercado Pago.</span>
                   </div>
                   <div class="checkout-secure-banner-right">
-                    <img src="assets/payment/mercado-pago-user.png" alt="Mercado Pago logo" style="height:14px;">
+                    <img src="assets/payment/mercado-pago-user.png" alt="Mercado Pago logo" style="height:20px;">
                   </div>
                 </div>
               </section>
@@ -12874,9 +12874,10 @@ async function renderDirectCheckout() {
                   </div>
                 </div>
 
-                <div class="checkout-summary-notice-box">
-                  <i data-lucide="info"></i>
-                  <span>A confirmação acontece antes da liberação dos arquivos.</span>
+                <div class="checkout-summary-notice-box" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #121313; border: 1px solid rgba(255, 255, 255, 0.08); padding: 10px 12px; border-radius: 6px;">
+                  <img src="assets/payment/pix-user.png" alt="Pix" style="height: 18px; object-fit: contain;">
+                  <span style="font-size: 10px; color: #a3a3a3; line-height: 1.3; flex: 1; text-align: center; margin: 0 4px;">A confirmação acontece antes da liberação dos arquivos.</span>
+                  <img src="assets/payment/mercado-pago-user.png" alt="Mercado Pago" style="height: 20px; object-fit: contain;">
                 </div>
 
                 <div class="checkout-summary-row">
