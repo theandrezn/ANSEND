@@ -88,8 +88,24 @@ Não serão adicionados React, Tailwind, Radix ou novas dependências. HTML e CS
 - foco com borda azul fina, sem glow exagerado;
 - número do cartão com bandeiras pequenas à direita;
 - validade e CVV em duas colunas com gap de 8px;
-- bloco contíguo, inspirado no endereço da referência, aplicado aos dados reais da ANSEND: CPF/CNPJ, banco emissor, parcelas e telefone;
+- bloco contíguo, inspirado no endereço da referência, aplicado aos dados reais da ANSEND: CPF/CNPJ, parcelas e telefone;
 - nenhum campo de endereço será coletado ou persistido.
+
+O campo `issuer` não será exibido. O `select` exigido pelo CardForm continuará montado de forma tecnicamente oculta e acessível ao SDK, permitindo que o Mercado Pago detecte o emissor automaticamente sem pedir essa escolha ao comprador.
+
+### Seletor de parcelas
+
+- ocupa toda a largura do formulário;
+- estado fechado com 42px de altura, fundo `#121416`, borda `#292c30` e raio de 5px;
+- seta discreta à direita e foco azul fino;
+- opções com quantidade, valor individual e total financiado;
+- formato: `3x de R$ 41,20 — total R$ 123,60`;
+- quando o provedor indicar ausência de juros: `1x de R$ 111,89 — sem juros`;
+- loading: `Calculando parcelas no Mercado Pago…`;
+- estado inicial desabilitado até que o BIN do cartão permita a consulta;
+- mensagens e valores são sincronizados das opções retornadas pelo Mercado Pago; o frontend não estima juros.
+
+A base enviada ao Mercado Pago é `quote.totalCents`, que já inclui subtotal, taxa de serviço ANSEND e desconto. O valor total financiado acrescenta apenas o custo financeiro do parcelamento informado pelo provedor. A tarifa administrativa cobrada do vendedor não é repassada novamente ao comprador.
 
 No Pix, os campos reais continuam sendo e-mail, nome completo, CPF/CNPJ e telefone, usando a mesma geometria. O bloco informativo do Pix permanece compacto e o resultado com QR Code continua no mesmo shell.
 
@@ -107,6 +123,8 @@ No Pix, os campos reais continuam sendo e-mail, nome completo, CPF/CNPJ e telefo
 ## Interação e dados
 
 Cartão e Pix continuam chamando o mesmo `setPaymentMethod`. Os dois conjuntos de controles visuais refletem a mesma fonte de verdade. A troca de método apenas alterna os painéis existentes e o texto dinâmico do CTA. Campos seguros permanecem controlados pelo Mercado Pago. Nenhum dado é copiado para um segundo estado.
+
+O seletor visual de parcelas permanece sincronizado com o `select` controlado pelo CardForm. Mudanças de BIN, bandeira, emissor detectado, cupom ou total recriam/atualizam as opções. Ao escolher uma parcela, o valor correspondente é refletido no campo original para que `getCardFormData()` envie `installments` e `issuerId` reais ao backend. O CTA continua exibindo o total do pedido; o seletor informa claramente o total financiado da opção escolhida.
 
 Os métodos desabilitados não recebem `data-checkout-method` funcional e não entram no fluxo de eventos. Tooltips ou texto acessível indicarão `Em breve` sem alterar a referência visual principal.
 
@@ -134,17 +152,20 @@ O trabalho seguirá TDD:
 1. criar ou atualizar o contrato visual e observar falha pela estrutura atual;
 2. implementar o mínimo para passar;
 3. executar testes de checkout, CardForm, Pix, pricing, banco, idempotência e webhook;
-4. executar build e `git diff --check`;
-5. capturar Cartão e Pix em 1920×1080, 1440×900, 1366×768, tablet e mobile;
-6. comparar referência e implementação no companion visual;
-7. ajustar tipografia, geometria, cores e posição até eliminar as diferenças relevantes;
-8. confirmar que a coluna esquerda não mudou.
+4. testar o seletor com retorno sem juros, com juros, BIN inválido, mudança de BIN e atualização do total após cupom;
+5. executar build e `git diff --check`;
+6. capturar Cartão e Pix em 1920×1080, 1440×900, 1366×768, tablet e mobile;
+7. comparar referência e implementação no companion visual;
+8. ajustar tipografia, geometria, cores e posição até eliminar as diferenças relevantes;
+9. confirmar que a coluna esquerda não mudou.
 
 ## Critérios de aceite
 
 - campos e CTA reproduzem a referência em dimensões, radius, cores e hierarquia;
 - Opção C está implementada sem pagamentos falsos;
 - Cartão e Pix continuam funcionais;
+- banco emissor não aparece para o comprador e continua disponível ao CardForm;
+- parcelas mostram valores reais sobre o total com taxa de serviço ANSEND e o custo financeiro retornado pelo Mercado Pago;
 - coluna esquerda e outras rotas permanecem intactas;
 - sem CSS global, estado duplicado, segunda aplicação ou dependências desnecessárias;
 - sem overflow ou corte nas resoluções obrigatórias;
