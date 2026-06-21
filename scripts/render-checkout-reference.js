@@ -27,6 +27,31 @@ async function render(viewport, output) {
   await page.screenshot({ path: path.join(root, output), fullPage: true });
   if (viewport.width === 1920 && viewport.height === 1080) {
     await page.screenshot({ path: path.join(root, "tests", "checkout-pixel-perfect-1920-viewport.png"), fullPage: false });
+    await page.evaluate(() => {
+      document.querySelectorAll("[data-checkout-method]").forEach((button) => {
+        const selected = button.dataset.checkoutMethod === "card";
+        button.classList.toggle("is-active", selected);
+        button.setAttribute(button.getAttribute("role") === "tab" ? "aria-selected" : "aria-pressed", String(selected));
+      });
+      document.querySelectorAll("[data-checkout-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.checkoutPanel !== "card";
+      });
+      document.querySelector("[data-ansend-checkout]").dataset.checkoutMethod = "card";
+      document.querySelector("[data-checkout-submit-label]").textContent = "Pagar R$ 615,78";
+    });
+    await page.screenshot({ path: path.join(root, "tests", "checkout-payment-card-1920.png"), fullPage: false });
+    await page.evaluate(() => {
+      document.querySelectorAll("[data-checkout-method]").forEach((button) => {
+        const selected = button.dataset.checkoutMethod === "pix";
+        button.classList.toggle("is-active", selected);
+        button.setAttribute(button.getAttribute("role") === "tab" ? "aria-selected" : "aria-pressed", String(selected));
+      });
+      document.querySelectorAll("[data-checkout-panel]").forEach((panel) => {
+        panel.hidden = panel.dataset.checkoutPanel !== "pix";
+      });
+      document.querySelector("[data-ansend-checkout]").dataset.checkoutMethod = "pix";
+      document.querySelector("[data-checkout-submit-label]").textContent = "Gerar Pix de R$ 615,78";
+    });
   }
   const metrics = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -73,8 +98,8 @@ async function render(viewport, output) {
   if (desktop.shellRadius !== "0px" || desktop.pageBackground !== "none") throw new Error(`Checkout still looks like a floating panel: ${JSON.stringify(desktop)}`);
   if (parseFloat(results[1920].titleFontSize) > 28 || parseFloat(desktop.titleFontSize) > 28) throw new Error(`Checkout typography is too large: ${JSON.stringify({ wide: results[1920], desktop })}`);
   if (parseFloat(desktop.productTitleFontSize) > 14.5 || parseFloat(results[1920].productTitleFontSize) > 14.5) throw new Error(`Product title typography regressed: ${JSON.stringify({ wide: results[1920], desktop })}`);
-  if (results[1920].inputHeight < 40 || results[1920].inputHeight > 42 || results[1920].ctaHeight < 42 || results[1920].ctaHeight > 46 || results[1920].methodHeight < 48 || results[1920].methodHeight > 54 || results[1920].pixIntroHeight < 76 || results[1920].pixIntroHeight > 84) throw new Error(`Checkout desktop density is outside contract: ${JSON.stringify(results[1920])}`);
-  if (results[1366].formWidth < 420 || desktop.formWidth < 460 || results[1920].formWidth < 600 || mobile.formWidth < 330) throw new Error(`Checkout form is compressed: ${JSON.stringify({ narrow: results[1366], desktop, wide: results[1920], mobile })}`);
+  if (results[1920].inputHeight < 40 || results[1920].inputHeight > 42 || results[1920].ctaHeight < 42 || results[1920].ctaHeight > 46 || results[1920].methodHeight < 66 || results[1920].methodHeight > 70 || results[1920].pixIntroHeight < 70 || results[1920].pixIntroHeight > 74) throw new Error(`Checkout desktop density is outside contract: ${JSON.stringify(results[1920])}`);
+  if (results[1366].formWidth < 360 || results[1366].formWidth > 380 || desktop.formWidth !== 380 || results[1920].formWidth !== 380 || mobile.formWidth < 330) throw new Error(`Checkout form width is outside reference contract: ${JSON.stringify({ narrow: results[1366], desktop, wide: results[1920], mobile })}`);
   if (results[1366].ctaBottom > results[1366].viewportHeight + 260 || results[1440].ctaBottom > results[1440].viewportHeight + 180) throw new Error(`Checkout CTA is too far below desktop fold: ${JSON.stringify({ narrow: results[1366], desktop })}`);
   if (desktop.focusable < 12) throw new Error("Checkout controls were not rendered");
   console.log(JSON.stringify(results, null, 2));

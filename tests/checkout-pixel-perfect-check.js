@@ -54,7 +54,7 @@ for (const marker of [
   "overflow-x: clip !important",
   "border-radius: 0",
   "background-image: none",
-  "max-width: 620px",
+  "max-width: 380px",
   "font-size: 26px",
   "font-size: 14px",
   "min-height: 41px",
