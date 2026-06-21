@@ -72,6 +72,11 @@ assert(/\.ansend-checkout__methods button\s*\{[^}]*min-height:\s*58px;/s.test(cs
 assert(!/(?:^|})[^{}]*\.ansend-checkout__tabs[^{}]*\{[^}]*min-height:\s*46px;/s.test(css), "Payment tabs must not retain a legacy 46px override");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__methods button[^{}]*\{[^}]*min-height:\s*68px;/s.test(css), "Payment method cards must not retain a legacy 68px override");
 assert(/\.ansend-checkout__field input[^}]*height:\s*42px;/s.test(css), "Payment inputs must keep the compact 42px height");
+assert(css.includes('--checkout-field-font: "Poppins"'), "Payment fields must use Poppins as their visual font");
+assert(/\.ansend-checkout__field input[^}]*color:\s*#ffffff;[^}]*-webkit-text-fill-color:\s*#ffffff;/s.test(css), "Payment field values must render as white text");
+assert(/\.ansend-checkout__field input::placeholder[^}]*color:\s*#ffffff;/s.test(css), "Payment field placeholders must stay visible in white");
+assert(/\.ansend-checkout__secure-field iframe\s*\{[^}]*filter:\s*invert\(1\)/s.test(css), "Mercado Pago secure iframes must receive the dark-field text visibility fallback");
+assert(/\.ansend-checkout__installment-trigger\s*\{[^}]*color:\s*#fff;[^}]*font-family:\s*var\(--checkout-field-font\);/s.test(css), "Installment selector must use white Poppins text");
 assert(/\.ansend-checkout__pay,\s*\.ansend-checkout__secondary\s*\{[^}]*height:\s*42px;/s.test(css), "Payment CTA must match the compact 42px reference height");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__pay,\s*\.ansend-checkout__secondary[^{}]*\{[^}]*height:\s*46px;/s.test(css), "Payment CTA must not retain the oversized 46px height");
 assert(!/zoom\s*:/.test(css), "Checkout CSS must not use zoom");
