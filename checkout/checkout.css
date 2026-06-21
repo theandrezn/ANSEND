@@ -109,7 +109,6 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   overflow: hidden;
 }
 .ansend-checkout__group input,
-.ansend-checkout__group select,
 .ansend-checkout__group textarea,
 .ansend-checkout__group .ansend-checkout__secure-field {
   width: 100% !important;
@@ -120,6 +119,25 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   background: transparent !important;
   padding: 0 12px !important;
   box-shadow: none !important;
+}
+.ansend-checkout__group select {
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b7bbc2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 12px !important;
+  padding: 0 32px 0 12px !important;
+  cursor: pointer !important;
+  color: #ffffff !important;
 }
 .ansend-checkout__group > *:not(:last-child) {
   border-bottom: 1px solid #292c30 !important;
@@ -143,7 +161,12 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   z-index: 3;
 }
 
-.ansend-checkout__input-wrapper { position: relative; width: 100%; }
+.ansend-checkout__input-wrapper,
+.ansend-checkout__field-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  display: block !important;
+}
 .ansend-checkout__card-brands { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; align-items: center; pointer-events: none; z-index: 2; }
 .ansend-checkout__brand-logo { height: 16px; width: auto; display: block; border-radius: 2px; }
 .ansend-checkout__secure-field[data-checkout-card-number] { padding-right: 85px !important; }

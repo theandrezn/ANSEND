@@ -71,10 +71,10 @@
 
   function cardFieldsMarkup(ids) {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
-      <label class="ansend-checkout__field"><span>E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
+      <label class="ansend-checkout__field"><span class="sr-only">E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
       
       <div class="ansend-checkout__field">
-        <span>Informações do cartão</span>
+        <span class="sr-only">Informações do cartão</span>
         <div class="ansend-checkout__group">
           <div class="ansend-checkout__field-wrapper">
             <div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div>
@@ -89,7 +89,7 @@
       </div>
 
       <div class="ansend-checkout__field">
-        <span>Informações do titular</span>
+        <span class="sr-only">Informações do titular</span>
         <div class="ansend-checkout__group">
           <div class="ansend-checkout__field-row">
             <input id="${escapeHtml(ids.identification)}" name="identification_number" placeholder="CPF/CNPJ" inputmode="numeric" autocomplete="off" required>
@@ -102,10 +102,10 @@
 
   function pixFieldsMarkup() {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix">
-      <label class="ansend-checkout__field"><span>E-mail</span><input name="pix_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
+      <label class="ansend-checkout__field"><span class="sr-only">E-mail</span><input name="pix_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
       
       <div class="ansend-checkout__field">
-        <span>Informações do titular</span>
+        <span class="sr-only">Informações do titular</span>
         <div class="ansend-checkout__group">
           <input name="pix_name" placeholder="Nome completo" autocomplete="name" required>
           <div class="ansend-checkout__field-row">
