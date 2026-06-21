@@ -10,7 +10,7 @@ async function render(viewport, output) {
   const css = fs.readFileSync(path.join(root, "checkout", "checkout.css"), "utf8");
   const js = fs.readFileSync(path.join(root, "checkout", "checkout.js"), "utf8");
   const cover = `data:image/png;base64,${fs.readFileSync(path.join(root, "assets", "ansend-logo-square.png")).toString("base64")}`;
-  const pix = `data:image/svg+xml;base64,${fs.readFileSync(path.join(root, "assets", "payment", "pix.svg")).toString("base64")}`;
+  const pix = `data:image/png;base64,${fs.readFileSync(path.join(root, "assets", "payment", "pix-user.png")).toString("base64")}`;
 
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#060707;overflow-x:hidden}${css}</style></head><body></body></html>`);
   await page.addScriptTag({ content: js });
@@ -22,7 +22,7 @@ async function render(viewport, output) {
       ],
       quote: { subtotalCents: 54980, serviceFeeCents: 6598, discountCents: 0, totalCents: 61578 },
       recommendation: { id: "3", title: "Horizonte Azul", producer: "Beatmaker ANSEND", description: "Licenca Premium", price: "R$ 149,90", originalPrice: "R$ 199,90", cover, sponsored: true },
-    }).replaceAll('src="assets/payment/pix.svg"', `src="${pix}"`);
+    }).replaceAll('src="assets/payment/pix-user.png"', `src="${pix}"`);
   }, { cover, pix });
   await page.screenshot({ path: path.join(root, output), fullPage: true });
   if (viewport.width === 1920 && viewport.height === 1080) {

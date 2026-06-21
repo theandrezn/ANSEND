@@ -16,6 +16,20 @@
 
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 
+  function checkoutFormIds(instanceId = "static") {
+    const safe = String(instanceId || "static").replace(/[^a-zA-Z0-9_-]/g, "");
+    return {
+      form: `ansend-card-form-${safe}`,
+      email: `checkout-email-${safe}`,
+      cardNumber: `checkout-card-number-${safe}`,
+      expiration: `checkout-card-expiration-${safe}`,
+      cvv: `checkout-card-cvv-${safe}`,
+      cardholderName: `checkout-cardholder-name-${safe}`,
+      identification: `checkout-identification-number-${safe}`,
+      installments: `checkout-installments-${safe}`,
+    };
+  }
+
   function itemMarkup(item) {
     return `<article class="ansend-checkout__item" data-checkout-item="${escapeHtml(item.cartId || item.beatId)}">
       <div class="ansend-checkout__cover-wrap">
@@ -55,24 +69,18 @@
     </div>`;
   }
 
-  function cardFieldsMarkup() {
+  function cardFieldsMarkup(ids) {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
-      <label class="ansend-checkout__field"><span>E-mail</span><input id="checkout-email" name="buyer_email" type="email" autocomplete="email" required></label>
-      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="checkout-card-number" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
+      <label class="ansend-checkout__field"><span>E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" required></label>
+      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
       <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>Validade</span><div id="checkout-card-expiration" class="ansend-checkout__secure-field" aria-label="Data de validade"></div></label>
-        <label class="ansend-checkout__field"><span>Código de segurança</span><div id="checkout-card-cvv" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
+        <label class="ansend-checkout__field"><span>Validade</span><div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Data de validade"></div></label>
+        <label class="ansend-checkout__field"><span>Código de segurança</span><div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
       </div>
-      <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="checkout-cardholder-name" name="cardholder_name" autocomplete="cc-name" required></label>
+      <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" autocomplete="cc-name" required></label>
       <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="checkout-identification-number" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
-        <label class="ansend-checkout__field"><span>Parcelas</span><select id="checkout-installments" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
-      </div>
-      <div class="ansend-checkout__address" aria-label="Endereço de cobrança">
-        <label><span class="sr-only">País</span><select name="country" aria-label="País"><option value="BR">🇧🇷 Brasil</option></select></label>
-        <label><span class="sr-only">Endereço</span><input name="street_name" placeholder="Endereço" autocomplete="street-address" required></label>
-        <label><span class="sr-only">Estado</span><select name="state" aria-label="Estado" required><option value="">Estado</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></label>
-        <div><label><span class="sr-only">Cidade</span><input name="city" placeholder="Cidade" autocomplete="address-level2" required></label><label><span class="sr-only">CEP</span><input name="zip_code" placeholder="CEP" inputmode="numeric" autocomplete="postal-code" required></label></div>
+        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
+        <label class="ansend-checkout__field"><span>Parcelas</span><select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
       </div>
     </div>`;
   }
@@ -81,8 +89,11 @@
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix">
       <label class="ansend-checkout__field"><span>E-mail</span><input name="pix_email" type="email" autocomplete="email" required></label>
       <label class="ansend-checkout__field"><span>Nome completo</span><input name="pix_name" autocomplete="name" required></label>
-      <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input name="pix_identification" inputmode="numeric" autocomplete="off" required></label>
-      <div class="ansend-checkout__pix-intro">${icon("qr-code")}<div><strong>Pagamento instantâneo</strong><span>O QR Code será exibido aqui sem sair do checkout.</span></div></div>
+      <div class="ansend-checkout__field-pair">
+        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input name="pix_identification" inputmode="numeric" autocomplete="off" required></label>
+        <label class="ansend-checkout__field"><span>Telefone</span><input name="pix_phone" inputmode="tel" autocomplete="tel" placeholder="DDD + número" required></label>
+      </div>
+      <div class="ansend-checkout__pix-intro"><img class="ansend-checkout__pix-brand" src="assets/payment/pix-user.png" alt="Pix"><div><strong>Pagamento instantâneo</strong><span>O QR Code será exibido aqui sem sair do checkout.</span></div></div>
     </div>`;
   }
 
@@ -90,6 +101,7 @@
     const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
     const items = Array.isArray(options.items) ? options.items : [];
     const pageMode = options.pageMode || options.mountTarget;
+    const ids = checkoutFormIds(options.instanceId || "static");
     return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="pix" role="${pageMode ? "main" : "dialog"}" ${pageMode ? "" : 'aria-modal="true"'} aria-label="Checkout ANSEND">
       <div class="ansend-checkout__shell">
         <section class="ansend-checkout__order">
@@ -108,11 +120,11 @@
           </div>
         </section>
         <aside class="ansend-checkout__payment">
-          <form id="ansend-card-form" class="ansend-checkout__form" novalidate>
+          <form id="${escapeHtml(ids.form)}" class="ansend-checkout__form" novalidate>
             <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button></div>
-            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img src="assets/payment/pix.svg" alt=""><span>Pix</span></button></div>
+            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button></div>
             <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
-            ${cardFieldsMarkup()}
+            ${cardFieldsMarkup(ids)}
             ${pixFieldsMarkup()}
             <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
             <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
@@ -237,7 +249,7 @@
       name: String(data.get(pix ? "pix_name" : "cardholder_name") || "").trim(),
       email: String(data.get(pix ? "pix_email" : "buyer_email") || "").trim(),
       identification: { type: "CPF", number: String(data.get(pix ? "pix_identification" : "identification_number") || "").replace(/\D/g, "") },
-      address: pix ? undefined : { country: "BR", street_name: data.get("street_name"), state: data.get("state"), city: data.get("city"), zip_code: String(data.get("zip_code") || "").replace(/\D/g, "") },
+      phone: pix ? String(data.get("pix_phone") || "").replace(/\D/g, "") : undefined,
     };
   }
 
@@ -265,27 +277,34 @@
 
   function initCardForm() {
     if (!active?.config?.public_key || typeof global.MercadoPago !== "function") return;
+    if (active.cardForm) return;
     const mp = new global.MercadoPago(active.config.public_key, { locale: "pt-BR" });
     active.cardForm = mp.cardForm({
       amount: String((active.quote.totalCents / 100).toFixed(2)),
       iframe: true,
       form: {
-        id: "ansend-card-form",
-        cardNumber: { id: "checkout-card-number", placeholder: "Número do cartão" },
-        expirationDate: { id: "checkout-card-expiration", placeholder: "MM/AA" },
-        securityCode: { id: "checkout-card-cvv", placeholder: "CVV" },
-        cardholderName: { id: "checkout-cardholder-name" },
-        identificationNumber: { id: "checkout-identification-number" },
-        installments: { id: "checkout-installments" },
+        id: active.formIds.form,
+        cardNumber: { id: active.formIds.cardNumber, placeholder: "Número do cartão" },
+        expirationDate: { id: active.formIds.expiration, placeholder: "MM/AA" },
+        securityCode: { id: active.formIds.cvv, placeholder: "CVV" },
+        cardholderName: { id: active.formIds.cardholderName },
+        identificationNumber: { id: active.formIds.identification },
+        installments: { id: active.formIds.installments },
       },
       callbacks: {
-        onFormMounted(error) { if (error) active.root.querySelector("[data-checkout-feedback]").textContent = "Não foi possível carregar os campos seguros do cartão."; },
+        onFormMounted(error) {
+          if (error) active.root.querySelector("[data-checkout-feedback]").textContent = "Não foi possível carregar os campos seguros do cartão.";
+        },
         async onSubmit(event) {
           event.preventDefault();
           const data = active.cardForm.getCardFormData();
           setBusy(true);
-          try { await createPayment({ token: data.token, payment_method_id: data.paymentMethodId, issuer_id: data.issuerId, installments: Number(data.installments || 1) }); }
-          catch (error) { active.root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false); }
+          try {
+            await createPayment({ token: data.token, payment_method_id: data.paymentMethodId, issuer_id: data.issuerId, installments: Number(data.installments || 1) });
+          } catch (error) {
+            active.root.querySelector("[data-checkout-feedback]").textContent = error.message;
+            setBusy(false);
+          }
         },
       },
     });
@@ -319,7 +338,9 @@
         if (code) await navigator.clipboard.writeText(code);
         target.textContent = "Código copiado";
       }
-      if (target.matches("[data-checkout-check-status]")) { try { await checkStatus(); } catch (error) { target.insertAdjacentHTML("afterend", `<p class="ansend-checkout__inline-error">${escapeHtml(error.message)}</p>`); } }
+      if (target.matches("[data-checkout-check-status]")) {
+        try { await checkStatus(); } catch (error) { target.insertAdjacentHTML("afterend", `<p class="ansend-checkout__inline-error">${escapeHtml(error.message)}</p>`); }
+      }
       if (target.matches("[data-checkout-retry]")) {
         active.idempotencyKey = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
         active.attemptId = "";
@@ -339,21 +360,23 @@
   }
 
   async function open(options) {
-    const markup = renderCheckout(options);
+    const instanceId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    const formIds = checkoutFormIds(instanceId);
+    const markup = renderCheckout({ ...options, instanceId });
     if (options.mountTarget) {
       options.mountTarget.innerHTML = markup;
     } else if (typeof options.openModal === "function") {
       options.openModal(markup);
     } else {
-      throw new Error("Destino do checkout nao informado.");
+      throw new Error("Destino do checkout não informado.");
     }
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
-    active = { root, options, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
-    root.querySelector('#checkout-email').value = options.prefillEmail || "";
+    active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
+    root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
     root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
     root.querySelector('[name="pix_name"]').value = options.prefillName || "";
-    root.querySelector('#checkout-cardholder-name').value = options.prefillName || "";
+    root.querySelector("[data-checkout-cardholder-name]").value = options.prefillName || "";
     bind();
     options.refreshIcons?.();
     try {

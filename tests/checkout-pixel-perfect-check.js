@@ -33,8 +33,15 @@ for (const marker of [
   "data-checkout-card-number",
   "data-checkout-card-cvv",
   "data-checkout-installments",
+  "checkoutFormIds",
+  "data-checkout-card-expiration",
+  "assets/payment/pix-user.png",
+  "pix_phone",
   "aria-live=\"polite\"",
 ]) assert(checkout.includes(marker), `Checkout module missing marker: ${marker}`);
+
+assert(!checkout.includes("street_name"), "Checkout must not request billing street address");
+assert(!checkout.includes("zip_code"), "Checkout must not request billing ZIP code");
 
 for (const marker of [
   "--checkout-page-bg: #222423",
@@ -94,11 +101,13 @@ for (const route of [
 for (const marker of [
   "createMercadoPagoCardPayment",
   "MERCADO_PAGO_PUBLIC_KEY",
+  "MERCADO_PAGO_SECRET_KEY",
   "MERCADO_PAGO_WEBHOOK_SECRET",
   "producer_name",
   "X-Idempotency-Key",
   "payment_attempts",
   "finalize_checkout_payment",
+  "sanitizeCheckoutPhone",
 ]) assert(worker.includes(marker), `Worker missing payment marker: ${marker}`);
 
 assert(!worker.includes("beats?select=id,title,status,sold_exclusively,user_id,producer&"), "Checkout must not query removed beats.producer column");

@@ -13,6 +13,9 @@ assert(markup.includes("Pagar com cartão"), "Card method must render");
 assert(markup.includes("Pagar com Pix"), "Pix method must render");
 assert(!markup.includes("PayPal"), "Unavailable PayPal must not render");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
+assert(!markup.includes("Endereço"), "Checkout must not request billing address");
+assert(markup.includes("Telefone"), "Pix checkout must request phone number");
+assert(markup.includes("assets/payment/pix-user.png"), "Pix checkout must use the real Pix brand asset");
 assert(markup.includes('aria-live="polite"'), "Payment feedback must be announced");
 assert(markup.includes("R$ 223,89") || markup.includes("R$ 223,89"), "Total must use BRL formatting");
 

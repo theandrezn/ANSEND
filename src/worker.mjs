@@ -459,7 +459,7 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
 }
 
 async function mercadoPagoRequest(env, path, init = {}) {
-  const token = env.MERCADO_PAGO_ACCESS_TOKEN || env.MP_ACCESS_TOKEN || "";
+  const token = env.MERCADO_PAGO_ACCESS_TOKEN || env.MERCADO_PAGO_SECRET_KEY || env.MP_ACCESS_TOKEN || "";
   if (!token) {
     return { ok: false, status: 503, data: null, error: "Configure MERCADO_PAGO_ACCESS_TOKEN no Cloudflare para ativar Pix." };
   }
@@ -478,7 +478,13 @@ async function mercadoPagoRequest(env, path, init = {}) {
   return { ok: true, status: response.status, data, error: null };
 }
 
-async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail, checkout, externalReference, idempotencyKey }) {
+function sanitizeCheckoutPhone(value = "") {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 13);
+  if (digits.length < 10) return null;
+  return { area_code: digits.slice(0, 2), number: digits.slice(2) };
+}
+
+async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail, buyerIdentification, buyerPhone, checkout, externalReference, idempotencyKey }) {
   const paymentDescription = checkout.items.length === 1
     ? `${checkout.items[0].title} - ${checkout.items[0].license_name}`
     : `ANSEND - ${checkout.items.length} licencas musicais`;
@@ -491,6 +497,8 @@ async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail,
     payer: {
       email: buyerEmail,
       first_name: buyerName,
+      ...(buyerIdentification ? { identification: buyerIdentification } : {}),
+      ...(buyerPhone ? { phone: buyerPhone } : {}),
     },
     metadata: {
       ansend_user_id: userId,
@@ -517,18 +525,6 @@ function sanitizeIdentification(value = "") {
   return String(value || "").replace(/\D/g, "").slice(0, 14);
 }
 
-function sanitizeCheckoutAddress(address = {}) {
-  const country = cleanRecommendationText(address.country || "BR", 2).toUpperCase();
-  return {
-    zip_code: sanitizeIdentification(address.zip_code).slice(0, 8),
-    street_name: cleanRecommendationText(address.street_name, 120),
-    street_number: cleanRecommendationText(address.street_number || "SN", 20),
-    city: cleanRecommendationText(address.city, 80),
-    federal_unit: cleanRecommendationText(address.state, 2).toUpperCase(),
-    country: country === "BR" ? "BR" : "BR",
-  };
-}
-
 async function createMercadoPagoCardPayment(env, { buyer, checkout, methodData, externalReference, idempotencyKey }) {
   const token = cleanRecommendationText(methodData?.token, 180);
   const paymentMethodId = cleanRecommendationText(methodData?.payment_method_id, 40);
@@ -553,7 +549,6 @@ async function createMercadoPagoCardPayment(env, { buyer, checkout, methodData, 
       email: buyer.email,
       first_name: buyer.name,
       identification: { type: identificationNumber.length > 11 ? "CNPJ" : "CPF", number: identificationNumber },
-      address: sanitizeCheckoutAddress(buyer.address),
     },
     metadata: {
       ansend_user_id: checkout.userId,
@@ -758,6 +753,13 @@ async function handleCheckoutPayment(request, env) {
   buyer.name = cleanRecommendationText(buyer.name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
   buyer.email = cleanRecommendationText(buyer.email || auth.user.email, 150);
   if (!buyer.email.includes("@") || buyer.name.length < 2) return jsonResponse({ success: false, error: "Informe nome e e-mail validos." }, { status: 400 });
+  const buyerIdentificationNumber = sanitizeIdentification(buyer?.identification?.number);
+  const buyerIdentification = buyerIdentificationNumber.length >= 11
+    ? { type: buyerIdentificationNumber.length > 11 ? "CNPJ" : "CPF", number: buyerIdentificationNumber }
+    : null;
+  const buyerPhone = sanitizeCheckoutPhone(buyer.phone);
+  if (method === "pix" && !buyerIdentification) return jsonResponse({ success: false, error: "Informe um CPF ou CNPJ valido para gerar o Pix." }, { status: 400 });
+  if (method === "pix" && !buyerPhone) return jsonResponse({ success: false, error: "Informe um telefone valido para gerar o Pix." }, { status: 400 });
   const checkout = await validateCheckoutQuote(env, payload.cart_items, auth.user.id, auth.authHeader, payload.coupon_code);
   if (!checkout.ok) return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
 
@@ -800,7 +802,7 @@ async function handleCheckoutPayment(request, env) {
 
   const payment = method === "card"
     ? await createMercadoPagoCardPayment(env, { buyer, checkout, methodData: payload.method_data, externalReference, idempotencyKey })
-    : await createMercadoPagoPixPayment(env, { userId: auth.user.id, buyerName: buyer.name, buyerEmail: buyer.email, checkout, externalReference, idempotencyKey });
+    : await createMercadoPagoPixPayment(env, { userId: auth.user.id, buyerName: buyer.name, buyerEmail: buyer.email, buyerIdentification, buyerPhone, checkout, externalReference, idempotencyKey });
   if (!payment.ok) {
     await updatePaymentAttempt(env, attemptId, { status: "rejected", status_detail: cleanRecommendationText(payment.error, 120) });
     return jsonResponse({ success: false, error: payment.error || "Nao foi possivel criar o pagamento." }, { status: payment.status || 502 });
