@@ -7,6 +7,13 @@
     <title>ANSEND - O Marketplace Inteligente da música</title>
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="ANSEND - O Marketplace Inteligente da música, com NEXO IA, beats, serviços e profissionais." />
+    <script>
+      (function () {
+        var route = String(location.hash || "").replace(/^#/, "").split("?")[0] || "feed";
+        document.documentElement.dataset.initialRoute = route;
+        if (route === "checkout") document.documentElement.classList.add("checkout-standalone-boot");
+      })();
+    </script>
     <link rel="icon" type="image/png" href="assets/ansend-logo-square.png" />
     <link rel="apple-touch-icon" href="assets/ansend-logo-square.png" />
     <link rel="preload" as="image" href="assets/ansend-logo-square.png" fetchpriority="high" />

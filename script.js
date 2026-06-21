@@ -17488,10 +17488,41 @@ function syncPrimaryNavbarVisibility(route) {
   primaryNavbar.hidden = route !== "feed";
 }
 
+const checkoutStandaloneNodes = [];
+
+function detachCheckoutStandaloneChrome() {
+  if (checkoutStandaloneNodes.length) return;
+  [".ambient-glow", ".sidebar", ".topbar", ".footer", ".cinematic-footer"].forEach((selector) => {
+    const node = document.querySelector(selector);
+    if (!node?.parentNode) return;
+    const marker = document.createComment(`ansend-checkout-standalone:${selector}`);
+    node.parentNode.insertBefore(marker, node);
+    checkoutStandaloneNodes.push({ node, marker });
+    node.remove();
+  });
+  document.documentElement.classList.add("checkout-standalone-active");
+}
+
+function restoreCheckoutStandaloneChrome() {
+  while (checkoutStandaloneNodes.length) {
+    const { node, marker } = checkoutStandaloneNodes.pop();
+    if (marker.parentNode) marker.parentNode.insertBefore(node, marker);
+    marker.remove();
+  }
+  document.documentElement.classList.remove("checkout-standalone-active", "checkout-standalone-boot");
+}
+
+function syncCheckoutStandaloneRoute(route) {
+  if (route === "checkout") detachCheckoutStandaloneChrome();
+  else restoreCheckoutStandaloneChrome();
+}
+
 function renderRoute() {
   const stopShellPerf = perfStart("App shell route render");
   const route = currentRoute();
   lastRoute = route;
+  document.body.dataset.route = route;
+  syncCheckoutStandaloneRoute(route);
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
   syncPrimaryNavbarVisibility(route);
@@ -17502,7 +17533,6 @@ function renderRoute() {
   appView.classList.toggle("feed", route === "feed");
   document.body.classList.toggle("is-authenticated", accountAccess);
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
-  document.body.dataset.route = route;
   if (route !== COMMUNITY_ROUTE) document.body.classList.remove("community-route-enter");
   document.body.classList.remove("release-mode");
   document.body.classList.toggle("chat-dm-mode", route === "chat");

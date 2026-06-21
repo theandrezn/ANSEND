@@ -1584,6 +1584,7 @@ body[data-route="feed"] .footer nav a:hover {
    hide mounted content after auth, locale, image, or scroll hydration. */
 html,
 body {
+  font-size: 16px !important;
   width: 100% !important;
   min-width: 0 !important;
   min-height: 100dvh !important;
@@ -1645,6 +1646,26 @@ body:not([data-route="feed"]) .footer-shell {
   overflow: hidden !important;
   opacity: 0 !important;
   visibility: hidden !important;
+}
+
+html.checkout-standalone-boot body {
+  background: #060707 !important;
+}
+
+html.checkout-standalone-boot body > .sidebar,
+html.checkout-standalone-boot body > .page > .topbar,
+html.checkout-standalone-boot body > .ambient-glow,
+html.checkout-standalone-boot body > .footer,
+html.checkout-standalone-boot body > .cinematic-footer {
+  display: none !important;
+}
+
+html.checkout-standalone-boot body > .page,
+html.checkout-standalone-boot body > .page > #appView {
+  width: 100vw !important;
+  min-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 body[data-route="checkout"] {
