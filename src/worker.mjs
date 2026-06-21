@@ -764,8 +764,8 @@ async function handleCheckoutPayment(request, env) {
   if (!checkout.ok) return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
 
   const clientKey = cleanRecommendationText(payload.idempotency_key || crypto.randomUUID(), 120);
-  const idempotencyKey = `${auth.user.id}:${clientKey}`;
-  const existing = await supabaseRest(env, `payment_attempts?select=*&buyer_id=eq.${auth.user.id}&idempotency_key=eq.${encodeURIComponent(idempotencyKey)}&limit=1`);
+  const internalIdempotencyKey = `${auth.user.id}:${clientKey}`;
+  const existing = await supabaseRest(env, `payment_attempts?select=*&buyer_id=eq.${auth.user.id}&idempotency_key=eq.${encodeURIComponent(internalIdempotencyKey)}&limit=1`);
   let attempt = existing.data?.[0] || null;
   if (attempt?.provider_payment_id) {
     const current = await mercadoPagoRequest(env, `/v1/payments/${attempt.provider_payment_id}`, { method: "GET" });
@@ -786,7 +786,7 @@ async function handleCheckoutPayment(request, env) {
       provider: "mercado_pago",
       method,
       external_reference: externalReference,
-      idempotency_key: idempotencyKey,
+      idempotency_key: internalIdempotencyKey,
       cart_fingerprint: checkout.fingerprint,
       cart_items: checkout.items,
       coupon_id: checkout.coupon?.id || null,
@@ -801,8 +801,8 @@ async function handleCheckoutPayment(request, env) {
   }
 
   const payment = method === "card"
-    ? await createMercadoPagoCardPayment(env, { buyer, checkout, methodData: payload.method_data, externalReference, idempotencyKey })
-    : await createMercadoPagoPixPayment(env, { userId: auth.user.id, buyerName: buyer.name, buyerEmail: buyer.email, buyerIdentification, buyerPhone, checkout, externalReference, idempotencyKey });
+    ? await createMercadoPagoCardPayment(env, { buyer, checkout, methodData: payload.method_data, externalReference, idempotencyKey: attemptId })
+    : await createMercadoPagoPixPayment(env, { userId: auth.user.id, buyerName: buyer.name, buyerEmail: buyer.email, buyerIdentification, buyerPhone, checkout, externalReference, idempotencyKey: attemptId });
   if (!payment.ok) {
     await updatePaymentAttempt(env, attemptId, { status: "rejected", status_detail: cleanRecommendationText(payment.error, 120) });
     return jsonResponse({ success: false, error: payment.error || "Nao foi possivel criar o pagamento." }, { status: payment.status || 502 });
@@ -837,13 +837,20 @@ function timingSafeHexEqual(left = "", right = "") {
   return mismatch === 0;
 }
 
+export function isFreshMercadoPagoWebhookTimestamp(value, now = Date.now(), toleranceMs = 5 * 60 * 1000) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return false;
+  const timestampMs = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+  return Math.abs(Number(now) - timestampMs) <= toleranceMs;
+}
+
 async function verifyMercadoPagoSignature(request, env, paymentId) {
   const secret = env.MERCADO_PAGO_WEBHOOK_SECRET || "";
   if (!secret) return false;
   const signature = request.headers.get("x-signature") || "";
   const requestId = request.headers.get("x-request-id") || "";
   const parts = Object.fromEntries(signature.split(",").map((part) => part.trim().split("=")).filter((entry) => entry.length === 2));
-  if (!parts.ts || !parts.v1 || !requestId || !paymentId) return false;
+  if (!parts.ts || !parts.v1 || !requestId || !paymentId || !isFreshMercadoPagoWebhookTimestamp(parts.ts)) return false;
   const manifest = `id:${String(paymentId).toLowerCase()};request-id:${requestId};ts:${parts.ts};`;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
@@ -851,10 +858,16 @@ async function verifyMercadoPagoSignature(request, env, paymentId) {
   return timingSafeHexEqual(expected, parts.v1.toLowerCase());
 }
 
+export function isMercadoPagoPaymentNotification(url, payload = {}) {
+  const type = String(url?.searchParams?.get("type") || payload?.type || "").trim().toLowerCase();
+  return type === "payment";
+}
+
 async function handleMercadoPagoWebhook(request, env) {
   if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   const url = new URL(request.url);
   const payload = await request.json().catch(() => ({}));
+  if (!isMercadoPagoPaymentNotification(url, payload)) return jsonResponse({ success: true, ignored: true });
   const paymentId = String(url.searchParams.get("data.id") || payload?.data?.id || "").trim();
   if (!/^\d+$/.test(paymentId) || !(await verifyMercadoPagoSignature(request, env, paymentId))) return jsonResponse({ success: false, error: "Assinatura de webhook invalida." }, { status: 401 });
   const stored = await supabaseRest(env, `payment_attempts?select=*&provider=eq.mercado_pago&provider_payment_id=eq.${paymentId}&limit=1`);

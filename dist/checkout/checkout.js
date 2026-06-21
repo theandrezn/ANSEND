@@ -26,6 +26,7 @@
       cvv: `checkout-card-cvv-${safe}`,
       cardholderName: `checkout-cardholder-name-${safe}`,
       identification: `checkout-identification-number-${safe}`,
+      issuer: `checkout-issuer-${safe}`,
       installments: `checkout-installments-${safe}`,
     };
   }
@@ -78,8 +79,9 @@
         <label class="ansend-checkout__field"><span>Código de segurança</span><div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
       </div>
       <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" autocomplete="cc-name" required></label>
+      <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
       <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
+        <label class="ansend-checkout__field"><span>Banco emissor</span><select id="${escapeHtml(ids.issuer)}" name="issuer" data-checkout-issuer><option value="">Detectado pelo cartão</option></select></label>
         <label class="ansend-checkout__field"><span>Parcelas</span><select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
       </div>
     </div>`;
@@ -167,6 +169,7 @@
 
   function updateQuote(quote) {
     if (!active || !quote) return;
+    const previousTotalCents = Number(active.quote?.totalCents || 0);
     active.quote = {
       subtotalCents: Number(quote.subtotal_cents ?? quote.subtotalCents ?? 0),
       serviceFeeCents: Number(quote.service_fee_cents ?? quote.serviceFeeCents ?? 0),
@@ -180,6 +183,7 @@
     active.root.querySelectorAll("[data-checkout-total]").forEach((el) => { el.textContent = money(active.quote.totalCents); });
     const label = active.root.querySelector("[data-checkout-submit-label]");
     if (label) label.textContent = active.method === "pix" ? `Gerar Pix de ${money(active.quote.totalCents)}` : `Pagar ${money(active.quote.totalCents)}`;
+    refreshCardFormForQuote(previousTotalCents);
   }
 
   async function requestQuote(couponCode = "") {
@@ -289,6 +293,7 @@
         securityCode: { id: active.formIds.cvv, placeholder: "CVV" },
         cardholderName: { id: active.formIds.cardholderName },
         identificationNumber: { id: active.formIds.identification },
+        issuer: { id: active.formIds.issuer, placeholder: "Banco emissor" },
         installments: { id: active.formIds.installments },
       },
       callbacks: {
@@ -306,8 +311,36 @@
             setBusy(false);
           }
         },
+        onFetching(resource) {
+          const feedback = active.root.querySelector("[data-checkout-feedback]");
+          const fetchingInstallments = /installment|issuer|paymentMethod/i.test(String(resource || ""));
+          const message = fetchingInstallments ? "Buscando parcelas disponíveis..." : "Carregando dados seguros do cartão...";
+          if (active.method === "card") feedback.textContent = message;
+          return () => {
+            if (feedback.textContent === message) feedback.textContent = "";
+          };
+        },
       },
     });
+    active.cardFormAmountCents = active.quote.totalCents;
+  }
+
+  function refreshCardFormForQuote(previousTotalCents) {
+    if (!active?.cardForm || Number(previousTotalCents) === Number(active.quote.totalCents)) return;
+    for (const selector of ["[data-checkout-card-number]", "[data-checkout-card-expiration]", "[data-checkout-card-cvv]"]) {
+      const field = active.root.querySelector(selector);
+      if (field) field.replaceWith(field.cloneNode(false));
+    }
+    for (const selector of ["[data-checkout-issuer]", "[data-checkout-installments]"]) {
+      const select = active.root.querySelector(selector);
+      if (select) select.innerHTML = selector.includes("issuer")
+        ? '<option value="">Detectado pelo cartão</option>'
+        : '<option value="">Selecione</option>';
+    }
+    active.root.querySelectorAll('input[name="MPHiddenInputToken"]').forEach((input) => input.remove());
+    active.cardForm = null;
+    active.cardFormAmountCents = 0;
+    initCardForm();
   }
 
   async function checkStatus() {
@@ -372,7 +405,7 @@
     }
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
-    active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
+    active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, cardFormAmountCents: 0 };
     root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
     root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
     root.querySelector('[name="pix_name"]').value = options.prefillName || "";
