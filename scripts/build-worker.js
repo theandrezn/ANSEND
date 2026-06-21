@@ -4,7 +4,7 @@ const { execSync } = require("child_process");
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
-const entries = ["index.html", "styles.css", "hero-collage.css", "nexo-ia.css", "profile-page.css", "script.js", "assets", "public"];
+const entries = ["index.html", "styles.css", "hero-collage.css", "nexo-ia.css", "profile-page.css", "checkout", "script.js", "assets", "public"];
 
 function copyRecursive(source, target) {
   const stat = fs.statSync(source);

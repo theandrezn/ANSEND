@@ -1,0 +1,374 @@
+(function checkoutModule(global) {
+  "use strict";
+
+  const money = (cents) => new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  }).format(Number(cents || 0) / 100);
+
+  const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+  const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+
+  function itemMarkup(item) {
+    return `<article class="ansend-checkout__item" data-checkout-item="${escapeHtml(item.cartId || item.beatId)}">
+      <div class="ansend-checkout__cover-wrap">
+        <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" class="ansend-checkout__cover" loading="lazy">
+        <span class="ansend-checkout__quantity" aria-label="Quantidade 1">1</span>
+      </div>
+      <div class="ansend-checkout__item-copy">
+        <strong title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(item.producer || "ANSEND")}</small>
+        <div class="ansend-checkout__license"><span>${escapeHtml(item.licenseName || "Licença")}</span><b>·</b><span>${escapeHtml(item.formats || "MP3, WAV")}</span></div>
+        <span class="ansend-checkout__qty-chip">Qtd. 1</span>
+      </div>
+      <strong class="ansend-checkout__item-price">${money(item.priceCents)}</strong>
+      ${item.removable ? `<button type="button" class="ansend-checkout__remove" data-checkout-remove="${escapeHtml(item.cartId)}" aria-label="Remover ${escapeHtml(item.title)}">${icon("x")}</button>` : ""}
+    </article>`;
+  }
+
+  function recommendationMarkup(item) {
+    if (!item) return "";
+    return `<section class="ansend-checkout__recommendations" aria-labelledby="checkout-recommendations-title">
+      <h3 id="checkout-recommendations-title">Recomendado para você</h3>
+      <article class="ansend-checkout__recommendation" data-checkout-recommendation="${escapeHtml(item.id)}">
+        <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy">
+        <div><span>${item.sponsored ? "ANSEND ADS" : escapeHtml(item.producer || "ANSEND")}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description || "Conheça este beat")}</small></div>
+        <div class="ansend-checkout__recommendation-price">${item.originalPrice ? `<s>${escapeHtml(item.originalPrice)}</s>` : ""}<strong>${escapeHtml(item.price || "Ver licença")}</strong></div>
+        <button type="button" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Abrir ${escapeHtml(item.title)}">${icon("chevron-right")}</button>
+      </article>
+    </section>`;
+  }
+
+  function totalsMarkup(quote, compact = false) {
+    return `<div class="ansend-checkout__totals${compact ? " is-compact" : ""}" data-checkout-totals>
+      <div><span>Subtotal</span><strong data-checkout-subtotal>${money(quote.subtotalCents)}</strong></div>
+      ${compact ? "" : `<div><span>Taxa de serviço</span><strong data-checkout-fee>${money(quote.serviceFeeCents)}</strong></div>
+      <div data-checkout-discount-row ${quote.discountCents ? "" : "hidden"}><span>Desconto</span><strong data-checkout-discount>− ${money(quote.discountCents)}</strong></div>`}
+      <div class="is-total"><span>Total</span><strong data-checkout-total>${money(quote.totalCents)}</strong></div>
+    </div>`;
+  }
+
+  function cardFieldsMarkup() {
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="card">
+      <label class="ansend-checkout__field"><span>E-mail</span><input id="checkout-email" name="buyer_email" type="email" autocomplete="email" required></label>
+      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="checkout-card-number" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
+      <div class="ansend-checkout__field-pair">
+        <label class="ansend-checkout__field"><span>Validade</span><div id="checkout-card-expiration" class="ansend-checkout__secure-field" aria-label="Data de validade"></div></label>
+        <label class="ansend-checkout__field"><span>Código de segurança</span><div id="checkout-card-cvv" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
+      </div>
+      <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="checkout-cardholder-name" name="cardholder_name" autocomplete="cc-name" required></label>
+      <div class="ansend-checkout__field-pair">
+        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="checkout-identification-number" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
+        <label class="ansend-checkout__field"><span>Parcelas</span><select id="checkout-installments" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
+      </div>
+      <div class="ansend-checkout__address" aria-label="Endereço de cobrança">
+        <label><span class="sr-only">País</span><select name="country" aria-label="País"><option value="BR">🇧🇷 Brasil</option></select></label>
+        <label><span class="sr-only">Endereço</span><input name="street_name" placeholder="Endereço" autocomplete="street-address" required></label>
+        <label><span class="sr-only">Estado</span><select name="state" aria-label="Estado" required><option value="">Estado</option><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></label>
+        <div><label><span class="sr-only">Cidade</span><input name="city" placeholder="Cidade" autocomplete="address-level2" required></label><label><span class="sr-only">CEP</span><input name="zip_code" placeholder="CEP" inputmode="numeric" autocomplete="postal-code" required></label></div>
+      </div>
+    </div>`;
+  }
+
+  function pixFieldsMarkup() {
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix" hidden>
+      <label class="ansend-checkout__field"><span>E-mail</span><input name="pix_email" type="email" autocomplete="email" required></label>
+      <label class="ansend-checkout__field"><span>Nome completo</span><input name="pix_name" autocomplete="name" required></label>
+      <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input name="pix_identification" inputmode="numeric" autocomplete="off" required></label>
+      <div class="ansend-checkout__pix-intro">${icon("qr-code")}<div><strong>Pagamento instantâneo</strong><span>O QR Code será exibido aqui sem sair do checkout.</span></div></div>
+    </div>`;
+  }
+
+  function renderCheckout(options) {
+    const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
+    const items = Array.isArray(options.items) ? options.items : [];
+    return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="card" role="dialog" aria-modal="true" aria-label="Checkout ANSEND">
+      <div class="ansend-checkout__shell">
+        <section class="ansend-checkout__order">
+          <header class="ansend-checkout__breadcrumb"><button type="button" data-checkout-close aria-label="Fechar checkout">${icon("x")}</button><span>Carrinho</span><b>/</b><strong>Checkout</strong></header>
+          <div class="ansend-checkout__order-content">
+            <h2>Resumo do pedido <span>${items.length} ${items.length === 1 ? "item" : "itens"}</span></h2>
+            <div class="ansend-checkout__items">${items.length ? items.map(itemMarkup).join("") : `<div class="ansend-checkout__empty">Seu carrinho está vazio.</div>`}</div>
+            <div class="ansend-checkout__coupon" data-checkout-coupon-card>
+              <div class="ansend-checkout__coupon-icon">${icon("ticket-percent")}</div><div><strong>Cupom de desconto</strong><span>Economize com um código válido</span></div>
+              <button type="button" data-checkout-coupon-toggle>${icon("ticket")}<span>Adicionar código</span></button>
+              <div class="ansend-checkout__coupon-form" hidden><label><span class="sr-only">Código do cupom</span><input name="coupon_code" placeholder="Digite seu código" autocomplete="off"></label><button type="button" data-checkout-coupon-apply>Aplicar</button></div>
+              <p data-checkout-coupon-message aria-live="polite"></p>
+            </div>
+            ${totalsMarkup(quote)}
+            ${recommendationMarkup(options.recommendation)}
+          </div>
+        </section>
+        <aside class="ansend-checkout__payment">
+          <form id="ansend-card-form" class="ansend-checkout__form" novalidate>
+            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" class="is-active" data-checkout-method="card" role="tab" aria-selected="true">Pagar com cartão</button><button type="button" data-checkout-method="pix" role="tab" aria-selected="false">Pagar com Pix</button></div>
+            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" class="is-active" data-checkout-method="card" aria-pressed="true">${icon("credit-card")}<span>Cartão</span></button><button type="button" data-checkout-method="pix" aria-pressed="false"><img src="assets/payment/pix.svg" alt=""><span>Pix</span></button></div>
+            <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
+            ${cardFieldsMarkup()}
+            ${pixFieldsMarkup()}
+            <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
+            <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
+            ${totalsMarkup(quote, true)}
+            <button type="submit" class="ansend-checkout__pay" data-checkout-submit><span data-checkout-submit-label>Pagar ${money(quote.totalCents)}</span>${icon("lock-keyhole")}</button>
+            <footer><span>Pagamento seguro via Mercado Pago</span><b>·</b><a href="#">Termos</a><b>·</b><a href="#">Privacidade</a></footer>
+          </form>
+          <section class="ansend-checkout__result" data-checkout-result hidden aria-live="polite"></section>
+        </aside>
+      </div>
+    </section>`;
+  }
+
+  function renderPixResult(result) {
+    const pix = result.pix || {};
+    const checkout = result.checkout || {};
+    return `<div class="ansend-checkout__pix-result" data-pix-attempt="${escapeHtml(result.attempt_id || "")}">
+      <div class="ansend-checkout__status is-pending">${icon("clock-3")}<div><strong>Aguardando pagamento</strong><span>Atualizaremos esta tela automaticamente.</span></div></div>
+      <div class="ansend-checkout__qr">${pix.qr_code_base64 ? `<img src="data:image/png;base64,${pix.qr_code_base64}" alt="QR Code Pix">` : icon("qr-code")}<strong>${money(checkout.total_cents)}</strong></div>
+      <label class="ansend-checkout__field"><span>Pix copia e cola</span><textarea data-checkout-pix-code readonly>${escapeHtml(pix.qr_code || "")}</textarea></label>
+      <button type="button" class="ansend-checkout__pay" data-checkout-copy-pix>${icon("copy")} Copiar código Pix</button>
+      <button type="button" class="ansend-checkout__secondary" data-checkout-check-status>${icon("refresh-cw")} Verificar pagamento</button>
+    </div>`;
+  }
+
+  function renderCardResult(result) {
+    const approved = result.status === "approved" || result.paid;
+    const rejected = ["rejected", "cancelled", "expired"].includes(result.status);
+    const title = approved ? "Pagamento aprovado" : (rejected ? "Pagamento recusado" : "Pagamento em análise");
+    const detail = approved ? "Sua licença já está disponível." : (rejected ? "Revise os dados do cartão ou use outro método." : "Você pode acompanhar a confirmação nesta tela.");
+    return `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status ${approved ? "is-approved" : (rejected ? "is-rejected" : "is-pending")}">${icon(approved ? "badge-check" : (rejected ? "circle-x" : "clock-3"))}<div><strong>${title}</strong><span>${detail}</span></div></div>${approved ? `<button type="button" class="ansend-checkout__pay" data-checkout-finish>Ver minhas compras</button>` : (rejected ? `<button type="button" class="ansend-checkout__secondary" data-checkout-retry>Tentar novamente</button>` : `<button type="button" class="ansend-checkout__secondary" data-checkout-check-status>Verificar pagamento</button>`)}</div>`;
+  }
+
+  let active = null;
+
+  function authHeaders() {
+    const token = active?.options?.accessToken || "";
+    return { "Content-Type": "application/json; charset=utf-8", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  }
+
+  function updateQuote(quote) {
+    if (!active || !quote) return;
+    active.quote = {
+      subtotalCents: Number(quote.subtotal_cents ?? quote.subtotalCents ?? 0),
+      serviceFeeCents: Number(quote.service_fee_cents ?? quote.serviceFeeCents ?? 0),
+      discountCents: Number(quote.discount_cents ?? quote.discountCents ?? 0),
+      totalCents: Number(quote.total_cents ?? quote.totalCents ?? 0),
+    };
+    active.root.querySelectorAll("[data-checkout-subtotal]").forEach((el) => { el.textContent = money(active.quote.subtotalCents); });
+    active.root.querySelectorAll("[data-checkout-fee]").forEach((el) => { el.textContent = money(active.quote.serviceFeeCents); });
+    active.root.querySelectorAll("[data-checkout-discount]").forEach((el) => { el.textContent = `− ${money(active.quote.discountCents)}`; });
+    active.root.querySelectorAll("[data-checkout-discount-row]").forEach((el) => { el.hidden = !active.quote.discountCents; });
+    active.root.querySelectorAll("[data-checkout-total]").forEach((el) => { el.textContent = money(active.quote.totalCents); });
+    const label = active.root.querySelector("[data-checkout-submit-label]");
+    if (label) label.textContent = active.method === "pix" ? `Gerar Pix de ${money(active.quote.totalCents)}` : `Pagar ${money(active.quote.totalCents)}`;
+  }
+
+  async function requestQuote(couponCode = "") {
+    const response = await fetch("/api/checkout/quote", { method: "POST", headers: authHeaders(), body: JSON.stringify({ cart_items: active.options.cartItems, coupon_code: couponCode }) });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível atualizar os valores.");
+    updateQuote(result.quote);
+    return result;
+  }
+
+  async function applyCoupon() {
+    const input = active.root.querySelector('[name="coupon_code"]');
+    const message = active.root.querySelector("[data-checkout-coupon-message]");
+    try {
+      const result = await requestQuote(input?.value.trim().toUpperCase() || "");
+      active.couponCode = result.quote?.coupon?.code || "";
+      message.textContent = active.couponCode ? `Cupom ${active.couponCode} aplicado.` : "Cupom removido.";
+      message.dataset.state = "success";
+    } catch (error) {
+      message.textContent = error.message;
+      message.dataset.state = "error";
+    }
+  }
+
+  function setPaymentMethod(method) {
+    if (!active || !["card", "pix"].includes(method)) return;
+    if (method === "card" && active.config && !active.config.supported_methods?.includes("card")) return;
+    active.method = method;
+    active.root.dataset.checkoutMethod = method;
+    active.root.querySelectorAll("[data-checkout-method]").forEach((button) => {
+      const selected = button.dataset.checkoutMethod === method;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute(button.getAttribute("role") === "tab" ? "aria-selected" : "aria-pressed", String(selected));
+    });
+    active.root.querySelectorAll("[data-checkout-panel]").forEach((panel) => { panel.hidden = panel.dataset.checkoutPanel !== method; });
+    updateQuote(active.quote);
+  }
+
+  function setBusy(busy, text = "Processando...") {
+    const button = active?.root?.querySelector("[data-checkout-submit]");
+    if (!button) return;
+    button.disabled = busy;
+    button.dataset.loading = String(busy);
+    if (busy) button.querySelector("span").textContent = text;
+    else updateQuote(active.quote);
+  }
+
+  function loadMercadoPagoSdk() {
+    if (typeof global.MercadoPago === "function") return Promise.resolve();
+    if (global.__ansendMercadoPagoSdkPromise) return global.__ansendMercadoPagoSdkPromise;
+    global.__ansendMercadoPagoSdkPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[src="https://sdk.mercadopago.com/js/v2"]');
+      const script = existing || document.createElement("script");
+      script.src = "https://sdk.mercadopago.com/js/v2";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Não foi possível carregar o SDK seguro do Mercado Pago."));
+      if (!existing) document.head.appendChild(script);
+    });
+    return global.__ansendMercadoPagoSdkPromise;
+  }
+
+  function buyerPayload(form) {
+    const data = new FormData(form);
+    const pix = active.method === "pix";
+    return {
+      name: String(data.get(pix ? "pix_name" : "cardholder_name") || "").trim(),
+      email: String(data.get(pix ? "pix_email" : "buyer_email") || "").trim(),
+      identification: { type: "CPF", number: String(data.get(pix ? "pix_identification" : "identification_number") || "").replace(/\D/g, "") },
+      address: pix ? undefined : { country: "BR", street_name: data.get("street_name"), state: data.get("state"), city: data.get("city"), zip_code: String(data.get("zip_code") || "").replace(/\D/g, "") },
+    };
+  }
+
+  async function createPayment(methodData = {}) {
+    const form = active.root.querySelector("form");
+    const feedback = active.root.querySelector("[data-checkout-feedback]");
+    if (!form.querySelector('[name="accept_terms"]')?.checked) throw new Error("Aceite os termos para continuar.");
+    const response = await fetch("/api/checkout/payment", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ method: active.method, cart_items: active.options.cartItems, coupon_code: active.couponCode || "", buyer: buyerPayload(form), method_data: methodData, idempotency_key: active.idempotencyKey }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível processar o pagamento.");
+    active.attemptId = result.attempt_id;
+    const resultPanel = active.root.querySelector("[data-checkout-result]");
+    form.hidden = true;
+    resultPanel.hidden = false;
+    resultPanel.innerHTML = active.method === "pix" ? renderPixResult(result) : renderCardResult(result);
+    active.options.refreshIcons?.();
+    if (result.paid || result.status === "approved") active.options.onPaid?.(result);
+    if (feedback) feedback.textContent = "";
+    return result;
+  }
+
+  function initCardForm() {
+    if (!active?.config?.public_key || typeof global.MercadoPago !== "function") return;
+    const mp = new global.MercadoPago(active.config.public_key, { locale: "pt-BR" });
+    active.cardForm = mp.cardForm({
+      amount: String((active.quote.totalCents / 100).toFixed(2)),
+      iframe: true,
+      form: {
+        id: "ansend-card-form",
+        cardNumber: { id: "checkout-card-number", placeholder: "Número do cartão" },
+        expirationDate: { id: "checkout-card-expiration", placeholder: "MM/AA" },
+        securityCode: { id: "checkout-card-cvv", placeholder: "CVV" },
+        cardholderName: { id: "checkout-cardholder-name" },
+        identificationNumber: { id: "checkout-identification-number" },
+        installments: { id: "checkout-installments" },
+      },
+      callbacks: {
+        onFormMounted(error) { if (error) active.root.querySelector("[data-checkout-feedback]").textContent = "Não foi possível carregar os campos seguros do cartão."; },
+        async onSubmit(event) {
+          event.preventDefault();
+          const data = active.cardForm.getCardFormData();
+          setBusy(true);
+          try { await createPayment({ token: data.token, payment_method_id: data.paymentMethodId, issuer_id: data.issuerId, installments: Number(data.installments || 1) }); }
+          catch (error) { active.root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false); }
+        },
+      },
+    });
+  }
+
+  async function checkStatus() {
+    if (!active?.attemptId) return;
+    const response = await fetch("/api/checkout/status", { method: "POST", headers: authHeaders(), body: JSON.stringify({ attempt_id: active.attemptId }) });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível verificar o pagamento.");
+    if (result.paid) {
+      active.root.querySelector("[data-checkout-result]").innerHTML = renderCardResult({ ...result, status: "approved" });
+      active.options.onPaid?.(result);
+      active.options.refreshIcons?.();
+    }
+  }
+
+  function bind() {
+    const root = active.root;
+    root.addEventListener("click", async (event) => {
+      const target = event.target.closest("button, a");
+      if (!target) return;
+      if (target.matches("[data-checkout-close]")) active.options.onClose?.();
+      if (target.matches("[data-checkout-method]")) setPaymentMethod(target.dataset.checkoutMethod);
+      if (target.matches("[data-checkout-coupon-toggle]")) root.querySelector(".ansend-checkout__coupon-form").hidden = false;
+      if (target.matches("[data-checkout-coupon-apply]")) await applyCoupon();
+      if (target.matches("[data-checkout-remove]")) active.options.onRemove?.(target.dataset.checkoutRemove);
+      if (target.matches("[data-checkout-open-beat]")) active.options.onOpenBeat?.(target.dataset.checkoutOpenBeat);
+      if (target.matches("[data-checkout-copy-pix]")) {
+        const code = root.querySelector("[data-checkout-pix-code]")?.value || "";
+        if (code) await navigator.clipboard.writeText(code);
+        target.textContent = "Código copiado";
+      }
+      if (target.matches("[data-checkout-check-status]")) { try { await checkStatus(); } catch (error) { target.insertAdjacentHTML("afterend", `<p class="ansend-checkout__inline-error">${escapeHtml(error.message)}</p>`); } }
+      if (target.matches("[data-checkout-retry]")) {
+        active.idempotencyKey = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        active.attemptId = "";
+        root.querySelector("form").hidden = false;
+        root.querySelector("[data-checkout-result]").hidden = true;
+        setBusy(false);
+      }
+      if (target.matches("[data-checkout-finish]")) active.options.onFinish?.();
+    });
+    root.querySelector("form").addEventListener("submit", async (event) => {
+      if (active.method === "card" && active.cardForm) return;
+      event.preventDefault();
+      setBusy(true, active.method === "pix" ? "Gerando Pix..." : "Processando...");
+      try { await createPayment(); }
+      catch (error) { root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false); }
+    });
+  }
+
+  async function open(options) {
+    const markup = renderCheckout(options);
+    options.openModal(markup);
+    const root = document.querySelector("[data-ansend-checkout]");
+    if (!root) return null;
+    active = { root, options, method: "card", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
+    root.querySelector('#checkout-email').value = options.prefillEmail || "";
+    root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
+    root.querySelector('[name="pix_name"]').value = options.prefillName || "";
+    root.querySelector('#checkout-cardholder-name').value = options.prefillName || "";
+    bind();
+    options.refreshIcons?.();
+    try {
+      const [configResponse] = await Promise.all([fetch("/api/checkout/config", { headers: authHeaders() }), requestQuote("")]);
+      active.config = await configResponse.json();
+      const cardButtons = root.querySelectorAll('[data-checkout-method="card"]');
+      if (!active.config.supported_methods?.includes("card")) {
+        cardButtons.forEach((button) => { button.hidden = true; });
+        setPaymentMethod("pix");
+      } else {
+        await loadMercadoPagoSdk();
+        initCardForm();
+      }
+    } catch (error) {
+      root.querySelector("[data-checkout-feedback]").textContent = error.message;
+      setPaymentMethod("pix");
+    }
+    return active;
+  }
+
+  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money };
+  global.AnsendCheckout = api;
+  if (typeof window !== "undefined") window.AnsendCheckout = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof window !== "undefined" ? window : globalThis);

@@ -17717,6 +17717,77 @@ function checkoutFormMarkup({ isCart, itemMarkup, itemCount = 1, subtotalCents, 
   `;
 }
 
+async function currentCheckoutAccessToken() {
+  const directSession = supabaseClient?.auth?.session?.();
+  if (directSession?.access_token) return directSession.access_token;
+  const sessionResult = await supabaseClient?.auth?.getSession?.();
+  return sessionResult?.data?.session?.access_token || "";
+}
+
+function checkoutRecommendationViewModel() {
+  const ad = (appState.cartPromotedAds.items || [])[0];
+  if (ad) {
+    return {
+      id: ad.beatId,
+      adId: ad.adId,
+      title: ad.beatTitle,
+      producer: ad.producerName,
+      cover: ad.coverUrl,
+      price: ad.price,
+      description: ad.licenseName,
+      sponsored: ad.source === "promoted",
+    };
+  }
+  const item = preferredBeats(8).find((beat) => !cartBeatIdSet().has(String(beat.id)));
+  return item ? { id: item.id, title: item.title, producer: item.producer, cover: item.cover, price: item.price, description: "Licença disponível", sponsored: false } : null;
+}
+
+async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefillEmail, isCart }) {
+  if (!window.AnsendCheckout) {
+    showToast("O checkout seguro nao foi carregado.", "alert-triangle");
+    return;
+  }
+  await loadCartPromotedAds({ force: false });
+  const accessToken = await currentCheckoutAccessToken();
+  if (!accessToken) {
+    showToast("Voce precisa estar autenticado para finalizar a compra.", "triangle-alert");
+    return;
+  }
+  await window.AnsendCheckout.open({
+    items,
+    cartItems,
+    quote,
+    prefillName,
+    prefillEmail,
+    isCart,
+    accessToken,
+    recommendation: checkoutRecommendationViewModel(),
+    openModal,
+    refreshIcons: () => lucide.createIcons(),
+    onClose: closeModal,
+    onRemove: (cartId) => {
+      removeFromCart(cartId);
+      if (appState.cart.length) openCartCheckout();
+      else closeModal();
+    },
+    onOpenBeat: (beatId) => {
+      const ad = (appState.cartPromotedAds.items || []).find((entry) => String(entry.beatId) === String(beatId));
+      if (ad?.source === "promoted") trackCartPromotedAdEvent("click", ad.adId, "checkout_recommendation");
+      closeModal();
+      location.hash = `beat-${beatId}`;
+    },
+    onPaid: async () => {
+      if (isCart) clearCart();
+      await loadCatalogItems();
+    },
+    onFinish: () => {
+      closeModal();
+      location.hash = "compras";
+      renderPurchases();
+    },
+  });
+}
+
 async function openCheckout(id, selectedPlan = "premium") {
   openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
   lucide.createIcons();
@@ -17740,30 +17811,14 @@ async function openCheckout(id, selectedPlan = "premium") {
     const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
     const prefillEmail = appState.authUser?.email || "";
 
-    openModal(checkoutFormMarkup({
+    await openAnsendCheckout({
       isCart: false,
-      itemMarkup: checkoutItemMarkup({
-        cover: item.cover,
-        title: item.title,
-        licenseName: selectedLicense.name,
-        priceCents: subtotalCents,
-        producer: item.producer,
-        formats: selectedLicense.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
-        beatId: item.id,
-        licenseId: selectedLicense.id,
-      }),
-      itemCount: 1,
-      subtotalCents,
-      serviceFeeCents,
-      totalCents,
+      items: [{ cover: item.cover, title: item.title, producer: item.producer, licenseName: selectedLicense.name, formats: selectedLicense.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV", priceCents: subtotalCents, beatId: item.id, licenseId: selectedLicense.id, removable: false }],
+      cartItems: [{ beat_id: item.id, license_id: selectedLicense.id }],
+      quote: { subtotalCents, serviceFeeCents, discountCents: 0, totalCents },
       prefillName,
       prefillEmail,
-      termsMarkup: `Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-beat-id="${item.id}" data-license-id="${selectedLicense.id}">termos e contrato de licenca</a> correspondentes a esta compra.`,
-    }));
-    const formEl = document.querySelector(".checkout-form");
-    if (formEl) {
-      formEl.dataset.cartItems = JSON.stringify([{ beat_id: item.id, license_id: selectedLicense.id }]);
-    }
+    });
   } catch (error) {
     console.error("Error opening single checkout:", error);
     showToast("Erro ao abrir checkout.", "alert-triangle");
@@ -23007,34 +23062,25 @@ async function openCartCheckout() {
     const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
     const prefillEmail = appState.authUser?.email || "";
     
-    const itemMarkup = items.map((item) => checkoutItemMarkup({
-      cover: item.beat.cover,
-      title: item.beat.title,
-      licenseName: item.licenseLabel,
-      priceCents: item.priceValCents,
-      producer: item.beat.producer,
-      formats: item.licenseLabel?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
-      beatId: item.beat.id,
-      licenseId: item.licenseId,
-      cartId: item.cartId,
-    })).join("");
-
-    openModal(checkoutFormMarkup({
+    await openAnsendCheckout({
       isCart: true,
-      itemMarkup,
-      itemCount: items.length,
-      subtotalCents,
-      serviceFeeCents,
-      totalCents,
+      items: items.map((item) => ({
+        cover: item.beat.cover,
+        title: item.beat.title,
+        producer: item.beat.producer,
+        licenseName: item.licenseLabel,
+        formats: item.licenseLabel?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+        priceCents: item.priceValCents,
+        beatId: item.beat.id,
+        licenseId: item.licenseId,
+        cartId: item.cartId,
+        removable: true,
+      })),
+      cartItems: cartItemsPayload,
+      quote: { subtotalCents, serviceFeeCents, discountCents: totalDiscountsCents, totalCents },
       prefillName,
       prefillEmail,
-      termsMarkup: 'Li e concordo com os <a href="#" class="view-contract-modal-trigger" data-is-cart="true">termos e contratos de licenca</a> correspondentes a cada beat selecionado.',
-    }));
-    
-    const formEl = document.querySelector(".checkout-form");
-    if (formEl) {
-      formEl.dataset.cartItems = JSON.stringify(cartItemsPayload);
-    }
+    });
   } catch (error) {
     console.error("Error opening cart checkout:", error);
     showToast("Erro ao abrir checkout.", "alert-triangle");

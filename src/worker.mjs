@@ -30,13 +30,13 @@ function securityHeadersFor(request, contentType = "") {
       "base-uri 'self'",
       "object-src 'none'",
       "frame-ancestors 'none'",
-      "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://www.youtube.com",
+      "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://www.youtube.com https://sdk.mercadopago.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://qxujynzqdursxaehchik.supabase.co https://i.ytimg.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' blob: https://qxujynzqdursxaehchik.supabase.co",
-      "connect-src 'self' https://qxujynzqdursxaehchik.supabase.co wss://qxujynzqdursxaehchik.supabase.co https://www.youtube.com https://www.youtube-nocookie.com",
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+      "connect-src 'self' https://qxujynzqdursxaehchik.supabase.co wss://qxujynzqdursxaehchik.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://api.mercadopago.com https://*.mercadopago.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://*.mercadopago.com",
       "form-action 'self'",
       "upgrade-insecure-requests",
     ].join("; "));
@@ -405,7 +405,7 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
   if (!cleanItems) return { ok: false, error: "Itens do carrinho invalidos." };
 
   const beatIds = [...new Set(cleanItems.map((item) => item.beat_id))];
-  const beatQuery = `beats?select=id,title,status,sold_exclusively&id=in.(${beatIds.join(",")})`;
+  const beatQuery = `beats?select=id,title,status,sold_exclusively,user_id,producer&id=in.(${beatIds.join(",")})`;
   const licenseQuery = `beat_licenses?select=id,beat_id,license_key,name,price_cents,is_active&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`;
   const [beatsResponse, licensesResponse] = await Promise.all([
     supabaseAuthedRest(env, beatQuery, authHeader),
@@ -443,9 +443,12 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
     items.push({
       beat_id: item.beat_id,
       license_id: license.id,
+      seller_id: beat.user_id,
+      producer: beat.producer || "Produtor",
       title: beat.title || "Beat ANSEND",
       license_name: license.name || "Licenca",
       price_cents: priceCents,
+      discount_cents: 0,
     });
   }
 
@@ -475,16 +478,16 @@ async function mercadoPagoRequest(env, path, init = {}) {
   return { ok: true, status: response.status, data, error: null };
 }
 
-async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail, checkout }) {
+async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail, checkout, externalReference, idempotencyKey }) {
   const paymentDescription = checkout.items.length === 1
     ? `${checkout.items[0].title} - ${checkout.items[0].license_name}`
     : `ANSEND - ${checkout.items.length} licencas musicais`;
-  const externalReference = `ansend:${userId}:${checkout.fingerprint}`;
+  const safeExternalReference = externalReference || `ansend:${userId}:${checkout.fingerprint}`;
   const body = {
     transaction_amount: centsToAmount(checkout.totalCents),
     description: paymentDescription.slice(0, 255),
     payment_method_id: "pix",
-    external_reference: externalReference,
+    external_reference: safeExternalReference,
     payer: {
       email: buyerEmail,
       first_name: buyerName,
@@ -499,9 +502,367 @@ async function createMercadoPagoPixPayment(env, { userId, buyerName, buyerEmail,
   };
   return mercadoPagoRequest(env, "/v1/payments", {
     method: "POST",
-    headers: { "X-Idempotency-Key": `${userId}-${checkout.fingerprint}` },
+    headers: { "X-Idempotency-Key": idempotencyKey || `${userId}-${checkout.fingerprint}` },
     body: JSON.stringify(body),
   });
+}
+
+function checkoutPaymentDescription(items = []) {
+  return items.length === 1
+    ? `${items[0].title} - ${items[0].license_name}`.slice(0, 255)
+    : `ANSEND - ${items.length} licencas musicais`;
+}
+
+function sanitizeIdentification(value = "") {
+  return String(value || "").replace(/\D/g, "").slice(0, 14);
+}
+
+function sanitizeCheckoutAddress(address = {}) {
+  const country = cleanRecommendationText(address.country || "BR", 2).toUpperCase();
+  return {
+    zip_code: sanitizeIdentification(address.zip_code).slice(0, 8),
+    street_name: cleanRecommendationText(address.street_name, 120),
+    street_number: cleanRecommendationText(address.street_number || "SN", 20),
+    city: cleanRecommendationText(address.city, 80),
+    federal_unit: cleanRecommendationText(address.state, 2).toUpperCase(),
+    country: country === "BR" ? "BR" : "BR",
+  };
+}
+
+async function createMercadoPagoCardPayment(env, { buyer, checkout, methodData, externalReference, idempotencyKey }) {
+  const token = cleanRecommendationText(methodData?.token, 180);
+  const paymentMethodId = cleanRecommendationText(methodData?.payment_method_id, 40);
+  const issuerId = cleanRecommendationText(methodData?.issuer_id, 40);
+  const installments = Math.max(1, Math.min(24, Number(methodData?.installments || 1)));
+  if (!token || !paymentMethodId) {
+    return { ok: false, status: 400, data: null, error: "Dados tokenizados do cartao incompletos." };
+  }
+  const identificationNumber = sanitizeIdentification(buyer?.identification?.number);
+  if (identificationNumber.length < 11) {
+    return { ok: false, status: 400, data: null, error: "Informe um CPF ou CNPJ valido." };
+  }
+  const body = {
+    transaction_amount: centsToAmount(checkout.totalCents),
+    token,
+    description: checkoutPaymentDescription(checkout.items),
+    installments,
+    payment_method_id: paymentMethodId,
+    ...(issuerId ? { issuer_id: issuerId } : {}),
+    external_reference: externalReference,
+    payer: {
+      email: buyer.email,
+      first_name: buyer.name,
+      identification: { type: identificationNumber.length > 11 ? "CNPJ" : "CPF", number: identificationNumber },
+      address: sanitizeCheckoutAddress(buyer.address),
+    },
+    metadata: {
+      ansend_user_id: checkout.userId,
+      cart_fingerprint: checkout.fingerprint,
+      subtotal_cents: checkout.subtotalCents,
+      discount_cents: checkout.discountCents,
+      service_fee_cents: checkout.serviceFeeCents,
+      total_cents: checkout.totalCents,
+    },
+  };
+  return mercadoPagoRequest(env, "/v1/payments", {
+    method: "POST",
+    headers: { "X-Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(body),
+  });
+}
+
+function applyPromotionDiscounts(items = []) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = String(item.producer || "Produtor");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  for (const [producer, group] of groups) {
+    const sorted = [...group].sort((a, b) => a.price_cents - b.price_cents);
+    const freeCount = producer.toLowerCase().includes("golamixaya")
+      ? (sorted.length >= 5 ? Math.min(4, sorted.length - 1) : 0)
+      : Math.floor(sorted.length / 3);
+    for (let index = 0; index < freeCount; index += 1) {
+      sorted[index].discount_cents += sorted[index].price_cents;
+    }
+  }
+}
+
+async function resolveCheckoutCoupon(env, code, userId, items = []) {
+  const cleanCode = cleanRecommendationText(code, 40).trim().toUpperCase();
+  if (!cleanCode) return { coupon: null, error: null };
+  const response = await supabaseRest(env, `checkout_coupons?select=id,code,seller_id,discount_type,discount_value,starts_at,ends_at,max_redemptions,per_user_limit,redemption_count,is_active&code=eq.${encodeURIComponent(cleanCode)}&limit=1`);
+  if (response.error) return { coupon: null, error: "Nao foi possivel validar o cupom." };
+  const coupon = response.data?.[0];
+  const now = Date.now();
+  if (!coupon || !coupon.is_active) return { coupon: null, error: "Cupom invalido." };
+  if (coupon.starts_at && new Date(coupon.starts_at).getTime() > now) return { coupon: null, error: "Este cupom ainda nao esta ativo." };
+  if (coupon.ends_at && new Date(coupon.ends_at).getTime() <= now) return { coupon: null, error: "Este cupom expirou." };
+  if (coupon.max_redemptions && coupon.redemption_count >= coupon.max_redemptions) return { coupon: null, error: "Este cupom atingiu o limite de usos." };
+  const usage = await supabaseRest(env, `coupon_redemptions?select=id&coupon_id=eq.${coupon.id}&buyer_id=eq.${userId}&limit=${Number(coupon.per_user_limit || 1)}`);
+  if (!usage.error && (usage.data || []).length >= Number(coupon.per_user_limit || 1)) return { coupon: null, error: "Voce ja utilizou este cupom." };
+  const eligible = items.filter((item) => !coupon.seller_id || item.seller_id === coupon.seller_id);
+  if (!eligible.length) return { coupon: null, error: "Este cupom nao se aplica aos itens do carrinho." };
+  let remaining = coupon.discount_type === "percent"
+    ? Math.round(eligible.reduce((sum, item) => sum + Math.max(0, item.price_cents - item.discount_cents), 0) * Number(coupon.discount_value) / 100)
+    : Number(coupon.discount_value);
+  for (const item of [...eligible].sort((a, b) => b.price_cents - a.price_cents)) {
+    const available = Math.max(0, item.price_cents - item.discount_cents);
+    const discount = Math.min(available, remaining);
+    item.discount_cents += discount;
+    remaining -= discount;
+    if (remaining <= 0) break;
+  }
+  return { coupon, error: null };
+}
+
+async function validateCheckoutQuote(env, cartItems, userId, authHeader, couponCode = "") {
+  const checkout = await validateCheckoutCart(env, cartItems, userId, authHeader);
+  if (!checkout.ok) return checkout;
+  checkout.userId = userId;
+  applyPromotionDiscounts(checkout.items);
+  const couponResult = await resolveCheckoutCoupon(env, couponCode, userId, checkout.items);
+  if (couponResult.error) return { ok: false, error: couponResult.error };
+  checkout.coupon = couponResult.coupon;
+  checkout.rawSubtotalCents = checkout.items.reduce((sum, item) => sum + item.price_cents, 0);
+  checkout.discountCents = checkout.items.reduce((sum, item) => sum + item.discount_cents, 0);
+  checkout.subtotalCents = Math.max(0, checkout.rawSubtotalCents - checkout.discountCents);
+  checkout.serviceFeeCents = Math.round(checkout.subtotalCents * 0.12);
+  checkout.totalCents = checkout.subtotalCents + checkout.serviceFeeCents;
+  checkout.fingerprint = await cartFingerprint(userId, checkout.cleanItems);
+  return checkout;
+}
+
+function checkoutQuotePayload(checkout) {
+  return {
+    items: checkout.items,
+    raw_subtotal_cents: checkout.rawSubtotalCents,
+    subtotal_cents: checkout.subtotalCents,
+    discount_cents: checkout.discountCents,
+    service_fee_cents: checkout.serviceFeeCents,
+    total_cents: checkout.totalCents,
+    coupon: checkout.coupon ? { code: checkout.coupon.code } : null,
+  };
+}
+
+async function persistPaymentAttempt(env, row) {
+  const response = await supabaseRest(env, "payment_attempts", {
+    method: "POST",
+    body: JSON.stringify([row]),
+    headers: { Prefer: "return=representation,resolution=ignore-duplicates" },
+  });
+  return response.error ? { data: null, error: response.error } : { data: response.data?.[0] || null, error: null };
+}
+
+async function updatePaymentAttempt(env, attemptId, patch) {
+  return supabaseRest(env, `payment_attempts?id=eq.${attemptId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+    headers: { Prefer: "return=representation" },
+  });
+}
+
+async function finalizeApprovedAttempt(env, attemptId) {
+  return supabaseRpc(env, "finalize_checkout_payment", { p_attempt_id: attemptId });
+}
+
+function publicPaymentResult(attempt, checkout, providerData = {}) {
+  const transaction = providerData?.point_of_interaction?.transaction_data || {};
+  return {
+    success: true,
+    provider: "mercado_pago",
+    attempt_id: attempt.id,
+    status: providerData.status || attempt.status,
+    paid: (providerData.status || attempt.status) === "approved",
+    status_detail: providerData.status_detail || attempt.status_detail || "",
+    payment: {
+      id: String(providerData.id || attempt.provider_payment_id || ""),
+      status: providerData.status || attempt.status,
+      status_detail: providerData.status_detail || attempt.status_detail || "",
+      external_reference: providerData.external_reference || attempt.external_reference,
+      expires_at: providerData.date_of_expiration || attempt.expires_at || null,
+    },
+    checkout: checkout ? checkoutQuotePayload(checkout) : {
+      subtotal_cents: attempt.subtotal_cents,
+      discount_cents: attempt.discount_cents,
+      service_fee_cents: attempt.service_fee_cents,
+      total_cents: attempt.total_cents,
+    },
+    pix: transaction.qr_code ? { qr_code: transaction.qr_code, qr_code_base64: transaction.qr_code_base64 || "", ticket_url: transaction.ticket_url || "" } : undefined,
+  };
+}
+
+async function handleCheckoutConfig(request, env) {
+  if (request.method !== "GET") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const hasToken = Boolean(env.MERCADO_PAGO_ACCESS_TOKEN || env.MP_ACCESS_TOKEN);
+  const publicKey = cleanRecommendationText(env.MERCADO_PAGO_PUBLIC_KEY, 180);
+  return jsonResponse({
+    success: true,
+    provider: "mercado_pago",
+    public_key: publicKey,
+    supported_methods: hasToken ? ["pix", ...(publicKey ? ["card"] : [])] : [],
+  });
+}
+
+async function checkoutAuthAndPayload(request, env, limit = 14) {
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return { response: auth.response };
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit, windowMs: 60_000 });
+  if (limited) return { response: limited };
+  const payload = await request.json().catch(() => null);
+  if (!payload) return { response: jsonResponse({ success: false, error: "Payload invalido." }, { status: 400 }) };
+  return { auth, payload };
+}
+
+async function handleCheckoutQuote(request, env) {
+  if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const context = await checkoutAuthAndPayload(request, env, 30);
+  if (context.response) return context.response;
+  const checkout = await validateCheckoutQuote(env, context.payload.cart_items, context.auth.user.id, context.auth.authHeader, context.payload.coupon_code);
+  if (!checkout.ok) return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
+  return jsonResponse({ success: true, quote: checkoutQuotePayload(checkout) });
+}
+
+async function reconcilePaymentAttempt(env, attempt, providerData) {
+  if (!attempt || !providerData?.id) return { ok: false, error: "Pagamento nao encontrado." };
+  const paidAmountCents = Math.round(Number(providerData.transaction_amount || 0) * 100);
+  if (String(providerData.external_reference || "") !== String(attempt.external_reference || "") || paidAmountCents !== Number(attempt.total_cents)) {
+    return { ok: false, error: "Pagamento nao confere com a tentativa registrada." };
+  }
+  const status = cleanRecommendationText(providerData.status || "pending", 30);
+  await updatePaymentAttempt(env, attempt.id, {
+    provider_payment_id: String(providerData.id),
+    status: ["approved", "rejected", "cancelled", "refunded"].includes(status) ? status : (status === "in_process" ? "in_process" : "pending"),
+    status_detail: cleanRecommendationText(providerData.status_detail, 120),
+    expires_at: providerData.date_of_expiration || null,
+  });
+  let order = null;
+  if (status === "approved") {
+    const finalized = await finalizeApprovedAttempt(env, attempt.id);
+    if (finalized.error) return { ok: false, error: finalized.error };
+    order = finalized.data;
+  }
+  return { ok: true, status, paid: status === "approved", order };
+}
+
+async function handleCheckoutPayment(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const context = await checkoutAuthAndPayload(request, env, 10);
+  if (context.response) return context.response;
+  const { auth, payload } = context;
+  const method = payload.method === "card" ? "card" : "pix";
+  if (method === "card" && !env.MERCADO_PAGO_PUBLIC_KEY) return jsonResponse({ success: false, error: "Pagamento por cartao ainda nao configurado." }, { status: 503 });
+  const buyer = payload.buyer || { name: payload.buyer_name, email: payload.buyer_email };
+  buyer.name = cleanRecommendationText(buyer.name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
+  buyer.email = cleanRecommendationText(buyer.email || auth.user.email, 150);
+  if (!buyer.email.includes("@") || buyer.name.length < 2) return jsonResponse({ success: false, error: "Informe nome e e-mail validos." }, { status: 400 });
+  const checkout = await validateCheckoutQuote(env, payload.cart_items, auth.user.id, auth.authHeader, payload.coupon_code);
+  if (!checkout.ok) return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
+
+  const clientKey = cleanRecommendationText(payload.idempotency_key || crypto.randomUUID(), 120);
+  const idempotencyKey = `${auth.user.id}:${clientKey}`;
+  const existing = await supabaseRest(env, `payment_attempts?select=*&buyer_id=eq.${auth.user.id}&idempotency_key=eq.${encodeURIComponent(idempotencyKey)}&limit=1`);
+  let attempt = existing.data?.[0] || null;
+  if (attempt?.provider_payment_id) {
+    const current = await mercadoPagoRequest(env, `/v1/payments/${attempt.provider_payment_id}`, { method: "GET" });
+    if (!current.ok) return jsonResponse({ success: false, error: current.error }, { status: current.status || 502 });
+    const reconciled = await reconcilePaymentAttempt(env, attempt, current.data);
+    if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+    return jsonResponse({ ...publicPaymentResult(attempt, checkout, current.data), order: reconciled.order });
+  }
+
+  const attemptId = attempt?.id || crypto.randomUUID();
+  const externalReference = `ansend:${auth.user.id}:${attemptId}`;
+  if (!attempt) {
+    const persisted = await persistPaymentAttempt(env, {
+      id: attemptId,
+      buyer_id: auth.user.id,
+      buyer_name: buyer.name,
+      buyer_email: buyer.email,
+      provider: "mercado_pago",
+      method,
+      external_reference: externalReference,
+      idempotency_key: idempotencyKey,
+      cart_fingerprint: checkout.fingerprint,
+      cart_items: checkout.items,
+      coupon_id: checkout.coupon?.id || null,
+      subtotal_cents: checkout.subtotalCents,
+      discount_cents: checkout.discountCents,
+      service_fee_cents: checkout.serviceFeeCents,
+      total_cents: checkout.totalCents,
+      status: "created",
+    });
+    if (persisted.error) return jsonResponse({ success: false, error: "Nao foi possivel registrar a tentativa de pagamento." }, { status: 502 });
+    attempt = persisted.data;
+  }
+
+  const payment = method === "card"
+    ? await createMercadoPagoCardPayment(env, { buyer, checkout, methodData: payload.method_data, externalReference, idempotencyKey })
+    : await createMercadoPagoPixPayment(env, { userId: auth.user.id, buyerName: buyer.name, buyerEmail: buyer.email, checkout, externalReference, idempotencyKey });
+  if (!payment.ok) {
+    await updatePaymentAttempt(env, attemptId, { status: "rejected", status_detail: cleanRecommendationText(payment.error, 120) });
+    return jsonResponse({ success: false, error: payment.error || "Nao foi possivel criar o pagamento." }, { status: payment.status || 502 });
+  }
+  const reconciled = await reconcilePaymentAttempt(env, attempt, payment.data);
+  if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+  return jsonResponse({ ...publicPaymentResult(attempt, checkout, payment.data), order: reconciled.order });
+}
+
+async function handleSecureCheckoutStatus(request, env) {
+  if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const context = await checkoutAuthAndPayload(request, env, 20);
+  if (context.response) return context.response;
+  const attemptId = cleanRecommendationText(context.payload.attempt_id, 80);
+  const paymentId = cleanRecommendationText(context.payload.payment_id, 40);
+  if (!isUuid(attemptId) && !/^\d+$/.test(paymentId)) return jsonResponse({ success: false, error: "Tentativa de pagamento invalida." }, { status: 400 });
+  const attemptFilter = isUuid(attemptId) ? `id=eq.${attemptId}` : `provider_payment_id=eq.${paymentId}`;
+  const stored = await supabaseRest(env, `payment_attempts?select=*&${attemptFilter}&buyer_id=eq.${context.auth.user.id}&limit=1`);
+  const attempt = stored.data?.[0];
+  if (!attempt?.provider_payment_id) return jsonResponse({ success: false, error: "Pagamento ainda nao registrado no provedor." }, { status: 404 });
+  const payment = await mercadoPagoRequest(env, `/v1/payments/${attempt.provider_payment_id}`, { method: "GET" });
+  if (!payment.ok) return jsonResponse({ success: false, error: payment.error }, { status: payment.status || 502 });
+  const reconciled = await reconcilePaymentAttempt(env, attempt, payment.data);
+  if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+  return jsonResponse({ ...publicPaymentResult(attempt, null, payment.data), order: reconciled.order });
+}
+
+function timingSafeHexEqual(left = "", right = "") {
+  if (left.length !== right.length || !left.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return mismatch === 0;
+}
+
+async function verifyMercadoPagoSignature(request, env, paymentId) {
+  const secret = env.MERCADO_PAGO_WEBHOOK_SECRET || "";
+  if (!secret) return false;
+  const signature = request.headers.get("x-signature") || "";
+  const requestId = request.headers.get("x-request-id") || "";
+  const parts = Object.fromEntries(signature.split(",").map((part) => part.trim().split("=")).filter((entry) => entry.length === 2));
+  if (!parts.ts || !parts.v1 || !requestId || !paymentId) return false;
+  const manifest = `id:${String(paymentId).toLowerCase()};request-id:${requestId};ts:${parts.ts};`;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
+  const expected = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return timingSafeHexEqual(expected, parts.v1.toLowerCase());
+}
+
+async function handleMercadoPagoWebhook(request, env) {
+  if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const url = new URL(request.url);
+  const payload = await request.json().catch(() => ({}));
+  const paymentId = String(url.searchParams.get("data.id") || payload?.data?.id || "").trim();
+  if (!/^\d+$/.test(paymentId) || !(await verifyMercadoPagoSignature(request, env, paymentId))) return jsonResponse({ success: false, error: "Assinatura de webhook invalida." }, { status: 401 });
+  const stored = await supabaseRest(env, `payment_attempts?select=*&provider=eq.mercado_pago&provider_payment_id=eq.${paymentId}&limit=1`);
+  const attempt = stored.data?.[0];
+  if (!attempt) return jsonResponse({ success: true, ignored: true });
+  const payment = await mercadoPagoRequest(env, `/v1/payments/${paymentId}`, { method: "GET" });
+  if (!payment.ok) return jsonResponse({ success: false, error: payment.error }, { status: payment.status || 502 });
+  const reconciled = await reconcilePaymentAttempt(env, attempt, payment.data);
+  if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+  return jsonResponse({ success: true });
 }
 
 async function handleEmbedContent(request, env) {
@@ -1416,6 +1777,8 @@ async function handleOrderDownload(request, env) {
   return jsonResponse({ success: true, download_url: absoluteSignedUrl });
 }
 
+export { applyPromotionDiscounts, sanitizeIdentification, timingSafeHexEqual };
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -1425,13 +1788,33 @@ export default {
       return Response.redirect(`https://ansendmusic.site${url.pathname}${url.search}`, 301);
     }
 
+    if (url.pathname === "/api/checkout/config") {
+      response = await handleCheckoutConfig(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/checkout/quote") {
+      response = await handleCheckoutQuote(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/checkout/payment") {
+      response = await handleCheckoutPayment(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
     if (url.pathname === "/api/checkout") {
-      response = await handleCheckout(request, env);
+      response = await handleCheckoutPayment(request, env);
       return withSecurityHeaders(response, request);
     }
 
     if (url.pathname === "/api/checkout/status") {
-      response = await handleCheckoutStatus(request, env);
+      response = await handleSecureCheckoutStatus(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/webhooks/mercado-pago") {
+      response = await handleMercadoPagoWebhook(request, env);
       return withSecurityHeaders(response, request);
     }
 
