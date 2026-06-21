@@ -1292,6 +1292,11 @@ const appState = {
   purchases: JSON.parse(localStorage.getItem("ansend-purchases") || "[]"),
   orders: JSON.parse(localStorage.getItem("ansend-orders") || "[]"),
   contracts: JSON.parse(localStorage.getItem("ansend-contracts") || "[]"),
+  purchasedBeatsCache: [],
+  comprasActiveTab: "Todos",
+  comprasSearch: "",
+  comprasSort: "recent",
+  comprasVisibleCount: 10,
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
   // Community data always comes from Supabase. Keep owned and public records
@@ -11801,7 +11806,9 @@ function findBeat(id) {
   const { beatId } = splitCartEntry(id);
   if (!beatId) return null;
   if (String(beatId) === String(topBeatOfDay.id)) return topBeatOfDay;
-  return searchableBeatPool().find((item) => String(item.id) === String(beatId)) || null;
+  return searchableBeatPool().find((item) => String(item.id) === String(beatId)) ||
+         (appState.purchasedBeatsCache && appState.purchasedBeatsCache.find((item) => String(item.id) === String(beatId))) ||
+         null;
 }
 
 function pageIntro(route, actions = "") {
@@ -11855,6 +11862,131 @@ function renderFavorites() {
   appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
 }
 
+async function loadUserPurchases() {
+  if (!supabaseClient || !appState.authUser) return { orders: [], attempts: [], beats: new Map(), profiles: new Map() };
+  try {
+    const { data: orders, error: ordersError } = await supabaseClient
+      .from("orders")
+      .select(`
+        id,
+        total_cents,
+        status,
+        buyer_name,
+        buyer_email,
+        created_at,
+        order_items (
+          id,
+          beat_id,
+          license_id,
+          license_name_snapshot,
+          license_terms_snapshot,
+          price_cents_snapshot,
+          buyer_royalty_snapshot,
+          producer_royalty_snapshot,
+          files_included_snapshot,
+          accepted_contract_at,
+          accepted_contract_version
+        )
+      `)
+      .eq("buyer_id", appState.authUser.id)
+      .order("created_at", { ascending: false });
+
+    if (ordersError) console.error("Error loading user orders:", ordersError);
+
+    const { data: attempts, error: attemptsError } = await supabaseClient
+      .from("payment_attempts")
+      .select("*")
+      .eq("buyer_id", appState.authUser.id)
+      .is("order_id", null)
+      .order("created_at", { ascending: false });
+
+    if (attemptsError) console.error("Error loading user payment attempts:", attemptsError);
+
+    const beatIds = new Set();
+    if (orders) {
+      orders.forEach(order => {
+        if (order.order_items) {
+          order.order_items.forEach(oi => {
+            if (oi.beat_id) beatIds.add(oi.beat_id);
+          });
+        }
+      });
+    }
+    if (attempts) {
+      attempts.forEach(attempt => {
+        if (attempt.cart_items) {
+          attempt.cart_items.forEach(item => {
+            if (item.beat_id) beatIds.add(item.beat_id);
+          });
+        }
+      });
+    }
+
+    const pool = searchableBeatPool();
+    const resolvedBeats = new Map();
+    pool.forEach(b => resolvedBeats.set(String(b.id), b));
+    if (appState.purchasedBeatsCache) {
+      appState.purchasedBeatsCache.forEach(b => resolvedBeats.set(String(b.id), b));
+    }
+
+    const missingBeatIds = [...beatIds].filter(id => !resolvedBeats.has(String(id)));
+    if (missingBeatIds.length > 0) {
+      const { data: fetchedBeats } = await supabaseClient
+        .from("beats")
+        .select("id,title,cover,user_id,producer_name,genre,bpm,key,tags,audio_path,mp3_path,wav_path,stems_path,status")
+        .in("id", missingBeatIds);
+
+      if (fetchedBeats) {
+        if (!appState.purchasedBeatsCache) appState.purchasedBeatsCache = [];
+        fetchedBeats.forEach(b => {
+          if (!b.cover) b.cover = "assets/top-beat-psiiiko-cover.jpg";
+          resolvedBeats.set(String(b.id), b);
+          if (!appState.purchasedBeatsCache.some(existing => String(existing.id) === String(b.id))) {
+            appState.purchasedBeatsCache.push(b);
+          }
+        });
+      }
+    }
+
+    const producerIds = new Set();
+    resolvedBeats.forEach(b => {
+      if (b.user_id) producerIds.add(b.user_id);
+    });
+    if (attempts) {
+      attempts.forEach(attempt => {
+        if (attempt.cart_items) {
+          attempt.cart_items.forEach(item => {
+            if (item.seller_id) producerIds.add(item.seller_id);
+          });
+        }
+      });
+    }
+
+    const resolvedProfiles = new Map();
+    const missingProducerIds = [...producerIds];
+    if (missingProducerIds.length > 0) {
+      const { data: profiles } = await supabaseClient
+        .from("profiles")
+        .select("id,username,artistic_name,full_name,avatar_url")
+        .in("id", missingProducerIds);
+
+      if (profiles) {
+        profiles.forEach(p => resolvedProfiles.set(String(p.id), p));
+      }
+    }
+
+    return {
+      orders: orders || [],
+      attempts: attempts || [],
+      beats: resolvedBeats,
+      profiles: resolvedProfiles
+    };
+  } catch (error) {
+    console.error("Error loading user purchases:", error);
+    return { orders: [], attempts: [], beats: new Map(), profiles: new Map() };
+  }
+}
+
 async function renderPurchases() {
   const pageHeader = pageIntro("compras");
   
@@ -11863,113 +11995,755 @@ async function renderPurchases() {
     return;
   }
 
+  // Setup event handlers on window once
+  if (!window.handleComprasSearch) {
+    window.handleComprasSearch = function(value) {
+      appState.comprasSearch = value;
+      renderPurchases();
+    };
+    window.handleComprasSort = function(value) {
+      appState.comprasSort = value;
+      renderPurchases();
+    };
+    window.handleComprasTabClick = function(tab) {
+      appState.comprasActiveTab = tab;
+      appState.comprasVisibleCount = 10;
+      renderPurchases();
+    };
+    window.handleComprasLoadMore = function() {
+      appState.comprasVisibleCount = (appState.comprasVisibleCount || 10) + 10;
+      renderPurchases();
+    };
+    window.downloadContractTextFile = function(filename, text) {
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast("Contrato baixado!", "check-circle");
+    };
+  }
+
+  // Parse location hash query params
+  const hashStr = location.hash.replace("#", "");
+  const queryStart = hashStr.indexOf("?");
+  let queryParams = {};
+  if (queryStart !== -1) {
+    const queryStr = hashStr.slice(queryStart + 1);
+    const pairs = queryStr.split("&");
+    for (const pair of pairs) {
+      const [key, val] = pair.split("=");
+      if (key) {
+        queryParams[decodeURIComponent(key)] = decodeURIComponent(val || "");
+      }
+    }
+  }
+
+  // If viewing details
+  if (queryParams.id || queryParams.attempt_id) {
+    appView.innerHTML = `${pageHeader}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
+    lucide.createIcons();
+    
+    try {
+      const context = await loadUserPurchases();
+      
+      let item = null;
+      let order = null;
+      let attempt = null;
+      
+      if (queryParams.id) {
+        order = context.orders.find(o => String(o.id) === String(queryParams.id));
+        if (order && order.order_items) {
+          if (queryParams.item_id) {
+            item = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
+          } else {
+            item = order.order_items[0];
+          }
+        }
+      } else if (queryParams.attempt_id) {
+        attempt = context.attempts.find(a => String(a.id) === String(queryParams.attempt_id));
+        if (attempt && attempt.cart_items) {
+          item = {
+            type: "attempt_item",
+            id: attempt.id,
+            attemptId: attempt.id,
+            buyerId: attempt.buyer_id,
+            buyerName: attempt.buyer_name,
+            buyerEmail: attempt.buyer_email,
+            createdAt: attempt.created_at,
+            beatId: attempt.cart_items[0]?.beat_id,
+            licenseId: attempt.cart_items[0]?.license_id,
+            licenseName: attempt.cart_items[0]?.license_name || "Licença",
+            priceCents: attempt.cart_items[0]?.price_cents || 0,
+            status: attempt.status,
+            provider: attempt.provider,
+            providerPaymentId: attempt.provider_payment_id,
+          };
+        }
+      }
+      
+      if (!item) {
+        appView.innerHTML = `${pageHeader}
+          <div style="padding:24px; text-align:center;">
+            <p style="color:var(--beat-muted); margin-bottom:16px;">Pedido ou compra não encontrada.</p>
+            <a href="#compras" class="an-secondary" style="padding:8px 16px; border-radius:6px; text-decoration:none;">Voltar para pedidos</a>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
+      
+      const beat = context.beats.get(String(item.beatId)) || {};
+      const beatTitle = beat.title || item.title || "Beat Indisponível";
+      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
+      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
+      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
+      const producerUsername = producer?.username || "";
+      
+      const orderNum = order ? `PED-${order.id.slice(0, 8).toUpperCase()}` : `ATT-${attempt.id.slice(0, 8).toUpperCase()}`;
+      const priceText = `R$ ${((order ? item.priceCents : item.priceCents) / 100).toFixed(2)}`;
+      const dateString = new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      
+      let statusLabel = "Aprovado";
+      let badgeStyle = "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);";
+      let statusDesc = "Pagamento confirmado com sucesso. Seus arquivos e contrato de licença estão liberados abaixo.";
+      const statusValue = order ? order.status : attempt.status;
+      
+      if (statusValue === "refunded") {
+        statusLabel = "Reembolsado";
+        badgeStyle = "background: rgba(255, 100, 100, 0.1); color: #ff5555; border: 1px solid rgba(255, 100, 100, 0.2);";
+        statusDesc = "Esta compra foi reembolsada e o acesso aos arquivos correspondentes foi revogado.";
+      } else if (statusValue === "pending" || statusValue === "created") {
+        statusLabel = "Aguardando pagamento";
+        badgeStyle = "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);";
+        statusDesc = "O pagamento está pendente ou aguardando confirmação do Mercado Pago. Os downloads serão liberados automaticamente após a aprovação.";
+      } else if (statusValue === "in_process") {
+        statusLabel = "Em processamento";
+        badgeStyle = "background: rgba(0, 150, 255, 0.1); color: #33aaff; border: 1px solid rgba(0, 150, 255, 0.2);";
+        statusDesc = "O pagamento está sendo analisado pelo provedor. Os downloads estarão disponíveis em breve.";
+      } else if (statusValue === "rejected" || statusValue === "cancelled" || statusValue === "expired") {
+        statusLabel = statusValue === "cancelled" ? "Cancelado" : (statusValue === "expired" ? "Expirado" : "Recusado");
+        badgeStyle = "background: rgba(150, 150, 150, 0.1); color: #888888; border: 1px solid rgba(150, 150, 150, 0.2);";
+        statusDesc = `O pagamento foi ${statusLabel.toLowerCase()}. Os downloads não estão disponíveis para esta transação.`;
+      }
+      
+      const isCompleted = statusValue === "completed" || statusValue === "approved";
+      
+      // Contract loading
+      let contractText = "";
+      if (order && isCompleted) {
+        const { data: doc } = await supabaseClient
+          .from("license_documents")
+          .select("contract_text")
+          .eq("order_item_id", item.id)
+          .maybeSingle();
+        if (doc) contractText = doc.contract_text;
+      }
+      if (!contractText) {
+        contractText = generateContractText(
+          beatTitle,
+          producerName,
+          order ? order.buyer_name : attempt.buyer_name,
+          item.licenseName,
+          item.buyerRoyalty || 50,
+          item.producerRoyalty || 50,
+          "Ilimitados",
+          item.filesIncluded || "MP3",
+          new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR")
+        );
+      }
+      
+      const contractFileName = `CONTRATO-${orderNum}-${beatTitle.replace(/\s+/g, "_").toUpperCase()}.txt`;
+      
+      // Downloads section
+      let downloadsHtml = "";
+      if (isCompleted) {
+        const includedFiles = String(item.filesIncluded || "").toUpperCase();
+        const hasMp3 = includedFiles.includes("MP3");
+        const hasWav = includedFiles.includes("WAV");
+        const hasStems = includedFiles.includes("STEMS") || includedFiles.includes("ZIP");
+        
+        downloadsHtml += `
+          <div class="download-row">
+            <div>
+              <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Contrato de Licença (.txt)</span>
+              <small style="color:var(--beat-muted); font-size:11px;">Documento legal oficial da compra</small>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Visualizar</button>
+              <button type="button" class="an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar</button>
+            </div>
+          </div>
+        `;
+        
+        if (hasMp3) {
+          downloadsHtml += `
+            <div class="download-row">
+              <div>
+                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio MP3</span>
+                <small style="color:var(--beat-muted); font-size:11px;">Formato de alta qualidade (320kbps)</small>
+              </div>
+              <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+            </div>
+          `;
+        }
+        if (hasWav) {
+          downloadsHtml += `
+            <div class="download-row">
+              <div>
+                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio WAV</span>
+                <small style="color:var(--beat-muted); font-size:11px;">Formato sem perdas de áudio profissional</small>
+              </div>
+              ${beat.wav_path || beat.audio_path ? `
+                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
+              ` : `
+                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo sendo preparado</span>
+              `}
+            </div>
+          `;
+        }
+        if (hasStems) {
+          downloadsHtml += `
+            <div class="download-row">
+              <div>
+                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Stems do Beat (ZIP/RAR)</span>
+                <small style="color:var(--beat-muted); font-size:11px;">Pistas de áudio separadas para mixagem</small>
+              </div>
+              ${beat.stems_path ? `
+                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
+              ` : `
+                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo indisponível</span>
+              `}
+            </div>
+          `;
+        }
+      } else {
+        downloadsHtml = `
+          <div style="background:#050505; border:1px dashed var(--beat-border); border-radius:6px; padding:24px; text-align:center; color:var(--beat-muted); font-size:13px;">
+            <i data-lucide="lock" style="width:24px; height:24px; margin-bottom:8px; color:var(--orange-primary, #ff5500);"></i>
+            <p>Os downloads e contratos estarão disponíveis assim que o pagamento for aprovado.</p>
+          </div>
+        `;
+      }
+
+      const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
+
+      appView.innerHTML = `
+        ${pageIntro("compras")}
+        <style>
+          .compras-detail-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-top: 16px;
+            padding: 0 16px;
+          }
+          @media (min-width: 768px) {
+            .compras-detail-layout {
+              grid-template-columns: 2fr 1fr;
+            }
+          }
+          .compras-section-card {
+            background: #0a0a0a;
+            border: 1px solid var(--beat-border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+          }
+          .compras-section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--beat-border-soft);
+            padding-bottom: 10px;
+          }
+          .download-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border: 1px solid var(--beat-border-soft);
+            border-radius: 6px;
+            margin-bottom: 12px;
+            background: #050505;
+          }
+          .detail-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--beat-border-soft);
+          }
+          .detail-info-row:last-child {
+            border-bottom: 0;
+          }
+        </style>
+
+        <div style="padding: 0 16px; margin-bottom: 16px;">
+          <a href="#compras" style="display: inline-flex; align-items: center; gap: 8px; color: var(--beat-muted); text-decoration: none; font-size: 13px; font-weight: 500;">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Voltar para meus pedidos
+          </a>
+        </div>
+
+        <div class="compras-detail-layout">
+          <!-- Left Column -->
+          <div>
+            <!-- Resumo -->
+            <div class="compras-section-card">
+              <h2 class="compras-section-title"><i data-lucide="receipt"></i>Resumo do Pedido</h2>
+              <div class="detail-info-row">
+                <span style="color:var(--beat-muted);">Identificador:</span>
+                <strong style="color:#fff; font-family:monospace;">${orderNum}</strong>
+              </div>
+              <div class="detail-info-row">
+                <span style="color:var(--beat-muted);">Data do Pedido:</span>
+                <strong style="color:#fff;">${dateString}</strong>
+              </div>
+              <div class="detail-info-row">
+                <span style="color:var(--beat-muted);">Total Pago:</span>
+                <strong style="color:#fff;">${priceText}</strong>
+              </div>
+              <div class="detail-info-row">
+                <span style="color:var(--beat-muted);">Método de Pagamento:</span>
+                <strong style="color:#fff; text-transform:uppercase;">${item.provider === "mercado_pago" ? "Mercado Pago" : item.provider} (${item.method || 'online'})</strong>
+              </div>
+              <div class="detail-info-row" style="align-items: center; padding-top: 12px; border-top: 1px solid var(--beat-border-soft); margin-top: 8px;">
+                <span style="color:var(--beat-muted);">Status Financeiro:</span>
+                <span class="badge-status" style="${badgeStyle}">${statusLabel}</span>
+              </div>
+              <p style="font-size: 12px; color: var(--beat-muted); margin: 12px 0 0 0; line-height: 1.5;">${statusDesc}</p>
+            </div>
+
+            <!-- Beat Adquirido -->
+            <div class="compras-section-card">
+              <h2 class="compras-section-title"><i data-lucide="music-4"></i>Beat Adquirido</h2>
+              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="position: relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--beat-border);">
+                  <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
+                  ${beat.id ? `
+                    <button type="button" data-action="play" data-id="${beat.id}"
+                            style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.2s;"
+                            onmouseover="this.style.transform='translate(-50%, -50%) scale(1.1)'"
+                            onmouseout="this.style.transform='translate(-50%, -50%) scale(1)'">
+                      <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 20px; height: 20px;"></i>
+                    </button>
+                  ` : ''}
+                </div>
+                
+                <div style="flex: 1; min-width: 200px;">
+                  <h3 style="font-size: 18px; color: #fff; font-weight: bold; margin: 0 0 8px 0;">${htmlEscape(beatTitle)}</h3>
+                  <p style="font-size: 13px; color: var(--beat-muted); margin: 0 0 12px 0;">Por: <strong style="color:#fff;">${htmlEscape(producerName)}</strong></p>
+                  
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    ${beat.genre ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">Gênero: ${beat.genre}</span>` : ''}
+                    ${beat.bpm ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">BPM: ${beat.bpm}</span>` : ''}
+                    ${beat.key ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">Tom: ${beat.key}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Arquivos e Entregáveis -->
+            <div class="compras-section-card">
+              <h2 class="compras-section-title"><i data-lucide="download-cloud"></i>Arquivos Autorizados</h2>
+              <div style="display: flex; flex-direction: column;">
+                ${downloadsHtml}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div>
+            <!-- Produtor Card -->
+            <div class="compras-section-card" style="text-align: center; padding: 24px 16px;">
+              <img src="${producerAvatar}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--beat-border); margin: 0 auto 12px;">
+              <h3 style="font-size: 15px; color:#fff; font-weight:bold; margin: 0 0 4px 0;">${htmlEscape(producerName)}</h3>
+              <p style="font-size: 12px; color:var(--beat-muted); margin: 0 0 16px 0;">@${htmlEscape(producerUsername || 'produtor')}</p>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${producerUsername ? `
+                  <a href="#perfil-${producerUsername}" class="an-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; text-decoration: none; border-radius: 6px;">
+                    <i data-lucide="user" style="width: 14px; height: 14px;"></i> Ver perfil completo
+                  </a>
+                ` : ''}
+                ${beat.user_id ? `
+                  <button type="button" onclick="openOrCreateDirectConversation('${beat.user_id}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
+                    <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Iniciar Conversa
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Licença -->
+            <div class="compras-section-card">
+              <h2 class="compras-section-title"><i data-lucide="scroll"></i>Licença Adquirida</h2>
+              <h3 style="font-size:14px; font-weight:bold; color:var(--orange-primary, #ff5500); margin:0 0 8px 0;">${htmlEscape(item.licenseName)}</h3>
+              
+              <div style="font-size:12px; color:var(--beat-muted); line-height:1.6;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span>Divisão de Royalties:</span>
+                  <strong style="color:#fff;">${item.buyerRoyalty || 50}% Artista / ${item.producerRoyalty || 50}% Produtor</strong>
+                </div>
+                ${item.licenseTerms ? `
+                  <p style="margin-top:8px; border-top:1px dashed var(--beat-border-soft); padding-top:8px;">${htmlEscape(item.licenseTerms)}</p>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Ajuda -->
+            <div class="compras-section-card" style="padding: 16px;">
+              <h4 style="font-size:12px; font-weight:bold; color:#fff; margin:0 0 6px 0; display:flex; align-items:center; gap:6px;"><i data-lucide="help-circle" style="width:14px; height:14px;"></i>Precisa de ajuda?</h4>
+              <p style="font-size:11px; color:var(--beat-muted); margin:0 0 12px 0; line-height:1.4;">Se você encontrar problemas com seus arquivos ou licença, entre em contato.</p>
+              <a href="#suporte" class="an-secondary" style="display: flex; align-items: center; justify-content: center; gap: 4px; height: 28px; font-size: 11px; text-decoration: none; border-radius: 4px;">
+                Central de Suporte
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    } catch (error) {
+      console.error("Error loading purchase detail view:", error);
+      appView.innerHTML = `${pageHeader}
+        <div style="padding:24px; text-align:center;">
+          <p style="color:var(--beat-muted);">Erro ao carregar detalhes da compra.</p>
+          <a href="#compras" class="an-secondary" style="padding:8px 16px; border-radius:6px; text-decoration:none;">Voltar para pedidos</a>
+        </div>`;
+      lucide.createIcons();
+    }
+    return;
+  }
+
+  // Else, render the listing view
   appView.innerHTML = `${pageHeader}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
   lucide.createIcons();
 
   try {
-    const orders = await loadUserOrders();
-    const orderItemsList = [];
-    orders.forEach(order => {
-      if (order.order_items && Array.isArray(order.order_items)) {
+    const context = await loadUserPurchases();
+    const allUnifiedItems = [];
+    
+    // Process order items
+    context.orders.forEach(order => {
+      if (order.order_items) {
         order.order_items.forEach(oi => {
-          orderItemsList.push({
+          allUnifiedItems.push({
+            type: "order_item",
+            id: oi.id,
             orderId: order.id,
+            buyerId: order.buyer_id,
             buyerName: order.buyer_name,
             buyerEmail: order.buyer_email,
             createdAt: order.created_at,
-            ...oi
+            beatId: oi.beat_id,
+            licenseId: oi.license_id,
+            licenseName: oi.license_name_snapshot,
+            licenseTerms: oi.license_terms_snapshot,
+            priceCents: oi.price_cents_snapshot,
+            buyerRoyalty: oi.buyer_royalty_snapshot,
+            producerRoyalty: oi.producer_royalty_snapshot,
+            filesIncluded: oi.files_included_snapshot,
+            status: order.status,
+            provider: "mercado_pago",
+            providerPaymentId: null,
           });
         });
       }
     });
 
-    if (orderItemsList.length === 0) {
+    // Process payment attempts
+    context.attempts.forEach(attempt => {
+      if (attempt.cart_items) {
+        attempt.cart_items.forEach((item, index) => {
+          allUnifiedItems.push({
+            type: "attempt_item",
+            id: `${attempt.id}-${index}`,
+            attemptId: attempt.id,
+            buyerId: attempt.buyer_id,
+            buyerName: attempt.buyer_name,
+            buyerEmail: attempt.buyer_email,
+            createdAt: attempt.created_at,
+            beatId: item.beat_id,
+            licenseId: item.license_id,
+            licenseName: item.license_name || "Licença",
+            licenseTerms: null,
+            priceCents: item.price_cents || 0,
+            buyerRoyalty: 50,
+            producerRoyalty: 50,
+            filesIncluded: null,
+            status: attempt.status,
+            provider: attempt.provider,
+            providerPaymentId: attempt.provider_payment_id,
+          });
+        });
+      }
+    });
+
+    // 1. Apply Filter Tab
+    const activeTab = appState.comprasActiveTab || "Todos";
+    let filteredItems = allUnifiedItems;
+    if (activeTab === "Disponíveis") {
+      filteredItems = allUnifiedItems.filter(item => item.status === "completed" || item.status === "approved");
+    } else if (activeTab === "Aguardando pagamento") {
+      filteredItems = allUnifiedItems.filter(item => item.status === "pending" || item.status === "created");
+    } else if (activeTab === "Em processamento") {
+      filteredItems = allUnifiedItems.filter(item => item.status === "in_process");
+    } else if (activeTab === "Cancelados") {
+      filteredItems = allUnifiedItems.filter(item => item.status === "rejected" || item.status === "cancelled" || item.status === "expired");
+    } else if (activeTab === "Reembolsados") {
+      filteredItems = allUnifiedItems.filter(item => item.status === "refunded");
+    }
+
+    // 2. Apply Search Filter
+    const searchQuery = (appState.comprasSearch || "").toLowerCase().trim();
+    if (searchQuery) {
+      filteredItems = filteredItems.filter(item => {
+        const beat = context.beats.get(String(item.beatId)) || {};
+        const beatTitle = (beat.title || item.title || "").toLowerCase();
+        const producer = context.profiles.get(String(beat.user_id || item.sellerId));
+        const producerName = (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "")).toLowerCase();
+        const license = (item.licenseName || "").toLowerCase();
+        const idStr = (item.orderId || item.attemptId || "").toLowerCase();
+        
+        return beatTitle.includes(searchQuery) ||
+               producerName.includes(searchQuery) ||
+               license.includes(searchQuery) ||
+               idStr.includes(searchQuery);
+      });
+    }
+
+    // 3. Apply Sorting
+    filteredItems.sort((a, b) => {
+      const beatA = context.beats.get(String(a.beatId)) || {};
+      const beatB = context.beats.get(String(b.beatId)) || {};
+      const titleA = (beatA.title || a.title || "").toLowerCase();
+      const titleB = (beatB.title || b.title || "").toLowerCase();
+      
+      if (appState.comprasSort === "recent") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else if (appState.comprasSort === "oldest") {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      } else if (appState.comprasSort === "highest") {
+        return b.priceCents - a.priceCents;
+      } else if (appState.comprasSort === "lowest") {
+        return a.priceCents - b.priceCents;
+      } else if (appState.comprasSort === "alphabetical") {
+        return titleA.localeCompare(titleB);
+      }
+      return 0;
+    });
+
+    if (allUnifiedItems.length === 0) {
       appView.innerHTML = `${pageHeader}${emptyState("shopping-bag", "Nenhum pedido ainda", "Quando você comprar uma licença, os downloads e contratos aparecerão aqui.", "explorar")}`;
       return;
     }
 
-    const orderMarkup = orderItemsList.map(oi => {
-      const beat = findBeat(oi.beat_id);
-      if (!beat) return "";
+    // 4. Paginate
+    const pageSize = appState.comprasVisibleCount || 10;
+    const paginatedItems = filteredItems.slice(0, pageSize);
+    const hasMore = filteredItems.length > pageSize;
+
+    // Render cards
+    const cardsHtml = paginatedItems.map(item => {
+      const beat = context.beats.get(String(item.beatId)) || {};
+      const beatTitle = beat.title || item.title || "Beat Indisponível";
+      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
+      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
+      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
+      const producerUsername = producer?.username || "";
       
-      const priceText = `R$ ${(oi.price_cents_snapshot / 100).toFixed(2)}`;
-      const dateString = new Date(oi.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
-      const producerName = String(beat.producer || "ANSEND").replace(/^prod\.\s*/i, "");
+      const priceText = `R$ ${(item.priceCents / 100).toFixed(2)}`;
+      const dateString = new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+      const orderNum = item.orderId ? `PED-${item.orderId.slice(0, 8).toUpperCase()}` : `ATT-${item.attemptId.slice(0, 8).toUpperCase()}`;
       
-      const included = String(oi.files_included_snapshot || "").toUpperCase();
-      const hasMp3 = included.includes("MP3");
+      const included = String(item.filesIncluded || "").toUpperCase();
+      const hasMp3 = included.includes("MP3") || item.type === "attempt_item";
       const hasWav = included.includes("WAV");
       const hasStems = included.includes("STEMS") || included.includes("ZIP");
-
-      let downloadButtons = "";
-      if (hasMp3) {
-        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="mp3" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> MP3</button>`;
-      }
-      if (hasWav) {
-        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="wav" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> WAV</button>`;
-      }
-      if (hasStems) {
-        downloadButtons += `<button type="button" class="an-secondary" data-action="download-secure-file" data-beat-id="${oi.beat_id}" data-file-type="stems" style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; font-size:12px; cursor:pointer;"><i data-lucide="download" style="width:14px; height:14px;"></i> Stems (ZIP)</button>`;
-      }
-
-      const royaltyBuyer = oi.buyer_royalty_snapshot || 50;
-      const royaltyProducer = oi.producer_royalty_snapshot || 50;
-      const filesLabel = oi.files_included_snapshot || "MP3";
       
+      const formatsList = [];
+      if (hasMp3) formatsList.push("MP3");
+      if (hasWav) formatsList.push("WAV");
+      if (hasStems) formatsList.push("Stems");
+      const formatsText = formatsList.join(" • ") || "MP3";
+
+      let badgeLabel = "Aprovado";
+      let badgeStyle = "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);";
+      
+      if (item.status === "refunded") {
+        badgeLabel = "Reembolsado";
+        badgeStyle = "background: rgba(255, 100, 100, 0.1); color: #ff5555; border: 1px solid rgba(255, 100, 100, 0.2);";
+      } else if (item.status === "pending" || item.status === "created") {
+        badgeLabel = "Aguardando pagamento";
+        badgeStyle = "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);";
+      } else if (item.status === "in_process") {
+        badgeLabel = "Em processamento";
+        badgeStyle = "background: rgba(0, 150, 255, 0.1); color: #33aaff; border: 1px solid rgba(0, 150, 255, 0.2);";
+      } else if (item.status === "rejected" || item.status === "cancelled" || item.status === "expired") {
+        badgeLabel = item.status === "cancelled" ? "Cancelado" : (item.status === "expired" ? "Expirado" : "Recusado");
+        badgeStyle = "background: rgba(150, 150, 150, 0.1); color: #888888; border: 1px solid rgba(150, 150, 150, 0.2);";
+      }
+
+      const isCompleted = item.status === "completed" || item.status === "approved";
+      const detailHref = `#compras?${item.orderId ? 'id=' + item.orderId + '&item_id=' + item.id : 'attempt_id=' + item.attemptId}`;
+      
+      const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
+      const playBtnHtml = beat.id ? `
+        <button type="button" data-action="play" data-id="${beat.id}" class="compras-card-play-btn"
+                style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; transition: all 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none;"
+                aria-label="Tocar beat">
+          <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 16px; height: 16px;"></i>
+        </button>
+      ` : '';
+
       return `
-        <article class="purchase-item" style="display:flex; flex-direction:column; gap:12px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; margin-bottom:12px;">
-          <div style="display:flex; gap:16px; align-items:center;">
-            <img src="${beat.cover}" style="width:60px; height:60px; border-radius:6px; object-fit:cover;">
-            <div style="flex:1;">
-              <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0 0 4px;">${htmlEscape(beat.title)}</h3>
-              <div style="font-size:12px; color:var(--beat-muted); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:4px;">
-                <span>Produtor: <strong>${htmlEscape(producerName)}</strong></span>
-                <span>Licença: <strong>${htmlEscape(oi.license_name_snapshot)}</strong></span>
-                <span>Preço: <strong>${priceText}</strong></span>
-              </div>
-              <small style="font-size:11px; color:var(--beat-dim);">Adquirido em ${dateString}</small>
-            </div>
-          </div>
-          
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid var(--beat-border-soft); padding-top:12px; margin-top:4px;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              ${downloadButtons}
+        <article class="purchase-item purchase-card-hover" style="display:flex; flex-direction:column; gap:16px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; transition: border-color 0.2s, background 0.2s;">
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
+            <div class="compras-cover-wrapper" style="position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer;" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
+              <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
+              ${playBtnHtml}
             </div>
             
-            <button type="button" class="an-primary" data-action="view-purchased-contract" 
-                    data-beat-title="${htmlEscape(beat.title)}"
-                    data-producer-name="${htmlEscape(producerName)}"
-                    data-buyer-name="${htmlEscape(oi.buyerName)}"
-                    data-license-name="${htmlEscape(oi.license_name_snapshot)}"
-                    data-royalty-buyer="${royaltyBuyer}"
-                    data-royalty-producer="${royaltyProducer}"
-                    data-files-included="${htmlEscape(filesLabel)}"
-                    data-date-string="${new Date(oi.created_at).toLocaleDateString('pt-BR')}"
-                    style="display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 14px; font-size:12px; background:#fff; border:0; color:#000; font-weight:bold; border-radius:6px; cursor:pointer;">
-              <i data-lucide="scroll" style="width:14px; height:14px;"></i> Ver Contrato
-            </button>
+            <div style="flex:1; min-width: 200px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom: 4px;">
+                <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0; cursor:pointer;" onclick="location.hash='${detailHref}'">${htmlEscape(beatTitle)}</h3>
+                <span class="badge-status" style="${badgeStyle}">${badgeLabel}</span>
+              </div>
+              
+              <div style="font-size:12px; color:var(--beat-muted); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; align-items:center;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <img src="${producerAvatar}" style="width:16px; height:16px; border-radius:50%; object-fit:cover;">
+                  <span>Produtor: <strong>${htmlEscape(producerName)}</strong></span>
+                </div>
+                <span>Licença: <strong>${htmlEscape(item.licenseName)}</strong></span>
+                <span>Formatos: <strong>${formatsText}</strong></span>
+              </div>
+              <div style="font-size:11px; color:var(--beat-dim); display:flex; gap:16px;">
+                <span>Pedido: <strong>${orderNum}</strong></span>
+                <span>Data: ${dateString}</span>
+              </div>
+            </div>
+            
+            <div style="text-align: right; flex-shrink: 0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 120px;">
+              <span style="font-size: 16px; font-weight: bold; color: #fff;">${priceText}</span>
+              <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}" 
+                 style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 6px; text-decoration: none; transition: background 0.2s; ${isCompleted ? 'background:#fff; color:#000;' : ''}">
+                ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
+              </a>
+            </div>
           </div>
         </article>
       `;
     }).join("");
 
-    const clearMarkup = `<div class="purchase-actions" style="margin-bottom:16px; display:flex; justify-content:flex-end;">
-      <button type="button" class="commerce-clear-btn" data-action="clear-purchases" style="display:flex; align-items:center; gap:6px; font-size:12px;"><i data-lucide="trash-2"></i>Remover todos os pedidos locais</button>
-    </div>`;
+    const hasLocalOrdersBtn = context.orders.length > 0 || context.attempts.length > 0;
 
     appView.innerHTML = `
       ${pageHeader}
-      ${clearMarkup}
-      <section class="purchase-list" style="margin-top:8px;">
-        ${orderMarkup}
-      </section>
+      <style>
+        .compras-cover-wrapper:hover .compras-card-play-btn {
+          opacity: 1 !important;
+          pointer-events: auto !important;
+        }
+        .purchase-card-hover:hover {
+          border-color: rgba(255, 85, 0, 0.4) !important;
+          background: #0d0d0d !important;
+        }
+        .badge-status {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+        .compras-tabs::-webkit-scrollbar {
+          display: none;
+        }
+        .compras-tabs {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      </style>
+
+      <div class="compras-container" style="padding: 0 16px 24px; max-width: 1200px; margin: 0 auto; width: 100%;">
+        <!-- Search, Filters, Sort toolbar -->
+        <div class="compras-toolbar" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+          
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
+            <!-- Search input -->
+            <div class="compras-search-wrapper" style="position: relative; flex: 1; min-width: 280px; max-width: 480px;">
+              <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--beat-muted);"></i>
+              <input type="text" id="compras-search-input" placeholder="Buscar por beat, produtor, licença ou ID..." 
+                     value="${htmlEscape(appState.comprasSearch || '')}"
+                     style="width: 100%; padding: 10px 12px 10px 38px; background: #0a0a0a; border: 1px solid var(--beat-border); border-radius: 6px; color: #fff; font-size: 13px; outline: none; transition: border-color 0.2s;"
+                     oninput="handleComprasSearch(this.value)">
+            </div>
+            
+            <!-- Sorting dropdown -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; color: var(--beat-muted);">Ordenar por:</span>
+              <select id="compras-sort-select" onchange="handleComprasSort(this.value)" 
+                      style="background: #0a0a0a; border: 1px solid var(--beat-border); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer;">
+                <option value="recent" ${appState.comprasSort === 'recent' ? 'selected' : ''}>Mais recente</option>
+                <option value="oldest" ${appState.comprasSort === 'oldest' ? 'selected' : ''}>Mais antigo</option>
+                <option value="highest" ${appState.comprasSort === 'highest' ? 'selected' : ''}>Maior valor</option>
+                <option value="lowest" ${appState.comprasSort === 'lowest' ? 'selected' : ''}>Menor valor</option>
+                <option value="alphabetical" ${appState.comprasSort === 'alphabetical' ? 'selected' : ''}>Ordem alfabética</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Filter Tabs -->
+          <div class="compras-tabs" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid var(--beat-border-soft);">
+            ${["Todos", "Disponíveis", "Aguardando pagamento", "Em processamento", "Cancelados", "Reembolsados"].map(tab => {
+              const isActive = (appState.comprasActiveTab || "Todos") === tab;
+              return `
+                <button type="button" onclick="handleComprasTabClick('${tab}')" 
+                        style="background: ${isActive ? 'var(--orange-primary, #ff5500)' : 'transparent'}; 
+                               color: ${isActive ? '#fff' : 'var(--beat-muted)'}; 
+                               border: 1px solid ${isActive ? 'transparent' : 'var(--beat-border)'}; 
+                               padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s;">
+                  ${tab}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        <!-- Total purchases description -->
+        <div style="font-size: 13px; color: var(--beat-muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <span>Exibindo <strong>${filteredItems.length}</strong> de <strong>${allUnifiedItems.length}</strong> compras</span>
+          ${hasLocalOrdersBtn ? `<button type="button" class="commerce-clear-btn" data-action="clear-purchases" style="display:flex; align-items:center; gap:6px; font-size:12px; background:none; border:none; color:var(--beat-muted); cursor:pointer;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i>Limpar dados locais</button>` : ''}
+        </div>
+
+        <!-- Purchase cards list -->
+        <div class="compras-list" style="display: flex; flex-direction: column; gap: 12px;">
+          ${filteredItems.length > 0 ? cardsHtml : emptyState("shopping-bag", "Nenhuma compra encontrada", "Tente ajustar seus filtros ou termos de busca.", "explorar")}
+        </div>
+
+        <!-- Pagination Load More button -->
+        ${hasMore ? `
+          <div style="display: flex; justify-content: center; margin-top: 24px;">
+            <button type="button" onclick="handleComprasLoadMore()" class="an-secondary"
+                    style="padding: 10px 24px; font-size: 13px; border-radius: 6px; cursor: pointer;">
+              Carregar mais
+            </button>
+          </div>
+        ` : ''}
+      </div>
     `;
     lucide.createIcons();
   } catch (error) {
     console.error("Error rendering purchases:", error);
     appView.innerHTML = `${pageHeader}<div class="empty-state"><p>Erro ao carregar seu histórico de compras.</p></div>`;
   }
-
 }
 
 function addToCart(id, licenseId = "", options = {}) {

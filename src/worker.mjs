@@ -1,4 +1,4 @@
-﻿import { buildNexoDeveloperPrompt } from "./nexo/nexo-prompt.mjs";
+import { buildNexoDeveloperPrompt } from "./nexo/nexo-prompt.mjs";
 import { nexoDiagnosisSchema } from "./nexo/nexo-schema.mjs";
 import { validateNexoQuiz } from "./nexo/nexo-validation.mjs";
 import { ANSEND_ROUTES, inferNexoRouteAction, publicNexoRoutes, resolveNexoRouteKey } from "./nexo/ansend-routes.mjs";
@@ -737,6 +737,12 @@ async function reconcilePaymentAttempt(env, attempt, providerData) {
     const finalized = await finalizeApprovedAttempt(env, attempt.id);
     if (finalized.error) return { ok: false, error: finalized.error };
     order = finalized.data;
+  }
+  if (attempt.order_id && ["refunded", "cancelled", "rejected"].includes(status)) {
+    await supabaseRest(env, `orders?id=eq.${attempt.order_id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "refunded", updated_at: new Date().toISOString() })
+    }).catch(err => console.warn("[ANSEND reconcile] Failed to patch order status", err));
   }
   return { ok: true, status, paid: status === "approved", order };
 }
@@ -1702,30 +1708,26 @@ async function handleOrderDownload(request, env) {
     return jsonResponse({ success: false, error: "Parametros invalidos." }, { status: 400 });
   }
 
-  // 1. Verify that this user has completed order containing this beat and files
-  const ordersResponse = await supabaseRest(env, `orders?select=id,status,buyer_id,order_items(beat_id,files_included_snapshot)&buyer_id=eq.${auth.user.id}&status=eq.completed`);
-  if (ordersResponse.error) {
-    return jsonResponse({ success: false, error: "Erro ao verificar compra." }, { status: 500 });
+  // 1. Verify active entitlement for this user, beat, and file type
+  const entitlementsResponse = await supabaseRest(env, `purchase_entitlements?select=id,status,allowed_files,order_id,order_item_id&buyer_id=eq.${auth.user.id}&beat_id=eq.${beatId}&status=eq.active`);
+  if (entitlementsResponse.error) {
+    return jsonResponse({ success: false, error: "Erro ao verificar permissao de download." }, { status: 500 });
   }
 
-  const orders = ordersResponse.data || [];
+  const entitlements = entitlementsResponse.data || [];
+  if (!entitlements.length) {
+    return jsonResponse({ success: false, error: "Voce nao possui uma licenca ativa para baixar este arquivo." }, { status: 403 });
+  }
+
+  const entitlement = entitlements[0];
+  const filesIncluded = entitlement.allowed_files || "";
   let isAuthorized = false;
-  let filesIncluded = "";
-
-  for (const order of orders) {
-    for (const item of order.order_items || []) {
-      if (item.beat_id === beatId) {
-        filesIncluded = item.files_included_snapshot || "";
-        // Check if the fileType is included in the files snapshot
-        if (fileType === "mp3" && /mp3/i.test(filesIncluded)) isAuthorized = true;
-        if (fileType === "wav" && /wav/i.test(filesIncluded)) isAuthorized = true;
-        if (fileType === "stems" && /stem|zip/i.test(filesIncluded)) isAuthorized = true;
-      }
-    }
-  }
+  if (fileType === "mp3" && /mp3/i.test(filesIncluded)) isAuthorized = true;
+  if (fileType === "wav" && /wav/i.test(filesIncluded)) isAuthorized = true;
+  if (fileType === "stems" && /stem|zip/i.test(filesIncluded)) isAuthorized = true;
 
   if (!isAuthorized) {
-    return jsonResponse({ success: false, error: "Voce nao possui autorizacao para baixar este arquivo." }, { status: 403 });
+    return jsonResponse({ success: false, error: "Este formato de arquivo nao esta incluido na sua licenca." }, { status: 403 });
   }
 
   // 2. Fetch the beat path from the database
@@ -1788,6 +1790,21 @@ async function handleOrderDownload(request, env) {
   if (signedUrl.startsWith("/")) {
     absoluteSignedUrl = `${supabaseUrl}${signedUrl}`;
   }
+
+  // Log successful download securely
+  await supabaseRest(env, "download_logs", {
+    method: "POST",
+    body: JSON.stringify([{
+      buyer_id: auth.user.id,
+      order_id: entitlement.order_id,
+      order_item_id: entitlement.order_item_id,
+      beat_id: beatId,
+      file_type: fileType,
+      ip_address: request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "unknown",
+      user_agent: request.headers.get("User-Agent") || "unknown",
+      success: true
+    }])
+  }).catch(err => console.warn("Failed to write download log", err));
 
   return jsonResponse({ success: true, download_url: absoluteSignedUrl });
 }
