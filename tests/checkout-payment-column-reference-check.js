@@ -22,19 +22,22 @@ for (const label of [
   "Código de segurança",
   "Nome impresso no cartão",
   "CPF/CNPJ",
-  "Banco emissor",
   "Parcelas",
   "Nome completo",
   "Telefone",
 ]) assert(checkout.includes(`>${label}<`), `Checkout payment field must expose the visible label: ${label}`);
+
+assert(!checkout.includes(">Banco emissor<"), "Checkout must not expose a visible issuer selector");
 
 for (const marker of [
   "data-checkout-card-number",
   "data-checkout-card-expiration",
   "data-checkout-card-cvv",
   "data-checkout-cardholder-name",
-  "data-checkout-issuer",
-  "data-checkout-installments",
+  "data-checkout-provider-issuer",
+  "data-checkout-provider-installments",
+  "data-checkout-installment-trigger",
+  'role="listbox"',
   "pix_identification",
   "pix_phone",
 ]) assert(checkout.includes(marker), `Mercado Pago integration marker was removed: ${marker}`);

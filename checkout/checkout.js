@@ -14,6 +14,27 @@
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
+  function parseProviderInstallmentLabel(label) {
+    const normalized = String(label || "").replace(/\s+/g, " ").trim();
+    const installmentMatch = normalized.match(/\b(\d+)\s*(?:x|parcelas?)/i);
+    const amounts = normalized.match(/R\$\s*\d{1,3}(?:\.\d{3})*,\d{2}/g) || [];
+    if (!installmentMatch || !amounts.length) return null;
+    return {
+      installments: Number(installmentMatch[1]),
+      installmentAmount: amounts[0].replace(/\s+/g, " "),
+      totalAmount: (amounts[1] || "").replace(/\s+/g, " "),
+      interestFree: /\bsem\s+juros\b/i.test(normalized),
+    };
+  }
+
+  function formatProviderInstallmentLabel(details) {
+    if (!details || !Number.isFinite(details.installments) || !details.installmentAmount) return "";
+    const base = `${details.installments}x de ${details.installmentAmount}`;
+    if (details.interestFree) return `${base} — sem juros`;
+    if (details.totalAmount) return `${base} — total ${details.totalAmount}`;
+    return base;
+  }
+
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 
   const unavailableMethodIcons = Object.freeze({
@@ -95,9 +116,16 @@
       </div>
       <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" placeholder="Como aparece no cartão" autocomplete="cc-name" required></label>
       <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" placeholder="Somente números" inputmode="numeric" autocomplete="off" required></label>
-      <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>Banco emissor</span><select id="${escapeHtml(ids.issuer)}" name="issuer" data-checkout-issuer><option value="">Selecione</option></select></label>
-        <label class="ansend-checkout__field"><span>Parcelas</span><select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
+      <div class="ansend-checkout__provider-fields" aria-hidden="true">
+        <select id="${escapeHtml(ids.issuer)}" name="issuer" data-checkout-provider-issuer data-checkout-issuer tabindex="-1"><option value="">Detectado pelo cartão</option></select>
+        <select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-provider-installments tabindex="-1"><option value="">Selecione</option></select>
+      </div>
+      <div class="ansend-checkout__field ansend-checkout__installment-field">
+        <span id="${escapeHtml(ids.installments)}-visible-label">Parcelas</span>
+        <button type="button" class="ansend-checkout__installment-trigger" data-checkout-installment-trigger aria-labelledby="${escapeHtml(ids.installments)}-visible-label" aria-controls="${escapeHtml(ids.installments)}-visible-list" aria-haspopup="listbox" aria-expanded="false" disabled>Digite o cartão para calcular</button>
+        <div class="ansend-checkout__installment-popover" data-checkout-installment-popover hidden>
+          <div id="${escapeHtml(ids.installments)}-visible-list" role="listbox" data-checkout-installment-list aria-labelledby="${escapeHtml(ids.installments)}-visible-label"></div>
+        </div>
       </div>
     </div>`;
   }
@@ -294,6 +322,68 @@
     return result;
   }
 
+  function closeInstallmentPopover() {
+    const trigger = active?.root?.querySelector("[data-checkout-installment-trigger]");
+    const popover = active?.root?.querySelector("[data-checkout-installment-popover]");
+    if (!trigger || !popover) return;
+    popover.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function syncInstallmentSelector() {
+    const provider = active?.root?.querySelector("[data-checkout-provider-installments]");
+    const trigger = active?.root?.querySelector("[data-checkout-installment-trigger]");
+    const list = active?.root?.querySelector("[data-checkout-installment-list]");
+    if (!provider || !trigger || !list) return;
+    const options = Array.from(provider.options || []).filter((option) => option.value && option.textContent.trim());
+    if (!options.length) {
+      list.innerHTML = "";
+      trigger.disabled = true;
+      trigger.textContent = "Digite o cartão para calcular";
+      closeInstallmentPopover();
+      return;
+    }
+    const selectedValue = String(provider.value || "");
+    list.innerHTML = options.map((option) => {
+      const rawLabel = option.textContent.replace(/\s+/g, " ").trim();
+      const label = formatProviderInstallmentLabel(parseProviderInstallmentLabel(rawLabel)) || rawLabel;
+      const selected = String(option.value) === selectedValue;
+      return `<button type="button" role="option" data-checkout-installment-value="${escapeHtml(option.value)}" aria-selected="${selected}">${escapeHtml(label)}</button>`;
+    }).join("");
+    const selectedOption = options.find((option) => String(option.value) === selectedValue);
+    const rawLabel = selectedOption?.textContent.replace(/\s+/g, " ").trim() || "";
+    trigger.textContent = rawLabel
+      ? (formatProviderInstallmentLabel(parseProviderInstallmentLabel(rawLabel)) || rawLabel)
+      : "Selecione as parcelas";
+    trigger.disabled = false;
+  }
+
+  function disconnectInstallmentObserver() {
+    active?.installmentObserver?.disconnect();
+    if (active) active.installmentObserver = null;
+  }
+
+  function observeInstallmentOptions() {
+    disconnectInstallmentObserver();
+    const provider = active?.root?.querySelector("[data-checkout-provider-installments]");
+    if (!provider || typeof global.MutationObserver !== "function") {
+      syncInstallmentSelector();
+      return;
+    }
+    active.installmentObserver = new global.MutationObserver(syncInstallmentSelector);
+    active.installmentObserver.observe(provider, { childList: true, subtree: true, characterData: true });
+    syncInstallmentSelector();
+  }
+
+  function selectProviderInstallment(value) {
+    const provider = active?.root?.querySelector("[data-checkout-provider-installments]");
+    if (!provider) return;
+    provider.value = value;
+    provider.dispatchEvent(new Event("change", { bubbles: true }));
+    syncInstallmentSelector();
+    closeInstallmentPopover();
+  }
+
   function initCardForm() {
     if (!active?.config?.public_key || typeof global.MercadoPago !== "function") return;
     if (active.cardForm) return;
@@ -308,12 +398,13 @@
         securityCode: { id: active.formIds.cvv, placeholder: "CVV" },
         cardholderName: { id: active.formIds.cardholderName },
         identificationNumber: { id: active.formIds.identification },
-        issuer: { id: active.formIds.issuer, placeholder: "Banco emissor" },
+        issuer: { id: active.formIds.issuer, placeholder: "Detectado pelo cartão" },
         installments: { id: active.formIds.installments },
       },
       callbacks: {
         onFormMounted(error) {
           if (error) active.root.querySelector("[data-checkout-feedback]").textContent = "Não foi possível carregar os campos seguros do cartão.";
+          else observeInstallmentOptions();
         },
         async onSubmit(event) {
           event.preventDefault();
@@ -331,8 +422,15 @@
           const fetchingInstallments = /installment|issuer|paymentMethod/i.test(String(resource || ""));
           const message = fetchingInstallments ? "Buscando parcelas disponíveis..." : "Carregando dados seguros do cartão...";
           if (active.method === "card") feedback.textContent = message;
+          const trigger = active.root.querySelector("[data-checkout-installment-trigger]");
+          if (fetchingInstallments && trigger) {
+            trigger.disabled = true;
+            trigger.textContent = "Calculando parcelas no Mercado Pago…";
+            closeInstallmentPopover();
+          }
           return () => {
             if (feedback.textContent === message) feedback.textContent = "";
+            if (fetchingInstallments) syncInstallmentSelector();
           };
         },
       },
@@ -342,11 +440,12 @@
 
   function refreshCardFormForQuote(previousTotalCents) {
     if (!active?.cardForm || Number(previousTotalCents) === Number(active.quote.totalCents)) return;
+    disconnectInstallmentObserver();
     for (const selector of ["[data-checkout-card-number]", "[data-checkout-card-expiration]", "[data-checkout-card-cvv]"]) {
       const field = active.root.querySelector(selector);
       if (field) field.replaceWith(field.cloneNode(false));
     }
-    for (const selector of ["[data-checkout-issuer]", "[data-checkout-installments]"]) {
+    for (const selector of ["[data-checkout-provider-issuer]", "[data-checkout-provider-installments]"]) {
       const select = active.root.querySelector(selector);
       if (select) select.innerHTML = selector.includes("issuer")
         ? '<option value="">Detectado pelo cartão</option>'
@@ -373,8 +472,22 @@
   function bind() {
     const root = active.root;
     root.addEventListener("click", async (event) => {
+      if (!event.target.closest(".ansend-checkout__installment-field")) closeInstallmentPopover();
       const target = event.target.closest("button, a");
       if (!target) return;
+      if (target.matches("[data-checkout-installment-trigger]")) {
+        const popover = root.querySelector("[data-checkout-installment-popover]");
+        const opening = popover.hidden;
+        popover.hidden = !opening;
+        target.setAttribute("aria-expanded", String(opening));
+        if (opening) root.querySelector('[data-checkout-installment-list] [role="option"]')?.focus();
+        return;
+      }
+      if (target.matches("[data-checkout-installment-value]")) {
+        selectProviderInstallment(target.dataset.checkoutInstallmentValue);
+        root.querySelector("[data-checkout-installment-trigger]")?.focus();
+        return;
+      }
       if (target.matches("[data-checkout-close]")) active.options.onClose?.();
       if (target.matches("[data-checkout-method]")) setPaymentMethod(target.dataset.checkoutMethod);
       if (target.matches("[data-checkout-coupon-toggle]")) root.querySelector(".ansend-checkout__coupon-form").hidden = false;
@@ -398,6 +511,47 @@
       }
       if (target.matches("[data-checkout-finish]")) active.options.onFinish?.();
     });
+    root.addEventListener("keydown", (event) => {
+      const trigger = event.target.closest("[data-checkout-installment-trigger]");
+      const option = event.target.closest("[data-checkout-installment-value]");
+      if (!trigger && !option) return;
+      const options = Array.from(root.querySelectorAll('[data-checkout-installment-list] [role="option"]'));
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeInstallmentPopover();
+        root.querySelector("[data-checkout-installment-trigger]")?.focus();
+        return;
+      }
+      if (trigger && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        trigger.click();
+        return;
+      }
+      if (trigger && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        const popover = root.querySelector("[data-checkout-installment-popover]");
+        popover.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        options[event.key === "ArrowDown" ? 0 : options.length - 1]?.focus();
+        return;
+      }
+      if (option && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        selectProviderInstallment(option.dataset.checkoutInstallmentValue);
+        root.querySelector("[data-checkout-installment-trigger]")?.focus();
+        return;
+      }
+      if (option && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        const index = options.indexOf(option);
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        options[(index + direction + options.length) % options.length]?.focus();
+      }
+    });
+    root.addEventListener("focusout", (event) => {
+      const field = event.target.closest(".ansend-checkout__installment-field");
+      if (field && !field.contains(event.relatedTarget)) closeInstallmentPopover();
+    });
     root.querySelector("form").addEventListener("submit", async (event) => {
       if (active.method === "card" && active.cardForm) return;
       event.preventDefault();
@@ -408,6 +562,7 @@
   }
 
   async function open(options) {
+    disconnectInstallmentObserver();
     const instanceId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     const formIds = checkoutFormIds(instanceId);
     const markup = renderCheckout({ ...options, instanceId });
@@ -445,7 +600,7 @@
     return active;
   }
 
-  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money };
+  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money, parseProviderInstallmentLabel, formatProviderInstallmentLabel };
   global.AnsendCheckout = api;
   if (typeof window !== "undefined") window.AnsendCheckout = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
