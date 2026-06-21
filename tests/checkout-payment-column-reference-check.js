@@ -4,6 +4,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const checkout = fs.readFileSync(path.join(root, "checkout", "checkout.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "checkout", "checkout.css"), "utf8");
+const checkoutModule = require(path.join(root, "checkout", "checkout.js"));
+const renderedCheckout = checkoutModule.renderCheckout({
+  items: [],
+  cartItems: [],
+  quote: { subtotalCents: 0, discountCents: 0, serviceFeeCents: 0, totalCents: 0 },
+});
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -43,7 +49,7 @@ for (const method of ["paypal", "apple-pay", "google-pay", "alipay"]) {
     `<(?=[^>]*\\sdata-checkout-unavailable=["']${method}["'])(?=[^>]*\\sdisabled(?:\\s|=|/?>))(?=[^>]*\\saria-disabled=["']true["'])[a-z][^>]*>`,
     "i",
   );
-  assert(unavailableMethodTag.test(checkout), `Unavailable checkout method must be disabled and aria-disabled: ${method}`);
+  assert(unavailableMethodTag.test(renderedCheckout), `Unavailable checkout method must be disabled and aria-disabled: ${method}`);
 }
 
 for (const forbidden of [

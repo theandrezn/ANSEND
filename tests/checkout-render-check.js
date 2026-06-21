@@ -11,11 +11,16 @@ const markup = checkout.renderCheckout({
 assert(markup.includes("Beat &lt;Seguro&gt;"), "User content must be escaped");
 assert(markup.includes("Pagar com cartão"), "Card method must render");
 assert(markup.includes("Pagar com Pix"), "Pix method must render");
-const paypalOpeningTag = markup.match(/<button\b[^>]*data-checkout-unavailable="paypal"[^>]*>/)?.[0] || "";
-assert(paypalOpeningTag, "Unavailable PayPal must render as a button");
-assert(/(?:^|\s)disabled(?:\s|>)/.test(paypalOpeningTag), "Unavailable PayPal must be natively disabled");
-assert(/(?:^|\s)aria-disabled="true"(?:\s|>)/.test(paypalOpeningTag), "Unavailable PayPal must be aria-disabled");
-assert(!markup.includes('data-checkout-method="paypal"'), "Unavailable PayPal must not have a payment handler");
+for (const method of ["paypal", "apple-pay", "google-pay", "alipay"]) {
+  const openingTag = markup.match(new RegExp(`<button\\b[^>]*data-checkout-unavailable=["']${method}["'][^>]*>`, "i"))?.[0] || "";
+  assert(openingTag, `Unavailable ${method} must render with its own identifier`);
+  assert(/(?:^|\s)disabled(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must be natively disabled on its opening tag`);
+  assert(/(?:^|\s)aria-disabled=["']true["'](?:\s|\/?>)/i.test(openingTag), `Unavailable ${method} must be aria-disabled on its opening tag`);
+  assert(!/(?:^|\s)data-checkout-method(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must not have a payment handler`);
+}
+const paypalOpeningTag = markup.match(/<button\b[^>]*data-checkout-unavailable=["']paypal["'][^>]*>/i)?.[0] || "";
+assert(/(?:^|\s)role=["']tab["'](?:\s|\/?>)/i.test(paypalOpeningTag), "Unavailable PayPal must retain tab semantics");
+assert(/(?:^|\s)aria-selected=["']false["'](?:\s|\/?>)/i.test(paypalOpeningTag), "Unavailable PayPal must be an unselected tab");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(!markup.includes("Endereço"), "Checkout must not request billing address");
 assert(markup.includes("Telefone"), "Pix checkout must request phone number");
