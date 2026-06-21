@@ -84,16 +84,55 @@
     </article>`;
   }
 
-  function recommendationMarkup(item) {
-    if (!item) return "";
+  function recommendationTags(item) {
+    const rawTags = Array.isArray(item.tags) ? item.tags : [item.genre, item.producer].filter(Boolean);
+    return rawTags
+      .map((tag) => String(tag || "").replace(/^#/, "").trim())
+      .filter(Boolean)
+      .slice(0, 2);
+  }
+
+  function promotedCardMarkup(item) {
+    const tags = recommendationTags(item);
+    const tagLabel = item.featured ? "Featured" : (item.sponsored ? "AD" : "CATALOGO");
+    return `<article class="ansend-checkout__promoted-card" data-checkout-recommendation="${escapeHtml(item.id)}">
+      <button type="button" class="ansend-checkout__promoted-cover" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Abrir ${escapeHtml(item.title)}">
+        <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy" decoding="async">
+        <span class="ansend-checkout__promoted-play">${icon("play")}</span>
+      </button>
+      <div class="ansend-checkout__promoted-copy">
+        <div class="ansend-checkout__promoted-title-row">
+          <span class="ansend-checkout__promoted-badge${item.featured ? " is-featured" : ""}">${escapeHtml(tagLabel)}</span>
+          <strong title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</strong>
+        </div>
+        <div class="ansend-checkout__promoted-tags">${tags.map((tag) => `<span>#${escapeHtml(tag)}</span>`).join("") || `<span>#${escapeHtml(item.description || "Beat")}</span>`}</div>
+        <div class="ansend-checkout__promoted-actions">
+          <button type="button" class="ansend-checkout__promoted-price" data-checkout-open-beat="${escapeHtml(item.id)}">${escapeHtml(item.price || "Ver licença")}</button>
+          <button type="button" class="ansend-checkout__promoted-cart" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Escolher licença de ${escapeHtml(item.title)}">${icon("shopping-cart")}</button>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function recommendationMarkup(recommendations) {
+    const items = (Array.isArray(recommendations) ? recommendations : [recommendations]).filter(Boolean).slice(0, 8);
+    if (!items.length) return "";
     return `<section class="ansend-checkout__recommendations" aria-labelledby="checkout-recommendations-title">
-      <h3 id="checkout-recommendations-title">Recomendado para você</h3>
-      <article class="ansend-checkout__recommendation" data-checkout-recommendation="${escapeHtml(item.id)}">
-        <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy">
-        <div><span>${item.sponsored ? "ANSEND ADS" : escapeHtml(item.producer || "ANSEND")}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description || "Conheça este beat")}</small></div>
-        <div class="ansend-checkout__recommendation-price">${item.originalPrice ? `<s>${escapeHtml(item.originalPrice)}</s>` : ""}<strong>${escapeHtml(item.price || "Ver licença")}</strong></div>
-        <button type="button" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Abrir ${escapeHtml(item.title)}">${icon("chevron-right")}</button>
-      </article>
+      <div class="ansend-checkout__promoted-header">
+        <h3 id="checkout-recommendations-title">Promoted</h3>
+        <div class="ansend-checkout__promoted-nav" aria-label="Navegar promovidos">
+          <button type="button" data-checkout-promoted-prev aria-label="Promovidos anteriores">${icon("chevron-left")}</button>
+          <button type="button" data-checkout-promoted-next aria-label="Próximos promovidos">${icon("chevron-right")}</button>
+        </div>
+      </div>
+      <div class="ansend-checkout__promoted-track" data-checkout-promoted-track>
+        ${items.map(promotedCardMarkup).join("")}
+      </div>
+      <aside class="ansend-checkout__promoted-banner">
+        <div class="ansend-checkout__promoted-banner-icon">${icon("megaphone")}</div>
+        <div><strong>Promote Your Music</strong><p>Reach thousands of artists looking for their next hit. Get featured in the promoted section and boost your sales instantly.</p></div>
+        <a href="#promover-beat">Get Started Now ${icon("arrow-right")}</a>
+      </aside>
     </section>`;
   }
 
@@ -161,7 +200,7 @@
               <p data-checkout-coupon-message aria-live="polite"></p>
             </div>
             ${totalsMarkup(quote)}
-            ${recommendationMarkup(options.recommendation)}
+            ${recommendationMarkup(options.recommendations || options.recommendation)}
           </div>
         </section>
         <aside class="ansend-checkout__payment">
@@ -571,6 +610,11 @@
       if (target.matches("[data-checkout-coupon-apply]")) await applyCoupon();
       if (target.matches("[data-checkout-remove]")) checkoutState.options.onRemove?.(target.dataset.checkoutRemove);
       if (target.matches("[data-checkout-open-beat]")) checkoutState.options.onOpenBeat?.(target.dataset.checkoutOpenBeat);
+      if (target.matches("[data-checkout-promoted-prev], [data-checkout-promoted-next]")) {
+        const track = root.querySelector("[data-checkout-promoted-track]");
+        const direction = target.matches("[data-checkout-promoted-prev]") ? -1 : 1;
+        if (track) track.scrollBy({ left: direction * Math.max(180, track.clientWidth * 0.82), behavior: "smooth" });
+      }
       if (target.matches("[data-checkout-copy-pix]")) {
         const code = root.querySelector("[data-checkout-pix-code]")?.value || "";
         if (code) await navigator.clipboard.writeText(code);

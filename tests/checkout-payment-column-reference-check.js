@@ -28,6 +28,11 @@ for (const label of [
 ]) assert(checkout.includes(`>${label}<`), `Checkout payment field must expose the visible label: ${label}`);
 
 assert(!checkout.includes(">Banco emissor<"), "Checkout must not expose a visible issuer selector");
+assert(checkout.includes("ansend-checkout__promoted-track"), "Checkout must render the promoted carousel track");
+assert(checkout.includes("ansend-checkout__promoted-card"), "Checkout must render promoted cards");
+assert(checkout.includes("Promote Your Music"), "Checkout must render the promoted CTA banner");
+assert(checkout.includes("data-checkout-promoted-next"), "Checkout must include promoted carousel navigation");
+assert(!checkout.includes("Recomendado para você"), "Checkout must not render the legacy recommendation heading");
 
 for (const marker of [
   "data-checkout-card-number",
@@ -69,6 +74,9 @@ assert(/\.ansend-checkout__payment\s*\{[^}]*align-items:\s*center;[^}]*justify-c
 assert(/\.ansend-checkout__form,\s*\.ansend-checkout__result\s*\{[^}]*max-width:\s*360px;[^}]*flex:\s*0 1 360px;/s.test(css), "Payment form must use the 360px reference width");
 assert(/\.ansend-checkout__tabs\s*\{[^}]*min-height:\s*40px;/s.test(css), "Payment tabs must match the 40px reference control");
 assert(/\.ansend-checkout__methods button\s*\{[^}]*min-height:\s*58px;/s.test(css), "Payment method cards must match the 58px reference control");
+assert(/\.ansend-checkout__promoted-track\s*\{[^}]*scroll-snap-type:\s*x mandatory;/s.test(css), "Promoted checkout carousel must use horizontal scroll snap");
+assert(/\.ansend-checkout__promoted-card\s*\{[^}]*flex:\s*0 0 clamp\(150px, 20vw, 190px\);/s.test(css), "Promoted cards must use compact marketplace card sizing");
+assert(/\.ansend-checkout__promoted-banner\s*\{[^}]*grid-template-columns:\s*48px minmax\(0,1fr\) auto;/s.test(css), "Promoted CTA banner must match the reference layout");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__tabs[^{}]*\{[^}]*min-height:\s*46px;/s.test(css), "Payment tabs must not retain a legacy 46px override");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__methods button[^{}]*\{[^}]*min-height:\s*68px;/s.test(css), "Payment method cards must not retain a legacy 68px override");
 assert(/\.ansend-checkout__field input[^}]*height:\s*42px;/s.test(css), "Payment inputs must keep the compact 42px height");

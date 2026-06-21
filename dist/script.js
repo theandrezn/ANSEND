@@ -18045,6 +18045,37 @@ function checkoutRecommendationViewModel() {
   return item ? { id: item.id, title: item.title, producer: item.producer, cover: item.cover, price: item.price, description: "Licença disponível", sponsored: false } : null;
 }
 
+function checkoutRecommendationsViewModel(limit = 8) {
+  const ads = (appState.cartPromotedAds.items || []).slice(0, limit).map((ad, index) => ({
+    id: ad.beatId,
+    adId: ad.adId,
+    title: ad.beatTitle,
+    producer: ad.producerName,
+    cover: ad.coverUrl,
+    price: ad.price,
+    description: ad.licenseName,
+    sponsored: ad.source === "promoted",
+    featured: index === 4 && ad.source === "promoted",
+    genre: ad.genre,
+    tags: [ad.producerName, ad.genre].filter(Boolean),
+  }));
+  if (ads.length) return ads;
+  return preferredBeats(limit + 3)
+    .filter((beat) => !cartBeatIdSet().has(String(beat.id)))
+    .slice(0, limit)
+    .map((beat) => ({
+      id: beat.id,
+      title: beat.title,
+      producer: beat.producer,
+      cover: beat.cover,
+      price: beat.price,
+      description: "Licença disponível",
+      sponsored: false,
+      genre: beat.genre || beat.tags?.[0] || "",
+      tags: [beat.producer, beat.genre || beat.tags?.[0]].filter(Boolean),
+    }));
+}
+
 async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefillEmail, isCart, mountTarget = null, sourceRoute = "" }) {
   if (!window.AnsendCheckout) {
     showToast("O checkout seguro nao foi carregado.", "alert-triangle");
@@ -18071,6 +18102,7 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
     pageMode: Boolean(mountTarget),
     accessToken,
     recommendation: checkoutRecommendationViewModel(),
+    recommendations: checkoutRecommendationsViewModel(),
     openModal: mountTarget ? null : openModal,
     refreshIcons: () => lucide.createIcons(),
     onClose: () => {

@@ -21,7 +21,13 @@ async function render(viewport, output) {
         { beatId: "2", cartId: "2::exclusive", title: "ULTIMO VOO - Exclusive Beat", producer: "ANSEND Studios", licenseName: "Licenca Exclusiva", formats: "MP3, WAV, Stems", cover, priceCents: 34990, removable: true },
       ],
       quote: { subtotalCents: 54980, serviceFeeCents: 6598, discountCents: 0, totalCents: 61578 },
-      recommendation: { id: "3", title: "Horizonte Azul", producer: "Beatmaker ANSEND", description: "Licenca Premium", price: "R$ 149,90", originalPrice: "R$ 199,90", cover, sponsored: true },
+      recommendations: [
+        { id: "3", title: "Certified | Benny The Butcher Type", producer: "BennyTheButcher", description: "Licenca Premium", price: "R$ 34,99", cover, sponsored: true, tags: ["BennyTheButcher", "OldSchool"] },
+        { id: "4", title: "Last Witness | Millyz x Leaf Ward", producer: "Millyz", description: "Licenca Premium", price: "R$ 34,99", cover, sponsored: true, tags: ["Millyz", "Trap"] },
+        { id: "5", title: "Location | Jadakiss x Meek Mill", producer: "Philly", description: "Licenca Premium", price: "R$ 30,00", cover, sponsored: true, tags: ["Philly", "NewYork"] },
+        { id: "6", title: "Flashbacks | Meek Mill x Millyz", producer: "MeekMill", description: "Licenca Premium", price: "R$ 34,99", cover, sponsored: true, tags: ["MeekMill", "HipHop"] },
+        { id: "7", title: "Sad Beat Type - Loved a liar", producer: "Sad", description: "Licenca Premium", price: "R$ 250,00", cover, sponsored: true, featured: true, tags: ["Sad", "Melodic"] },
+      ],
     }).replaceAll('src="assets/payment/pix-user.png"', `src="${pix}"`);
   }, { cover, pix });
   await page.screenshot({ path: path.join(root, output), fullPage: true });
