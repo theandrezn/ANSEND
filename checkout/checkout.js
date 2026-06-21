@@ -327,17 +327,17 @@
 
   function removeInstallmentOutsideListener(checkoutState = active) {
     if (!checkoutState?.installmentOutsidePointerHandler) return;
-    document.removeEventListener("pointerdown", checkoutState.installmentOutsidePointerHandler);
+    if (typeof document !== "undefined") document.removeEventListener("pointerdown", checkoutState.installmentOutsidePointerHandler);
     checkoutState.installmentOutsidePointerHandler = null;
   }
 
   function closeInstallmentPopover(checkoutState = active) {
+    removeInstallmentOutsideListener(checkoutState);
     const trigger = checkoutState?.root?.querySelector("[data-checkout-installment-trigger]");
     const popover = checkoutState?.root?.querySelector("[data-checkout-installment-popover]");
     if (!trigger || !popover) return;
     popover.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    removeInstallmentOutsideListener(checkoutState);
   }
 
   function setActiveInstallmentOption(option, checkoutState = active) {
