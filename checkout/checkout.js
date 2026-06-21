@@ -33,6 +33,14 @@
     </article>`;
   }
 
+  function sideItemMarkup(item) {
+    return `<article class="ansend-checkout__side-item">
+      <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy">
+      <div><strong title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</strong><span>${escapeHtml(item.licenseName || "Licença")} · ${escapeHtml(item.formats || "WAV")}</span></div>
+      <b>${money(item.priceCents)}</b>
+    </article>`;
+  }
+
   function recommendationMarkup(item) {
     if (!item) return "";
     return `<section class="ansend-checkout__recommendations" aria-labelledby="checkout-recommendations-title">
@@ -56,9 +64,9 @@
   }
 
   function cardFieldsMarkup() {
-    return `<div class="ansend-checkout__method-panel" data-checkout-panel="card">
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
       <label class="ansend-checkout__field"><span>E-mail</span><input id="checkout-email" name="buyer_email" type="email" autocomplete="email" required></label>
-      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="checkout-card-number" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
+      <label class="ansend-checkout__field is-full"><span>Número do cartão</span><div id="checkout-card-number" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
       <div class="ansend-checkout__field-pair">
         <label class="ansend-checkout__field"><span>Validade</span><div id="checkout-card-expiration" class="ansend-checkout__secure-field" aria-label="Data de validade"></div></label>
         <label class="ansend-checkout__field"><span>Código de segurança</span><div id="checkout-card-cvv" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
@@ -78,7 +86,7 @@
   }
 
   function pixFieldsMarkup() {
-    return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix" hidden>
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix">
       <label class="ansend-checkout__field"><span>E-mail</span><input name="pix_email" type="email" autocomplete="email" required></label>
       <label class="ansend-checkout__field"><span>Nome completo</span><input name="pix_name" autocomplete="name" required></label>
       <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input name="pix_identification" inputmode="numeric" autocomplete="off" required></label>
@@ -89,38 +97,50 @@
   function renderCheckout(options) {
     const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
     const items = Array.isArray(options.items) ? options.items : [];
-    return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="card" role="dialog" aria-modal="true" aria-label="Checkout ANSEND">
+    const firstItem = items[0];
+    return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="pix" role="dialog" aria-modal="true" aria-label="Checkout ANSEND">
       <div class="ansend-checkout__shell">
-        <section class="ansend-checkout__order">
-          <header class="ansend-checkout__breadcrumb"><button type="button" data-checkout-close aria-label="Fechar checkout">${icon("x")}</button><span>Carrinho</span><b>/</b><strong>Checkout</strong></header>
-          <div class="ansend-checkout__order-content">
-            <h2>Resumo do pedido <span>${items.length} ${items.length === 1 ? "item" : "itens"}</span></h2>
-            <div class="ansend-checkout__items">${items.length ? items.map(itemMarkup).join("") : `<div class="ansend-checkout__empty">Seu carrinho está vazio.</div>`}</div>
-            <div class="ansend-checkout__coupon" data-checkout-coupon-card>
-              <div class="ansend-checkout__coupon-icon">${icon("ticket-percent")}</div><div><strong>Cupom de desconto</strong><span>Economize com um código válido</span></div>
-              <button type="button" data-checkout-coupon-toggle>${icon("ticket")}<span>Adicionar código</span></button>
-              <div class="ansend-checkout__coupon-form" hidden><label><span class="sr-only">Código do cupom</span><input name="coupon_code" placeholder="Digite seu código" autocomplete="off"></label><button type="button" data-checkout-coupon-apply>Aplicar</button></div>
-              <p data-checkout-coupon-message aria-live="polite"></p>
-            </div>
-            ${totalsMarkup(quote)}
-            ${recommendationMarkup(options.recommendation)}
-          </div>
-        </section>
-        <aside class="ansend-checkout__payment">
-          <form id="ansend-card-form" class="ansend-checkout__form" novalidate>
-            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" class="is-active" data-checkout-method="card" role="tab" aria-selected="true">Pagar com cartão</button><button type="button" data-checkout-method="pix" role="tab" aria-selected="false">Pagar com Pix</button></div>
-            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" class="is-active" data-checkout-method="card" aria-pressed="true">${icon("credit-card")}<span>Cartão</span></button><button type="button" data-checkout-method="pix" aria-pressed="false"><img src="assets/payment/pix.svg" alt=""><span>Pix</span></button></div>
-            <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
-            ${cardFieldsMarkup()}
-            ${pixFieldsMarkup()}
-            <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
-            <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
-            ${totalsMarkup(quote, true)}
-            <button type="submit" class="ansend-checkout__pay" data-checkout-submit><span data-checkout-submit-label>Pagar ${money(quote.totalCents)}</span>${icon("lock-keyhole")}</button>
-            <footer><span>Pagamento seguro via Mercado Pago</span><b>·</b><a href="#">Termos</a><b>·</b><a href="#">Privacidade</a></footer>
-          </form>
-          <section class="ansend-checkout__result" data-checkout-result hidden aria-live="polite"></section>
-        </aside>
+        <header class="ansend-checkout__topbar">
+          <div><strong>ANSEND</strong><span>Checkout seguro</span></div>
+          <div class="ansend-checkout__top-actions"><span>${icon("lock-keyhole")} Pagamento protegido</span><button type="button" data-checkout-close aria-label="Fechar checkout">${icon("x")}</button></div>
+        </header>
+        <form id="ansend-card-form" class="ansend-checkout__form" novalidate>
+          <main class="ansend-checkout__layout">
+            <section class="ansend-checkout__main">
+              <header class="ansend-checkout__headline"><h2>Finalizar compra</h2><p>Revise seu pedido, escolha o pagamento e conclua sua compra.</p></header>
+              <div class="ansend-checkout__info-strip"><span>Informações sobre faturamento e licenciamento</span><button type="button">${icon("plus")} Adicionar informações</button></div>
+              <section class="ansend-checkout__items" aria-label="Produtos do carrinho">${items.length ? items.map(itemMarkup).join("") : `<div class="ansend-checkout__empty">Seu carrinho está vazio.</div>`}</section>
+              <section class="ansend-checkout__payment-block" aria-labelledby="checkout-payment-title">
+                <div class="ansend-checkout__section-heading"><h3 id="checkout-payment-title">Forma de pagamento</h3><span data-checkout-selected-note>Pix selecionado</span></div>
+                <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pix</button></div>
+                <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<strong>Cartão</strong><small>Crédito</small></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img src="assets/payment/pix.svg" alt=""><strong>Pix</strong><small>Instantâneo</small></button></div>
+                <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro via Mercado Pago</span></div>
+              </section>
+              <section class="ansend-checkout__buyer-block" aria-labelledby="checkout-buyer-title">
+                <h3 id="checkout-buyer-title">Dados do comprador</h3>
+                ${cardFieldsMarkup()}
+                ${pixFieldsMarkup()}
+                <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
+                <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
+              </section>
+            </section>
+            <aside class="ansend-checkout__summary" aria-label="Resumo do pagamento">
+              ${firstItem ? `<div class="ansend-checkout__side-items">${sideItemMarkup(firstItem)}</div>` : ""}
+              <div class="ansend-checkout__coupon" data-checkout-coupon-card>
+                <div class="ansend-checkout__coupon-title">${icon("tag")}<span>Cupom</span></div>
+                <div class="ansend-checkout__coupon-row"><label><span class="sr-only">Código do cupom</span><input name="coupon_code" placeholder="Digite seu código" autocomplete="off"></label><button type="button" data-checkout-coupon-apply>Aplicar</button></div>
+                <button type="button" data-checkout-coupon-toggle hidden>Adicionar código</button>
+                <div class="ansend-checkout__coupon-form" hidden></div>
+                <p data-checkout-coupon-message aria-live="polite"></p>
+              </div>
+              <div class="ansend-checkout__processor"><img src="assets/payment/pix.svg" alt="" loading="lazy"><span>A confirmação acontece antes da liberação dos arquivos.</span></div>
+              ${totalsMarkup(quote)}
+              <button type="submit" class="ansend-checkout__pay" data-checkout-submit><span data-checkout-submit-label>Pagar ${money(quote.totalCents)}</span>${icon("lock-keyhole")}</button>
+              <footer><span>Pagamento seguro via Mercado Pago</span><b>·</b><a href="#">Termos</a><b>·</b><a href="#">Privacidade</a></footer>
+            </aside>
+          </main>
+        </form>
+        <section class="ansend-checkout__result" data-checkout-result hidden aria-live="polite"></section>
       </div>
     </section>`;
   }
@@ -202,6 +222,7 @@
       button.setAttribute(button.getAttribute("role") === "tab" ? "aria-selected" : "aria-pressed", String(selected));
     });
     active.root.querySelectorAll("[data-checkout-panel]").forEach((panel) => { panel.hidden = panel.dataset.checkoutPanel !== method; });
+    active.root.querySelectorAll("[data-checkout-selected-note]").forEach((el) => { el.textContent = method === "pix" ? "Pix selecionado" : "Cartão selecionado"; });
     updateQuote(active.quote);
   }
 
@@ -342,7 +363,7 @@
     options.openModal(markup);
     const root = document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
-    active = { root, options, method: "card", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
+    active = { root, options, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
     root.querySelector('#checkout-email').value = options.prefillEmail || "";
     root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
     root.querySelector('[name="pix_name"]').value = options.prefillName || "";

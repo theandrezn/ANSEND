@@ -9,8 +9,8 @@ const markup = checkout.renderCheckout({
 });
 
 assert(markup.includes("Beat &lt;Seguro&gt;"), "User content must be escaped");
-assert(markup.includes("Pagar com cartão"), "Card method must render");
-assert(markup.includes("Pagar com Pix"), "Pix method must render");
+assert(markup.includes("Cartão"), "Card method must render");
+assert(markup.includes("Pix"), "Pix method must render");
 assert(!markup.includes("PayPal"), "Unavailable PayPal must not render");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(markup.includes('aria-live="polite"'), "Payment feedback must be announced");

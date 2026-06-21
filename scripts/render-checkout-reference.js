@@ -27,8 +27,11 @@ async function render(viewport, output) {
   await page.screenshot({ path: path.join(root, output), fullPage: true });
   const metrics = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    shellColumns: getComputedStyle(document.querySelector(".ansend-checkout__shell")).gridTemplateColumns,
+    layoutColumns: getComputedStyle(document.querySelector(".ansend-checkout__layout")).gridTemplateColumns,
     shellWidth: document.querySelector(".ansend-checkout__shell").getBoundingClientRect().width,
+    layoutWidth: document.querySelector(".ansend-checkout__layout").getBoundingClientRect().width,
+    mainWidth: document.querySelector(".ansend-checkout__main").getBoundingClientRect().width,
+    summaryWidth: document.querySelector(".ansend-checkout__summary").getBoundingClientRect().width,
     formWidth: document.querySelector(".ansend-checkout__form").getBoundingClientRect().width,
     focusable: document.querySelectorAll("button, input, select, textarea, a[href]").length,
   }));
@@ -47,10 +50,11 @@ async function render(viewport, output) {
   const desktop = results[1440];
   const mobile = results[390];
   if (Object.values(results).some((result) => result.overflow)) throw new Error(`Checkout has horizontal overflow: ${JSON.stringify(results)}`);
-  if (!/\S+px \S+px/.test(desktop.shellColumns)) throw new Error("Desktop checkout is not split into two columns");
-  if (desktop.shellWidth < 1320 || desktop.shellWidth > 1680.5) throw new Error(`Desktop shell width is not using the viewport proportionally: ${JSON.stringify(desktop)}`);
-  if (results[1920].shellWidth < 1650 || results[2560].shellWidth > 1680.5) throw new Error(`Wide desktop shell width is outside the premium fullscreen contract: ${JSON.stringify(results)}`);
-  if (results[1366].formWidth < 480 || desktop.formWidth < 520 || results[1920].formWidth < 580 || mobile.formWidth < 330) throw new Error(`Checkout form is compressed: ${JSON.stringify({ narrow: results[1366], desktop, wide: results[1920], mobile })}`);
+  if (!/\S+px \S+px/.test(desktop.layoutColumns)) throw new Error("Desktop ANSEND checkout must keep main content plus side summary");
+  if (desktop.layoutWidth < 860 || desktop.layoutWidth > 940) throw new Error(`Desktop layout width drifted away from ANSEND reference: ${JSON.stringify(desktop)}`);
+  if (desktop.mainWidth < 560 || desktop.summaryWidth < 260) throw new Error(`Desktop columns are compressed: ${JSON.stringify(desktop)}`);
+  if (results[1024].layoutWidth < 860 || results[1920].layoutWidth > 940 || results[2560].shellWidth > 1565) throw new Error(`Wide/narrow shell is outside ANSEND reference contract: ${JSON.stringify(results)}`);
+  if (mobile.layoutWidth < 360 || mobile.summaryWidth < 360) throw new Error(`Mobile checkout is compressed: ${JSON.stringify(mobile)}`);
   if (desktop.focusable < 12) throw new Error("Checkout controls were not rendered");
   console.log(JSON.stringify(results, null, 2));
 })().catch((error) => {
