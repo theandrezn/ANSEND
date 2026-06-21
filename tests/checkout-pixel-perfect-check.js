@@ -41,7 +41,7 @@ for (const marker of [
   "--checkout-left-bg: #060707",
   "--checkout-right-bg: #111314",
   "width: 100vw; max-width: none; min-height: 100dvh",
-  "grid-template-columns: minmax(0, 1.35fr) minmax(520px, 1fr)",
+  "grid-template-columns: minmax(0, 56%) minmax(0, 44%)",
   "border-radius: 0",
   "background-image: none",
   "max-width: 620px",
