@@ -29,6 +29,8 @@ for (const marker of [
   "MutationObserver",
   "syncInstallmentSelector",
   "disconnectInstallmentObserver",
+  "teardownActiveCheckout",
+  "installmentOutsidePointerHandler",
   "data-checkout-provider-issuer",
   "data-checkout-provider-installments",
   'dispatchEvent(new Event("change", { bubbles: true }))',
@@ -40,7 +42,7 @@ assert(!source.includes(">Banco emissor<"), "issuer selection must not be visibl
 assert(source.includes("data-checkout-provider-issuer"), "provider issuer select must remain mounted");
 
 assert(
-  /function syncInstallmentSelector\(\)[\s\S]*active\?\.installmentFetchCount > 0[\s\S]*Calculando parcelas no Mercado Pago…[\s\S]*return;/.test(source),
+  /function syncInstallmentSelector\(checkoutState = active\)[\s\S]*checkoutState\?\.installmentFetchCount > 0[\s\S]*Calculando parcelas no Mercado Pago…[\s\S]*return;/.test(source),
   "selector sync must preserve the loading state while provider fetches overlap",
 );
 assert(
@@ -50,6 +52,14 @@ assert(
 assert(
   /checkoutState\.installmentFetchCount = Math\.max\(0, checkoutState\.installmentFetchCount - 1\)/.test(source),
   "provider fetching completion must safely decrement the installment fetch counter",
+);
+assert(
+  /onFormMounted\(error\) \{[\s\S]*if \(active !== checkoutState\) return;[\s\S]*observeInstallmentOptions\(checkoutState\)/.test(source),
+  "CardForm mounted callback must ignore stale checkout instances and observe the captured checkout",
+);
+assert(
+  /onSubmit\(event\) \{[\s\S]*if \(active !== checkoutState\) return;[\s\S]*checkoutState\.cardForm\.getCardFormData\(\)/.test(source),
+  "CardForm submit callback must ignore stale checkout instances and read the captured CardForm",
 );
 
 console.log("mercado-pago-installment-selector-check: ok");
