@@ -72,28 +72,48 @@
 
   function cardFieldsMarkup(ids) {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
-      <label class="ansend-checkout__field"><span>E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" required></label>
-      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
-      <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>Validade</span><div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Data de validade"></div></label>
-        <label class="ansend-checkout__field"><span>Código de segurança</span><div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
+      <label class="ansend-checkout__field"><span class="sr-only">E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
+      
+      <div class="ansend-checkout__field">
+        <span class="sr-only">Informações do cartão</span>
+        <div class="ansend-checkout__group">
+          <div class="ansend-checkout__field-wrapper">
+            <div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div>
+            <div class="ansend-checkout__card-brands"><img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo"><img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo"><img src="assets/payment/stripe.svg" alt="Stripe" class="ansend-checkout__brand-logo"></div>
+          </div>
+          <div class="ansend-checkout__field-row">
+            <div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Data de validade"></div>
+            <div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div>
+          </div>
+          <input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" placeholder="Nome no cartão" autocomplete="cc-name" required>
+        </div>
       </div>
-      <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" autocomplete="cc-name" required></label>
-      <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" inputmode="numeric" autocomplete="off" required></label>
-      <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>Banco emissor</span><select id="${escapeHtml(ids.issuer)}" name="issuer" data-checkout-issuer><option value="">Detectado pelo cartão</option></select></label>
-        <label class="ansend-checkout__field"><span>Parcelas</span><select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-installments required><option value="">Selecione</option></select></label>
+      <div class="ansend-checkout__field">
+        <span class="sr-only">Informações do titular e parcelamento</span>
+        <div class="ansend-checkout__group">
+          <div class="ansend-checkout__field-row">
+            <input id="${escapeHtml(ids.identification)}" name="identification_number" placeholder="CPF/CNPJ" inputmode="numeric" autocomplete="off" required>
+            <select id="${escapeHtml(ids.issuer)}" name="issuer" data-checkout-issuer><option value="">Banco emissor</option></select>
+          </div>
+          <select id="${escapeHtml(ids.installments)}" name="installments" data-checkout-installments required><option value="">Parcelas</option></select>
+        </div>
       </div>
     </div>`;
   }
 
   function pixFieldsMarkup() {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="pix">
-      <label class="ansend-checkout__field"><span>E-mail</span><input name="pix_email" type="email" autocomplete="email" required></label>
-      <label class="ansend-checkout__field"><span>Nome completo</span><input name="pix_name" autocomplete="name" required></label>
-      <div class="ansend-checkout__field-pair">
-        <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input name="pix_identification" inputmode="numeric" autocomplete="off" required></label>
-        <label class="ansend-checkout__field"><span>Telefone</span><input name="pix_phone" inputmode="tel" autocomplete="tel" placeholder="DDD + número" required></label>
+      <label class="ansend-checkout__field"><span class="sr-only">E-mail</span><input name="pix_email" type="email" autocomplete="email" placeholder="E-mail" required></label>
+      
+      <div class="ansend-checkout__field">
+        <span class="sr-only">Informações do titular</span>
+        <div class="ansend-checkout__group">
+          <input name="pix_name" placeholder="Nome completo" autocomplete="name" required>
+          <div class="ansend-checkout__field-row">
+            <input name="pix_identification" placeholder="CPF/CNPJ" inputmode="numeric" autocomplete="off" required>
+            <input name="pix_phone" placeholder="Telefone" inputmode="tel" autocomplete="tel" required>
+          </div>
+        </div>
       </div>
       <div class="ansend-checkout__pix-intro"><img class="ansend-checkout__pix-brand" src="assets/payment/pix-user.png" alt="Pix"><div><strong>Pagamento instantâneo</strong><span>O QR Code será exibido aqui sem sair do checkout.</span></div></div>
     </div>`;
