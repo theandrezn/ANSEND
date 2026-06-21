@@ -66,12 +66,14 @@ for (const forbidden of [
 ]) assert(!checkout.includes(forbidden), `Unavailable or unnecessary checkout field is rendered: ${forbidden}`);
 
 assert(/\.ansend-checkout__payment\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s.test(css), "Payment column must center the compact form");
-assert(/\.ansend-checkout__form,\s*\.ansend-checkout__result\s*\{[^}]*max-width:\s*380px;[^}]*flex:\s*0 1 380px;/s.test(css), "Payment form must use the 380px reference width");
+assert(/\.ansend-checkout__form,\s*\.ansend-checkout__result\s*\{[^}]*max-width:\s*360px;[^}]*flex:\s*0 1 360px;/s.test(css), "Payment form must use the 360px reference width");
 assert(/\.ansend-checkout__tabs\s*\{[^}]*min-height:\s*40px;/s.test(css), "Payment tabs must match the 40px reference control");
 assert(/\.ansend-checkout__methods button\s*\{[^}]*min-height:\s*58px;/s.test(css), "Payment method cards must match the 58px reference control");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__tabs[^{}]*\{[^}]*min-height:\s*46px;/s.test(css), "Payment tabs must not retain a legacy 46px override");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__methods button[^{}]*\{[^}]*min-height:\s*68px;/s.test(css), "Payment method cards must not retain a legacy 68px override");
 assert(/\.ansend-checkout__field input[^}]*height:\s*42px;/s.test(css), "Payment inputs must keep the compact 42px height");
+assert(/\.ansend-checkout__pay,\s*\.ansend-checkout__secondary\s*\{[^}]*height:\s*42px;/s.test(css), "Payment CTA must match the compact 42px reference height");
+assert(!/(?:^|})[^{}]*\.ansend-checkout__pay,\s*\.ansend-checkout__secondary[^{}]*\{[^}]*height:\s*46px;/s.test(css), "Payment CTA must not retain the oversized 46px height");
 assert(!/zoom\s*:/.test(css), "Checkout CSS must not use zoom");
 assert(!/transform\s*:\s*scale/i.test(css), "Checkout CSS must not use transform scale");
 
