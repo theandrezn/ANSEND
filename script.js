@@ -12287,8 +12287,17 @@ function checkoutLoadingRouteMarkup() {
   `;
 }
 
+function checkoutCartItemIsPayable(item = {}) {
+  return isUuid(item.beat_id) && /^[a-zA-Z0-9_-]{1,80}$/.test(String(item.license_id || item.license_key || "").trim());
+}
+
+function checkoutPayloadIsPayable(cartItems = []) {
+  return Array.isArray(cartItems) && cartItems.length > 0 && cartItems.every(checkoutCartItemIsPayable);
+}
+
 async function checkoutModelFromDirectSelection(beatId, licenseId) {
   if (!beatId || !licenseId) return null;
+  if (!isUuid(beatId)) throw new Error("Este item precisa ser reaberto no catálogo para recuperar o ID de pagamento.");
   const item = findBeat(beatId);
   if (!item) throw new Error("Beat não encontrado.");
   const licenses = await fetchBeatLicenses(beatId);
@@ -12300,6 +12309,9 @@ async function checkoutModelFromDirectSelection(beatId, licenseId) {
   const serviceFeeCents = Math.round(subtotalCents * 0.12);
   const totalCents = subtotalCents + serviceFeeCents;
   const licenseIdForProvider = selectedLicense.id || licenseId;
+
+  const cartItems = [{ beat_id: item.id, license_id: licenseIdForProvider }];
+  if (!checkoutPayloadIsPayable(cartItems)) throw new Error("Licença inválida para pagamento. Selecione novamente a licença do beat.");
 
   return {
     isCart: false,
@@ -12315,7 +12327,7 @@ async function checkoutModelFromDirectSelection(beatId, licenseId) {
       licenseId: licenseIdForProvider,
       removable: false,
     }],
-    cartItems: [{ beat_id: item.id, license_id: licenseIdForProvider }],
+    cartItems,
     quote: { subtotalCents, serviceFeeCents, discountCents: 0, totalCents },
   };
 }
@@ -12330,6 +12342,14 @@ async function checkoutModelFromCart() {
   } = await calculateCartPrices();
 
   if (!items.length) return null;
+
+  const cartItems = items.map((item) => ({
+    beat_id: item.beat.id,
+    license_id: item.licenseId,
+  }));
+  if (!checkoutPayloadIsPayable(cartItems)) {
+    throw new Error("Há itens antigos ou sem licença válida no carrinho. Remova o item e adicione novamente pelo catálogo.");
+  }
 
   return {
     isCart: true,
@@ -12346,10 +12366,7 @@ async function checkoutModelFromCart() {
       cartId: item.cartId,
       removable: true,
     })),
-    cartItems: items.map((item) => ({
-      beat_id: item.beat.id,
-      license_id: item.licenseId,
-    })),
+    cartItems,
     quote: { subtotalCents, serviceFeeCents, discountCents: totalDiscountsCents, totalCents },
   };
 }
