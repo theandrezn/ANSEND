@@ -52,6 +52,7 @@ async function render(viewport, output) {
       document.querySelector("[data-ansend-checkout]").dataset.checkoutMethod = "pix";
       document.querySelector("[data-checkout-submit-label]").textContent = "Gerar Pix de R$ 615,78";
     });
+    await page.screenshot({ path: path.join(root, "tests", "checkout-payment-pix-1920.png"), fullPage: false });
   }
   const metrics = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
