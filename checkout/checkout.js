@@ -335,6 +335,12 @@
     const trigger = active?.root?.querySelector("[data-checkout-installment-trigger]");
     const list = active?.root?.querySelector("[data-checkout-installment-list]");
     if (!provider || !trigger || !list) return;
+    if (active?.installmentFetchCount > 0) {
+      trigger.disabled = true;
+      trigger.textContent = "Calculando parcelas no Mercado Pago…";
+      closeInstallmentPopover();
+      return;
+    }
     const options = Array.from(provider.options || []).filter((option) => option.value && option.textContent.trim());
     if (!options.length) {
       list.innerHTML = "";
@@ -387,6 +393,7 @@
   function initCardForm() {
     if (!active?.config?.public_key || typeof global.MercadoPago !== "function") return;
     if (active.cardForm) return;
+    const checkoutState = active;
     const mp = new global.MercadoPago(active.config.public_key, { locale: "pt-BR" });
     active.cardForm = mp.cardForm({
       amount: String((active.quote.totalCents / 100).toFixed(2)),
@@ -418,19 +425,27 @@
           }
         },
         onFetching(resource) {
-          const feedback = active.root.querySelector("[data-checkout-feedback]");
+          if (active !== checkoutState) return () => {};
+          const feedback = checkoutState.root.querySelector("[data-checkout-feedback]");
           const fetchingInstallments = /installment|issuer|paymentMethod/i.test(String(resource || ""));
+          if (fetchingInstallments) checkoutState.installmentFetchCount += 1;
           const message = fetchingInstallments ? "Buscando parcelas disponíveis..." : "Carregando dados seguros do cartão...";
-          if (active.method === "card") feedback.textContent = message;
-          const trigger = active.root.querySelector("[data-checkout-installment-trigger]");
+          if (checkoutState.method === "card") feedback.textContent = message;
+          const trigger = checkoutState.root.querySelector("[data-checkout-installment-trigger]");
           if (fetchingInstallments && trigger) {
             trigger.disabled = true;
             trigger.textContent = "Calculando parcelas no Mercado Pago…";
             closeInstallmentPopover();
           }
+          let completed = false;
           return () => {
+            if (completed) return;
+            completed = true;
             if (feedback.textContent === message) feedback.textContent = "";
-            if (fetchingInstallments) syncInstallmentSelector();
+            if (fetchingInstallments) {
+              checkoutState.installmentFetchCount = Math.max(0, checkoutState.installmentFetchCount - 1);
+              if (active === checkoutState && checkoutState.installmentFetchCount === 0) syncInstallmentSelector();
+            }
           };
         },
       },
@@ -575,7 +590,7 @@
     }
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
-    active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, cardFormAmountCents: 0 };
+    active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, cardFormAmountCents: 0, installmentFetchCount: 0 };
     root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
     root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
     root.querySelector('[name="pix_name"]').value = options.prefillName || "";

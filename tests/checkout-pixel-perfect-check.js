@@ -32,7 +32,7 @@ for (const marker of [
   "data-checkout-method=\"pix\"",
   "data-checkout-card-number",
   "data-checkout-card-cvv",
-  "data-checkout-installments",
+  "data-checkout-provider-installments",
   "checkoutFormIds",
   "data-checkout-card-expiration",
   "assets/payment/pix-user.png",

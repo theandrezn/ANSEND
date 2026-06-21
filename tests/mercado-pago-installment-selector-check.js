@@ -39,4 +39,17 @@ for (const marker of [
 assert(!source.includes(">Banco emissor<"), "issuer selection must not be visible");
 assert(source.includes("data-checkout-provider-issuer"), "provider issuer select must remain mounted");
 
+assert(
+  /function syncInstallmentSelector\(\)[\s\S]*active\?\.installmentFetchCount > 0[\s\S]*Calculando parcelas no Mercado Pago…[\s\S]*return;/.test(source),
+  "selector sync must preserve the loading state while provider fetches overlap",
+);
+assert(
+  /if \(fetchingInstallments\) checkoutState\.installmentFetchCount \+= 1;/.test(source),
+  "provider fetching must increment the installment fetch counter",
+);
+assert(
+  /checkoutState\.installmentFetchCount = Math\.max\(0, checkoutState\.installmentFetchCount - 1\)/.test(source),
+  "provider fetching completion must safely decrement the installment fetch counter",
+);
+
 console.log("mercado-pago-installment-selector-check: ok");
