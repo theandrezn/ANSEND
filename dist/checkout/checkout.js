@@ -72,7 +72,7 @@
   function cardFieldsMarkup(ids) {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
       <label class="ansend-checkout__field"><span>E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" required></label>
-      <label class="ansend-checkout__field"><span>Número do cartão</span><div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div></label>
+      <label class="ansend-checkout__field"><span>Número do cartão</span><div class="ansend-checkout__input-wrapper"><div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div><div class="ansend-checkout__card-brands"><img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo"><img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo"><img src="assets/payment/stripe.svg" alt="Stripe" class="ansend-checkout__brand-logo"></div></div></label>
       <div class="ansend-checkout__field-pair">
         <label class="ansend-checkout__field"><span>Validade</span><div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Data de validade"></div></label>
         <label class="ansend-checkout__field"><span>Código de segurança</span><div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div></label>
