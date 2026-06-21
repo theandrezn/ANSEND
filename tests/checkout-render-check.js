@@ -11,7 +11,11 @@ const markup = checkout.renderCheckout({
 assert(markup.includes("Beat &lt;Seguro&gt;"), "User content must be escaped");
 assert(markup.includes("Pagar com cartão"), "Card method must render");
 assert(markup.includes("Pagar com Pix"), "Pix method must render");
-assert(!markup.includes("PayPal"), "Unavailable PayPal must not render");
+const paypalOpeningTag = markup.match(/<button\b[^>]*data-checkout-unavailable="paypal"[^>]*>/)?.[0] || "";
+assert(paypalOpeningTag, "Unavailable PayPal must render as a button");
+assert(/(?:^|\s)disabled(?:\s|>)/.test(paypalOpeningTag), "Unavailable PayPal must be natively disabled");
+assert(/(?:^|\s)aria-disabled="true"(?:\s|>)/.test(paypalOpeningTag), "Unavailable PayPal must be aria-disabled");
+assert(!markup.includes('data-checkout-method="paypal"'), "Unavailable PayPal must not have a payment handler");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(!markup.includes("Endereço"), "Checkout must not request billing address");
 assert(markup.includes("Telefone"), "Pix checkout must request phone number");
