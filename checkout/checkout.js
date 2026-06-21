@@ -48,16 +48,39 @@
     </article>`;
   }
 
-  function recommendationMarkup(item) {
-    if (!item) return "";
+  function recommendationMarkup(items) {
+    const list = Array.isArray(items) ? items : (items ? [items] : []);
+    if (!list.length) return "";
     return `<section class="ansend-checkout__recommendations" aria-labelledby="checkout-recommendations-title">
-      <h3 id="checkout-recommendations-title">Recomendado para você</h3>
-      <article class="ansend-checkout__recommendation" data-checkout-recommendation="${escapeHtml(item.id)}">
-        <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy">
-        <div><span>${item.sponsored ? "ANSEND ADS" : escapeHtml(item.producer || "ANSEND")}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description || "Conheça este beat")}</small></div>
-        <div class="ansend-checkout__recommendation-price">${item.originalPrice ? `<s>${escapeHtml(item.originalPrice)}</s>` : ""}<strong>${escapeHtml(item.price || "Ver licença")}</strong></div>
-        <button type="button" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Abrir ${escapeHtml(item.title)}">${icon("chevron-right")}</button>
-      </article>
+      <div class="ansend-checkout__recommendations-header">
+        <h3 id="checkout-recommendations-title">Promoted</h3>
+        <div class="ansend-checkout__recommendations-nav">
+          <button type="button" class="ansend-checkout__recommendations-nav-btn is-prev" aria-label="Anterior">${icon("chevron-left")}</button>
+          <button type="button" class="ansend-checkout__recommendations-nav-btn is-next" aria-label="Próximo">${icon("chevron-right")}</button>
+        </div>
+      </div>
+      <div class="ansend-checkout__recommendations-container">
+        <div class="ansend-checkout__recommendations-track">
+          ${list.map((item) => `<article class="ansend-checkout__recommendation-card" data-checkout-recommendation="${escapeHtml(item.id)}">
+            <div class="ansend-checkout__recommendation-card-cover-wrap">
+              <img src="${escapeHtml(item.cover || "assets/ansend-logo-square.png")}" alt="Capa de ${escapeHtml(item.title)}" loading="lazy">
+            </div>
+            <div class="ansend-checkout__recommendation-card-title-wrap">
+              <span class="ansend-checkout__recommendation-card-ad-badge">AD</span>
+              <strong class="ansend-checkout__recommendation-card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</strong>
+            </div>
+            <div class="ansend-checkout__recommendation-card-actions">
+              <button type="button" class="ansend-checkout__recommendation-card-buy-btn" data-checkout-open-beat="${escapeHtml(item.id)}" aria-label="Comprar ${escapeHtml(item.title)}">
+                ${icon("shopping-bag")}
+                <span>${escapeHtml(item.price || "Ver preço")}</span>
+              </button>
+              <button type="button" class="ansend-checkout__recommendation-card-download-btn" data-action="download" data-id="${escapeHtml(item.id)}" aria-label="Baixar demo">
+                ${icon("download")}
+              </button>
+            </div>
+          </article>`).join("")}
+        </div>
+      </div>
     </section>`;
   }
 
@@ -118,7 +141,7 @@
               <p data-checkout-coupon-message aria-live="polite"></p>
             </div>
             ${totalsMarkup(quote)}
-            ${recommendationMarkup(options.recommendation)}
+            ${recommendationMarkup(options.recommendations || options.recommendation)}
           </div>
         </section>
         <aside class="ansend-checkout__payment">
@@ -382,6 +405,17 @@
         setBusy(false);
       }
       if (target.matches("[data-checkout-finish]")) active.options.onFinish?.();
+      if (target.matches(".ansend-checkout__recommendations-nav-btn.is-prev")) {
+        const container = root.querySelector(".ansend-checkout__recommendations-container");
+        if (container) container.scrollBy({ left: -200, behavior: "smooth" });
+      }
+      if (target.matches(".ansend-checkout__recommendations-nav-btn.is-next")) {
+        const container = root.querySelector(".ansend-checkout__recommendations-container");
+        if (container) container.scrollBy({ left: 200, behavior: "smooth" });
+      }
+      if (target.matches(".ansend-checkout__recommendation-card-download-btn")) {
+        active.options.onDownloadDemo?.(target.dataset.id);
+      }
     });
     root.querySelector("form").addEventListener("submit", async (event) => {
       if (active.method === "card" && active.cardForm) return;

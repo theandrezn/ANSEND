@@ -33,7 +33,13 @@ function buildId() {
   }
 }
 
-fs.rmSync(dist, { recursive: true, force: true });
+try {
+  fs.rmSync(dist, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+} catch (_e) {
+  // On Windows the dir may be held briefly by Explorer / dev‑server.
+  // If rmSync fails, just ensure the directory exists and keep going.
+  console.warn("[build] rmSync skipped:", _e.message);
+}
 fs.mkdirSync(dist, { recursive: true });
 
 for (const entry of entries) {

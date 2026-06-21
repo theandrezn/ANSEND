@@ -18819,6 +18819,39 @@ function checkoutRecommendationViewModel() {
   return item ? { id: item.id, title: item.title, producer: item.producer, cover: item.cover, price: item.price, description: "Licença disponível", sponsored: false } : null;
 }
 
+function checkoutRecommendationsViewModel() {
+  const ads = appState.cartPromotedAds.items || [];
+  const list = ads.map(ad => ({
+    id: ad.beatId,
+    adId: ad.adId,
+    title: ad.beatTitle,
+    producer: ad.producerName,
+    cover: ad.coverUrl,
+    price: ad.price,
+    description: ad.licenseName,
+    sponsored: ad.source === "promoted",
+  }));
+  
+  if (list.length < 6) {
+    const cartIds = cartBeatIdSet();
+    const existingIds = new Set(list.map(item => String(item.id)));
+    const fallbacks = preferredBeats(24).filter(beat => beat && beat.id && !cartIds.has(String(beat.id)) && !existingIds.has(String(beat.id)));
+    for (const item of fallbacks) {
+      if (list.length >= 12) break;
+      list.push({
+        id: item.id,
+        title: item.title,
+        producer: item.producer,
+        cover: item.cover,
+        price: item.price,
+        description: "Licença disponível",
+        sponsored: false,
+      });
+    }
+  }
+  return list;
+}
+
 async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefillEmail, isCart, mountTarget = null, sourceRoute = "" }) {
   if (!window.AnsendCheckout) {
     showToast("O checkout seguro nao foi carregado.", "alert-triangle");
@@ -18845,6 +18878,10 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
     pageMode: Boolean(mountTarget),
     accessToken,
     recommendation: checkoutRecommendationViewModel(),
+    recommendations: checkoutRecommendationsViewModel(),
+    onDownloadDemo: (beatId) => {
+      showToast("Download preparado com sucesso", "download");
+    },
     openModal: mountTarget ? null : openModal,
     refreshIcons: () => lucide.createIcons(),
     onClose: () => {
