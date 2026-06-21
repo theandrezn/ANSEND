@@ -20,10 +20,25 @@
   font-family: var(--font-sans, "Inter", system-ui, sans-serif); box-sizing: border-box;
 }
 .ansend-checkout *, .ansend-checkout *::before, .ansend-checkout *::after { box-sizing: border-box; }
+html.checkout-standalone-active,
+html.checkout-standalone-active body { width: 100%; max-width: 100%; overflow-x: clip; }
+html.checkout-standalone-active body[data-route="checkout"] > .page {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: clip !important;
+}
+html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
 .app-modal:has(.ansend-checkout) { width: 100vw !important; height: 100dvh !important; padding: 0 !important; overflow: hidden !important; }
 .app-modal:has(.ansend-checkout) .app-modal-backdrop, .app-modal:has(.ansend-checkout) > .app-modal-panel > .app-modal-close { display: none !important; }
 .app-modal:has(.ansend-checkout) .app-modal-panel { width: 100vw !important; max-width: none !important; height: 100dvh !important; max-height: none !important; padding: 0 !important; overflow: auto !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
-.ansend-checkout__shell { width: 100vw; max-width: none; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); overflow: visible; border: 0; border-radius: 0; background: var(--checkout-left-bg); box-shadow: none; }
+.ansend-checkout__shell { width: 100%; max-width: none; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); overflow: visible; border: 0; border-radius: 0; background: var(--checkout-left-bg); box-shadow: none; }
 .ansend-checkout__order, .ansend-checkout__payment { min-width: 0; }
 .ansend-checkout__order { padding: 60px 64px 48px 72px; background: var(--checkout-left-bg); }
 .ansend-checkout__payment { padding: 56px 48px 40px 60px; display: flex; align-items: flex-start; justify-content: flex-start; border-left: 1px solid rgba(255,255,255,.055); background: var(--checkout-right-bg); }

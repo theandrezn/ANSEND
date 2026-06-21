@@ -12,10 +12,10 @@ async function render(viewport, output) {
   const cover = `data:image/png;base64,${fs.readFileSync(path.join(root, "assets", "ansend-logo-square.png")).toString("base64")}`;
   const pix = `data:image/png;base64,${fs.readFileSync(path.join(root, "assets", "payment", "pix-user.png")).toString("base64")}`;
 
-  await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#060707;overflow-x:hidden}${css}</style></head><body></body></html>`);
+  await page.setContent(`<!doctype html><html class="checkout-standalone-active"><head><meta charset="utf-8"><style>html,body{margin:0;background:#060707;overflow-x:hidden}.page{width:calc(100vw - 260px)!important;margin-left:260px!important}${css}</style></head><body data-route="checkout"><main class="page"><div id="appView"></div></main></body></html>`);
   await page.addScriptTag({ content: js });
   await page.evaluate(({ cover, pix }) => {
-    document.body.innerHTML = window.AnsendCheckout.renderCheckout({
+    document.querySelector("#appView").innerHTML = window.AnsendCheckout.renderCheckout({
       items: [
         { beatId: "1", cartId: "1::premium", title: "NOITE EM SAO PAULO", producer: "theandrezn", licenseName: "Licenca Premium", formats: "MP3, WAV", cover, priceCents: 19990, removable: true },
         { beatId: "2", cartId: "2::exclusive", title: "ULTIMO VOO - Exclusive Beat", producer: "ANSEND Studios", licenseName: "Licenca Exclusiva", formats: "MP3, WAV, Stems", cover, priceCents: 34990, removable: true },
@@ -30,6 +30,8 @@ async function render(viewport, output) {
   }
   const metrics = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    pageLeft: document.querySelector(".page").getBoundingClientRect().left,
+    pageWidth: document.querySelector(".page").getBoundingClientRect().width,
     devicePixelRatio: window.devicePixelRatio,
     rootFontSize: getComputedStyle(document.documentElement).fontSize,
     htmlZoom: document.documentElement.style.zoom || getComputedStyle(document.documentElement).zoom || "",
@@ -63,6 +65,7 @@ async function render(viewport, output) {
   const desktop = results[1440];
   const mobile = results[390];
   if (Object.values(results).some((result) => result.overflow)) throw new Error(`Checkout has horizontal overflow: ${JSON.stringify(results)}`);
+  if (Object.values(results).some((result) => result.pageLeft !== 0 || result.pageWidth !== result.shellWidth)) throw new Error(`Checkout inherited the sidebar offset: ${JSON.stringify(results)}`);
   if (Object.values(results).some((result) => result.devicePixelRatio !== 1 || result.rootFontSize !== "16px")) throw new Error(`Checkout must render at DSF 1 and root 16px: ${JSON.stringify(results)}`);
   if (Object.values(results).some((result) => result.htmlZoom && result.htmlZoom !== "normal" && result.htmlZoom !== "1")) throw new Error(`Checkout must not use html zoom: ${JSON.stringify(results)}`);
   if (!/\S+px \S+px/.test(desktop.shellColumns)) throw new Error("Desktop checkout is not split into two columns");
