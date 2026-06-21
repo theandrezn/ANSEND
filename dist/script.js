@@ -17887,8 +17887,10 @@ function checkoutFormMarkup({ isCart, itemMarkup, itemCount = 1, subtotalCents, 
                 </div>
               </div>
 
-              <button class="seller-submit" type="submit">
+              <button class="seller-submit neon-btn-checkout" type="submit">
+                <span class="neon-btn-top-line"></span>
                 <span>Gerar Pix</span> <b aria-hidden="true">&middot;</b> <span>${checkoutMoney(totalCents)}</span><i data-lucide="lock-keyhole"></i>
+                <span class="neon-btn-bottom-line"></span>
               </button>
               <div class="checkout-legal-links" aria-label="Links legais">
                 <span>Pagamento seguro</span>
