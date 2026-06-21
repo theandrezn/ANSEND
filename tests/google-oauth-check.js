@@ -57,8 +57,15 @@ function supabaseMock() {
         }
       };
       const session = { user, access_token: "google-token", expires_at: Math.floor(Date.now() / 1000) + 3600 };
-      let profile = null;
       const hasCallback = location.pathname === "/auth/callback" && location.search.includes("ansend_oauth=google");
+      const existingProfile = location.search.includes("existing=1");
+      let profile = existingProfile ? {
+        id: user.id,
+        email: user.email,
+        full_name: "Google User",
+        account_role: "artista",
+        quiz_completed: true
+      } : null;
       function tableApi(table) {
         const api = {
           select() { return api; },
@@ -129,21 +136,27 @@ async function run() {
 
     const callbackPage = await context.newPage();
     await callbackPage.goto(`/auth/callback?ansend_oauth=google`, { waitUntil: "domcontentloaded" });
-    await callbackPage.waitForFunction(() => location.hash === "#perfil", null, { timeout: 30000 });
+    await callbackPage.waitForFunction(() => location.hash === "#onboarding", null, { timeout: 30000 });
     const upsert = await callbackPage.evaluate(() => window.__profileUpsert);
     const update = await callbackPage.evaluate(() => window.__profileUpdate);
-    if (!upsert || upsert.id !== "google-oauth-test" || upsert.auth_provider !== "google") {
+    if (!upsert || upsert.id !== "google-oauth-test" || upsert.auth_provider !== "google" || upsert.quiz_completed !== false) {
       throw new Error(`Google callback did not sync profile: ${JSON.stringify(upsert)}`);
     }
     if (!update || update.auth_provider !== "google" || !update.last_login_at) {
       throw new Error(`Google callback did not touch login metadata: ${JSON.stringify(update)}`);
     }
+
+    const existingPage = await context.newPage();
+    await existingPage.goto(`/auth/callback?ansend_oauth=google&existing=1`, { waitUntil: "domcontentloaded" });
+    await existingPage.waitForFunction(() => location.hash === "#perfil", null, { timeout: 30000 });
+    const existingUpsert = await existingPage.evaluate(() => window.__profileUpsert);
+    if (existingUpsert) throw new Error(`Completed Google account must not be recreated: ${JSON.stringify(existingUpsert)}`);
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));
   }
 
-  console.log("Google OAuth OK: button starts Supabase OAuth and callback syncs profile/session.");
+  console.log("Google OAuth OK: new accounts go to mandatory onboarding and completed accounts keep normal access.");
 }
 
 run().catch((error) => {

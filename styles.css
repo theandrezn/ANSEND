@@ -15278,6 +15278,19 @@ body.onboarding-open {
   box-shadow: none;
 }
 
+.spotify-quiz-submit-error {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 32px));
+  color: #ff5c5c;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  z-index: 2200;
+}
+
 @keyframes spotifyFadeIn {
   from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }

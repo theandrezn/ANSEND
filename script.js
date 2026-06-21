@@ -1408,6 +1408,7 @@ const appState = {
   authSession: null,
   authLoading: Boolean(supabaseClient),
   profileLoading: false,
+  onboardingSubmitting: false,
   profile: null,
   authReady: !supabaseClient,
   query: "",
@@ -2387,9 +2388,9 @@ function firstAccountQuizSeed(profile = appState.profile) {
 
 function launchFirstAccountQuiz(profile = appState.profile, user = appState.authUser) {
   const identity = accountQuizIdentity(profile, user);
-  if (!identity || hasCompletedFirstAccountQuiz(identity)) return false;
+  if (!identity || profile?.quiz_completed === true) return false;
   localStorage.setItem(PENDING_ACCOUNT_QUIZ_KEY, identity);
-  showMusicPreferenceQuiz(true, firstAccountQuizSeed(profile));
+  showMusicPreferenceQuiz(true, firstAccountQuizSeed(profile), { mandatory: true });
   return true;
 }
 
@@ -4228,6 +4229,7 @@ function currentRouteFromHash() {
     "vendedor",
     "confirmar-email",
     "email-confirmed",
+    "onboarding",
     "central-ansend",
     "servicos",
     "como-funciona",
@@ -10402,6 +10404,9 @@ async function upsertProfile(profile) {
     spotify_url: profile.spotify_url || null,
     soundcloud_url: profile.soundcloud_url || null,
   };
+  if (Object.prototype.hasOwnProperty.call(profile, "quiz_completed")) {
+    basePayload.quiz_completed = profile.quiz_completed === true;
+  }
   if (!Object.prototype.hasOwnProperty.call(profile, "avatar_url")) delete basePayload.avatar_url;
   if (!Object.prototype.hasOwnProperty.call(profile, "avatar_path")) delete basePayload.avatar_path;
   if (!Object.prototype.hasOwnProperty.call(profile, "banner_url")) delete basePayload.banner_url;
@@ -10517,6 +10522,7 @@ function profileFromAuthUser(user, fallback = {}) {
       ? metadata.music_styles
       : (fallback.music_styles || preferredGenres()),
     onboarding_goal: fallback.onboarding_goal || appState.onboardingProfile?.goal || null,
+    quiz_completed: fallback.quiz_completed === true,
   };
 }
 
@@ -10780,6 +10786,30 @@ function protectedRoute(route) {
   return ["compras", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
+function requiresMandatoryOnboarding() {
+  return Boolean(appState.authUser?.id && appState.profile && appState.profile.quiz_completed !== true);
+}
+
+function postLoginRoute() {
+  return requiresMandatoryOnboarding() ? "onboarding" : "perfil";
+}
+
+function renderMandatoryOnboarding() {
+  appView.innerHTML = `
+    <section class="auth-loading-page mandatory-onboarding-page" aria-label="Personalizacao obrigatoria" style="min-height:70vh; display:grid; place-items:center; padding:48px 24px; text-align:center;">
+      <div>
+        <i data-lucide="sparkles" style="width:42px; height:42px; color:#fff;"></i>
+        <h2 style="font-size:22px; color:#fff; font-weight:700; margin-top:18px;">Vamos personalizar sua ANSEND</h2>
+        <p style="color:#A1A1AA; font-size:14px; margin-top:8px;">Conclua as etapas para liberar seu feed.</p>
+      </div>
+    </section>`;
+  lucide.createIcons();
+  requestAnimationFrame(() => {
+    if (currentRoute() !== "onboarding" || !requiresMandatoryOnboarding()) return;
+    if (!window.activeSpotifyQuiz) launchFirstAccountQuiz(appState.profile, appState.authUser);
+  });
+}
+
 function renderAuthLoading(reason = "session") {
   debugAuth("auth_loading_screen", { reason });
   appView.innerHTML = `
@@ -10842,6 +10872,7 @@ function clearAuthenticatedApplicationState(reason = "no-session") {
   appState.authSession = null;
   appState.authLoading = false;
   appState.profileLoading = false;
+  appState.onboardingSubmitting = false;
   appState.profile = null;
   appState.isAdmin = false;
   appState.adminProfiles = [];
@@ -11252,9 +11283,11 @@ class SpotifyQuizEngine {
         <div class="spotify-progress-container">
           <div class="spotify-progress-bar" style="width: ${progress}%"></div>
         </div>
-        <button class="spotify-quiz-skip" type="button">
-          ${this.config.isOnboarding ? "Pular" : "Usar padrão"}
-        </button>
+        ${this.config.allowSkip === false ? `<span aria-hidden="true"></span>` : `
+          <button class="spotify-quiz-skip" type="button">
+            ${this.config.isOnboarding ? "Pular" : "Usar padrão"}
+          </button>
+        `}
       </div>
       <div class="spotify-quiz-body">
         <div class="spotify-step-content" key="step-${this.currentStep}">
@@ -11274,9 +11307,10 @@ class SpotifyQuizEngine {
         </div>
       </div>
       <button class="spotify-action-btn" type="button" id="spotifyNextBtn">
-        <span>${this.currentStep === totalSteps - 1 ? "Concluido" : "Avancar"}</span>
+        <span>${this.currentStep === totalSteps - 1 ? "Concluir" : "Avancar"}</span>
         <i data-lucide="arrow-right"></i>
       </button>
+      <p class="spotify-quiz-submit-error" role="alert" aria-live="polite" hidden></p>
     `;
     
     lucide.createIcons({ attrs: { "stroke-width": 2.5 } });
@@ -11384,7 +11418,7 @@ class SpotifyQuizEngine {
     });
     
     const nextBtn = this.modal.querySelector("#spotifyNextBtn");
-    nextBtn?.addEventListener("click", () => {
+    nextBtn?.addEventListener("click", async () => {
       const step = this.config.steps[this.currentStep];
       
       if (step.type === "textarea") {
@@ -11398,7 +11432,20 @@ class SpotifyQuizEngine {
         this.searchQuery = "";
         this.render();
       } else {
-        this.config.onComplete(this.answers);
+        const errorNode = this.modal.querySelector(".spotify-quiz-submit-error");
+        nextBtn.disabled = true;
+        nextBtn.dataset.loading = "true";
+        try {
+          await this.config.onComplete(this.answers);
+        } catch (error) {
+          console.error("[ANSEND onboarding] quiz completion failed", error);
+          if (errorNode) {
+            errorNode.textContent = error?.message || "Nao foi possivel salvar suas respostas. Tente novamente.";
+            errorNode.hidden = false;
+          }
+          nextBtn.disabled = false;
+          nextBtn.dataset.loading = "false";
+        }
       }
     });
     
@@ -11454,7 +11501,44 @@ class SpotifyQuizEngine {
   }
 }
 
-function showMusicPreferenceQuiz(force = false, profile = getMusicProfile()) {
+async function completeMandatoryOnboarding(data) {
+  if (!supabaseClient || !appState.authUser?.id) {
+    throw new Error("Sua sessao expirou. Entre novamente para concluir.");
+  }
+  if (appState.onboardingSubmitting) throw new Error("Suas respostas ja estao sendo salvas.");
+  appState.onboardingSubmitting = true;
+  try {
+    const answers = {
+      genres: asArray(data.genres),
+      objective: String(data.objective || ""),
+      stage: String(data.stage || ""),
+      vibes: asArray(data.vibes),
+      references: String(data.references || ""),
+      budget: String(data.budget || ""),
+      userType: String(data.userType || ""),
+    };
+    const { data: completedProfile, error } = await supabaseClient.rpc("complete_onboarding_quiz", {
+      p_answers: answers,
+    });
+    if (error) throw error;
+    const profile = Array.isArray(completedProfile) ? completedProfile[0] : completedProfile;
+    if (!profile?.id || profile.quiz_completed !== true) {
+      throw new Error("O Supabase nao confirmou a conclusao do quiz.");
+    }
+    appState.profile = { ...(appState.profile || {}), ...profile, quiz_completed: true };
+    saveMusicProfile({ ...answers, completed: true });
+    markFirstAccountQuizCompleted();
+    closeMusicPreferenceQuiz();
+    if (location.hash !== "#feed") location.hash = "feed";
+    else renderRoute();
+    showToast("Seu feed personalizado esta pronto.", "sparkles");
+    return profile;
+  } finally {
+    appState.onboardingSubmitting = false;
+  }
+}
+
+function showMusicPreferenceQuiz(force = false, profile = getMusicProfile(), options = {}) {
   if (!force && hasMusicProfile()) return;
   if (window.activeSpotifyQuiz) {
     window.activeSpotifyQuiz.destroy();
@@ -11464,7 +11548,8 @@ function showMusicPreferenceQuiz(force = false, profile = getMusicProfile()) {
   const current = profile || getMusicProfile() || createDefaultMusicProfile();
   
   const config = {
-    isOnboarding: false,
+    isOnboarding: Boolean(options.mandatory),
+    allowSkip: !options.mandatory,
     initialData: {
       genres: current.genres || [],
       objective: current.objective || "Receber orientacao da IA",
@@ -11548,7 +11633,11 @@ function showMusicPreferenceQuiz(force = false, profile = getMusicProfile()) {
       renderRoute();
       showToast("Perfil musical inicial criado pela NEXO", "sparkles");
     },
-    onComplete: (data) => {
+    onComplete: async (data) => {
+      if (options.mandatory) {
+        await completeMandatoryOnboarding(data);
+        return;
+      }
       const profile = saveMusicProfile({
         genres: data.genres.length ? data.genres : ["Trap"],
         objective: data.objective,
@@ -17559,6 +17648,18 @@ function renderRoute() {
     hydrateView();
     return;
   }
+  if (accountAccess && requiresMandatoryOnboarding() && route !== "onboarding") {
+    if (location.hash !== "#onboarding") location.hash = "onboarding";
+    renderMandatoryOnboarding();
+    hydrateView();
+    return;
+  }
+  if (accountAccess && !requiresMandatoryOnboarding() && route === "onboarding") {
+    closeMusicPreferenceQuiz();
+    if (location.hash !== "#feed") location.hash = "feed";
+    return;
+  }
+  if (route === "onboarding") renderMandatoryOnboarding();
   if (route === "feed") {
     appView.innerHTML = feedTemplate;
     applyFeedPersonalization();
@@ -19183,7 +19284,7 @@ function setAuthSubmitState(form, isLoading) {
 }
 
 function redirectAfterLogin() {
-  const targetHash = "#perfil";
+  const targetHash = `#${postLoginRoute()}`;
   if (location.pathname === "/auth/callback") {
     window.history.replaceState({}, "", `/${location.search || ""}${location.hash || ""}`);
   }
@@ -19210,7 +19311,8 @@ function readOAuthCallbackError() {
 
 function hasOAuthRedirectIntent() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("ansend_oauth") === "google" || localStorage.getItem(OAUTH_REDIRECT_STORAGE_KEY) === "#perfil";
+  const storedIntent = localStorage.getItem(OAUTH_REDIRECT_STORAGE_KEY);
+  return params.get("ansend_oauth") === "google" || storedIntent === "google" || storedIntent === "#perfil";
 }
 
 function clearOAuthRedirectIntent() {
@@ -19254,7 +19356,7 @@ async function handleGoogleOAuth(button) {
   button.disabled = true;
   button.dataset.loading = "true";
   setAuthFormMessage(form, "Abrindo login com Google...", "success");
-  localStorage.setItem(OAUTH_REDIRECT_STORAGE_KEY, "#perfil");
+  localStorage.setItem(OAUTH_REDIRECT_STORAGE_KEY, "google");
   try {
     const { data, error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
