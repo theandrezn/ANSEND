@@ -405,7 +405,7 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
   if (!cleanItems) return { ok: false, error: "Itens do carrinho invalidos." };
 
   const beatIds = [...new Set(cleanItems.map((item) => item.beat_id))];
-  const beatQuery = `beats?select=id,title,status,sold_exclusively,user_id,producer&id=in.(${beatIds.join(",")})`;
+  const beatQuery = `beats?select=id,title,status,sold_exclusively,user_id,producer_name&id=in.(${beatIds.join(",")})`;
   const licenseQuery = `beat_licenses?select=id,beat_id,license_key,name,price_cents,is_active&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`;
   const [beatsResponse, licensesResponse] = await Promise.all([
     supabaseAuthedRest(env, beatQuery, authHeader),
@@ -444,7 +444,7 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
       beat_id: item.beat_id,
       license_id: license.id,
       seller_id: beat.user_id,
-      producer: beat.producer || "Produtor",
+      producer: beat.producer_name || "Produtor",
       title: beat.title || "Beat ANSEND",
       license_name: license.name || "Licenca",
       price_cents: priceCents,

@@ -40,9 +40,10 @@ for (const marker of [
   "--checkout-page-bg: #222423",
   "--checkout-left-bg: #060707",
   "--checkout-right-bg: #111314",
-  "max-width: 1480px",
-  "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)",
-  "@media (max-width: 1023px)",
+  "width: min(100%, 1680px)",
+  "grid-template-columns: minmax(0, 1.08fr) minmax(480px, .92fr)",
+  "max-width: 620px",
+  "@media (max-width: 899px)",
   "@media (max-width: 767px)",
   "prefers-reduced-motion",
   ":focus-visible",
@@ -64,10 +65,12 @@ for (const marker of [
   "createMercadoPagoCardPayment",
   "MERCADO_PAGO_PUBLIC_KEY",
   "MERCADO_PAGO_WEBHOOK_SECRET",
+  "producer_name",
   "X-Idempotency-Key",
   "payment_attempts",
   "finalize_checkout_payment",
 ]) assert(worker.includes(marker), `Worker missing payment marker: ${marker}`);
 
-console.log("Pixel-perfect checkout contracts passed.");
+assert(!worker.includes("beats?select=id,title,status,sold_exclusively,user_id,producer&"), "Checkout must not query removed beats.producer column");
 
+console.log("Pixel-perfect checkout contracts passed.");
