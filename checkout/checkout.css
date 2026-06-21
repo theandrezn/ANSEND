@@ -329,12 +329,12 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__terms input { width: 14px; height: 14px; margin-top: 1px; flex-shrink: 0; accent-color: var(--checkout-blue); }
 .ansend-checkout__feedback { min-height: 14px; color: var(--checkout-error); font-size: 11px; }
 .ansend-checkout__feedback:empty { min-height: 0; }
-.ansend-checkout__pay, .ansend-checkout__secondary { position: relative; width: 100%; min-height: 46px; height: 46px; padding: 0 38px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 0.15s ease, filter 0.15s ease; }
-.ansend-checkout__pay { border: 0; color: #fff; background: var(--checkout-blue); }
-.ansend-checkout__pay:hover { filter: brightness(1.1); background: var(--checkout-blue); }
-.ansend-checkout__pay:active { filter: brightness(0.9); }
-.ansend-checkout__pay:disabled { opacity: 0.5; cursor: not-allowed; }
-.ansend-checkout__pay > svg { position: absolute; right: 14px; top: 50%; width: 14px; transform: translateY(-50%); }
+.ansend-checkout__pay, .ansend-checkout__secondary { position: relative; width: 100%; min-height: 48px; height: 48px; padding: 0 42px; border-radius: 10px; font-size: 14px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer; transition: background-color 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+.ansend-checkout__pay { border: 1.5px solid rgba(255,255,255,0.12); color: #fff; background: var(--checkout-blue); box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+.ansend-checkout__pay:hover { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(47,127,255,0.35); }
+.ansend-checkout__pay:active { filter: brightness(0.92); box-shadow: none; }
+.ansend-checkout__pay:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.ansend-checkout__pay > svg { position: absolute; right: 16px; top: 50%; width: 14px; transform: translateY(-50%); opacity: 0.85; }
 .ansend-checkout__secondary { border: 1px solid var(--checkout-border-strong); color: var(--checkout-text); background: transparent; }
 .ansend-checkout__form footer { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--checkout-muted); font-size: 9px; }
 .ansend-checkout__form footer a { color: inherit; text-decoration: none; }
