@@ -12259,6 +12259,159 @@ function updateCartPromotedSection() {
   observeCartPromotedAds();
 }
 
+function checkoutEmptyRouteMarkup(title = "Nenhum item selecionado", text = "Selecione um beat ou volte ao carrinho para finalizar sua compra.") {
+  return `
+    <section class="ansend-checkout-route-empty" aria-label="Checkout vazio">
+      <div>
+        <i data-lucide="shopping-cart"></i>
+        <h1>${htmlEscape(title)}</h1>
+        <p>${htmlEscape(text)}</p>
+        <div>
+          <a href="#carrinho" data-route="carrinho">Voltar ao carrinho</a>
+          <a href="#explorar" data-route="explorar">Explorar catálogo</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function checkoutLoadingRouteMarkup() {
+  return `
+    <section class="ansend-checkout-route-empty is-loading" aria-label="Carregando checkout">
+      <div>
+        <i data-lucide="loader-circle" class="animate-spin"></i>
+        <h1>Carregando checkout seguro</h1>
+        <p>Estamos validando seu carrinho e preparando o pagamento.</p>
+      </div>
+    </section>
+  `;
+}
+
+async function checkoutModelFromDirectSelection(beatId, licenseId) {
+  if (!beatId || !licenseId) return null;
+  const item = findBeat(beatId);
+  if (!item) throw new Error("Beat não encontrado.");
+  const licenses = await fetchBeatLicenses(beatId);
+  const selectedLicense = licenses.find((license) => license.id === licenseId || license.license_key === licenseId)
+    || generateDefaultLicensesForBeat(item).find((license) => license.id === licenseId || license.license_key === licenseId);
+  if (!selectedLicense) throw new Error("Licença indisponível. Selecione uma licença válida.");
+
+  const subtotalCents = Number(selectedLicense.price_cents || 0);
+  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const totalCents = subtotalCents + serviceFeeCents;
+  const licenseIdForProvider = selectedLicense.id || licenseId;
+
+  return {
+    isCart: false,
+    returnRoute: `beat-${beatId}`,
+    items: [{
+      cover: item.cover,
+      title: item.title,
+      producer: item.producer,
+      licenseName: selectedLicense.name,
+      formats: selectedLicense.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+      priceCents: subtotalCents,
+      beatId: item.id,
+      licenseId: licenseIdForProvider,
+      removable: false,
+    }],
+    cartItems: [{ beat_id: item.id, license_id: licenseIdForProvider }],
+    quote: { subtotalCents, serviceFeeCents, discountCents: 0, totalCents },
+  };
+}
+
+async function checkoutModelFromCart() {
+  const {
+    items,
+    totalDiscountsCents,
+    subtotalCents,
+    serviceFeeCents,
+    totalCents,
+  } = await calculateCartPrices();
+
+  if (!items.length) return null;
+
+  return {
+    isCart: true,
+    returnRoute: "carrinho",
+    items: items.map((item) => ({
+      cover: item.beat.cover,
+      title: item.beat.title,
+      producer: item.beat.producer,
+      licenseName: item.licenseLabel,
+      formats: item.licenseLabel?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV",
+      priceCents: item.priceValCents,
+      beatId: item.beat.id,
+      licenseId: item.licenseId,
+      cartId: item.cartId,
+      removable: true,
+    })),
+    cartItems: items.map((item) => ({
+      beat_id: item.beat.id,
+      license_id: item.licenseId,
+    })),
+    quote: { subtotalCents, serviceFeeCents, discountCents: totalDiscountsCents, totalCents },
+  };
+}
+
+function directCheckoutParamsFromHash() {
+  const hash = String(location.hash || "");
+  const qIdx = hash.indexOf("?");
+  if (qIdx === -1) return {};
+  const searchParams = new URLSearchParams(hash.substring(qIdx));
+  return {
+    beatId: searchParams.get("beatId") || "",
+    licenseId: searchParams.get("licenseId") || "",
+  };
+}
+
+async function renderCheckoutRoute() {
+  appView.innerHTML = checkoutLoadingRouteMarkup();
+  lucide.createIcons();
+
+  try {
+    const query = directCheckoutParamsFromHash();
+    if (query.beatId && query.licenseId) {
+      localStorage.setItem("ansend-direct-checkout-beatId", query.beatId);
+      localStorage.setItem("ansend-direct-checkout-licenseId", query.licenseId);
+    }
+
+    const storedBeatId = localStorage.getItem("ansend-direct-checkout-beatId") || "";
+    const storedLicenseId = localStorage.getItem("ansend-direct-checkout-licenseId") || "";
+    const hasDirectSelection = Boolean((query.beatId && query.licenseId) || (storedBeatId && storedLicenseId));
+    const model = (query.beatId && query.licenseId)
+      ? await checkoutModelFromDirectSelection(query.beatId, query.licenseId)
+      : appState.cart.length
+        ? await checkoutModelFromCart()
+        : hasDirectSelection
+          ? await checkoutModelFromDirectSelection(storedBeatId, storedLicenseId)
+          : null;
+
+    if (!model) {
+      appView.innerHTML = checkoutEmptyRouteMarkup();
+      lucide.createIcons();
+      return;
+    }
+
+    const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
+    const prefillEmail = appState.authUser?.email || "";
+    await openAnsendCheckout({
+      ...model,
+      mountTarget: appView,
+      sourceRoute: model.returnRoute,
+      prefillName,
+      prefillEmail,
+    });
+  } catch (error) {
+    console.error("Error rendering checkout route:", error);
+    appView.innerHTML = checkoutEmptyRouteMarkup(
+      "Não foi possível carregar o checkout",
+      error?.message || "Revise os itens do carrinho e tente novamente."
+    );
+    lucide.createIcons();
+  }
+}
+
 function cartPromotedAdById(adId = "") {
   return (appState.cartPromotedAds.items || []).find((ad) => String(ad.adId) === String(adId)) || null;
 }
@@ -12685,6 +12838,8 @@ async function renderCart() {
 }
 
 async function renderDirectCheckout() {
+  return renderCheckoutRoute();
+
   function getDirectQueryParam(name) {
     const hash = location.hash;
     const qIdx = hash.indexOf("?");
@@ -17742,7 +17897,7 @@ function checkoutRecommendationViewModel() {
   return item ? { id: item.id, title: item.title, producer: item.producer, cover: item.cover, price: item.price, description: "Licença disponível", sponsored: false } : null;
 }
 
-async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefillEmail, isCart }) {
+async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefillEmail, isCart, mountTarget = null, sourceRoute = "" }) {
   if (!window.AnsendCheckout) {
     showToast("O checkout seguro nao foi carregado.", "alert-triangle");
     return;
@@ -17750,6 +17905,10 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
   await loadCartPromotedAds({ force: false });
   const accessToken = await currentCheckoutAccessToken();
   if (!accessToken) {
+    if (mountTarget) {
+      mountTarget.innerHTML = checkoutEmptyRouteMarkup("Entre para finalizar a compra", "Faça login para gerar Pix ou pagar com cartão com segurança.");
+      lucide.createIcons();
+    }
     showToast("Voce precisa estar autenticado para finalizar a compra.", "triangle-alert");
     return;
   }
@@ -17760,20 +17919,31 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
     prefillName,
     prefillEmail,
     isCart,
+    mountTarget,
+    pageMode: Boolean(mountTarget),
     accessToken,
     recommendation: checkoutRecommendationViewModel(),
-    openModal,
+    openModal: mountTarget ? null : openModal,
     refreshIcons: () => lucide.createIcons(),
-    onClose: closeModal,
+    onClose: () => {
+      if (mountTarget) {
+        location.hash = sourceRoute || (isCart ? "carrinho" : "explorar");
+      } else {
+        closeModal();
+      }
+    },
     onRemove: (cartId) => {
       removeFromCart(cartId);
-      if (appState.cart.length) openCartCheckout();
+      if (mountTarget) {
+        if (appState.cart.length) renderCheckoutRoute();
+        else location.hash = "carrinho";
+      } else if (appState.cart.length) openCartCheckout();
       else closeModal();
     },
     onOpenBeat: (beatId) => {
       const ad = (appState.cartPromotedAds.items || []).find((entry) => String(entry.beatId) === String(beatId));
       if (ad?.source === "promoted") trackCartPromotedAdEvent("click", ad.adId, "checkout_recommendation");
-      closeModal();
+      if (!mountTarget) closeModal();
       location.hash = `beat-${beatId}`;
     },
     onPaid: async () => {
@@ -17781,7 +17951,7 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
       await loadCatalogItems();
     },
     onFinish: () => {
-      closeModal();
+      if (!mountTarget) closeModal();
       location.hash = "compras";
       renderPurchases();
     },
@@ -17789,9 +17959,6 @@ async function openAnsendCheckout({ items, cartItems, quote, prefillName, prefil
 }
 
 async function openCheckout(id, selectedPlan = "premium") {
-  openModal(`<div style="display:flex; justify-content:center; align-items:center; min-height:150px; background:#0f0f0f; border-radius:8px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`);
-  lucide.createIcons();
-
   try {
     const item = findBeat(id) || topBeatOfDay;
     const licenses = await fetchBeatLicenses(id);
@@ -17800,29 +17967,15 @@ async function openCheckout(id, selectedPlan = "premium") {
     
     if (!selectedLicense) {
       showToast("Erro ao carregar os termos da licença.", "alert-triangle");
-      closeModal();
       return;
     }
 
-    const subtotalCents = selectedLicense.price_cents || 0;
-    const serviceFeeCents = Math.round(subtotalCents * 0.12);
-    const totalCents = subtotalCents + serviceFeeCents;
-
-    const prefillName = appState.authUser?.user_metadata?.full_name || appState.authUser?.email?.split("@")[0] || "";
-    const prefillEmail = appState.authUser?.email || "";
-
-    await openAnsendCheckout({
-      isCart: false,
-      items: [{ cover: item.cover, title: item.title, producer: item.producer, licenseName: selectedLicense.name, formats: selectedLicense.name?.toLowerCase().includes("exclusive") ? "MP3, WAV, Stems" : "MP3, WAV", priceCents: subtotalCents, beatId: item.id, licenseId: selectedLicense.id, removable: false }],
-      cartItems: [{ beat_id: item.id, license_id: selectedLicense.id }],
-      quote: { subtotalCents, serviceFeeCents, discountCents: 0, totalCents },
-      prefillName,
-      prefillEmail,
-    });
+    localStorage.setItem("ansend-direct-checkout-beatId", item.id);
+    localStorage.setItem("ansend-direct-checkout-licenseId", selectedLicense.id || selectedPlan);
+    location.hash = `checkout?beatId=${item.id}&licenseId=${selectedLicense.id || selectedPlan}`;
   } catch (error) {
     console.error("Error opening single checkout:", error);
     showToast("Erro ao abrir checkout.", "alert-triangle");
-    closeModal();
   }
 
 }
@@ -20570,7 +20723,7 @@ document.addEventListener("click", async (event) => {
     return;
   }
   if (action === "finalize-cart") {
-    openCartCheckout();
+    location.hash = "checkout";
     return;
   }
   if (action === "add-billing-info") {

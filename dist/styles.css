@@ -1647,6 +1647,94 @@ body:not([data-route="feed"]) .footer-shell {
   visibility: hidden !important;
 }
 
+body[data-route="checkout"] {
+  background: #060707 !important;
+}
+
+body[data-route="checkout"] .sidebar,
+body[data-route="checkout"] .topbar,
+body[data-route="checkout"] .nexo-button,
+body[data-route="checkout"] .nexo-floating-assistant,
+body[data-route="checkout"] #nexoFloatingAssistantRoot {
+  display: none !important;
+}
+
+body[data-route="checkout"] .page {
+  width: 100% !important;
+  min-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body[data-route="checkout"] #appView.app-view {
+  width: 100% !important;
+  min-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.ansend-checkout-route-empty {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #060707;
+  color: #f5f5f5;
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+}
+
+.ansend-checkout-route-empty > div {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.ansend-checkout-route-empty svg {
+  width: 42px;
+  height: 42px;
+  color: #2f7fff;
+}
+
+.ansend-checkout-route-empty h1 {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 30px);
+}
+
+.ansend-checkout-route-empty p {
+  margin: 0;
+  color: #a2a2a2;
+  line-height: 1.55;
+}
+
+.ansend-checkout-route-empty div div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ansend-checkout-route-empty a {
+  min-height: 44px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 9px;
+  color: #fff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, .05);
+}
+
+.ansend-checkout-route-empty a:first-child {
+  border-color: transparent;
+  background: #2f7fff;
+}
+
 body[data-route="feed"] .footer:not([hidden]) {
   display: grid !important;
   height: auto !important;

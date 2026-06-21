@@ -89,7 +89,8 @@
   function renderCheckout(options) {
     const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
     const items = Array.isArray(options.items) ? options.items : [];
-    return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="pix" role="dialog" aria-modal="true" aria-label="Checkout ANSEND">
+    const pageMode = options.pageMode || options.mountTarget;
+    return `<section class="ansend-checkout" data-ansend-checkout data-checkout-method="pix" role="${pageMode ? "main" : "dialog"}" ${pageMode ? "" : 'aria-modal="true"'} aria-label="Checkout ANSEND">
       <div class="ansend-checkout__shell">
         <section class="ansend-checkout__order">
           <header class="ansend-checkout__breadcrumb"><button type="button" data-checkout-close aria-label="Fechar checkout">${icon("x")}</button><span>Carrinho</span><b>/</b><strong>Checkout</strong></header>
@@ -339,8 +340,14 @@
 
   async function open(options) {
     const markup = renderCheckout(options);
-    options.openModal(markup);
-    const root = document.querySelector("[data-ansend-checkout]");
+    if (options.mountTarget) {
+      options.mountTarget.innerHTML = markup;
+    } else if (typeof options.openModal === "function") {
+      options.openModal(markup);
+    } else {
+      throw new Error("Destino do checkout nao informado.");
+    }
+    const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
     active = { root, options, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` };
     root.querySelector('#checkout-email').value = options.prefillEmail || "";

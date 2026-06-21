@@ -12,7 +12,7 @@ async function render(viewport, output) {
   const cover = `data:image/png;base64,${fs.readFileSync(path.join(root, "assets", "ansend-logo-square.png")).toString("base64")}`;
   const pix = `data:image/svg+xml;base64,${fs.readFileSync(path.join(root, "assets", "payment", "pix.svg")).toString("base64")}`;
 
-  await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#222423}${css}</style></head><body></body></html>`);
+  await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#060707;overflow-x:hidden}${css}</style></head><body></body></html>`);
   await page.addScriptTag({ content: js });
   await page.evaluate(({ cover, pix }) => {
     document.body.innerHTML = window.AnsendCheckout.renderCheckout({
@@ -29,7 +29,11 @@ async function render(viewport, output) {
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     shellColumns: getComputedStyle(document.querySelector(".ansend-checkout__shell")).gridTemplateColumns,
     shellWidth: document.querySelector(".ansend-checkout__shell").getBoundingClientRect().width,
+    shellRadius: getComputedStyle(document.querySelector(".ansend-checkout__shell")).borderRadius,
+    pageBackground: getComputedStyle(document.querySelector(".ansend-checkout")).backgroundImage,
     formWidth: document.querySelector(".ansend-checkout__form").getBoundingClientRect().width,
+    ctaBottom: document.querySelector("[data-checkout-submit]").getBoundingClientRect().bottom,
+    viewportHeight: window.innerHeight,
     focusable: document.querySelectorAll("button, input, select, textarea, a[href]").length,
   }));
   await browser.close();
@@ -38,7 +42,7 @@ async function render(viewport, output) {
 
 (async () => {
   const viewports = [
-    [2560, 1440], [1920, 1080], [1536, 864], [1440, 900], [1366, 768], [1024, 900], [430, 932], [390, 844],
+    [1920, 1080], [1600, 900], [1440, 900], [1366, 768], [1024, 768], [768, 1024], [430, 932], [390, 844],
   ];
   const results = {};
   for (const [width, height] of viewports) {
@@ -48,9 +52,10 @@ async function render(viewport, output) {
   const mobile = results[390];
   if (Object.values(results).some((result) => result.overflow)) throw new Error(`Checkout has horizontal overflow: ${JSON.stringify(results)}`);
   if (!/\S+px \S+px/.test(desktop.shellColumns)) throw new Error("Desktop checkout is not split into two columns");
-  if (desktop.shellWidth < 1320 || desktop.shellWidth > 1680.5) throw new Error(`Desktop shell width is not using the viewport proportionally: ${JSON.stringify(desktop)}`);
-  if (results[1920].shellWidth < 1650 || results[2560].shellWidth > 1680.5) throw new Error(`Wide desktop shell width is outside the premium fullscreen contract: ${JSON.stringify(results)}`);
-  if (results[1366].formWidth < 480 || desktop.formWidth < 520 || results[1920].formWidth < 580 || mobile.formWidth < 330) throw new Error(`Checkout form is compressed: ${JSON.stringify({ narrow: results[1366], desktop, wide: results[1920], mobile })}`);
+  if (desktop.shellWidth !== 1440 || results[1920].shellWidth !== 1920 || results[1366].shellWidth !== 1366) throw new Error(`Checkout shell is not fullscreen width: ${JSON.stringify(results)}`);
+  if (desktop.shellRadius !== "0px" || desktop.pageBackground !== "none") throw new Error(`Checkout still looks like a floating panel: ${JSON.stringify(desktop)}`);
+  if (results[1366].formWidth < 420 || desktop.formWidth < 520 || results[1920].formWidth < 600 || mobile.formWidth < 330) throw new Error(`Checkout form is compressed: ${JSON.stringify({ narrow: results[1366], desktop, wide: results[1920], mobile })}`);
+  if (results[1366].ctaBottom > results[1366].viewportHeight + 260 || results[1440].ctaBottom > results[1440].viewportHeight + 180) throw new Error(`Checkout CTA is too far below desktop fold: ${JSON.stringify({ narrow: results[1366], desktop })}`);
   if (desktop.focusable < 12) throw new Error("Checkout controls were not rendered");
   console.log(JSON.stringify(results, null, 2));
 })().catch((error) => {
