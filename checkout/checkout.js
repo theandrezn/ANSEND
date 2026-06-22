@@ -536,10 +536,75 @@
     closeInstallmentPopover(checkoutState);
   }
 
+  function initPaymentMethodDock(checkoutState) {
+    const container = checkoutState.root.querySelector(".ansend-checkout__methods");
+    if (!container) return;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
+
+    const isFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (!isFinePointer) return;
+
+    const buttons = Array.from(container.querySelectorAll("button[data-checkout-method]:not([disabled])"));
+    let rafId = null;
+
+    buttons.forEach((btn) => {
+      btn.style.transformOrigin = "center bottom";
+      btn.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+    });
+
+    function updateDock(clientX) {
+      buttons.forEach((btn) => {
+        const rect = btn.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const distance = Math.abs(clientX - centerX);
+        const maxDistance = 180;
+
+        if (distance < maxDistance) {
+          const factor = Math.cos((distance / maxDistance) * Math.PI / 2);
+          const scale = 1 + factor * 0.12;
+          const translateY = factor * -5;
+          btn.style.transform = `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(1)}px)`;
+        } else {
+          btn.style.transform = "scale(1) translateY(0px)";
+        }
+      });
+    }
+
+    function onPointerMove(event) {
+      if (rafId) cancelAnimationFrame(rafId);
+      buttons.forEach((btn) => {
+        btn.style.transition = "none";
+      });
+      rafId = requestAnimationFrame(() => {
+        updateDock(event.clientX);
+      });
+    }
+
+    function resetDock() {
+      if (rafId) cancelAnimationFrame(rafId);
+      buttons.forEach((btn) => {
+        btn.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+        btn.style.transform = "scale(1) translateY(0px)";
+      });
+    }
+
+    container.addEventListener("pointermove", onPointerMove);
+    container.addEventListener("pointerleave", resetDock);
+
+    checkoutState.dockCleanup = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      container.removeEventListener("pointermove", onPointerMove);
+      container.removeEventListener("pointerleave", resetDock);
+    };
+  }
+
   function teardownActiveCheckout(checkoutState = active, { invalidate = false } = {}) {
     if (!checkoutState) return;
     closeInstallmentPopover(checkoutState);
     disconnectInstallmentObserver(checkoutState);
+    checkoutState.dockCleanup?.();
     checkoutState.cardForm?.unmount?.();
     checkoutState.cardForm?.destroy?.();
     checkoutState.cardForm = null;
@@ -768,6 +833,7 @@
       try { await createPayment({}, checkoutState); }
       catch (error) { root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false, "Processando...", checkoutState); }
     });
+    initPaymentMethodDock(checkoutState);
   }
 
   async function open(options) {

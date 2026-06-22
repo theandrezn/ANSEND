@@ -95,6 +95,47 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(customVariables.inputFontWeight, "500", "Mercado Pago secure fields should be configured with font-weight 500");
 
   console.log("Playwright verification passed! All checkout elements successfully configured to use Poppins font.");
+
+  // Verify macOS Dock magnification interaction
+  console.log("Verifying macOS Dock magnification effect in Playwright...");
+  const methodsContainer = await page.$(".ansend-checkout__methods");
+  assert.ok(methodsContainer, "Payment methods container must exist");
+
+  const buttons = await page.$$(".ansend-checkout__methods button[data-checkout-method]");
+  assert.strictEqual(buttons.length, 3, "There should be 3 payment method buttons");
+
+  const firstButtonBox = await buttons[0].boundingBox();
+  const centerX = firstButtonBox.x + firstButtonBox.width / 2;
+  const centerY = firstButtonBox.y + firstButtonBox.height / 2;
+
+  // Move mouse to the center of the first button
+  await page.mouse.move(centerX, centerY);
+  await page.waitForTimeout(100);
+
+  const transformsOnHover = await page.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll(".ansend-checkout__methods button[data-checkout-method]"));
+    return btns.map(b => ({
+      method: b.dataset.checkoutMethod,
+      transform: b.style.transform,
+    }));
+  });
+
+  console.log("Transforms on hover first button:", transformsOnHover);
+  const cardTransform = transformsOnHover.find(t => t.method === "card")?.transform || "";
+  assert.ok(cardTransform.includes("scale(1.1"), "First button should scale up close to 1.12 under mouse cursor");
+
+  // Move mouse away
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(300);
+
+  const transformsOnLeave = await page.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll(".ansend-checkout__methods button[data-checkout-method]"));
+    return btns.map(b => b.style.transform);
+  });
+  console.log("Transforms after mouse leave:", transformsOnLeave);
+  assert.ok(transformsOnLeave.every(t => !t || t.includes("scale(1)")), "All buttons should reset back to normal scale on mouse leave");
+
+  console.log("Playwright macOS Dock magnification interaction verified successfully!");
   await browser.close();
 })().catch(async (error) => {
   console.error("Playwright verification failed:", error);
