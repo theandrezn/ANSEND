@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-02-PLAN.md; verifying Phase 1
+status: phase_complete
+stopped_at: Phase 1 verified; ready to discuss/plan Phase 2
 last_updated: "2026-06-22T20:18:01.265Z"
 last_activity: 2026-06-22
 progress:
@@ -21,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-22)
 
 **Core value:** Depois de uma compra confirmada, somente o comprador correto consegue reencontrar e acessar exatamente o beat, a licença, o contrato e os arquivos que adquiriu.
-**Current focus:** Phase 1 — Auditoria da Implementação Atual
+**Current focus:** Phase 2 — Modelo, Snapshot e Segurança (blocking gate)
 
 ## Current Position
 
-Phase: 1 (Auditoria da Implementação Atual) — EXECUTING
+Phase: 1 of 7 (Auditoria da Implementação Atual) — COMPLETE
 Plan: 2 of 2
-Status: Phase complete — ready for verification
+Status: Verified — ready to discuss/plan Phase 2
 Last activity: 2026-06-22
 
-Progress: [----------] 0%
+Progress: [██████████] Phase 1 100% (1/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 2
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -44,12 +44,12 @@ Progress: [----------] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1. Auditoria da Implementação Atual | 2 | 22 min | 11 min |
 
 **Recent Trend:**
 
-- Last 5 plans: none
-- Trend: Not started
+- Last 5 plans: 8 min, 14 min
+- Trend: Baseline established
 
 ## Accumulated Context
 
@@ -61,6 +61,8 @@ Decisions are logged in `PROJECT.md` Key Decisions.
 - Execute seven phases sequentially with review before implementation.
 - Treat database/backend as the only final source for authenticated purchases.
 - Treat Phase 2 as a blocking gate: no UI phase is functionally complete until paid orders atomically have items, entitlements and contracts.
+- Preserve existing payment validation, row locks, RLS and signed downloads while repairing transaction order and entitlement uniqueness.
+- Remove direct purchase authority from `localStorage`; keep only temporary UI preferences.
 
 ### Pending Todos
 
@@ -68,9 +70,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Roadmap requires user approval before Phase 1 planning or code changes.
 - Priority maximum: `manage_purchase_entitlements_trigger` currently runs before `order_items` exist and may create no entitlements/documents.
 - Phase 2 must identify the exact trigger/function/Worker ownership, repair transaction order, prove rollback and eliminate dependence on `completed → completed`.
+- `purchase_entitlements` lacks a business uniqueness key, so retry/backfill can duplicate rights.
+- Legacy authenticated insert policies on `orders`/`order_items` require a grants/RLS audit against the server-only finalization path.
 - Paid legacy orders may require idempotent backfill without duplicate entitlements/contracts.
 - Webhook replay and concurrent/partial order creation require Phase 2 tests before UI work starts.
 - Client still has `localStorage` purchase state and browser-generated contract fallback.
@@ -87,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-22T20:18:01.258Z
-Stopped at: Completed 01-02-PLAN.md; verifying Phase 1
+Last session: 2026-06-22T20:20:00Z
+Stopped at: Phase 1 verified; ready to discuss/plan Phase 2
 Resume file: None
