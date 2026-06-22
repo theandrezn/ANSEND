@@ -1436,6 +1436,9 @@ const appState = {
     error: "",
     sourceType: "",
     youtubeVideoId: "",
+    currentPlayLogged: false,
+    accumulatedPlayTime: 0,
+    playSessionId: "",
   },
 };
 
@@ -10872,6 +10875,25 @@ function renderApplication(forceRoute = false) {
   renderRoutePreservingAuthFocus(forceRoute);
 }
 
+async function loadUserLikes() {
+  if (!supabaseClient || !appState.authUser?.id) {
+    appState.favorites = new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]"));
+    return;
+  }
+  try {
+    const { data, error } = await supabaseClient
+      .from("nexo_feed_likes")
+      .select("source_id")
+      .eq("user_id", appState.authUser.id)
+      .in("source_type", ["beats", "catalog_items"]);
+    if (error) throw error;
+    appState.favorites = new Set((data || []).map((row) => row.source_id));
+  } catch (error) {
+    console.warn("Failed to load user likes from database", error);
+    appState.favorites = new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]"));
+  }
+}
+
 function clearAuthenticatedApplicationState(reason = "no-session") {
   appState.authUser = null;
   appState.authSession = null;
@@ -10882,6 +10904,7 @@ function clearAuthenticatedApplicationState(reason = "no-session") {
   appState.isAdmin = false;
   appState.adminProfiles = [];
   appState.ownedCatalogItems = [];
+  appState.favorites = new Set(JSON.parse(localStorage.getItem("ansend-favorites") || "[]"));
   syncCatalogCompatibilityState();
   debugAuth(reason, { reason });
   if (typeof cleanupNotifications === "function") {
@@ -10928,12 +10951,13 @@ async function applySession(session, options = {}) {
   const followups = await Promise.allSettled([
     loadAdminStatus(),
     loadOwnedCatalogItems(),
+    loadUserLikes(),
   ]);
   followups.forEach((result, index) => {
     if (result.status === "rejected") {
       debugAuth("apply_session_data_failed", {
         source,
-        stage: index === 0 ? "admin" : "catalog",
+        stage: index === 0 ? "admin" : index === 1 ? "catalog" : "likes",
         error: result.reason?.message || String(result.reason),
       });
     }
@@ -14964,14 +14988,15 @@ function renderBeatDetail() {
     .filter((beatItem, index, list) => list.findIndex((entry) => entry.id === beatItem.id) === index)
     .slice(0, 4);
   const favoriteClass = appState.favorites.has(item.id) ? " is-favorite" : "";
-  const bpm = item.raw?.bpm || item.tags?.find((tag) => /bpm/i.test(tag))?.replace(/\s*bpm/i, "") || "130";
-  const key = item.raw?.key || item.raw?.music_key || "C Minor";
-  const genre = item.raw?.genre || item.tags?.[0] || "Beat";
+  const bpmVal = item.raw?.bpm || null;
+  const bpm = bpmVal ? String(bpmVal) : "Não informado";
+  const key = item.raw?.musical_key || item.raw?.key || item.raw?.music_key || "Não informado";
+  const genre = item.raw?.genre || "Não informado";
   const published = item.raw?.published_at || item.raw?.created_at || item.createdAt || "";
-  const publishedLabel = published ? new Date(published).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "Recente";
-  const plays = Number(item.raw?.plays_count || item.raw?.views_count || 1200 + String(item.id).length * 17).toLocaleString("pt-BR");
-  const likes = Number(item.raw?.likes_count || (appState.favorites.has(item.id) ? 1 : 0) || 11).toLocaleString("pt-BR");
-  const tags = [...new Set([genre, ...(item.tags || [])])].filter(Boolean).slice(0, 5);
+  const publishedLabel = published ? new Date(published).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "Não informado";
+  const plays = Number(item.raw?.plays_count || 0).toLocaleString("pt-BR");
+  const likes = Number(item.raw?.likes_count || 0).toLocaleString("pt-BR");
+  const tags = [...new Set([genre !== "Não informado" ? genre : "", ...(item.tags || [])])].filter(Boolean).slice(0, 5);
   const description = item.raw?.description || "Preview profissional pronto para licenciamento na ANSEND.";
   const youtubeBeat = isYoutubeBeat(item);
   const youtubeEmbed = youtubeBeat
@@ -15018,8 +15043,8 @@ function renderBeatDetail() {
             <button type="button" data-action="download" data-id="${htmlEscape(item.id)}" aria-label="Baixar demo"><i data-lucide="download"></i></button>
           </div>
           <dl class="beat-sidebar-stats">
-            <div><dt>Plays</dt><dd>${plays}</dd></div>
-            <div><dt>Likes</dt><dd>${likes}</dd></div>
+            <div><dt>Plays</dt><dd data-beat-plays-count="${htmlEscape(item.id)}">${plays}</dd></div>
+            <div><dt>Likes</dt><dd data-beat-likes-count="${htmlEscape(item.id)}">${likes}</dd></div>
             <div><dt>BPM</dt><dd>${htmlEscape(String(bpm))}</dd></div>
             <div><dt>Key</dt><dd>${htmlEscape(key)}</dd></div>
             <div><dt>Genero</dt><dd>${htmlEscape(genre)}</dd></div>
@@ -19280,6 +19305,9 @@ const PlayerStore = {
     appState.player.currentTime = 0;
     appState.player.duration = 0;
     appState.playing = beat?.id || null;
+    appState.player.currentPlayLogged = false;
+    appState.player.accumulatedPlayTime = 0;
+    appState.player.playSessionId = generateUUID();
     return beat;
   },
   setStatus(status, extra = {}) {
@@ -19287,6 +19315,11 @@ const PlayerStore = {
     if (extra.error !== undefined) appState.player.error = extra.error || "";
     if (Number.isFinite(extra.duration)) appState.player.duration = extra.duration;
     if (Number.isFinite(extra.currentTime)) appState.player.currentTime = extra.currentTime;
+    if (status === "ended") {
+      appState.player.currentPlayLogged = false;
+      appState.player.accumulatedPlayTime = 0;
+      appState.player.playSessionId = generateUUID();
+    }
     syncMiniPlayerState();
   },
   current() {
@@ -20022,6 +20055,23 @@ window.addEventListener("load", () => {
   window.setInterval(() => {
     const player = document.querySelector(".mini-player");
     if (!player?.classList.contains("is-playing")) return;
+
+    // Track play duration and register a play event when validation threshold is met
+    const isPlaying = appState.player.status === "playing";
+    if (isPlaying && appState.playing && appState.playing !== "top-beat-psiiiko") {
+      appState.player.accumulatedPlayTime = (appState.player.accumulatedPlayTime || 0) + 0.5;
+      if (!appState.player.currentPlayLogged) {
+        const duration = appState.player.duration || 0;
+        if (duration > 0) {
+          const targetPlayTime = duration < 10 ? 0.3 * duration : 10;
+          if (appState.player.accumulatedPlayTime >= targetPlayTime) {
+            appState.player.currentPlayLogged = true;
+            registerPlayEvent(appState.playing, appState.player.playSessionId, appState.player.accumulatedPlayTime);
+          }
+        }
+      }
+    }
+
     const audio = topBeatAudio();
     if (isCurrentYoutubeSource()) {
       updateMiniProgress();
@@ -20038,23 +20088,134 @@ window.addEventListener("load", () => {
   updateMiniPlayer(currentPlayingBeat(), Boolean(appState.playing));
 }, { once: true });
 
-function handleFavorite(id) {
+async function registerPlayEvent(beatId, sessionId, listenedSeconds) {
+  if (!supabaseClient || !isUuid(beatId)) return;
+  const current = currentPlayingBeat();
+  const duration = appState.player.duration || 165;
+  const progress = duration ? listenedSeconds / duration : 0;
+  const payload = {
+    beat_id: beatId,
+    session_id: sessionId || generateUUID(),
+    listened_seconds: Number(listenedSeconds.toFixed(1)),
+    progress: Number(progress.toFixed(3)),
+  };
+  if (appState.authUser?.id) {
+    payload.user_id = appState.authUser.id;
+  }
+  try {
+    const { error } = await supabaseClient
+      .from("play_events")
+      .insert(payload);
+    if (error) throw error;
+
+    // Optimistic local update
+    if (current && current.raw) {
+      current.raw.plays_count = (current.raw.plays_count || 0) + 1;
+      updateBeatUiStats(beatId);
+    }
+  } catch (error) {
+    console.error("Failed to register play event", error);
+  }
+}
+
+function updateBeatUiStats(beatId) {
+  const item = findBeat(beatId);
+  if (!item) return;
+
+  const likesVal = Number(item.raw?.likes_count || 0);
+  const playsVal = Number(item.raw?.plays_count || 0);
+
+  const formattedLikes = likesVal.toLocaleString("pt-BR");
+  const formattedPlays = playsVal.toLocaleString("pt-BR");
+
+  const detailPage = document.querySelector(`.beat-detail-page[data-beat-id="${beatId}"]`);
+  if (detailPage) {
+    const likesDd = detailPage.querySelector('[data-beat-likes-count]');
+    const playsDd = detailPage.querySelector('[data-beat-plays-count]');
+    if (likesDd) likesDd.textContent = formattedLikes;
+    if (playsDd) playsDd.textContent = formattedPlays;
+  }
+
+  const isFav = appState.favorites.has(beatId);
+  document.querySelectorAll(`[data-action="favorite"][data-id="${beatId}"]`).forEach((button) => {
+    button.classList.toggle("is-favorite", isFav);
+  });
+}
+
+async function handleFavorite(id) {
+  if (!supabaseClient || !appState.authUser?.id) {
+    showToast("Entre para curtir beats.", "log-in");
+    location.hash = "vendedor";
+    return;
+  }
+
   const item = findBeat(id);
-  const rawId = item?.raw?.id || item?.id || id;
-  if (appState.favorites.has(id)) {
+  if (!item) return;
+  const rawId = item.raw?.id || item.id || id;
+  const sourceTable = item.raw?.source_table || "beats";
+
+  const wasLiked = appState.favorites.has(id);
+  const originalLikesCount = Number(item.raw?.likes_count || 0);
+
+  // Optimistic update
+  if (wasLiked) {
     appState.favorites.delete(id);
+    if (item.raw) {
+      item.raw.likes_count = Math.max(0, originalLikesCount - 1);
+    }
     showToast("Removido dos favoritos", "heart");
-    trackUserEvent("skip", "beat", rawId, { source: "favorite-toggle" });
   } else {
     appState.favorites.add(id);
+    if (item.raw) {
+      item.raw.likes_count = originalLikesCount + 1;
+    }
     showToast("Adicionado aos favoritos", "heart");
-    trackUserEvent("save", "beat", rawId, { source: "favorite-toggle" });
   }
+
+  updateBeatUiStats(id);
   persistState();
   if (currentRoute() === "favoritos") renderRoute();
-  else {
-    document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`).forEach((button) => button.classList.toggle("is-favorite", appState.favorites.has(id)));
-    const isFav = appState.favorites.has(id);
+
+  try {
+    if (wasLiked) {
+      const { error } = await supabaseClient
+        .from("nexo_feed_likes")
+        .delete()
+        .eq("user_id", appState.authUser.id)
+        .eq("source_id", rawId)
+        .eq("source_type", sourceTable);
+      if (error) throw error;
+      trackUserEvent("skip", "beat", rawId, { source: "favorite-toggle" });
+    } else {
+      const { error } = await supabaseClient
+        .from("nexo_feed_likes")
+        .insert({
+          user_id: appState.authUser.id,
+          source_type: sourceTable,
+          source_id: rawId
+        });
+      if (error) throw error;
+      trackUserEvent("save", "beat", rawId, { source: "favorite-toggle" });
+    }
+  } catch (error) {
+    console.error("Failed to toggle favorite on backend", error);
+    showToast("Erro ao salvar curtida no servidor.", "alert-triangle");
+
+    // Rollback
+    if (wasLiked) {
+      appState.favorites.add(id);
+      if (item.raw) {
+        item.raw.likes_count = originalLikesCount;
+      }
+    } else {
+      appState.favorites.delete(id);
+      if (item.raw) {
+        item.raw.likes_count = originalLikesCount;
+      }
+    }
+    updateBeatUiStats(id);
+    persistState();
+    if (currentRoute() === "favoritos") renderRoute();
   }
 }
 
