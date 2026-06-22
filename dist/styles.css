@@ -39933,3 +39933,20 @@ body[data-route="carrinho"] .checkout-promoted-play-btn {
     font-size: 17px !important;
   }
 }
+
+/* Touch active responses for sidebar and navbar elements (using standalone scale property) */
+@media (hover: none), (pointer: coarse) {
+  .sidebar-profile-card:active,
+  .sidebar-main-btn:active,
+  .sidebar-nav-item:active,
+  .navbar-brand-logo:active,
+  .navbar-link:active,
+  .navbar-language-switcher button:active,
+  .navbar-notification-btn:active,
+  .navbar-cart-btn:active,
+  .navbar-mobile-profile:active,
+  .navbar-auth-btn:active {
+    scale: 0.98 !important;
+  }
+}
+

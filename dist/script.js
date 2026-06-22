@@ -23001,6 +23001,144 @@ function initNavbarListeners() {
   });
 }
 
+function initSidebarDock() {
+  const container = document.querySelector(".sidebar");
+  if (!container) return;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReducedMotion) return;
+
+  const isFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!isFinePointer) return;
+
+  let items = [];
+  function queryItems() {
+    items = Array.from(container.querySelectorAll(".sidebar-profile-card, .sidebar-main-btn, .sidebar-nav-item"));
+    items.forEach((item) => {
+      if (!item.dataset.dockOriginSet) {
+        item.style.transformOrigin = "left center";
+        item.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+        item.dataset.dockOriginSet = "true";
+      }
+    });
+  }
+  queryItems();
+
+  let rafId = null;
+
+  function updateDock(clientY) {
+    queryItems();
+    items.forEach((item) => {
+      const rect = item.getBoundingClientRect();
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.abs(clientY - centerY);
+      const maxDistance = 160;
+
+      if (distance < maxDistance) {
+        const factor = Math.cos((distance / maxDistance) * Math.PI / 2);
+        const scale = 1 + factor * 0.12;
+        const translateX = factor * 10;
+        item.style.transform = `scale(${scale.toFixed(3)}) translateX(${translateX.toFixed(1)}px)`;
+      } else {
+        item.style.transform = "scale(1) translateX(0px)";
+      }
+    });
+  }
+
+  function onPointerMove(event) {
+    if (rafId) cancelAnimationFrame(rafId);
+    queryItems();
+    items.forEach((item) => {
+      item.style.transition = "none";
+    });
+    rafId = requestAnimationFrame(() => {
+      updateDock(event.clientY);
+    });
+  }
+
+  function resetDock() {
+    if (rafId) cancelAnimationFrame(rafId);
+    queryItems();
+    items.forEach((item) => {
+      item.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+      item.style.transform = "scale(1) translateX(0px)";
+    });
+  }
+
+  container.addEventListener("pointermove", onPointerMove);
+  container.addEventListener("pointerleave", resetDock);
+}
+
+function initNavbarDock() {
+  const container = document.querySelector(".floating-navbar");
+  if (!container) return;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReducedMotion) return;
+
+  const isFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!isFinePointer) return;
+
+  let items = [];
+  function queryItems() {
+    items = Array.from(container.querySelectorAll(
+      ".navbar-brand-logo, .navbar-link, .navbar-language-switcher button, .navbar-notification-btn, .navbar-cart-btn, .navbar-mobile-profile, .navbar-auth-btn"
+    ));
+    items.forEach((item) => {
+      if (!item.dataset.dockOriginSet) {
+        item.style.transformOrigin = "center bottom";
+        item.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+        item.dataset.dockOriginSet = "true";
+      }
+    });
+  }
+  queryItems();
+
+  let rafId = null;
+
+  function updateDock(clientX) {
+    queryItems();
+    items.forEach((item) => {
+      const rect = item.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const distance = Math.abs(clientX - centerX);
+      const maxDistance = 180;
+
+      if (distance < maxDistance) {
+        const factor = Math.cos((distance / maxDistance) * Math.PI / 2);
+        const scale = 1 + factor * 0.12;
+        const translateY = factor * -5;
+        item.style.transform = `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(1)}px)`;
+      } else {
+        item.style.transform = "scale(1) translateY(0px)";
+      }
+    });
+  }
+
+  function onPointerMove(event) {
+    if (rafId) cancelAnimationFrame(rafId);
+    queryItems();
+    items.forEach((item) => {
+      item.style.transition = "none";
+    });
+    rafId = requestAnimationFrame(() => {
+      updateDock(event.clientX);
+    });
+  }
+
+  function resetDock() {
+    if (rafId) cancelAnimationFrame(rafId);
+    queryItems();
+    items.forEach((item) => {
+      item.style.transition = "transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)";
+      item.style.transform = "scale(1) translateY(0px)";
+    });
+  }
+
+  container.addEventListener("pointermove", onPointerMove);
+  container.addEventListener("pointerleave", resetDock);
+}
+
 /* ==========================================
    ANSEND REALTIME NOTIFICATION SYSTEM SERVICE
    ========================================== */
@@ -24337,6 +24475,8 @@ detectLocaleWithGeo()
   .finally(() => {
     initSidebarListeners();
     initNavbarListeners();
+    initSidebarDock();
+    initNavbarDock();
     syncAccountUi();
     renderRoutePreservingAuthFocus(true);
     initializeAuth();
