@@ -58,13 +58,13 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [ ] 02-01: Inspecionar schema e dados reais, produzir diagnóstico somente leitura e aprovar rollout/rollback.
-- [ ] 02-02: Criar constraints e índices de idempotência com tratamento seguro para legado.
-- [ ] 02-03: Corrigir a ordem transacional e substituir o trigger prematuro por provisionamento explícito e atômico.
-- [ ] 02-04: Persistir snapshot imutável e completo da compra, contrato e direitos adquiridos.
-- [ ] 02-05: Endurecer RLS, grants, privacidade e autorização server-side de downloads.
-- [ ] 02-06: Implementar backfill idempotente com dry-run, auditoria e bloqueio de casos ambíguos.
-- [ ] 02-07: Executar testes integrados, regressões, build e gate final de aprovação da Fase 2.
+- [x] 02-01: Inspecionar schema e dados reais, produzir diagnóstico somente leitura e aprovar rollout/rollback.
+- [x] 02-02: Criar constraints e índices de idempotência com tratamento seguro para legado.
+- [x] 02-03: Corrigir a ordem transacional e substituir o trigger prematuro por provisionamento explícito e atômico.
+- [x] 02-04: Persistir snapshot imutável e completo da compra, contrato e direitos adquiridos.
+- [x] 02-05: Endurecer RLS, grants, privacidade e autorização server-side de downloads.
+- [x] 02-06: Implementar backfill idempotente com dry-run, auditoria e bloqueio de casos ambíguos.
+- [x] 02-07: Executar testes integrados, regressões, build e gate final de aprovação da Fase 2.
 
 **Blocking Gate for Phases 3-7:**
 - Nenhuma listagem, detalhe ou ação de download pode ser declarada funcional enquanto um pedido pago puder ficar sem `order_items`, entitlement ativo e contrato persistido.
@@ -191,7 +191,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Auditoria da Implementação Atual | 2/2 | Complete   | 2026-06-22 |
-| 2. Modelo, Snapshot e Segurança | 0/7 | Planned    |  |
+| 2. Modelo, Snapshot e Segurança | 7/7 | Complete   | 2026-06-22 |
 | 3. Listagem Real e Premium | 0/3 | Not started | - |
 | 4. Detalhes, Perfil e Chat | 0/2 | Not started | - |
 | 5. Downloads e Contratos Protegidos | 0/3 | Not started | - |

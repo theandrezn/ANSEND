@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 planned; ready to execute
-last_updated: "2026-06-22T20:53:44.719Z"
-last_activity: 2026-06-22 -- Phase 2 planning complete
+stopped_at: Phase 2 complete; Phase 3 not started
+last_updated: "2026-06-22T21:35:00.000Z"
+last_activity: 2026-06-22 -- Phase 2 executed and verified locally
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 9
-  completed_plans: 2
-  percent: 22
+  completed_phases: 2
+  total_plans: 23
+  completed_plans: 9
+  percent: 39
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-22)
 
 **Core value:** Depois de uma compra confirmada, somente o comprador correto consegue reencontrar e acessar exatamente o beat, a licença, o contrato e os arquivos que adquiriu.
-**Current focus:** Phase 2 — Modelo, Snapshot e Segurança (blocking gate)
+**Current focus:** Phase 2 complete — aguardando Fase 3
 
 ## Current Position
 
-Phase: 2 of 7 (Modelo, Snapshot e Segurança) — PLANNED
-Plan: 0 of 7
-Status: Ready to execute
-Last activity: 2026-06-22 -- Phase 2 planning complete
+Phase: 2 of 7 (Modelo, Snapshot e Segurança) — COMPLETE
+Plan: 7 of 7
+Status: Phase 2 complete; Phase 3 not started
+Last activity: 2026-06-22 -- Phase 2 executed and verified locally
 
-Progress: [██████████] Phase 1 100% (1/7 phases complete)
+Progress: [██████████] Phase 2 100% (2/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
+- Total plans completed: 9
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -45,6 +45,7 @@ Progress: [██████████] Phase 1 100% (1/7 phases complete)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Auditoria da Implementação Atual | 2 | 22 min | 11 min |
+| 2. Modelo, Snapshot e Segurança | 7 | - | - |
 
 **Recent Trend:**
 
@@ -70,16 +71,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Priority maximum: `manage_purchase_entitlements_trigger` currently runs before `order_items` exist and may create no entitlements/documents.
-- Phase 2 must identify the exact trigger/function/Worker ownership, repair transaction order, prove rollback and eliminate dependence on `completed → completed`.
-- `purchase_entitlements` lacks a business uniqueness key, so retry/backfill can duplicate rights.
-- Legacy authenticated insert policies on `orders`/`order_items` require a grants/RLS audit against the server-only finalization path.
-- Paid legacy orders may require idempotent backfill without duplicate entitlements/contracts.
-- Webhook replay and concurrent/partial order creation require Phase 2 tests before UI work starts.
-- Client still has `localStorage` purchase state and browser-generated contract fallback.
-- Download lookup is buyer + beat based rather than explicitly tied to the selected order item.
-- Current list pagination happens after fetching the entire purchase dataset.
-
+- Phase 2 local implementation is complete, but production migrations/backfill were not applied in this run.
+- Production backfill remains dry-run gated and must review ambiguous rows before `p_apply = true`.
+- Phase 3 still must remove `localStorage` as purchase source of truth and implement backend pagination.
+- Phase 5 still must replace or formally justify browser-only contract fallback in the UI flow.
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
@@ -90,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-22T20:45:31.225Z
-Stopped at: Phase 2 planned; ready to execute
-Resume file: .planning/phases/02-modelo-snapshot-e-seguranca-prioridade-maxima/02-01-PLAN.md
+Last session: 2026-06-22T21:35:00.000Z
+Stopped at: Phase 2 complete; Phase 3 not started
+Resume file: .planning/phases/03-listagem-real-e-premium/03-01-PLAN.md
