@@ -41,7 +41,7 @@ O marco evolui a rota real `#compras` por dependência: primeiro consolida a aud
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Consolidar auditoria frontend, navegação e componentes compartilhados.
+- [x] 01-01: Consolidar auditoria frontend, navegação e componentes compartilhados.
 - [ ] 01-02: Consolidar auditoria backend, banco, pagamentos, segurança e matriz de mudança.
 
 ### Phase 2: Modelo, Snapshot e Segurança (Prioridade Máxima)
@@ -187,7 +187,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auditoria da Implementação Atual | 0/2 | Not started | - |
+| 1. Auditoria da Implementação Atual | 1/2 | In Progress|  |
 | 2. Modelo, Snapshot e Segurança | 0/4 | Not started | - |
 | 3. Listagem Real e Premium | 0/3 | Not started | - |
 | 4. Detalhes, Perfil e Chat | 0/2 | Not started | - |

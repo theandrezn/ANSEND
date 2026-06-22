@@ -7,7 +7,7 @@
 
 ### Auditoria
 
-- [ ] **AUD-01**: A equipe consegue consultar um inventário documentado da rota `#compras`, renderers, estilos, handlers e componentes compartilhados atuais.
+- [x] **AUD-01**: A equipe consegue consultar um inventário documentado da rota `#compras`, renderers, estilos, handlers e componentes compartilhados atuais.
 - [ ] **AUD-02**: A equipe consegue rastrear documentalmente uma compra desde beat + licença até carrinho, checkout, Mercado Pago, webhook, pedido, entitlement, contrato e download.
 - [ ] **AUD-03**: A equipe consegue consultar o modelo real de tabelas, relações, RLS, funções, triggers, índices, endpoints e queries relacionados a compras.
 - [ ] **AUD-04**: A equipe dispõe de uma matriz documentada que classifica cada parte atual como reutilizar, corrigir, remover ou preservar, incluindo mocks, `localStorage` e fallbacks.
@@ -102,7 +102,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-01 | Phase 1 | Pending |
+| AUD-01 | Phase 1 | Complete |
 | AUD-02 | Phase 1 | Pending |
 | AUD-03 | Phase 1 | Pending |
 | AUD-04 | Phase 1 | Pending |
