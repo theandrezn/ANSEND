@@ -24482,5 +24482,21 @@ detectLocaleWithGeo()
     initializeAuth();
   });
 
+// Global capture listener to store click origin for checkout Genie animation
+document.addEventListener("click", (event) => {
+  const trigger = event.target.closest("[data-action='detail-buy-now'], [data-action='finalize-cart'], a[href*='checkout'], button[data-action='finalize-cart']");
+  if (trigger) {
+    const rect = trigger.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+    try {
+      localStorage.setItem("ansend-checkout-origin-x", originX);
+      localStorage.setItem("ansend-checkout-origin-y", originY);
+    } catch (e) {
+      console.warn("localStorage setItem access denied:", e);
+    }
+  }
+}, true);
+
 
 

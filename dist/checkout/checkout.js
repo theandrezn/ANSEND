@@ -850,6 +850,25 @@
     }
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
+
+    // Set dynamic transform-origin based on click location for Genie effect
+    let originX = null;
+    let originY = null;
+    try {
+      originX = localStorage.getItem("ansend-checkout-origin-x");
+      originY = localStorage.getItem("ansend-checkout-origin-y");
+      if (originX && originY) {
+        localStorage.removeItem("ansend-checkout-origin-x");
+        localStorage.removeItem("ansend-checkout-origin-y");
+      }
+    } catch (e) {
+      console.warn("localStorage access denied:", e);
+    }
+    if (originX && originY) {
+      root.style.transformOrigin = `${originX}px ${originY}px`;
+    } else {
+      root.style.transformOrigin = "center center";
+    }
     active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, cardFormAmountCents: 0, installmentFetchCount: 0, installmentOutsidePointerHandler: null };
     const checkoutState = active;
     root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
