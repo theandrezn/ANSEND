@@ -30,7 +30,7 @@ for (const label of [
 assert(!checkout.includes(">Banco emissor<"), "Checkout must not expose a visible issuer selector");
 assert(checkout.includes("ansend-checkout__promoted-track"), "Checkout must render the promoted carousel track");
 assert(checkout.includes("ansend-checkout__promoted-card"), "Checkout must render promoted cards");
-assert(checkout.includes("Promote Your Music"), "Checkout must render the promoted CTA banner");
+assert(checkout.includes("Promova sua música"), "Checkout must render the promoted CTA banner in Portuguese");
 assert(checkout.includes("data-checkout-promoted-next"), "Checkout must include promoted carousel navigation");
 assert(!checkout.includes("Recomendado para você"), "Checkout must not render the legacy recommendation heading");
 

@@ -26,7 +26,7 @@ assert(markup.includes('aria-live="polite"'), "Payment feedback must be announce
 assert(markup.includes("R$ 223,89") || markup.includes("R$ 223,89"), "Total must use BRL formatting");
 assert(markup.includes("Promoted"), "Checkout must render the promoted carousel title");
 assert(markup.includes("ansend-checkout__promoted-card"), "Checkout must render promoted carousel cards");
-assert(markup.includes("Promote Your Music"), "Checkout must render the promoted CTA banner");
+assert(markup.includes("Promova sua música"), "Checkout must render the promoted CTA banner in Portuguese");
 assert(markup.includes("data-checkout-promoted-next"), "Checkout carousel must expose navigation");
 assert(!markup.includes("Recomendado para você"), "Legacy single recommendation title must not render");
 

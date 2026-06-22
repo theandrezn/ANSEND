@@ -115,8 +115,8 @@
       </div>
       <aside class="ansend-checkout__promoted-banner">
         <div class="ansend-checkout__promoted-banner-icon">${icon("megaphone")}</div>
-        <div><strong>Promote Your Music</strong><p>Reach thousands of artists looking for their next hit. Get featured in the promoted section and boost your sales instantly.</p></div>
-        <a href="#promover-beat">Get Started Now ${icon("arrow-right")}</a>
+        <div><strong>Promova sua música</strong><p>Alcance milhares de artistas procurando o próximo hit. Ganhe destaque na seção de promovidos e aumente suas vendas.</p></div>
+        <a href="#promover-beat">Comece agora ${icon("arrow-right")}</a>
       </aside>
     </section>`;
   }
