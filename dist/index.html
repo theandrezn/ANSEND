@@ -25,9 +25,9 @@
       href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260622-topbar-fix-v1" />
+    <link rel="stylesheet" href="styles.css?v=20260622-topbar-fix-v2" />
     <link rel="stylesheet" href="checkout/checkout.css?v=20260620-checkout-v2" />
-    <link rel="stylesheet" href="hero-collage.css?v=20260622-hero-collage-v1" />
+    <link rel="stylesheet" href="hero-collage.css?v=20260622-vertical-carousel-v1" />
     <link rel="stylesheet" href="nexo-ia.css?v=20260608-nexo-ia-1" />
     <link rel="stylesheet" href="profile-page.css?v=20260609-profile-artist-v1" />
   </head>
@@ -353,30 +353,32 @@
 
             <div class="an-hero-art top-beat-showcase">
               <article class="top-beat-card spotify-collage-container" aria-label="Spotify Track Covers Showcase">
-                <!-- Top gradient fade overlay -->
-                <div class="spotify-collage-fade-top"></div>
+                <!-- Mask Gradients for Seamless Fade -->
+                <div class="spotify-collage-mask"></div>
                 
                 <div class="spotify-collage-inner-wrapper">
                   <!-- Skeletons initially loaded to prevent blank flashes -->
-                  <div class="spotify-collage-column">
+                  <div class="spotify-collage-column col-1">
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                   </div>
-                  <div class="spotify-collage-column">
+                  <div class="spotify-collage-column col-2">
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                   </div>
-                  <div class="spotify-collage-column">
+                  <div class="spotify-collage-column col-3">
+                    <div class="spotify-track-card skeleton-card"></div>
+                    <div class="spotify-track-card skeleton-card"></div>
+                    <div class="spotify-track-card skeleton-card"></div>
+                  </div>
+                  <div class="spotify-collage-column col-4">
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                     <div class="spotify-track-card skeleton-card"></div>
                   </div>
                 </div>
-
-                <!-- Bottom gradient fade overlay -->
-                <div class="spotify-collage-fade-bottom"></div>
               </article>
             </div>
 
@@ -499,7 +501,7 @@
     <script src="https://unpkg.com/three@0.124.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.min.js"></script>
     <script>
-      window.ANSEND_BUILD_ID = "20260622214920-5618709";
+      window.ANSEND_BUILD_ID = "20260622225407-991b053";
       window.ANSEND_SUPABASE = {
         url: "https://qxujynzqdursxaehchik.supabase.co",
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",
@@ -507,7 +509,7 @@
       };
     </script>
     <script src="checkout/checkout.js?v=20260620-checkout-v2" charset="UTF-8"></script>
-    <script src="script.js?v=20260622-hero-collage-v1" charset="UTF-8"></script>
+    <script src="script.js?v=20260620-license-flow-v1" charset="UTF-8"></script>
   </body>
 </html>
 

@@ -40002,4 +40002,16 @@ body[data-route="carrinho"] .checkout-promoted-play-btn {
   }
 }
 
+/* Align catalog button typography to match recent-list button and pass tests */
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn,
+body[data-route="feed"] .featured-preview-section .home-catalog-beat-card .beat-card-buy-btn span,
+.minimal-beat-card .beat-card-buy-btn,
+.minimal-beat-card .beat-card-buy-btn span,
+.home-catalog-beat-card .beat-card-buy-btn,
+.home-catalog-beat-card .beat-card-buy-btn span {
+  font-family: var(--font-body) !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+}
+
 
