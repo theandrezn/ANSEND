@@ -101,6 +101,7 @@ Depois de uma compra confirmada, somente o comprador correto consegue reencontra
 | Tratar snapshot como dado histórico imutável | Edições futuras de licença/beat não podem alterar uma compra paga | — Pending |
 | Usar chat e perfil reais do produtor | Evita experiências simuladas e componentes duplicados | — Pending |
 | Organizar o marco em sete fases sequenciais | A segurança e o modelo precisam estabilizar antes da UI e dos downloads | — Pending |
+| Tornar a Fase 2 um gate bloqueador | Nenhuma interface é funcional se um pedido pago puder existir sem itens, entitlement ou contrato | — Pending |
 | Parar após os artefatos de planejamento | O usuário solicitou revisão explícita antes de implementação | — Pending |
 
 ## Evolution

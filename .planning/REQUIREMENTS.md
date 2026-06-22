@@ -16,8 +16,10 @@
 
 - [ ] **DATA-01**: Cada item pago preserva snapshot imutável de beat, produtor, licença, preço, moeda, termos, direitos, restrições, royalties, formatos e dados contratuais necessários.
 - [ ] **DATA-02**: Alterar posteriormente beat ou licença não modifica os dados apresentados nem os direitos de uma compra concluída.
-- [ ] **DATA-03**: Uma confirmação válida cria exatamente um pedido e um conjunto consistente de itens, entitlements, documentos e lançamentos financeiros.
-- [ ] **DATA-04**: Pedidos existentes elegíveis podem receber backfill seguro sem duplicar direitos ou documentos já criados.
+- [ ] **DATA-03**: A função/trigger/serviço responsável pela finalização identifica e executa explicitamente a ordem pagamento aprovado → pedido → `order_items` → entitlements/documentos/ledger dentro de uma fronteira transacional segura.
+- [ ] **DATA-04**: Pedidos antigos pagos sem entitlement ou contrato recebem backfill idempotente, auditável e seguro, sem duplicar direitos, documentos ou lançamentos já existentes.
+- [ ] **DATA-05**: Falha ao criar qualquer `order_item` ou direito obrigatório provoca rollback/falha atômica, sem deixar pedido concluído parcial.
+- [ ] **DATA-06**: A criação de entitlements e contratos não depende de uma atualização artificial `completed → completed` e ocorre somente quando os itens necessários já existem.
 - [ ] **SEC-01**: O comprador autenticado consegue ler somente seus próprios pedidos, itens, tentativas, entitlements, documentos e logs permitidos.
 - [ ] **SEC-02**: Alterar IDs no hash, request ou código cliente não permite ler dados nem baixar arquivos de outro comprador.
 - [ ] **SEC-03**: O produtor acessa somente os dados necessários de vendas dos próprios beats, sem obter dados privados indevidos do comprador.
@@ -25,11 +27,11 @@
 
 ### Listagem
 
-- [ ] **LIST-01**: O comprador visualiza na rota existente `#compras` seus pedidos e tentativas reais, sem pedidos autenticados provenientes de mocks ou `localStorage`.
+- [ ] **LIST-01**: O comprador visualiza na rota existente `#compras` seus pedidos e tentativas reais; `localStorage` pode guardar apenas preferências temporárias de interface e nunca pedidos, pagamentos, direitos ou downloads.
 - [ ] **LIST-02**: Cada linha apresenta capa, beat, produtor, licença, data, valor, moeda, status real e ação de detalhes conforme os dados disponíveis.
 - [ ] **LIST-03**: O comprador filtra por todos, pagos, pendentes/em processamento, problemas de pagamento e reembolsados usando estados reais do backend.
 - [ ] **LIST-04**: O comprador pesquisa e ordena pedidos sem perder o vínculo com dados reais.
-- [ ] **LIST-05**: A listagem usa paginação ou carregamento incremental de dados no backend e não carrega previamente todos os detalhes pesados.
+- [ ] **LIST-05**: A consulta real ao backend/Supabase pagina ou carrega incrementalmente antes de retornar os dados, sem buscar todos os pedidos para aplicar `slice()` no frontend.
 - [ ] **LIST-06**: A página apresenta skeleton, vazio útil, erro recuperável e carregamento incremental coerente.
 - [ ] **LIST-07**: A listagem possui layout premium escuro, neutro, responsivo e acessível, com laranja apenas em destaques pontuais.
 
@@ -48,7 +50,7 @@
 - [ ] **FILE-02**: Pedido pendente, falho, cancelado, expirado ou reembolsado não concede entitlement ativo nem download.
 - [ ] **FILE-03**: Cada download valida sessão, propriedade, pedido, item, entitlement, formato, status e existência do arquivo no backend.
 - [ ] **FILE-04**: Arquivos privados são entregues por URL assinada temporária e nenhuma URL permanente privada é exposta.
-- [ ] **FILE-05**: O contrato persistido no backend reflete o snapshot real da compra e pode ser visualizado ou baixado novamente.
+- [ ] **FILE-05**: O contrato persistido e autorizado no backend reflete o snapshot real, pode ser visualizado ou baixado após refresh, novo login e outro dispositivo, e substitui o fallback gerado apenas no navegador salvo justificativa técnica documentada e equivalente em segurança/persistência.
 - [ ] **FILE-06**: Recarregar a página ou entrar novamente mantém pedidos, documentos e downloads autorizados disponíveis.
 - [ ] **FILE-07**: Arquivo ausente, caminho inválido, entitlement revogado e falha de assinatura produzem estados seguros e recuperáveis.
 - [ ] **FILE-08**: Downloads autorizados e recusados relevantes geram logs seguros e úteis sem expor secrets.
@@ -134,11 +136,11 @@
 | FILE-07 | Phase 5 | Pending |
 | FILE-08 | Phase 5 | Pending |
 | PAY-01 | Phase 6 | Pending |
-| PAY-02 | Phase 6 | Pending |
+| PAY-02 | Phase 2 | Pending |
 | PAY-03 | Phase 6 | Pending |
 | PAY-04 | Phase 6 | Pending |
 | PAY-05 | Phase 6 | Pending |
-| PAY-06 | Phase 6 | Pending |
+| PAY-06 | Phase 2 | Pending |
 | PAY-07 | Phase 6 | Pending |
 | QUAL-01 | Phase 7 | Pending |
 | QUAL-02 | Phase 7 | Pending |
@@ -149,9 +151,12 @@
 | QUAL-07 | Phase 7 | Pending |
 | QUAL-08 | Phase 7 | Pending |
 
+| DATA-05 | Phase 2 | Pending |
+| DATA-06 | Phase 2 | Pending |
+
 **Coverage:**
-- v1 requirements: 48 total
-- Mapped to phases: 48
+- v1 requirements: 50 total
+- Mapped to phases: 50
 - Unmapped: 0 ✓
 
 ---
