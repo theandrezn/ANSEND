@@ -119,7 +119,7 @@
     if (!items.length) return "";
     return `<section class="ansend-checkout__recommendations" aria-labelledby="checkout-recommendations-title">
       <div class="ansend-checkout__promoted-header">
-        <h3 id="checkout-recommendations-title">Promoted</h3>
+        <h3 id="checkout-recommendations-title" data-testid="Promoted">Promovidos</h3>
         <div class="ansend-checkout__promoted-nav" aria-label="Navegar promovidos">
           <button type="button" data-checkout-promoted-prev aria-label="Promovidos anteriores">${icon("chevron-left")}</button>
           <button type="button" data-checkout-promoted-next aria-label="Próximos promovidos">${icon("chevron-right")}</button>
@@ -128,10 +128,10 @@
       <div class="ansend-checkout__promoted-track" data-checkout-promoted-track>
         ${items.map(promotedCardMarkup).join("")}
       </div>
-      <aside class="ansend-checkout__promoted-banner">
+      <aside class="ansend-checkout__promoted-banner" data-testid="Promote Your Music">
         <div class="ansend-checkout__promoted-banner-icon">${icon("megaphone")}</div>
-        <div><strong>Promote Your Music</strong><p>Reach thousands of artists looking for their next hit. Get featured in the promoted section and boost your sales instantly.</p></div>
-        <a href="#promover-beat">Get Started Now ${icon("arrow-right")}</a>
+        <div><strong>Promova sua música</strong><p>Alcance milhares de artistas procurando pelo seu próximo sucesso. Apareça na seção de promovidos e impulsione suas vendas instantaneamente.</p></div>
+        <a href="#promover-beat" data-testid="Get Started Now">Começar Agora ${icon("arrow-right")}</a>
       </aside>
     </section>`;
   }
@@ -569,7 +569,7 @@
       style: {
         customVariables: {
           inputColor: "#ffffff",
-          inputFontFamily: "Segoe UI, sans-serif",
+          inputFontFamily: "Poppins, sans-serif",
           inputFontSize: "13px",
           inputFontWeight: "500",
           placeholderColor: "rgba(255, 255, 255, 0.7)",

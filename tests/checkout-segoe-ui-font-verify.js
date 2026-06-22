@@ -6,7 +6,7 @@ const { chromium } = require("playwright");
 const root = path.resolve(__dirname, "..");
 
 (async () => {
-  console.log("Starting Playwright verification for Segoe UI font...");
+  console.log("Starting Playwright verification for Poppins font...");
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
   const css = fs.readFileSync(path.join(root, "checkout", "checkout.css"), "utf8");
@@ -79,10 +79,10 @@ const root = path.resolve(__dirname, "..");
   console.log("Computed typography details in Playwright:", JSON.stringify(typography, null, 2));
 
   // Assertions
-  assert.ok(typography.checkout.includes("Segoe UI"), "Checkout container should use Segoe UI font");
-  assert.ok(typography.trigger.includes("Segoe UI"), "Installment selector trigger should use Segoe UI font");
-  assert.ok(typography.payBtn.includes("Segoe UI"), "Payment CTA button should use Segoe UI font");
-  assert.ok(typography.methodBtn.includes("Segoe UI"), "Method buttons should use Segoe UI font");
+  assert.ok(typography.checkout.includes("Poppins"), "Checkout container should use Poppins font");
+  assert.ok(typography.trigger.includes("Poppins"), "Installment selector trigger should use Poppins font");
+  assert.ok(typography.payBtn.includes("Poppins"), "Payment CTA button should use Poppins font");
+  assert.ok(typography.methodBtn.includes("Poppins"), "Method buttons should use Poppins font");
 
   // Verify weight 500 for selectors and inputs
   assert.strictEqual(typography.triggerWeight, "500", "Installment trigger should have font-weight 500");
@@ -91,10 +91,10 @@ const root = path.resolve(__dirname, "..");
   // Verify styling in Mercado Pago secure card inputs config
   const customVariables = typography.cardFormConfig?.style?.customVariables;
   assert.ok(customVariables, "Mercado Pago cardForm configuration should include styling config");
-  assert.ok(customVariables.inputFontFamily.includes("Segoe UI"), "Mercado Pago secure fields should be configured to use Segoe UI font");
+  assert.ok(customVariables.inputFontFamily.includes("Poppins"), "Mercado Pago secure fields should be configured to use Poppins font");
   assert.strictEqual(customVariables.inputFontWeight, "500", "Mercado Pago secure fields should be configured with font-weight 500");
 
-  console.log("Playwright verification passed! All checkout elements successfully configured to use Segoe UI font.");
+  console.log("Playwright verification passed! All checkout elements successfully configured to use Poppins font.");
   await browser.close();
 })().catch(async (error) => {
   console.error("Playwright verification failed:", error);
