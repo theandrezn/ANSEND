@@ -47,7 +47,7 @@ async function routeMetrics(page, route) {
     const pageShell = document.querySelector(".page");
     const appView = document.querySelector("#appView");
     const routeSurface = currentRoute === "cadastrar"
-      ? document.querySelector(".release-page")
+      ? (document.querySelector(".release-page") || document.querySelector(".release-mode-selector"))
       : document.querySelector(".ai-hero");
 
     const box = (element) => {
@@ -108,7 +108,8 @@ async function run() {
               display_name: "Layout Test",
               username: "layout-test",
               account_role: "artista",
-              music_styles: ["Trap"]
+              music_styles: ["Trap"],
+              quiz_completed: true
             };
             function tableApi(table) {
               const api = {

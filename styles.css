@@ -1174,11 +1174,11 @@ body[data-route="feed"] .feed {
 
 /* 9. Header / Topbar Refinements */
 body[data-route="feed"] .topbar {
-  background: rgba(5, 5, 5, 0.9) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
   color: #ffffff !important;
 }
 
