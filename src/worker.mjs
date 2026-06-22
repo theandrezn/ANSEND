@@ -1702,14 +1702,24 @@ async function handleOrderDownload(request, env) {
 
   const url = new URL(request.url);
   const beatId = url.searchParams.get("beat_id");
+  const orderId = url.searchParams.get("order_id");
+  const orderItemId = url.searchParams.get("order_item_id");
   const fileType = url.searchParams.get("file_type")?.toLowerCase(); // 'mp3', 'wav', or 'stems'
 
-  if (!isUuid(beatId) || !["mp3", "wav", "stems"].includes(fileType)) {
+  if (!isUuid(beatId) || (orderId && !isUuid(orderId)) || (orderItemId && !isUuid(orderItemId)) || !["mp3", "wav", "stems"].includes(fileType)) {
     return jsonResponse({ success: false, error: "Parametros invalidos." }, { status: 400 });
   }
 
-  // 1. Verify active entitlement for this user, beat, and file type
-  const entitlementsResponse = await supabaseRest(env, `purchase_entitlements?select=id,status,allowed_files,order_id,order_item_id&buyer_id=eq.${auth.user.id}&beat_id=eq.${beatId}&status=eq.active`);
+  const entitlementFilters = [
+    `buyer_id=eq.${auth.user.id}`,
+    `beat_id=eq.${beatId}`,
+    "status=eq.active",
+    orderId ? `order_id=eq.${orderId}` : "",
+    orderItemId ? `order_item_id=eq.${orderItemId}` : "",
+  ].filter(Boolean).join("&");
+
+  // 1. Verify an active entitlement tied to a completed order and, when provided, the selected order item.
+  const entitlementsResponse = await supabaseRest(env, `purchase_entitlements?select=id,status,allowed_files,order_id,order_item_id,beat_id&${entitlementFilters}&order=activated_at.desc&limit=5`);
   if (entitlementsResponse.error) {
     return jsonResponse({ success: false, error: "Erro ao verificar permissao de download." }, { status: 500 });
   }
@@ -1719,7 +1729,20 @@ async function handleOrderDownload(request, env) {
     return jsonResponse({ success: false, error: "Voce nao possui uma licenca ativa para baixar este arquivo." }, { status: 403 });
   }
 
-  const entitlement = entitlements[0];
+  let entitlement = null;
+  for (const candidate of entitlements) {
+    const orderResponse = await supabaseRest(env, `orders?select=id,status,buyer_id&id=eq.${candidate.order_id}&buyer_id=eq.${auth.user.id}&limit=1`);
+    const order = orderResponse.data?.[0];
+    if (!orderResponse.error && order?.status === "completed") {
+      entitlement = candidate;
+      break;
+    }
+  }
+
+  if (!entitlement) {
+    return jsonResponse({ success: false, error: "O pedido ainda nao libera download para este arquivo." }, { status: 403 });
+  }
+
   const filesIncluded = entitlement.allowed_files || "";
   let isAuthorized = false;
   if (fileType === "mp3" && /mp3/i.test(filesIncluded)) isAuthorized = true;
