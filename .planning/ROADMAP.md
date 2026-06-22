@@ -17,7 +17,7 @@ O marco evolui a rota real `#compras` por dependência: primeiro consolida a aud
 
 ## Phases
 
-- [ ] **Phase 1: Auditoria da Implementação Atual** - Consolidar o contrato real do fluxo e a matriz de reutilização sem alterar comportamento.
+- [x] **Phase 1: Auditoria da Implementação Atual** - Consolidar o contrato real do fluxo e a matriz de reutilização sem alterar comportamento. (completed 2026-06-22)
 - [ ] **Phase 2: Modelo, Snapshot e Segurança (Bloqueador)** - Corrigir prioritariamente o ciclo transacional, direitos, snapshots, RLS e preservação de dados antes de qualquer UI ser considerada funcional.
 - [ ] **Phase 3: Listagem Real e Premium** - Tornar `#compras` uma listagem real, paginável, resiliente e responsiva.
 - [ ] **Phase 4: Detalhes, Perfil e Chat** - Exibir cada item comprado e integrar produtor/perfil/chat reais.
@@ -42,7 +42,7 @@ O marco evolui a rota real `#compras` por dependência: primeiro consolida a aud
 
 Plans:
 - [x] 01-01: Consolidar auditoria frontend, navegação e componentes compartilhados.
-- [ ] 01-02: Consolidar auditoria backend, banco, pagamentos, segurança e matriz de mudança.
+- [x] 01-02: Consolidar auditoria backend, banco, pagamentos, segurança e matriz de mudança.
 
 ### Phase 2: Modelo, Snapshot e Segurança (Prioridade Máxima)
 **Goal**: Eliminar primeiro o risco de pedido pago sem itens, entitlement, contrato ou arquivos liberados, garantindo uma única representação histórica, íntegra e autorizada do direito adquirido.
@@ -187,7 +187,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Auditoria da Implementação Atual | 1/2 | In Progress|  |
+| 1. Auditoria da Implementação Atual | 2/2 | Complete   | 2026-06-22 |
 | 2. Modelo, Snapshot e Segurança | 0/4 | Not started | - |
 | 3. Listagem Real e Premium | 0/3 | Not started | - |
 | 4. Detalhes, Perfil e Chat | 0/2 | Not started | - |
