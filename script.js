@@ -18819,9 +18819,8 @@ function checkoutRecommendationViewModel() {
   return item ? { id: item.id, title: item.title, producer: item.producer, cover: item.cover, price: item.price, description: "Licença disponível", sponsored: false } : null;
 }
 
-function checkoutRecommendationsViewModel() {
-  const ads = appState.cartPromotedAds.items || [];
-  const list = ads.map(ad => ({
+function checkoutRecommendationsViewModel(limit = 8) {
+  const ads = (appState.cartPromotedAds.items || []).map((ad, index) => ({
     id: ad.beatId,
     adId: ad.adId,
     title: ad.beatTitle,
@@ -18830,14 +18829,19 @@ function checkoutRecommendationsViewModel() {
     price: ad.price,
     description: ad.licenseName,
     sponsored: ad.source === "promoted",
+    featured: index === 4 && ad.source === "promoted",
+    genre: ad.genre,
+    tags: [ad.producerName, ad.genre].filter(Boolean),
   }));
-  
+
+  const list = ads.slice(0, limit);
+
   if (list.length < 6) {
     const cartIds = cartBeatIdSet();
     const existingIds = new Set(list.map(item => String(item.id)));
     const fallbacks = preferredBeats(24).filter(beat => beat && beat.id && !cartIds.has(String(beat.id)) && !existingIds.has(String(beat.id)));
     for (const item of fallbacks) {
-      if (list.length >= 12) break;
+      if (list.length >= Math.max(limit, 12)) break;
       list.push({
         id: item.id,
         title: item.title,
@@ -18846,6 +18850,8 @@ function checkoutRecommendationsViewModel() {
         price: item.price,
         description: "Licença disponível",
         sponsored: false,
+        genre: item.genre || item.tags?.[0] || "",
+        tags: [item.producer, item.genre || item.tags?.[0]].filter(Boolean),
       });
     }
   }

@@ -11,16 +11,16 @@ function assert(condition, message) {
 for (const marker of [
   "issuer: `checkout-issuer-${safe}`",
   "data-checkout-issuer",
-  "issuer: { id: active.formIds.issuer",
+  "issuer: { id: checkoutState.formIds.issuer",
   "onFetching(resource)",
   "Buscando parcelas",
   "refreshCardFormForQuote",
   "MPHiddenInputToken",
-  "active.cardFormAmountCents",
+  "checkoutState.cardFormAmountCents",
 ]) assert(checkout.includes(marker), `CardForm dynamic integration missing: ${marker}`);
 
 assert(
-  /function updateQuote\(quote\)[\s\S]*refreshCardFormForQuote\(previousTotalCents\)/.test(checkout),
+  /function updateQuote\(quote, checkoutState = active\)[\s\S]*refreshCardFormForQuote\(previousTotalCents, checkoutState\)/.test(checkout),
   "Changing the authoritative quote must rebuild CardForm with the new amount",
 );
 
