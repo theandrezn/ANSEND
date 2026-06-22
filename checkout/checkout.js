@@ -566,6 +566,15 @@
         issuer: { id: checkoutState.formIds.issuer, placeholder: "Detectado pelo cartão" },
         installments: { id: checkoutState.formIds.installments },
       },
+      style: {
+        customVariables: {
+          inputColor: "#ffffff",
+          inputFontFamily: "Montserrat, sans-serif",
+          inputFontSize: "13px",
+          inputFontWeight: "500",
+          placeholderColor: "rgba(255, 255, 255, 0.7)",
+        }
+      },
       callbacks: {
         onFormMounted(error) {
           if (active !== checkoutState) return;
