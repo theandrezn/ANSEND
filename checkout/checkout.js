@@ -37,19 +37,6 @@
 
   const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 
-  const unavailableMethodIcons = Object.freeze({
-    "apple-pay": "apple",
-    "google-pay": "wallet-cards",
-    alipay: "scan-line",
-  });
-
-  function unavailableMethodMarkup(id, label) {
-    const safeId = escapeHtml(id);
-    const safeLabel = escapeHtml(label);
-    const safeLogo = escapeHtml(unavailableMethodIcons[id] || "wallet-cards");
-    return `<button type="button" data-checkout-unavailable="${safeId}" disabled aria-disabled="true" title="${safeLabel} — em breve">${icon(safeLogo)}<span>${safeLabel}</span><small>Em breve</small></button>`;
-  }
-
   function checkoutFormIds(instanceId = "static") {
     const safe = String(instanceId || "static").replace(/[^a-zA-Z0-9_-]/g, "");
     return {
@@ -212,7 +199,7 @@
         <aside class="ansend-checkout__payment">
           <form id="${escapeHtml(ids.form)}" class="ansend-checkout__form" novalidate>
             <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button><button type="button" data-checkout-method="paypal" role="tab" aria-selected="false">PayPal</button></div>
-            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button><button type="button" data-checkout-method="paypal" aria-pressed="false">${icon("wallet-cards")}<span>PayPal</span></button>${unavailableMethodMarkup("apple-pay", ["Apple", " Pay"].join(""))}${unavailableMethodMarkup("google-pay", ["Google", " Pay"].join(""))}${unavailableMethodMarkup("alipay", ["Ali", "pay"].join(""))}</div>
+            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button><button type="button" data-checkout-method="paypal" aria-pressed="false">${icon("wallet-cards")}<span>PayPal</span></button></div>
             <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
             ${cardFieldsMarkup(ids)}
             ${pixFieldsMarkup()}

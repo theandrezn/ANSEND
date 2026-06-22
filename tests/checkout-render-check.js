@@ -17,13 +17,7 @@ assert(markup.includes("Pagar com Pix"), "Pix method must render");
 assert(markup.includes('data-checkout-method="paypal"'), "PayPal method must render as an enabled checkout option");
 assert(markup.includes("PayPal Checkout"), "PayPal panel must render");
 assert(!markup.includes('data-checkout-unavailable="paypal"'), "PayPal must not render as unavailable");
-for (const method of ["apple-pay", "google-pay", "alipay"]) {
-  const openingTag = markup.match(new RegExp(`<button\\b[^>]*data-checkout-unavailable=["']${method}["'][^>]*>`, "i"))?.[0] || "";
-  assert(openingTag, `Unavailable ${method} must render with its own identifier`);
-  assert(/(?:^|\s)disabled(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must be natively disabled on its opening tag`);
-  assert(/(?:^|\s)aria-disabled=["']true["'](?:\s|\/?>)/i.test(openingTag), `Unavailable ${method} must be aria-disabled on its opening tag`);
-  assert(!/(?:^|\s)data-checkout-method(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must not have a payment handler`);
-}
+for (const method of ["apple-pay", "google-pay", "alipay"]) assert(!markup.includes(method), `Removed ${method} must not render`);
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(!markup.includes("Endereço"), "Checkout must not request billing address");
 assert(markup.includes("Telefone"), "Pix checkout must request phone number");

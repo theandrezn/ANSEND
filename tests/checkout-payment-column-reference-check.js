@@ -53,13 +53,7 @@ for (const marker of [
   'data-checkout-method="paypal"',
 ]) assert(checkout.includes(marker), `Checkout payment method markup must include: ${marker}`);
 
-for (const method of ["apple-pay", "google-pay", "alipay"]) {
-  const unavailableMethodTag = new RegExp(
-    `<(?=[^>]*\\sdata-checkout-unavailable=["']${method}["'])(?=[^>]*\\sdisabled(?:\\s|=|/?>))(?=[^>]*\\saria-disabled=["']true["'])[a-z][^>]*>`,
-    "i",
-  );
-  assert(unavailableMethodTag.test(renderedCheckout), `Unavailable checkout method must be disabled and aria-disabled: ${method}`);
-}
+for (const method of ["apple-pay", "google-pay", "alipay"]) assert(!renderedCheckout.includes(method), `Removed checkout method must not render: ${method}`);
 
 for (const forbidden of [
   "Apple Pay",
