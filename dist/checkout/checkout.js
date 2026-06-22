@@ -569,7 +569,7 @@
       style: {
         customVariables: {
           inputColor: "#ffffff",
-          inputFontFamily: "Montserrat, sans-serif",
+          inputFontFamily: "Segoe UI, sans-serif",
           inputFontSize: "13px",
           inputFontWeight: "500",
           placeholderColor: "rgba(255, 255, 255, 0.7)",

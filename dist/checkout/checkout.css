@@ -287,22 +287,27 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__methods button[data-checkout-method] span { font-size: 12px; }
 .ansend-checkout__methods button.is-active { color: #fff; }
 
-/* Custom Font & Weight Overrides for Montserrat 500 */
+/* Custom Font & Weight Overrides for Segoe UI */
+.ansend-checkout,
+.ansend-checkout * {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif !important;
+}
+
 .ansend-checkout__group input,
 .ansend-checkout__group select,
 .ansend-checkout__group textarea,
 .ansend-checkout__group .ansend-checkout__secure-field {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif !important;
   font-weight: 500 !important;
 }
 
 .ansend-checkout__installment-trigger {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif !important;
   font-weight: 500 !important;
 }
 
 .ansend-checkout__installment-popover [role="option"] {
-  font-family: 'Montserrat', sans-serif !important;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif !important;
   font-weight: 500 !important;
 }
 
