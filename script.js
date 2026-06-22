@@ -4135,6 +4135,95 @@ function renderHomeDashboard() {
   }
 }
 
+function renderHeroCollage() {
+  const container = document.querySelector(".spotify-collage-inner-wrapper");
+  if (!container) return;
+
+  const beats = marketplaceBeats();
+
+  // Loading state: if loading profiles/catalog and we have no items
+  if (appState.authLoading && beats.length === 0) {
+    const renderCol = () => `
+      <div class="spotify-collage-column">
+        <div class="spotify-track-card skeleton-card"></div>
+        <div class="spotify-track-card skeleton-card"></div>
+        <div class="spotify-track-card skeleton-card"></div>
+      </div>
+    `;
+    container.innerHTML = `
+      ${renderCol()}
+      ${renderCol()}
+      ${renderCol()}
+    `;
+    return;
+  }
+
+  // Empty state: if fully loaded and 0 beats exist
+  if (beats.length === 0) {
+    container.innerHTML = `
+      <div class="spotify-collage-empty-state">
+        <p>Novos beats serão exibidos aqui em breve.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Helper to ensure loop has enough cards to scroll seamlessly
+  const populateColumnBeats = (colBeats, minCount = 6) => {
+    if (colBeats.length === 0) return [];
+    let result = [...colBeats];
+    while (result.length < minCount) {
+      result = result.concat(colBeats);
+    }
+    return result.concat(result); // Duplicate for the infinite scroll translate3d(0, -50%, 0)
+  };
+
+  const col1 = [];
+  const col2 = [];
+  const col3 = [];
+
+  beats.forEach((beat, idx) => {
+    if (idx % 3 === 0) col1.push(beat);
+    else if (idx % 3 === 1) col2.push(beat);
+    else col3.push(beat);
+  });
+
+  const col1Beats = populateColumnBeats(col1, 6);
+  const col2Beats = populateColumnBeats(col2, 6);
+  const col3Beats = populateColumnBeats(col3, 6);
+
+  const renderColumn = (colBeats, colClass) => {
+    return `
+      <div class="spotify-collage-column ${colClass}">
+        ${colBeats.map(beat => {
+          const coverSrc = beat.cover || IMAGE_FALLBACK_SRC;
+          return `
+            <div class="beat-card spotify-track-card" data-beat-id="${beat.id}">
+              <div class="spotify-track-cover" style="background-image: url('${coverSrc}');"></div>
+              <div class="spotify-track-info">
+                <p class="spotify-track-title">${htmlEscape(beat.title)}</p>
+                <button type="button" class="spotify-track-artist" 
+                        data-action="producer" 
+                        data-profile-id="${beat.user_id || ''}" 
+                        data-profile-username="${beat.owner_username || ''}" 
+                        data-title="${htmlEscape(beat.producer)}">
+                  ${htmlEscape(beat.producer)}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  container.innerHTML = `
+    ${renderColumn(col1Beats, "col-1")}
+    ${renderColumn(col2Beats, "col-2")}
+    ${renderColumn(col3Beats, "col-3")}
+  `;
+}
+
 function sectionTemplate([title, subtitle, icon, content]) {
   const body = content === "avatars"
     ? `<div class="avatar-row">${avatars.map(avatarCard).join("")}</div>`
@@ -10925,6 +11014,7 @@ async function applySession(session, options = {}) {
     clearAuthenticatedApplicationState(`apply_session_${source}_anonymous`);
     appState.authReady = true;
     appState.authLoading = false;
+    await loadPublicPlatformDataSafe(`apply_session_${source}_anonymous`);
     return false;
   }
 
@@ -11249,6 +11339,7 @@ function applyFeedPersonalization() {
 
 function applyFeedPersonalization() {
   renderHomeDashboard();
+  renderHeroCollage();
   enableSpotlights();
   setupAutoScrollRows();
   lucide.createIcons();
