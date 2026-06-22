@@ -26460,12 +26460,12 @@ body[data-route="musicas"] .section-head {
 body .topbar {
   position: fixed !important;
   top: 28px !important;
-  /* Mathematically center relative to the content area (shifted by 260px sidebar)
-     and then offset slightly to the left (-24px) for perfect visual weight balance */
-  left: calc(50% + 106px) !important;
-  transform: translateX(-50%) !important;
-  margin: 0 !important;
+  left: calc(260px + clamp(12px, 1.25vw, 24px)) !important;
+  right: clamp(12px, 1.25vw, 24px) !important;
   width: auto !important;
+  max-width: calc(100vw - 260px - (clamp(12px, 1.25vw, 24px) * 2)) !important;
+  transform: none !important;
+  margin: 0 !important;
   height: auto !important;
   padding: 0 !important;
   background: transparent !important;
@@ -26493,7 +26493,8 @@ body .floating-navbar {
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.32) !important;
   backdrop-filter: blur(12px) !important;
   width: auto !important;
-  max-width: fit-content !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease !important;
 }
 
@@ -26561,6 +26562,8 @@ body .navbar-links {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
+  min-width: 0 !important;
+  flex-shrink: 1 !important;
 }
 
 body .navbar-link {
@@ -26589,7 +26592,11 @@ body .navbar-link.is-active {
 /* Right auth button container */
 body .navbar-auth-container {
   position: relative !important;
-  display: inline-block !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  max-width: 240px !important;
+  flex: 0 1 auto !important;
 }
 
 /* Auth white button */
@@ -26610,11 +26617,22 @@ body .navbar-auth-btn {
   transition: all 220ms cubic-bezier(0.22, 1, 0.36, 1) !important;
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05) !important;
   white-space: nowrap !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex-shrink: 1 !important;
 }
 
 body .navbar-auth-btn:hover {
   transform: scale(1.02) !important;
   box-shadow: 0 6px 18px rgba(255, 255, 255, 0.12) !important;
+}
+
+body .auth-btn-text {
+  min-width: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 /* Dropdown menu */
@@ -39949,4 +39967,39 @@ body[data-route="carrinho"] .checkout-promoted-play-btn {
     scale: 0.98 !important;
   }
 }
+
+/* Progressive progressive navbar scaling overrides for narrow desktop displays */
+@media (max-width: 1200px) and (min-width: 992px) {
+  body .floating-navbar {
+    gap: 10px !important;
+    padding: 8px 10px !important;
+  }
+  body .navbar-links {
+    gap: 4px !important;
+  }
+  body .navbar-link {
+    padding: 6px 10px !important;
+  }
+}
+
+@media (max-width: 1100px) and (min-width: 992px) {
+  body .floating-navbar {
+    gap: 8px !important;
+    padding: 8px 8px !important;
+  }
+  body .navbar-links {
+    gap: 3px !important;
+  }
+  body .navbar-link {
+    padding: 6px 8px !important;
+    font-size: 13.5px !important;
+  }
+  body .navbar-auth-btn {
+    padding: 0 16px !important;
+  }
+  body .navbar-auth-container {
+    max-width: 160px !important;
+  }
+}
+
 
