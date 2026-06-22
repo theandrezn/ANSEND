@@ -77,6 +77,9 @@ assert(/\.ansend-checkout__methods button\s*\{[^}]*min-height:\s*58px;/s.test(cs
 assert(/\.ansend-checkout__promoted-track\s*\{[^}]*scroll-snap-type:\s*x mandatory;/s.test(css), "Promoted checkout carousel must use horizontal scroll snap");
 assert(/\.ansend-checkout__promoted-card\s*\{[^}]*flex:\s*0 0 clamp\(150px, 20vw, 190px\);/s.test(css), "Promoted cards must use compact marketplace card sizing");
 assert(/\.ansend-checkout__promoted-banner\s*\{[^}]*grid-template-columns:\s*48px minmax\(0,1fr\) auto;/s.test(css), "Promoted CTA banner must match the reference layout");
+assert(/\.ansend-checkout__promoted-card\s*\{[^}]*font-family:\s*var\(--checkout-field-font\);/s.test(css), "Promoted cards must use Poppins");
+assert(/\.ansend-checkout__promoted-price\s*\{[^}]*font-family:\s*var\(--checkout-field-font\);[^}]*font-variant-numeric:\s*lining-nums tabular-nums;/s.test(css), "Promoted prices must use modern tabular Poppins numerals");
+assert(/\.ansend-checkout__promoted-banner a\s*\{[^}]*font-family:\s*var\(--checkout-field-font\);[^}]*font-variant-numeric:\s*lining-nums tabular-nums;/s.test(css), "Promoted CTA must use modern numeric typography");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__tabs[^{}]*\{[^}]*min-height:\s*46px;/s.test(css), "Payment tabs must not retain a legacy 46px override");
 assert(!/(?:^|})[^{}]*\.ansend-checkout__methods button[^{}]*\{[^}]*min-height:\s*68px;/s.test(css), "Payment method cards must not retain a legacy 68px override");
 assert(/\.ansend-checkout__field input[^}]*height:\s*42px;/s.test(css), "Payment inputs must keep the compact 42px height");
