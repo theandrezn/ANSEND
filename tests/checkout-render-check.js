@@ -14,16 +14,16 @@ const markup = checkout.renderCheckout({
 assert(markup.includes("Beat &lt;Seguro&gt;"), "User content must be escaped");
 assert(markup.includes("Pagar com cartão"), "Card method must render");
 assert(markup.includes("Pagar com Pix"), "Pix method must render");
-for (const method of ["paypal", "apple-pay", "google-pay", "alipay"]) {
+assert(markup.includes('data-checkout-method="paypal"'), "PayPal method must render as an enabled checkout option");
+assert(markup.includes("PayPal Checkout"), "PayPal panel must render");
+assert(!markup.includes('data-checkout-unavailable="paypal"'), "PayPal must not render as unavailable");
+for (const method of ["apple-pay", "google-pay", "alipay"]) {
   const openingTag = markup.match(new RegExp(`<button\\b[^>]*data-checkout-unavailable=["']${method}["'][^>]*>`, "i"))?.[0] || "";
   assert(openingTag, `Unavailable ${method} must render with its own identifier`);
   assert(/(?:^|\s)disabled(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must be natively disabled on its opening tag`);
   assert(/(?:^|\s)aria-disabled=["']true["'](?:\s|\/?>)/i.test(openingTag), `Unavailable ${method} must be aria-disabled on its opening tag`);
   assert(!/(?:^|\s)data-checkout-method(?:\s|=|\/?>)/i.test(openingTag), `Unavailable ${method} must not have a payment handler`);
 }
-const paypalOpeningTag = markup.match(/<button\b[^>]*data-checkout-unavailable=["']paypal["'][^>]*>/i)?.[0] || "";
-assert(/(?:^|\s)role=["']tab["'](?:\s|\/?>)/i.test(paypalOpeningTag), "Unavailable PayPal must retain tab semantics");
-assert(/(?:^|\s)aria-selected=["']false["'](?:\s|\/?>)/i.test(paypalOpeningTag), "Unavailable PayPal must be an unselected tab");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(!markup.includes("Endereço"), "Checkout must not request billing address");
 assert(markup.includes("Telefone"), "Pix checkout must request phone number");
@@ -46,5 +46,9 @@ assert(approved.includes("Pagamento aprovado"));
 const rejected = checkout.renderCardResult({ status: "rejected", paid: false, status_detail: "cc_rejected_bad_filled_security_code" });
 assert(rejected.includes("Pagamento recusado"), "Rejected card must never be described as pending");
 assert(rejected.includes("Tentar novamente"), "Rejected card must offer recovery");
+
+const paypal = checkout.renderPayPalResult({ attempt_id: "attempt", paypal: { approval_url: "https://www.paypal.com/checkoutnow?token=order" } });
+assert(paypal.includes("Continuar no PayPal"), "PayPal result must link to approval");
+assert(paypal.includes("data-checkout-capture-paypal"), "PayPal result must expose capture confirmation");
 
 console.log("Checkout renderer behavior passed.");

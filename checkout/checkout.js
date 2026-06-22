@@ -41,15 +41,13 @@
     "apple-pay": "apple",
     "google-pay": "wallet-cards",
     alipay: "scan-line",
-    paypal: "wallet-cards",
   });
 
   function unavailableMethodMarkup(id, label) {
     const safeId = escapeHtml(id);
     const safeLabel = escapeHtml(label);
     const safeLogo = escapeHtml(unavailableMethodIcons[id] || "wallet-cards");
-    const tabSemantics = id === "paypal" ? ' role="tab" aria-selected="false"' : "";
-    return `<button type="button" data-checkout-unavailable="${safeId}"${tabSemantics} disabled aria-disabled="true" title="${safeLabel} — em breve">${icon(safeLogo)}<span>${safeLabel}</span><small>Em breve</small></button>`;
+    return `<button type="button" data-checkout-unavailable="${safeId}" disabled aria-disabled="true" title="${safeLabel} — em breve">${icon(safeLogo)}<span>${safeLabel}</span><small>Em breve</small></button>`;
   }
 
   function checkoutFormIds(instanceId = "static") {
@@ -181,6 +179,14 @@
     </div>`;
   }
 
+  function paypalFieldsMarkup() {
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="paypal" hidden>
+      <label class="ansend-checkout__field"><span>E-mail</span><input name="paypal_email" type="email" autocomplete="email" placeholder="voce@exemplo.com" required></label>
+      <label class="ansend-checkout__field"><span>Nome completo</span><input name="paypal_name" placeholder="Seu nome completo" autocomplete="name" required></label>
+      <div class="ansend-checkout__pix-intro ansend-checkout__paypal-intro">${icon("wallet-cards")}<div><strong>PayPal Checkout</strong><span>Você aprova o pagamento no PayPal e volta aqui para confirmar.</span></div></div>
+    </div>`;
+  }
+
   function renderCheckout(options) {
     const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
     const items = Array.isArray(options.items) ? options.items : [];
@@ -205,16 +211,17 @@
         </section>
         <aside class="ansend-checkout__payment">
           <form id="${escapeHtml(ids.form)}" class="ansend-checkout__form" novalidate>
-            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button>${unavailableMethodMarkup("paypal", ["Pay", "Pal"].join(""))}</div>
-            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button>${unavailableMethodMarkup("apple-pay", ["Apple", " Pay"].join(""))}${unavailableMethodMarkup("google-pay", ["Google", " Pay"].join(""))}${unavailableMethodMarkup("alipay", ["Ali", "pay"].join(""))}</div>
+            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button><button type="button" data-checkout-method="paypal" role="tab" aria-selected="false">PayPal</button></div>
+            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button><button type="button" data-checkout-method="paypal" aria-pressed="false">${icon("wallet-cards")}<span>PayPal</span></button>${unavailableMethodMarkup("apple-pay", ["Apple", " Pay"].join(""))}${unavailableMethodMarkup("google-pay", ["Google", " Pay"].join(""))}${unavailableMethodMarkup("alipay", ["Ali", "pay"].join(""))}</div>
             <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
             ${cardFieldsMarkup(ids)}
             ${pixFieldsMarkup()}
+            ${paypalFieldsMarkup()}
             <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
             <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
             ${totalsMarkup(quote, true)}
             <button type="submit" class="ansend-checkout__pay" data-checkout-submit><span data-checkout-submit-label>Gerar Pix de ${money(quote.totalCents)}</span>${icon("lock-keyhole")}</button>
-            <footer><span>Pagamento seguro via Mercado Pago</span><b>·</b><a href="#">Termos</a><b>·</b><a href="#">Privacidade</a></footer>
+            <footer><span>Pagamento seguro via Mercado Pago e PayPal</span><b>·</b><a href="#">Termos</a><b>·</b><a href="#">Privacidade</a></footer>
           </form>
           <section class="ansend-checkout__result" data-checkout-result hidden aria-live="polite"></section>
         </aside>
@@ -242,6 +249,16 @@
     return `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status ${approved ? "is-approved" : (rejected ? "is-rejected" : "is-pending")}">${icon(approved ? "badge-check" : (rejected ? "circle-x" : "clock-3"))}<div><strong>${title}</strong><span>${detail}</span></div></div>${approved ? `<button type="button" class="ansend-checkout__pay" data-checkout-finish>Ver minhas compras</button>` : (rejected ? `<button type="button" class="ansend-checkout__secondary" data-checkout-retry>Tentar novamente</button>` : `<button type="button" class="ansend-checkout__secondary" data-checkout-check-status>Verificar pagamento</button>`)}</div>`;
   }
 
+  function renderPayPalResult(result) {
+    const paypal = result.paypal || {};
+    return `<div class="ansend-checkout__card-result ansend-checkout__paypal-result">
+      <div class="ansend-checkout__status is-pending">${icon("wallet-cards")}<div><strong>Finalize no PayPal</strong><span>Abra o PayPal, aprove o pagamento e volte aqui para confirmar a compra.</span></div></div>
+      ${paypal.approval_url ? `<a class="ansend-checkout__pay" href="${escapeHtml(paypal.approval_url)}" target="_blank" rel="noopener noreferrer">Continuar no PayPal ${icon("external-link")}</a>` : ""}
+      <button type="button" class="ansend-checkout__secondary" data-checkout-capture-paypal>${icon("refresh-cw")} Já aprovei no PayPal</button>
+      <button type="button" class="ansend-checkout__secondary" data-checkout-retry>Escolher outro método</button>
+    </div>`;
+  }
+
   let active = null;
 
   function authHeaders(checkoutState = active) {
@@ -264,7 +281,7 @@
     checkoutState.root.querySelectorAll("[data-checkout-discount-row]").forEach((el) => { el.hidden = !checkoutState.quote.discountCents; });
     checkoutState.root.querySelectorAll("[data-checkout-total]").forEach((el) => { el.textContent = money(checkoutState.quote.totalCents); });
     const label = checkoutState.root.querySelector("[data-checkout-submit-label]");
-    if (label) label.textContent = checkoutState.method === "pix" ? `Gerar Pix de ${money(checkoutState.quote.totalCents)}` : `Pagar ${money(checkoutState.quote.totalCents)}`;
+    if (label) label.textContent = checkoutState.method === "pix" ? `Gerar Pix de ${money(checkoutState.quote.totalCents)}` : (checkoutState.method === "paypal" ? "Continuar com PayPal" : `Pagar ${money(checkoutState.quote.totalCents)}`);
     refreshCardFormForQuote(previousTotalCents, checkoutState);
   }
 
@@ -291,8 +308,9 @@
   }
 
   function setPaymentMethod(method) {
-    if (!active || !["card", "pix"].includes(method)) return;
+    if (!active || !["card", "pix", "paypal"].includes(method)) return;
     if (method === "card" && active.config && !active.config.supported_methods?.includes("card")) return;
+    if (method === "paypal" && active.config && !active.config.supported_methods?.includes("paypal")) return;
     active.method = method;
     active.root.dataset.checkoutMethod = method;
     active.root.querySelectorAll("[data-checkout-method]").forEach((button) => {
@@ -331,9 +349,10 @@
   function buyerPayload(form, checkoutState = active) {
     const data = new FormData(form);
     const pix = checkoutState.method === "pix";
+    const paypal = checkoutState.method === "paypal";
     return {
-      name: String(data.get(pix ? "pix_name" : "cardholder_name") || "").trim(),
-      email: String(data.get(pix ? "pix_email" : "buyer_email") || "").trim(),
+      name: String(data.get(pix ? "pix_name" : (paypal ? "paypal_name" : "cardholder_name")) || "").trim(),
+      email: String(data.get(pix ? "pix_email" : (paypal ? "paypal_email" : "buyer_email")) || "").trim(),
       identification: { type: "CPF", number: String(data.get(pix ? "pix_identification" : "identification_number") || "").replace(/\D/g, "") },
       phone: pix ? String(data.get("pix_phone") || "").replace(/\D/g, "") : undefined,
     };
@@ -356,8 +375,8 @@
     const resultPanel = checkoutState.root.querySelector("[data-checkout-result]");
     form.hidden = true;
     resultPanel.hidden = false;
-    resultPanel.innerHTML = checkoutState.method === "pix" ? renderPixResult(result) : renderCardResult(result);
-    teardownActiveCheckout(checkoutState, { invalidate: false });
+    resultPanel.innerHTML = checkoutState.method === "pix" ? renderPixResult(result) : (checkoutState.method === "paypal" ? renderPayPalResult(result) : renderCardResult(result));
+    if (checkoutState.method !== "paypal") teardownActiveCheckout(checkoutState, { invalidate: false });
     checkoutState.options.refreshIcons?.();
     if (result.paid || result.status === "approved") checkoutState.options.onPaid?.(result);
     if (feedback) feedback.textContent = "";
@@ -582,6 +601,20 @@
     }
   }
 
+  async function capturePayPal(checkoutState = active) {
+    if (!checkoutState?.attemptId) return;
+    const response = await fetch("/api/checkout/paypal/capture", { method: "POST", headers: authHeaders(checkoutState), body: JSON.stringify({ attempt_id: checkoutState.attemptId }) });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível confirmar o PayPal.");
+    if (result.paid) {
+      checkoutState.root.querySelector("[data-checkout-result]").innerHTML = renderCardResult({ ...result, status: "approved" });
+      teardownActiveCheckout(checkoutState, { invalidate: false });
+      checkoutState.options.onPaid?.(result);
+      checkoutState.options.refreshIcons?.();
+    }
+    return result;
+  }
+
   function bind() {
     const checkoutState = active;
     const root = checkoutState.root;
@@ -622,6 +655,17 @@
       }
       if (target.matches("[data-checkout-check-status]")) {
         try { await checkStatus(); } catch (error) { target.insertAdjacentHTML("afterend", `<p class="ansend-checkout__inline-error">${escapeHtml(error.message)}</p>`); }
+      }
+      if (target.matches("[data-checkout-capture-paypal]")) {
+        target.disabled = true;
+        const previousText = target.innerHTML;
+        target.textContent = "Confirmando no PayPal...";
+        try { await capturePayPal(checkoutState); }
+        catch (error) {
+          target.disabled = false;
+          target.innerHTML = previousText;
+          target.insertAdjacentHTML("afterend", `<p class="ansend-checkout__inline-error">${escapeHtml(error.message)}</p>`);
+        }
       }
       if (target.matches("[data-checkout-retry]")) {
         checkoutState.idempotencyKey = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
@@ -684,7 +728,7 @@
       if (active !== checkoutState) return;
       if (checkoutState.method === "card" && checkoutState.cardForm) return;
       event.preventDefault();
-      setBusy(true, checkoutState.method === "pix" ? "Gerando Pix..." : "Processando...", checkoutState);
+      setBusy(true, checkoutState.method === "pix" ? "Gerando Pix..." : (checkoutState.method === "paypal" ? "Criando pedido PayPal..." : "Processando..."), checkoutState);
       try { await createPayment({}, checkoutState); }
       catch (error) { root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false, "Processando...", checkoutState); }
     });
@@ -709,6 +753,8 @@
     root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
     root.querySelector('[name="pix_email"]').value = options.prefillEmail || "";
     root.querySelector('[name="pix_name"]').value = options.prefillName || "";
+    root.querySelector('[name="paypal_email"]').value = options.prefillEmail || "";
+    root.querySelector('[name="paypal_name"]').value = options.prefillName || "";
     root.querySelector("[data-checkout-cardholder-name]").value = options.prefillName || "";
     bind();
     options.refreshIcons?.();
@@ -724,6 +770,9 @@
         await loadMercadoPagoSdk();
         if (active === checkoutState) initCardForm();
       }
+      if (!checkoutState.config.supported_methods?.includes("paypal")) {
+        root.querySelectorAll('[data-checkout-method="paypal"]').forEach((button) => { button.hidden = true; });
+      }
     } catch (error) {
       if (active === checkoutState) {
         root.querySelector("[data-checkout-feedback]").textContent = error.message;
@@ -733,7 +782,7 @@
     return checkoutState;
   }
 
-  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money, parseProviderInstallmentLabel, formatProviderInstallmentLabel };
+  const api = { open, renderCheckout, renderPixResult, renderCardResult, renderPayPalResult, setPaymentMethod, applyCoupon, money, parseProviderInstallmentLabel, formatProviderInstallmentLabel };
   global.AnsendCheckout = api;
   if (typeof window !== "undefined") window.AnsendCheckout = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

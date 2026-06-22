@@ -50,9 +50,10 @@ for (const marker of [
 for (const marker of [
   'data-checkout-method="card"',
   'data-checkout-method="pix"',
+  'data-checkout-method="paypal"',
 ]) assert(checkout.includes(marker), `Checkout payment method markup must include: ${marker}`);
 
-for (const method of ["paypal", "apple-pay", "google-pay", "alipay"]) {
+for (const method of ["apple-pay", "google-pay", "alipay"]) {
   const unavailableMethodTag = new RegExp(
     `<(?=[^>]*\\sdata-checkout-unavailable=["']${method}["'])(?=[^>]*\\sdisabled(?:\\s|=|/?>))(?=[^>]*\\saria-disabled=["']true["'])[a-z][^>]*>`,
     "i",
@@ -61,7 +62,6 @@ for (const method of ["paypal", "apple-pay", "google-pay", "alipay"]) {
 }
 
 for (const forbidden of [
-  "PayPal",
   "Apple Pay",
   "Google Pay",
   "Alipay",

@@ -371,6 +371,10 @@ function centsToAmount(cents) {
   return Number((Number(cents || 0) / 100).toFixed(2));
 }
 
+function centsToPayPalAmount(cents) {
+  return (Number(cents || 0) / 100).toFixed(2);
+}
+
 async function sha256Hex(value) {
   const bytes = new TextEncoder().encode(String(value || ""));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -566,6 +570,109 @@ async function createMercadoPagoCardPayment(env, { buyer, checkout, methodData, 
   });
 }
 
+const PAYPAL_API_BASE = "https://api-m.paypal.com";
+
+function paypalConfigured(env) {
+  return Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET);
+}
+
+function paypalCheckoutUrls(request, attemptId) {
+  const url = new URL(request.url);
+  const origin = `${url.protocol}//${url.host}`;
+  const safeAttemptId = encodeURIComponent(attemptId);
+  return {
+    returnUrl: `${origin}/#checkout-paypal-return?attempt_id=${safeAttemptId}`,
+    cancelUrl: `${origin}/#checkout-paypal-cancel?attempt_id=${safeAttemptId}`,
+  };
+}
+
+async function paypalAccessToken(env) {
+  if (!paypalConfigured(env)) {
+    return { ok: false, status: 503, data: null, error: "Configure PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET no Cloudflare para ativar PayPal." };
+  }
+  const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+  const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) {
+    return { ok: false, status: response.status, data, error: data?.error_description || data?.error || "Nao foi possivel autenticar no PayPal." };
+  }
+  return { ok: true, status: response.status, data, token: data.access_token };
+}
+
+async function paypalRequest(env, path, init = {}) {
+  const token = await paypalAccessToken(env);
+  if (!token.ok) return token;
+  const response = await fetch(`${PAYPAL_API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token.token}`,
+      "Content-Type": "application/json; charset=utf-8",
+      ...(init.headers || {}),
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const details = Array.isArray(data?.details) ? data.details.map((item) => item.description || item.issue).filter(Boolean).join(" ") : "";
+    return { ok: false, status: response.status, data, error: details || data?.message || data?.name || "Erro PayPal." };
+  }
+  return { ok: true, status: response.status, data, error: null };
+}
+
+function paypalOrderApprovalUrl(order = {}) {
+  return (order.links || []).find((link) => String(link.rel || "").toLowerCase() === "approve")?.href || "";
+}
+
+async function createPayPalOrder(env, { request, buyer, checkout, externalReference, attemptId }) {
+  const { returnUrl, cancelUrl } = paypalCheckoutUrls(request, attemptId);
+  const body = {
+    intent: "CAPTURE",
+    purchase_units: [{
+      reference_id: externalReference,
+      custom_id: attemptId,
+      description: checkoutPaymentDescription(checkout.items),
+      amount: {
+        currency_code: "BRL",
+        value: centsToPayPalAmount(checkout.totalCents),
+      },
+    }],
+    payment_source: {
+      paypal: {
+        experience_context: {
+          payment_method_preference: "IMMEDIATE_PAYMENT_REQUIRED",
+          brand_name: "ANSEND",
+          locale: "pt-BR",
+          landing_page: "LOGIN",
+          shipping_preference: "NO_SHIPPING",
+          user_action: "PAY_NOW",
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
+        },
+      },
+    },
+  };
+  if (buyer?.email) body.payment_source.paypal.email_address = buyer.email;
+  return paypalRequest(env, "/v2/checkout/orders", {
+    method: "POST",
+    headers: { "PayPal-Request-Id": attemptId },
+    body: JSON.stringify(body),
+  });
+}
+
+async function capturePayPalOrder(env, orderId, attemptId) {
+  return paypalRequest(env, `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+    method: "POST",
+    headers: { "PayPal-Request-Id": `capture-${attemptId}` },
+    body: "{}",
+  });
+}
+
 function applyPromotionDiscounts(items = []) {
   const groups = new Map();
   for (const item of items) {
@@ -688,15 +795,63 @@ function publicPaymentResult(attempt, checkout, providerData = {}) {
   };
 }
 
+function paypalStatusToAttemptStatus(status = "") {
+  const normalized = String(status || "").toUpperCase();
+  if (normalized === "COMPLETED") return "approved";
+  if (normalized === "APPROVED") return "pending";
+  if (normalized === "VOIDED" || normalized === "CANCELLED") return "cancelled";
+  if (normalized === "PAYER_ACTION_REQUIRED" || normalized === "CREATED" || normalized === "SAVED") return "pending";
+  return "pending";
+}
+
+function paypalOrderAmountCents(order = {}) {
+  const value = order.purchase_units?.[0]?.amount?.value
+    || order.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value
+    || "0";
+  return Math.round(Number(value || 0) * 100);
+}
+
+function publicPayPalResult(attempt, checkout, orderData = {}) {
+  return {
+    success: true,
+    provider: "paypal",
+    attempt_id: attempt.id,
+    status: paypalStatusToAttemptStatus(orderData.status || attempt.status),
+    paid: paypalStatusToAttemptStatus(orderData.status || attempt.status) === "approved",
+    status_detail: orderData.status || attempt.status_detail || "",
+    payment: {
+      id: String(orderData.id || attempt.provider_payment_id || ""),
+      status: orderData.status || attempt.status,
+      external_reference: attempt.external_reference,
+    },
+    checkout: checkout ? checkoutQuotePayload(checkout) : {
+      subtotal_cents: attempt.subtotal_cents,
+      discount_cents: attempt.discount_cents,
+      service_fee_cents: attempt.service_fee_cents,
+      total_cents: attempt.total_cents,
+    },
+    paypal: {
+      order_id: String(orderData.id || attempt.provider_payment_id || ""),
+      approval_url: paypalOrderApprovalUrl(orderData),
+    },
+  };
+}
+
 async function handleCheckoutConfig(request, env) {
   if (request.method !== "GET") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   const hasToken = Boolean(env.MERCADO_PAGO_ACCESS_TOKEN || env.MP_ACCESS_TOKEN);
   const publicKey = cleanRecommendationText(env.MERCADO_PAGO_PUBLIC_KEY, 180);
+  const supportedMethods = [
+    ...(hasToken ? ["pix", ...(publicKey ? ["card"] : [])] : []),
+    ...(paypalConfigured(env) ? ["paypal"] : []),
+  ];
   return jsonResponse({
     success: true,
     provider: "mercado_pago",
+    providers: { mercado_pago: hasToken, paypal: paypalConfigured(env) },
     public_key: publicKey,
-    supported_methods: hasToken ? ["pix", ...(publicKey ? ["card"] : [])] : [],
+    paypal_client_id: paypalConfigured(env) ? cleanRecommendationText(env.PAYPAL_CLIENT_ID, 180) : "",
+    supported_methods: supportedMethods,
   });
 }
 
@@ -741,14 +896,40 @@ async function reconcilePaymentAttempt(env, attempt, providerData) {
   return { ok: true, status, paid: status === "approved", order };
 }
 
+async function reconcilePayPalAttempt(env, attempt, orderData) {
+  if (!attempt || !orderData?.id) return { ok: false, error: "Pedido PayPal nao encontrado." };
+  const paypalCustomId = orderData.purchase_units?.[0]?.custom_id || attempt.id;
+  const paypalReference = orderData.purchase_units?.[0]?.reference_id || attempt.external_reference;
+  if (String(paypalCustomId) !== String(attempt.id) || String(paypalReference) !== String(attempt.external_reference)) {
+    return { ok: false, error: "Pedido PayPal nao confere com a tentativa registrada." };
+  }
+  if (paypalOrderAmountCents(orderData) !== Number(attempt.total_cents)) {
+    return { ok: false, error: "Valor do pedido PayPal nao confere com o checkout." };
+  }
+  const status = paypalStatusToAttemptStatus(orderData.status);
+  await updatePaymentAttempt(env, attempt.id, {
+    provider_payment_id: String(orderData.id),
+    status,
+    status_detail: cleanRecommendationText(orderData.status, 120),
+  });
+  let order = null;
+  if (status === "approved") {
+    const finalized = await finalizeApprovedAttempt(env, attempt.id);
+    if (finalized.error) return { ok: false, error: finalized.error };
+    order = finalized.data;
+  }
+  return { ok: true, status, paid: status === "approved", order };
+}
+
 async function handleCheckoutPayment(request, env) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
   if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
   const context = await checkoutAuthAndPayload(request, env, 10);
   if (context.response) return context.response;
   const { auth, payload } = context;
-  const method = payload.method === "card" ? "card" : "pix";
+  const method = ["card", "paypal"].includes(payload.method) ? payload.method : "pix";
   if (method === "card" && !env.MERCADO_PAGO_PUBLIC_KEY) return jsonResponse({ success: false, error: "Pagamento por cartao ainda nao configurado." }, { status: 503 });
+  if (method === "paypal" && !paypalConfigured(env)) return jsonResponse({ success: false, error: "Pagamento por PayPal ainda nao configurado." }, { status: 503 });
   const buyer = payload.buyer || { name: payload.buyer_name, email: payload.buyer_email };
   buyer.name = cleanRecommendationText(buyer.name || auth.user.user_metadata?.full_name || auth.user.email?.split("@")[0] || "Comprador", 100);
   buyer.email = cleanRecommendationText(buyer.email || auth.user.email, 150);
@@ -768,6 +949,13 @@ async function handleCheckoutPayment(request, env) {
   const existing = await supabaseRest(env, `payment_attempts?select=*&buyer_id=eq.${auth.user.id}&idempotency_key=eq.${encodeURIComponent(internalIdempotencyKey)}&limit=1`);
   let attempt = existing.data?.[0] || null;
   if (attempt?.provider_payment_id) {
+    if (attempt.provider === "paypal") {
+      const current = await paypalRequest(env, `/v2/checkout/orders/${encodeURIComponent(attempt.provider_payment_id)}`, { method: "GET" });
+      if (!current.ok) return jsonResponse({ success: false, error: current.error }, { status: current.status || 502 });
+      const reconciled = await reconcilePayPalAttempt(env, attempt, current.data);
+      if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+      return jsonResponse({ ...publicPayPalResult(attempt, checkout, current.data), order: reconciled.order });
+    }
     const current = await mercadoPagoRequest(env, `/v1/payments/${attempt.provider_payment_id}`, { method: "GET" });
     if (!current.ok) return jsonResponse({ success: false, error: current.error }, { status: current.status || 502 });
     const reconciled = await reconcilePaymentAttempt(env, attempt, current.data);
@@ -783,7 +971,7 @@ async function handleCheckoutPayment(request, env) {
       buyer_id: auth.user.id,
       buyer_name: buyer.name,
       buyer_email: buyer.email,
-      provider: "mercado_pago",
+      provider: method === "paypal" ? "paypal" : "mercado_pago",
       method,
       external_reference: externalReference,
       idempotency_key: internalIdempotencyKey,
@@ -798,6 +986,17 @@ async function handleCheckoutPayment(request, env) {
     });
     if (persisted.error) return jsonResponse({ success: false, error: "Nao foi possivel registrar a tentativa de pagamento." }, { status: 502 });
     attempt = persisted.data;
+  }
+
+  if (method === "paypal") {
+    const order = await createPayPalOrder(env, { request, buyer, checkout, externalReference, attemptId });
+    if (!order.ok) {
+      await updatePaymentAttempt(env, attemptId, { status: "rejected", status_detail: cleanRecommendationText(order.error, 120) });
+      return jsonResponse({ success: false, error: order.error || "Nao foi possivel criar o pedido PayPal." }, { status: order.status || 502 });
+    }
+    const reconciled = await reconcilePayPalAttempt(env, attempt, order.data);
+    if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+    return jsonResponse({ ...publicPayPalResult(attempt, checkout, order.data), order: reconciled.order });
   }
 
   const payment = method === "card"
@@ -823,11 +1022,44 @@ async function handleSecureCheckoutStatus(request, env) {
   const stored = await supabaseRest(env, `payment_attempts?select=*&${attemptFilter}&buyer_id=eq.${context.auth.user.id}&limit=1`);
   const attempt = stored.data?.[0];
   if (!attempt?.provider_payment_id) return jsonResponse({ success: false, error: "Pagamento ainda nao registrado no provedor." }, { status: 404 });
+  if (attempt.provider === "paypal") {
+    const order = await paypalRequest(env, `/v2/checkout/orders/${encodeURIComponent(attempt.provider_payment_id)}`, { method: "GET" });
+    if (!order.ok) return jsonResponse({ success: false, error: order.error }, { status: order.status || 502 });
+    const reconciled = await reconcilePayPalAttempt(env, attempt, order.data);
+    if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+    return jsonResponse({ ...publicPayPalResult(attempt, null, order.data), order: reconciled.order });
+  }
   const payment = await mercadoPagoRequest(env, `/v1/payments/${attempt.provider_payment_id}`, { method: "GET" });
   if (!payment.ok) return jsonResponse({ success: false, error: payment.error }, { status: payment.status || 502 });
   const reconciled = await reconcilePaymentAttempt(env, attempt, payment.data);
   if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
   return jsonResponse({ ...publicPaymentResult(attempt, null, payment.data), order: reconciled.order });
+}
+
+async function handlePayPalCapture(request, env) {
+  if (request.method !== "POST") return jsonResponse({ success: false, error: "Metodo nao permitido." }, { status: 405 });
+  const context = await checkoutAuthAndPayload(request, env, 10);
+  if (context.response) return context.response;
+  const attemptId = cleanRecommendationText(context.payload.attempt_id, 80);
+  if (!isUuid(attemptId)) return jsonResponse({ success: false, error: "Tentativa PayPal invalida." }, { status: 400 });
+  const stored = await supabaseRest(env, `payment_attempts?select=*&id=eq.${attemptId}&buyer_id=eq.${context.auth.user.id}&provider=eq.paypal&limit=1`);
+  const attempt = stored.data?.[0];
+  if (!attempt?.provider_payment_id) return jsonResponse({ success: false, error: "Pedido PayPal ainda nao registrado." }, { status: 404 });
+  const current = await paypalRequest(env, `/v2/checkout/orders/${encodeURIComponent(attempt.provider_payment_id)}`, { method: "GET" });
+  if (!current.ok) return jsonResponse({ success: false, error: current.error }, { status: current.status || 502 });
+  if (String(current.data?.status || "").toUpperCase() === "COMPLETED") {
+    const reconciled = await reconcilePayPalAttempt(env, attempt, current.data);
+    if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+    return jsonResponse({ ...publicPayPalResult(attempt, null, current.data), order: reconciled.order });
+  }
+  if (String(current.data?.status || "").toUpperCase() !== "APPROVED") {
+    return jsonResponse({ success: false, error: "Aprove o pagamento no PayPal antes de confirmar." }, { status: 409 });
+  }
+  const capture = await capturePayPalOrder(env, attempt.provider_payment_id, attempt.id);
+  if (!capture.ok) return jsonResponse({ success: false, error: capture.error }, { status: capture.status || 502 });
+  const reconciled = await reconcilePayPalAttempt(env, attempt, capture.data);
+  if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });
+  return jsonResponse({ ...publicPayPalResult(attempt, null, capture.data), order: reconciled.order });
 }
 
 function timingSafeHexEqual(left = "", right = "") {
@@ -1825,6 +2057,11 @@ export default {
 
     if (url.pathname === "/api/checkout/status") {
       response = await handleSecureCheckoutStatus(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/checkout/paypal/capture") {
+      response = await handlePayPalCapture(request, env);
       return withSecurityHeaders(response, request);
     }
 
