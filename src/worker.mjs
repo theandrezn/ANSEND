@@ -205,6 +205,14 @@ function cleanStringList(value, maxItems = 10) {
     : [];
 }
 
+function isSupabaseJwtKey(value = "") {
+  return String(value || "").split(".").length === 3;
+}
+
+function supabaseServiceAuthHeader(serviceKey = "") {
+  return isSupabaseJwtKey(serviceKey) ? { Authorization: `Bearer ${serviceKey}` } : {};
+}
+
 async function createEmbedding(text, env) {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY nao configurada.");
   const response = await fetch("https://api.openai.com/v1/embeddings", {
@@ -236,7 +244,7 @@ async function supabaseRest(env, path, init = {}) {
     ...init,
     headers: {
       apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
+      ...supabaseServiceAuthHeader(serviceKey),
       "Content-Type": "application/json; charset=utf-8",
       Prefer: "return=representation,resolution=merge-duplicates",
       ...(init.headers || {}),
@@ -252,7 +260,7 @@ async function supabaseRest(env, path, init = {}) {
 
 async function supabaseAuthedRest(env, path, authHeader = "", init = {}) {
   const { url, publishableKey, serviceKey } = supabaseServiceConfig(env);
-  const key = serviceKey || publishableKey;
+  const key = publishableKey || serviceKey;
   if (!url || !key) {
     return { configured: false, data: null, error: "Supabase nao configurado." };
   }
@@ -260,7 +268,7 @@ async function supabaseAuthedRest(env, path, authHeader = "", init = {}) {
     ...init,
     headers: {
       apikey: key,
-      Authorization: serviceKey ? `Bearer ${serviceKey}` : authHeader,
+      ...(authHeader ? { Authorization: authHeader } : supabaseServiceAuthHeader(serviceKey)),
       "Content-Type": "application/json; charset=utf-8",
       ...(init.headers || {}),
     },
@@ -346,7 +354,7 @@ function validatedNexoActions(messages = []) {
 
 async function supabaseRpc(env, fn, payload, authHeader = "") {
   const { url, serviceKey, publishableKey } = supabaseServiceConfig(env);
-  const key = serviceKey || publishableKey;
+  const key = authHeader ? (publishableKey || serviceKey) : (serviceKey || publishableKey);
   if (!url || !key) {
     return { configured: false, data: null, error: "SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY nao configurados." };
   }
@@ -354,7 +362,7 @@ async function supabaseRpc(env, fn, payload, authHeader = "") {
     method: "POST",
     headers: {
       apikey: key,
-      Authorization: authHeader || `Bearer ${key}`,
+      ...(authHeader ? { Authorization: authHeader } : supabaseServiceAuthHeader(serviceKey)),
       "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify(payload || {}),
@@ -573,7 +581,7 @@ async function createMercadoPagoCardPayment(env, { buyer, checkout, methodData, 
 const PAYPAL_API_BASE = "https://api-m.paypal.com";
 
 function paypalConfigured(env) {
-  return Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET);
+  return Boolean(String(env.PAYPAL_CLIENT_ID || "").trim() && String(env.PAYPAL_CLIENT_SECRET || "").trim());
 }
 
 function paypalCheckoutUrls(request, attemptId) {
@@ -590,7 +598,9 @@ async function paypalAccessToken(env) {
   if (!paypalConfigured(env)) {
     return { ok: false, status: 503, data: null, error: "Configure PAYPAL_CLIENT_ID e PAYPAL_CLIENT_SECRET no Cloudflare para ativar PayPal." };
   }
-  const credentials = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+  const clientId = String(env.PAYPAL_CLIENT_ID || "").trim();
+  const clientSecret = String(env.PAYPAL_CLIENT_SECRET || "").trim();
+  const credentials = btoa(`${clientId}:${clientSecret}`);
   const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -984,7 +994,10 @@ async function handleCheckoutPayment(request, env) {
       total_cents: checkout.totalCents,
       status: "created",
     });
-    if (persisted.error) return jsonResponse({ success: false, error: "Nao foi possivel registrar a tentativa de pagamento." }, { status: 502 });
+    if (persisted.error) {
+      console.error("checkout_attempt_persist_failed", cleanRecommendationText(persisted.error, 240));
+      return jsonResponse({ success: false, error: "Nao foi possivel registrar a tentativa de pagamento." }, { status: 502 });
+    }
     attempt = persisted.data;
   }
 
@@ -2024,7 +2037,7 @@ async function handleOrderDownload(request, env) {
   return jsonResponse({ success: true, download_url: absoluteSignedUrl });
 }
 
-export { applyPromotionDiscounts, sanitizeIdentification, timingSafeHexEqual };
+export { applyPromotionDiscounts, sanitizeIdentification, timingSafeHexEqual, isSupabaseJwtKey, supabaseServiceAuthHeader };
 
 export default {
   async fetch(request, env) {
