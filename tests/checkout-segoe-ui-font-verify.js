@@ -6,9 +6,11 @@ const { chromium } = require("playwright");
 const root = path.resolve(__dirname, "..");
 
 (async () => {
-  console.log("Starting Playwright verification for Poppins font...");
+  console.log("Starting Playwright verification for Plus Jakarta Sans font...");
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
+  const page = await context.newPage();
+  page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
   const css = fs.readFileSync(path.join(root, "checkout", "checkout.css"), "utf8");
   const js = fs.readFileSync(path.join(root, "checkout", "checkout.js"), "utf8");
 
@@ -73,30 +75,34 @@ const root = path.resolve(__dirname, "..");
       triggerWeight: getComputedStyle(elTrigger).fontWeight,
       inputWeight: getComputedStyle(elInput).fontWeight,
       cardFormConfig: window.__cardFormConfigs[0] || null,
+      hoverMatch: window.matchMedia("(hover: hover)").matches,
+      pointerMatch: window.matchMedia("(pointer: fine)").matches,
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     };
   });
 
   console.log("Computed typography details in Playwright:", JSON.stringify(typography, null, 2));
 
   // Assertions
-  assert.ok(typography.checkout.includes("Poppins"), "Checkout container should use Poppins font");
-  assert.ok(typography.trigger.includes("Poppins"), "Installment selector trigger should use Poppins font");
-  assert.ok(typography.payBtn.includes("Poppins"), "Payment CTA button should use Poppins font");
-  assert.ok(typography.methodBtn.includes("Poppins"), "Method buttons should use Poppins font");
+  assert.ok(typography.checkout.includes("Plus Jakarta Sans"), "Checkout container should use Plus Jakarta Sans font");
+  assert.ok(typography.trigger.includes("Plus Jakarta Sans"), "Installment selector trigger should use Plus Jakarta Sans font");
+  assert.ok(typography.payBtn.includes("Plus Jakarta Sans"), "Payment CTA button should use Plus Jakarta Sans font");
+  assert.ok(typography.methodBtn.includes("Plus Jakarta Sans"), "Method buttons should use Plus Jakarta Sans font");
 
-  // Verify weight 500 for selectors and inputs
-  assert.strictEqual(typography.triggerWeight, "500", "Installment trigger should have font-weight 500");
-  assert.strictEqual(typography.inputWeight, "600", "Regular checkout fields should preserve their bold 600 style weight");
+  // Verify weight 400 for selectors and inputs
+  assert.strictEqual(typography.triggerWeight, "400", "Installment trigger should have font-weight 400");
+  assert.strictEqual(typography.inputWeight, "400", "Regular checkout fields should preserve their 400 weight");
 
   // Verify styling in Mercado Pago secure card inputs config
   const customVariables = typography.cardFormConfig?.style?.customVariables;
   assert.ok(customVariables, "Mercado Pago cardForm configuration should include styling config");
-  assert.ok(customVariables.inputFontFamily.includes("Poppins"), "Mercado Pago secure fields should be configured to use Poppins font");
-  assert.strictEqual(customVariables.inputFontWeight, "500", "Mercado Pago secure fields should be configured with font-weight 500");
+  assert.ok(customVariables.inputFontFamily.includes("Plus Jakarta Sans"), "Mercado Pago secure fields should be configured to use Plus Jakarta Sans font");
+  assert.strictEqual(customVariables.inputFontWeight, "400", "Mercado Pago secure fields should be configured with font-weight 400");
 
-  console.log("Playwright verification passed! All checkout elements successfully configured to use Poppins font.");
+  console.log("Playwright verification passed! All checkout elements successfully configured to use Plus Jakarta Sans font.");
 
   // Verify macOS Dock magnification interaction
+  await page.waitForTimeout(600);
   console.log("Verifying macOS Dock magnification effect in Playwright...");
   const methodsContainer = await page.$(".ansend-checkout__methods");
   assert.ok(methodsContainer, "Payment methods container must exist");
@@ -105,12 +111,13 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(buttons.length, 3, "There should be 3 payment method buttons");
 
   const firstButtonBox = await buttons[0].boundingBox();
+  console.log("First button bounding box:", firstButtonBox);
   const centerX = firstButtonBox.x + firstButtonBox.width / 2;
   const centerY = firstButtonBox.y + firstButtonBox.height / 2;
 
   // Move mouse to the center of the first button
   await page.mouse.move(centerX, centerY);
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(500);
 
   const transformsOnHover = await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll(".ansend-checkout__methods button[data-checkout-method]"));

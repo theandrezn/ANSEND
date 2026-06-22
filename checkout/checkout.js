@@ -604,7 +604,9 @@
     if (!checkoutState) return;
     closeInstallmentPopover(checkoutState);
     disconnectInstallmentObserver(checkoutState);
-    checkoutState.dockCleanup?.();
+    if (invalidate) {
+      checkoutState.dockCleanup?.();
+    }
     checkoutState.cardForm?.unmount?.();
     checkoutState.cardForm?.destroy?.();
     checkoutState.cardForm = null;
@@ -634,9 +636,9 @@
       style: {
         customVariables: {
           inputColor: "#ffffff",
-          inputFontFamily: "Poppins, sans-serif",
+          inputFontFamily: "Plus Jakarta Sans, sans-serif",
           inputFontSize: "13px",
-          inputFontWeight: "500",
+          inputFontWeight: "400",
           placeholderColor: "rgba(255, 255, 255, 0.7)",
         }
       },
