@@ -89,6 +89,67 @@
 - Generic exception: static error text without an explicit retry action.
 - List loading has no dedicated skeleton; the async renderer can leave the previous content visible until data resolves.
 
+## Shared Components and Flows
+
+| Shared capability | Existing implementation | Used by purchases | Direction |
+|-------------------|-------------------------|-------------------|-----------|
+| Application shell | Sidebar, navbar, `#appView`, route attributes in `index.html` and `renderRoute()` | Hosts `#compras` and account navigation | Preserve unchanged |
+| Authentication | `appState.authUser`, `hasAccountAccess()`, `protectedRoute()`, `registerAuthStateListener()` | Guards route and supplies buyer UUID/token | Preserve unchanged |
+| Route heading | `pageIntro()` + `routeTitles` + translation helpers | Renders Pedidos heading/subtitle | Reuse |
+| Empty state | `emptyState()` | Login, empty history, no filter results | Reuse, add retry-specific error state locally |
+| Public profile | `renderPublicProfile()`, `renderSpotifyProfile()`, `#perfil-{username}` | Producer card links to existing route | Reuse; resolve via public profile projection |
+| Direct chat | `openOrCreateDirectConversation()` → `get_or_create_direct_conversation` → `navigateToChatConversation()` | Starts/continues real producer conversation | Reuse unchanged |
+| Player | Shared player state/actions and `data-action="play"` | Preview button on purchase card/detail | Reuse; do not fork player logic |
+| Notifications/toasts | `showToast()` and `#toastRegion` | Download/status feedback | Reuse, noting most toasts are currently silenced globally |
+| Icons | Global Lucide UMD + `lucide.createIcons()` | All purchase icons | Preserve |
+| Page transition/hydration | `PageTransition()` and `hydrateView()` after route render | Applies shared shell behavior | Preserve; avoid purchase-only global changes |
+
+### Shared ownership boundary
+
+The purchase milestone may call these shared flows, but must not redesign their global markup or behavior to solve a local `#compras` need. Purchase-specific DTOs, status adapters, loading UI, pagination and styles should remain local to the existing renderer/route surface. Auth, profile, chat and player changes require independent regression evidence because they serve other routes.
+
+## Existing Tests
+
+- `tests/route-stability-check.js` includes `compras` in the route smoke matrix and checks visibility, minimum rendered content, console/page errors, footer behavior and feed-class leakage. In an unauthenticated static run, purchases is expected to render its login/empty surface.
+- `tests/responsive-regression-check.js` includes `compras` in multi-viewport screenshots but does not validate real authenticated order data.
+- `tests/licensing-system-check.js` is a structural source test. It asserts the presence of `renderPurchases()`, `downloadPurchasedFile()`, `loadUserOrders()`, `generateContractText()` and purchase action handlers; it does not execute RLS, payment, entitlement or download authorization.
+- Checkout-specific checks cover database contract, pricing, Mercado Pago structure, webhook replay helpers and visual checkout behavior. They are valuable regression inputs but do not prove the full buyer member area.
+
+**Coverage gap:** no current test proves user A cannot open user B's purchase, that pagination happens in the backend, that a paid order has entitlements/documents, or that the contract remains identical across devices.
+
+## Risks
+
+1. **Two state models:** real Supabase history coexists with legacy purchase/order/contract `localStorage` collections.
+2. **False empty states:** loader query errors are logged and normalized to empty arrays.
+3. **Unbounded loading:** all orders/items/attempts plus related beats/profiles are fetched before visual pagination.
+4. **Mutable historical display:** current beat/profile rows can rewrite how an old purchase looks.
+5. **Browser legal fallback:** current/default data can generate a non-persistent contract.
+6. **Entitlement ambiguity:** download UI and endpoint identify beat + format rather than selected order item.
+7. **Monolith coupling:** markup, data access, event globals and extensive inline styles live inside `script.js`.
+8. **Shared regression surface:** profile, chat, player, auth and shell changes can affect unrelated routes.
+
+## Frontend Change Matrix
+
+| Element | Evidence | Classification | Required future action | Phase |
+|---------|----------|----------------|------------------------|-------|
+| Canonical `#compras` navigation | `index.html:106,279`; `script.js:18447` | Preserve | Keep both nav entries and same route dispatch | 3-5 |
+| Single list/detail renderer | `renderPurchases()` branches on hash query | Preserve + correct | Refactor internally only; no second renderer/page | 3-5 |
+| Buyer-scoped Supabase orders | `loadUserPurchases()` filters `buyer_id` | Reuse + correct | Replace multi-query/full-load shape with paginated DTO/query and explicit errors | 3 |
+| `appState.authUser` | Supabase auth listener/route guard | Preserve | Continue using authenticated UUID/token | 2-7 |
+| `appState.purchases/orders/contracts` local state | `script.js:1292-1294`, `persistState()` | Remove as source | Permit only temporary tab/search/sort preferences locally | 3 |
+| “Limpar dados locais” purchase action | `clearPurchases()`, purchase toolbar | Remove | It does not delete authoritative orders and creates misleading semantics | 3 |
+| In-memory filter/search/sort | purchase renderer | Reuse + correct | Keep UX; align filtering/pagination contract with backend | 3 |
+| `filteredItems.slice()` | `script.js:12547-12549` | Replace | Apply range/cursor in Supabase/backend query | 3 |
+| Inline list/detail styles | template `<style>` and style attributes | Correct locally | Move/organize purchase-only styles without global visual changes | 3-4 |
+| Current beat/profile enrichment | loader queries `beats` and `profiles` | Correct | Prefer immutable snapshots; use public profile projection for live profile action | 2-4 |
+| Contract DB lookup | `license_documents` by `order_item_id` | Reuse | Keep as authoritative persistent document | 5 |
+| Browser contract fallback | `generateContractText()` | Remove or justify | Never be the final cross-device legal source | 5 |
+| Public producer route | `#perfil-{username}`, `renderPublicProfile()` | Reuse | Preserve canonical profile navigation | 4 |
+| Direct chat RPC/route | `openOrCreateDirectConversation()` | Reuse | Pass real producer UUID; no simulated conversation | 4 |
+| Shared player | `data-action="play"`, app player state | Reuse | Keep one player implementation | 3-4 |
+| Secure download call | bearer request to `/api/orders/download` | Preserve + refine | Retain signed-download flow; make authorization item-specific | 5 |
+| Route/licensing static tests | `tests/route-stability-check.js`, `tests/licensing-system-check.js` | Preserve + extend | Add behavioral integration/security coverage | 7 |
+
 ## Preliminary Classification
 
 | Element | Current role | Classification | Reason |
@@ -105,4 +166,4 @@
 
 ---
 
-*Task 1 inventory completed; shared-flow and final frontend matrix follow in Task 2.*
+*Frontend audit completed for AUD-01 and the frontend portion of AUD-04.*
