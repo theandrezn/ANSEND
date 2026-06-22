@@ -11,7 +11,7 @@ const markup = checkout.renderCheckout({
 assert(markup.includes("Beat &lt;Seguro&gt;"), "User content must be escaped");
 assert(markup.includes("Pagar com cartão"), "Card method must render");
 assert(markup.includes("Pagar com Pix"), "Pix method must render");
-assert(!markup.includes("PayPal"), "Unavailable PayPal must not render");
+assert(markup.includes("PayPal"), "PayPal method must render");
 assert(!markup.includes("Boleto"), "Unavailable boleto must not render");
 assert(!markup.includes("Endereço"), "Checkout must not request billing address");
 assert(markup.includes("Telefone"), "Pix checkout must request phone number");

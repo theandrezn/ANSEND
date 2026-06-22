@@ -34,7 +34,6 @@ for (const marker of [
 ]) assert(checkout.includes(marker), `Mercado Pago integration marker was removed: ${marker}`);
 
 for (const forbidden of [
-  "PayPal",
   "Apple Pay",
   "Google Pay",
   "Alipay",

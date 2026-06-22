@@ -100,7 +100,7 @@
         <span>Informações do cartão</span>
         <div class="ansend-checkout__group">
           <div class="ansend-checkout__field-wrapper">
-            <div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div>
+            <div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"><span class="sr-only">Número do cartão</span></div>
             <div class="ansend-checkout__card-brands">
               <img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo">
               <img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo">
@@ -108,8 +108,8 @@
             </div>
           </div>
           <div class="ansend-checkout__field-row">
-            <div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Validade"></div>
-            <div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div>
+            <div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Validade"><span class="sr-only">Validade</span></div>
+            <div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"><span class="sr-only">Código de segurança</span></div>
           </div>
         </div>
       </div>
@@ -131,6 +131,21 @@
         <label class="ansend-checkout__field"><span>Telefone</span><input name="pix_phone" placeholder="DDD + número" inputmode="tel" autocomplete="tel" required></label>
       </div>
       <div class="ansend-checkout__pix-intro"><img class="ansend-checkout__pix-brand" src="assets/payment/pix-user.png" alt="Pix"><div><strong>Pagamento instantâneo</strong><span>O QR Code será exibido aqui sem sair do checkout.</span></div></div>
+    </div>`;
+  }
+
+  function paypalFieldsMarkup() {
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="paypal" hidden>
+      <div class="ansend-checkout__pix-intro">
+        <svg class="ansend-checkout__paypal-panel-logo" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 28px; flex-shrink: 0;">
+          <path fill="#003087" d="M19.066 6.3c-.6-3.8-3.6-6.3-7.7-6.3H3.344C2.144 0 1.044.95.844 2.15L0 23.35c-.05.6.45 1.15 1.05 1.15h4.9c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.6-2.9-.1-5.5-2-6.9L19.066 6.3z"/>
+          <path fill="#0079c1" d="M22.956 8.3c-.6-3.8-3.6-6.3-7.7-6.3H7.234c-1.2 0-2.3.95-2.5 2.15l-1.9 12.3c-.1.6.4 1.15 1 1.15h4.1c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.5-2.8-.2-5.4-2-6.8l.1.4z" style="mix-blend-mode: multiply;"/>
+        </svg>
+        <div>
+          <strong>Checkout PayPal</strong>
+          <span>Você será redirecionado para a página do PayPal para finalizar sua compra com segurança.</span>
+        </div>
+      </div>
     </div>`;
   }
 
@@ -158,11 +173,13 @@
         </section>
         <aside class="ansend-checkout__payment">
           <form id="${escapeHtml(ids.form)}" class="ansend-checkout__form" novalidate>
-            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button></div>
-            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false">${icon("credit-card")}<span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><img class="ansend-checkout__pix-logo" src="assets/payment/pix-user.png" alt="Pix"><span>Pix</span></button></div>
+            <div style="display: none;"><img src="assets/payment/pix-user.png" alt=""></div>
+            <div class="ansend-checkout__tabs" role="tablist" aria-label="Forma de pagamento"><button type="button" data-checkout-method="card" role="tab" aria-selected="false">Pagar com cartão</button><button type="button" class="is-active" data-checkout-method="pix" role="tab" aria-selected="true">Pagar com Pix</button><button type="button" data-checkout-method="paypal" role="tab" aria-selected="false">Pagar com PayPal</button></div>
+            <div class="ansend-checkout__methods" aria-label="Métodos disponíveis"><button type="button" data-checkout-method="card" aria-pressed="false"><svg class="ansend-checkout__card-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg><span>Cartão</span></button><button type="button" class="is-active" data-checkout-method="pix" aria-pressed="true"><svg class="ansend-checkout__pix-logo-svg" viewBox="0 0 780 260" xmlns="http://www.w3.org/2000/svg"><path fill="#32bdb0" d="M94.9 186.5 28.5 120.1a33.4 33.4 0 0 1 0-47.2l44.4-44.4a33.4 33.4 0 0 1 47.2 0l44.4 44.4a33.4 33.4 0 0 0 47.2 0l44.4-44.4a33.4 33.4 0 0 1 47.2 0l44.4 44.4a33.4 33.4 0 0 1 0 47.2l-66.4 66.4a33.4 33.4 0 0 1-47.2 0l-44.4-44.4a33.4 33.4 0 0 0-47.2 0l-44.4 44.4a33.4 33.4 0 0 1-47.2 0Z"/><path fill="#32bdb0" d="M164.6 55.4 120.1 10.9a33.4 33.4 0 0 0-47.2 0L28.5 55.4c-3.3 3.3-5.8 7-7.5 10.9h62.5c13 0 25.6 5.2 34.8 14.4l44.4 44.4a22.1 22.1 0 0 0 31.2 0l44.4-44.4a49.2 49.2 0 0 1 34.8-14.4h62.5a33.2 33.2 0 0 0-7.5-10.9l-44.4-44.5a33.4 33.4 0 0 0-47.2 0l-44.4 44.5a19.3 19.3 0 0 1-27.5 0Z"/><path fill="currentColor" d="M398.4 78.7h72.3c39.9 0 69.4 25.1 69.4 63.1s-29.5 63.1-69.4 63.1h-42.9v42.7h-29.4V78.7Zm70.7 99.8c24.3 0 41.5-14.4 41.5-36.7s-17.2-36.7-41.5-36.7h-41.3v73.4h41.3Zm96-99.8h29.4v126.2h-29.4V78.7Zm0 143.6h29.4v25.3h-29.4v-25.3Zm74.8-143.6h34.5l41.7 56.9 41.5-56.9h34.3l-58.5 80.8 63.8 88.1h-34.5l-46.6-63.8-46.7 63.8h-34.3l63.7-88.1-58.9-80.8Z"/></svg><span>Pix</span></button><button type="button" data-checkout-method="paypal" aria-pressed="false"><svg class="ansend-checkout__paypal-logo-svg" viewBox="0 0 92 24" xmlns="http://www.w3.org/2000/svg"><g transform="translate(0, -2) scale(0.8)"><path fill="#003087" d="M19.066 6.3c-.6-3.8-3.6-6.3-7.7-6.3H3.344C2.144 0 1.044.95.844 2.15L0 23.35c-.05.6.45 1.15 1.05 1.15h4.9c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.6-2.9-.1-5.5-2-6.9L19.066 6.3z"/><path fill="#0079c1" d="M22.956 8.3c-.6-3.8-3.6-6.3-7.7-6.3H7.234c-1.2 0-2.3.95-2.5 2.15l-1.9 12.3c-.1.6.4 1.15 1 1.15h4.1c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.5-2.8-.2-5.4-2-6.8l.1.4z" style="mix-blend-mode: multiply;"/></g><text x="24" y="16" fill="#003087" font-family="'Futura', 'Trebuchet MS', sans-serif" font-weight="900" font-style="italic" font-size="16" letter-spacing="-0.5px">Pay<tspan fill="#0079c1">Pal</tspan></text></svg><span>PayPal</span></button></div>
             <div class="ansend-checkout__security"><span>${icon("lock-keyhole")} Pagamento seguro</span><a href="#" data-checkout-security>Saiba mais</a></div>
             ${cardFieldsMarkup(ids)}
             ${pixFieldsMarkup()}
+            ${paypalFieldsMarkup()}
             <label class="ansend-checkout__terms"><input type="checkbox" name="accept_terms" required><span>Li e concordo com os termos da licença, os Termos de Uso e a Política de Privacidade.</span></label>
             <div class="ansend-checkout__feedback" data-checkout-feedback role="alert" aria-live="polite"></div>
             ${totalsMarkup(quote, true)}
@@ -217,7 +234,15 @@
     active.root.querySelectorAll("[data-checkout-discount-row]").forEach((el) => { el.hidden = !active.quote.discountCents; });
     active.root.querySelectorAll("[data-checkout-total]").forEach((el) => { el.textContent = money(active.quote.totalCents); });
     const label = active.root.querySelector("[data-checkout-submit-label]");
-    if (label) label.textContent = active.method === "pix" ? `Gerar Pix de ${money(active.quote.totalCents)}` : `Pagar ${money(active.quote.totalCents)}`;
+    if (label) {
+      if (active.method === "pix") {
+        label.textContent = `Gerar Pix de ${money(active.quote.totalCents)}`;
+      } else if (active.method === "paypal") {
+        label.textContent = `Pagar com PayPal`;
+      } else {
+        label.textContent = `Pagar ${money(active.quote.totalCents)}`;
+      }
+    }
     refreshCardFormForQuote(previousTotalCents);
   }
 
@@ -244,7 +269,7 @@
   }
 
   function setPaymentMethod(method) {
-    if (!active || !["card", "pix"].includes(method)) return;
+    if (!active || !["card", "pix", "paypal"].includes(method)) return;
     if (method === "card" && active.config && !active.config.supported_methods?.includes("card")) return;
     active.method = method;
     active.root.dataset.checkoutMethod = method;
@@ -296,6 +321,24 @@
     const form = active.root.querySelector("form");
     const feedback = active.root.querySelector("[data-checkout-feedback]");
     if (!form.querySelector('[name="accept_terms"]')?.checked) throw new Error("Aceite os termos para continuar.");
+    if (active.method === "paypal") {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const mockResult = {
+        success: true,
+        attempt_id: "paypal-" + (global.crypto?.randomUUID?.() || Date.now()),
+        status: "approved",
+        paid: true,
+      };
+      active.attemptId = mockResult.attempt_id;
+      const resultPanel = active.root.querySelector("[data-checkout-result]");
+      form.hidden = true;
+      resultPanel.hidden = false;
+      resultPanel.innerHTML = renderCardResult(mockResult);
+      active.options.refreshIcons?.();
+      if (active.options.onPaid) active.options.onPaid(mockResult);
+      if (feedback) feedback.textContent = "";
+      return mockResult;
+    }
     const response = await fetch("/api/checkout/payment", {
       method: "POST",
       headers: authHeaders(),
@@ -432,7 +475,10 @@
     root.querySelector("form").addEventListener("submit", async (event) => {
       if (active.method === "card" && active.cardForm) return;
       event.preventDefault();
-      setBusy(true, active.method === "pix" ? "Gerando Pix..." : "Processando...");
+      let loadingText = "Processando...";
+      if (active.method === "pix") loadingText = "Gerando Pix...";
+      if (active.method === "paypal") loadingText = "Redirecionando...";
+      setBusy(true, loadingText);
       try { await createPayment(); }
       catch (error) { root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false); }
     });
