@@ -636,7 +636,7 @@ async function paypalRequest(env, path, init = {}) {
 }
 
 function paypalOrderApprovalUrl(order = {}) {
-  return (order.links || []).find((link) => String(link.rel || "").toLowerCase() === "approve")?.href || "";
+  return (order.links || []).find((link) => ["approve", "payer-action"].includes(String(link.rel || "").toLowerCase()))?.href || "";
 }
 
 async function createPayPalOrder(env, { request, buyer, checkout, externalReference, attemptId }) {
@@ -670,7 +670,7 @@ async function createPayPalOrder(env, { request, buyer, checkout, externalRefere
   if (buyer?.email) body.payment_source.paypal.email_address = buyer.email;
   return paypalRequest(env, "/v2/checkout/orders", {
     method: "POST",
-    headers: { "PayPal-Request-Id": attemptId },
+    headers: { "PayPal-Request-Id": attemptId, Prefer: "return=representation" },
     body: JSON.stringify(body),
   });
 }
@@ -678,7 +678,7 @@ async function createPayPalOrder(env, { request, buyer, checkout, externalRefere
 async function capturePayPalOrder(env, orderId, attemptId) {
   return paypalRequest(env, `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
     method: "POST",
-    headers: { "PayPal-Request-Id": `capture-${attemptId}` },
+    headers: { "PayPal-Request-Id": `capture-${attemptId}`, Prefer: "return=representation" },
     body: "{}",
   });
 }

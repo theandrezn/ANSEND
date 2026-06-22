@@ -18,6 +18,8 @@ for (const marker of [
   'payment_source: {',
   'shipping_preference: "NO_SHIPPING"',
   "capturePayPalOrder",
+  '"payer-action"',
+  'Prefer: "return=representation"',
   'url.pathname === "/api/checkout/paypal/capture"',
 ]) assert(worker.includes(marker), `Worker missing PayPal integration marker: ${marker}`);
 
