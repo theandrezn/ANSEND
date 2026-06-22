@@ -18408,6 +18408,19 @@ function syncCheckoutStandaloneRoute(route) {
 function renderRoute() {
   const stopShellPerf = perfStart("App shell route render");
   const route = currentRoute();
+  if (route === "ia") {
+    location.hash = "feed";
+    appState.nexoAssistant.open = true;
+    appState.nexoAssistant.minimized = false;
+    appState.nexoAssistant.unread = false;
+    writeNexoAssistantPrefs();
+    updateNexoSurfaces();
+    window.requestAnimationFrame(() => {
+      document.querySelector(".nexo-assistant-form textarea")?.focus({ preventScroll: true });
+    });
+    stopShellPerf();
+    return;
+  }
   lastRoute = route;
   document.body.dataset.route = route;
   syncCheckoutStandaloneRoute(route);
@@ -18472,7 +18485,7 @@ function renderRoute() {
   if (route === "compras") renderPurchases();
   if (route === "chat") renderChatPage();
   if (route === "biblioteca" || route === "musicas") renderLibrary();
-  if (route === "ia" || route === "ferramentas") renderAiWorkspace();
+  if (route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
   if (route === COMMUNITY_ROUTE) {
     renderHiringPage();

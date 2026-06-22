@@ -25,7 +25,6 @@ const routes = [
   { hash: "explorar", required: ["Explorar"], selector: ".view-header" },
   { hash: "favoritos", required: ["Favoritos"], selector: ".view-header-favoritos" },
   { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
-  { hash: "ia", required: ["Converse com a inteligencia musical"], selector: ".nexo-chat-page" },
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
   { hash: "comunidade", required: ["Comunidade ANSEND"], selector: ".hiring-page" },
   { hash: "contratacoes", required: ["Comunidade ANSEND"], selector: ".hiring-page" },

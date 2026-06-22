@@ -14,7 +14,6 @@ const targetRoutes = [
   "produtores",
   "comunidade",
   "chat",
-  "ia",
   "biblioteca",
   "musicas",
   "compras",
@@ -230,13 +229,7 @@ async function interactWithRoute(page, route) {
       await composer.focus();
     }
   }
-  if (route === "ia") {
-    const prompt = page.locator(".nexo-chat-input-wrap textarea, textarea#aiPrompt").first();
-    if ((await prompt.count()) && await prompt.isVisible().catch(() => false)) {
-      await prompt.fill("Quero lancar um single de trap melodico com clipe e campanha.");
-      await prompt.focus();
-    }
-  }
+
   if (route === "feed") {
     const menu = page.locator(".menu-toggle").first();
     if ((await menu.count()) && await menu.isVisible().catch(() => false)) {
