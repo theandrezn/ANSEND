@@ -4154,7 +4154,6 @@ function renderHeroCollage() {
       ${renderCol("col-1")}
       ${renderCol("col-2")}
       ${renderCol("col-3")}
-      ${renderCol("col-4")}
     `;
     return;
   }
@@ -4182,20 +4181,17 @@ function renderHeroCollage() {
   const col1 = [];
   const col2 = [];
   const col3 = [];
-  const col4 = [];
 
   beats.forEach((beat, idx) => {
-    const mod = idx % 4;
+    const mod = idx % 3;
     if (mod === 0) col1.push(beat);
     else if (mod === 1) col2.push(beat);
-    else if (mod === 2) col3.push(beat);
-    else col4.push(beat);
+    else col3.push(beat);
   });
 
   const col1Beats = populateColumnBeats(col1, 6);
   const col2Beats = populateColumnBeats(col2, 6);
   const col3Beats = populateColumnBeats(col3, 6);
-  const col4Beats = populateColumnBeats(col4, 6);
 
   const renderColumn = (colBeats, colClass) => {
     return `
@@ -4226,7 +4222,6 @@ function renderHeroCollage() {
     ${renderColumn(col1Beats, "col-1")}
     ${renderColumn(col2Beats, "col-2")}
     ${renderColumn(col3Beats, "col-3")}
-    ${renderColumn(col4Beats, "col-4")}
   `;
 }
 

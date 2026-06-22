@@ -91,33 +91,93 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   }
 }
 
-/* /* ==========================================
+/* ==========================================
    SPOTIFY TRACKS MASONRY COLLAGE OVERRIDES
    ========================================== */
 
-/* Showcases container width overrides on desktop to support 2-4 columns */
-@media (min-width: 769px) {
+/* Mobile layout default position for showcase container below content */
+@media (max-width: 768px) {
+  body[data-route="feed"] .ai-hero .top-beat-showcase,
+  body[data-route="feed"] .ai-hero .an-hero-art {
+    position: static !important;
+    width: 100% !important;
+    max-width: min(100%, 272px) !important; /* fits 2 columns of 130px + 12px gap */
+    height: 260px !important;
+    aspect-ratio: auto !important;
+    margin: 16px auto 0 !important;
+    opacity: 1 !important;
+    transform: none !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Tablet layout overrides (2 columns) */
+@media (min-width: 769px) and (max-width: 1100px) {
   body[data-route="feed"] .ai-hero .ai-hero-layout .top-beat-showcase,
   body[data-route="feed"] .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
     position: absolute !important;
     inset: 50% 24px auto auto !important;
     transform: translateY(-50%) !important;
-    width: 580px !important;
-    max-width: 45vw !important;
+    width: 296px !important; /* 2 columns of 130px + 12px gap + margins */
+    height: 380px !important;
+    min-height: 0 !important;
+    display: block !important;
+    opacity: 1 !important;
+    z-index: 10 !important;
+    pointer-events: auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Common Desktop layout overrides (3 columns) */
+@media (min-width: 1101px) and (max-width: 1399px) {
+  body[data-route="feed"] .ai-hero .ai-hero-layout .top-beat-showcase,
+  body[data-route="feed"] .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
+    position: absolute !important;
+    inset: 50% 48px auto auto !important;
+    transform: translateY(-50%) !important;
+    width: 452px !important; /* 3 columns of 140px + 16px gap */
     height: 480px !important;
     min-height: 0 !important;
     display: block !important;
     opacity: 1 !important;
     z-index: 10 !important;
     pointer-events: auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 }
 
+/* Large Desktop layout overrides (3 columns, slightly larger cards) */
 @media (min-width: 1400px) {
   body[data-route="feed"] .ai-hero .ai-hero-layout .top-beat-showcase,
   body[data-route="feed"] .ai-hero.is-beatmaker-hero .ai-hero-layout .top-beat-showcase {
-    width: 880px !important;
-    max-width: 50vw !important;
+    position: absolute !important;
+    inset: 50% 80px auto auto !important;
+    transform: translateY(-50%) !important;
+    width: 516px !important; /* 3 columns of 160px + 18px gap */
+    height: 520px !important;
+    min-height: 0 !important;
+    display: block !important;
+    opacity: 1 !important;
+    z-index: 10 !important;
+    pointer-events: auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 }
 
@@ -146,7 +206,7 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 .spotify-collage-mask {
   position: absolute !important;
   inset: 0 !important;
-  background: linear-gradient(to bottom, #000 0%, transparent 15%, transparent 85%, #000 100%) !important;
+  background: linear-gradient(to bottom, #000 0%, transparent 12%, transparent 88%, #000 100%) !important;
   z-index: 20 !important;
   pointer-events: none !important;
 }
@@ -158,19 +218,19 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   justify-content: center !important;
   width: 100% !important;
   height: 100% !important;
-  gap: 16px !important;
+  gap: 12px !important; /* Mobile gap */
   box-sizing: border-box !important;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1101px) and (max-width: 1399px) {
   .spotify-collage-inner-wrapper {
-    gap: 32px !important;
+    gap: 16px !important;
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   .spotify-collage-inner-wrapper {
-    gap: 48px !important;
+    gap: 18px !important;
   }
 }
 
@@ -178,17 +238,26 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 .spotify-collage-column {
   display: flex !important;
   flex-direction: column !important;
-  gap: 24px !important;
-  width: calc(50% - 8px) !important; /* Scale to fit exactly 2 columns on mobile */
-  flex: 0 0 calc(50% - 8px) !important;
+  gap: 12px !important; /* Mobile vertical gap */
+  width: 130px !important; /* Mobile column width */
+  flex: 0 0 130px !important;
   box-sizing: border-box !important;
   will-change: transform !important;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1101px) and (max-width: 1399px) {
   .spotify-collage-column {
-    width: 260px !important; /* Fixed width matching reference on desktop */
-    flex: 0 0 260px !important;
+    width: 140px !important;
+    flex: 0 0 140px !important;
+    gap: 16px !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  .spotify-collage-column {
+    width: 160px !important;
+    flex: 0 0 160px !important;
+    gap: 18px !important;
   }
 }
 
@@ -198,15 +267,12 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 }
 
 .spotify-collage-column.col-2 {
-  animation: spotifyScrollDown 36s linear infinite !important;
+  animation: spotifyScrollDown 38s linear infinite !important;
 }
 
 .spotify-collage-column.col-3 {
-  animation: spotifyScrollUp 30s linear infinite !important;
-}
-
-.spotify-collage-column.col-4 {
-  animation: spotifyScrollDown 34s linear infinite !important;
+  animation: spotifyScrollUp 44s linear infinite !important;
+  animation-delay: -15s !important; /* staggered initial offset */
 }
 
 /* Responsive visibility for columns */
@@ -214,18 +280,8 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   display: none !important;
 }
 
-.spotify-collage-column.col-4 {
-  display: none !important;
-}
-
-@media (min-width: 769px) {
+@media (min-width: 1101px) {
   .spotify-collage-column.col-3 {
-    display: flex !important;
-  }
-}
-
-@media (min-width: 1200px) {
-  .spotify-collage-column.col-4 {
     display: flex !important;
   }
 }
@@ -254,7 +310,7 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   position: relative !important;
   width: 100% !important;
   aspect-ratio: 1 / 1 !important;
-  border-radius: 24px !important; /* rounded-3xl (24px) */
+  border-radius: 16px !important; /* Discrete rounded corners (16px) */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   overflow: hidden !important;
   cursor: pointer !important;
@@ -268,10 +324,10 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 }
 
 .spotify-track-card:hover {
-  transform: scale(1.05) !important;
+  transform: scale(1.02) !important; /* Subtle scale on hover */
   border-color: rgba(255, 255, 255, 0.2) !important;
   z-index: 30 !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* Track Cover Image */
@@ -281,7 +337,7 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  opacity: 0.8 !important;
+  opacity: 0.9 !important;
   transition: opacity 0.3s ease !important;
   z-index: 1 !important;
 }
@@ -290,27 +346,27 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   opacity: 1 !important;
 }
 
-/* Track Info Overlay - glassmorphism backdrop blur */
+/* Track Info Overlay - clean solid semi-transparent overlay */
 .spotify-track-info {
   position: absolute !important;
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  padding: 20px !important; /* p-5 (20px) */
-  background: rgba(0, 0, 0, 0.6) !important; /* bg-black/60 */
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.1) !important; /* border-t border-white/10 */
+  padding: 16px !important;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   z-index: 2 !important;
   box-sizing: border-box !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 4px !important;
+  gap: 2px !important;
   pointer-events: auto !important;
 }
 
 .spotify-track-title {
-  font-size: 14px !important; /* text-sm */
+  font-size: 13px !important;
   font-weight: 700 !important;
   line-height: 1.25 !important;
   margin: 0 !important;
@@ -326,10 +382,10 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   border: none !important;
   padding: 0 !important;
   margin: 0 !important;
-  font-size: 12px !important; /* text-xs */
+  font-size: 11px !important;
   font-weight: 500 !important;
   text-align: left !important;
-  color: rgba(255, 255, 255, 0.6) !important; /* text-white/60 */
+  color: rgba(255, 255, 255, 0.6) !important;
   cursor: pointer !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -351,7 +407,7 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   position: relative !important;
   background-color: #121211 !important;
   border-color: rgba(255, 255, 255, 0.04) !important;
-  border-radius: 24px !important;
+  border-radius: 16px !important;
 }
 
 .skeleton-card::after {
@@ -394,8 +450,7 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 @media (prefers-reduced-motion: reduce) {
   .spotify-collage-column.col-1,
   .spotify-collage-column.col-2,
-  .spotify-collage-column.col-3,
-  .spotify-collage-column.col-4 {
+  .spotify-collage-column.col-3 {
     animation: none !important;
     transform: none !important;
   }
