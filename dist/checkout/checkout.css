@@ -244,8 +244,42 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__pay:disabled { opacity: 0.5; cursor: not-allowed; }
 .ansend-checkout__pay > svg { position: absolute; right: 14px; top: 50%; width: 14px; transform: translateY(-50%); }
 .ansend-checkout__secondary { border: 1px solid var(--checkout-border-strong); color: var(--checkout-text); background: transparent; }
-.ansend-checkout__form footer { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--checkout-muted); font-size: 9px; }
-.ansend-checkout__form footer a { color: inherit; text-decoration: none; }
+.ansend-checkout__form footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin-top: 16px;
+  color: var(--checkout-muted) !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.01em;
+}
+.ansend-checkout__form footer span,
+.ansend-checkout__form footer b,
+.ansend-checkout__form footer a {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  transform: none !important;
+  line-height: 1.2 !important;
+}
+.ansend-checkout__form footer b {
+  opacity: 0.5;
+  font-weight: normal !important;
+}
+.ansend-checkout__form footer a {
+  color: inherit !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+.ansend-checkout__form footer a:hover {
+  color: #ffffff !important;
+  text-decoration: underline !important;
+}
 .ansend-checkout__pix-result, .ansend-checkout__card-result { display: grid; gap: 16px; }
 .ansend-checkout__status { padding: 14px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--checkout-border); border-radius: 8px; background: var(--checkout-card-bg); }
 .ansend-checkout__status > svg { width: 23px; }
