@@ -96,10 +96,22 @@
   function cardFieldsMarkup(ids) {
     return `<div class="ansend-checkout__method-panel" data-checkout-panel="card" hidden>
       <label class="ansend-checkout__field"><span>E-mail</span><input id="${escapeHtml(ids.email)}" data-checkout-buyer-email name="buyer_email" type="email" autocomplete="email" placeholder="voce@exemplo.com" required></label>
-      <div class="ansend-checkout__field"><span id="${escapeHtml(ids.cardNumber)}-label">Número do cartão</span><div class="ansend-checkout__field-wrapper"><div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-labelledby="${escapeHtml(ids.cardNumber)}-label"></div><div class="ansend-checkout__card-brands"><img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo"><img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo"><img src="assets/payment/stripe.svg" alt="Stripe" class="ansend-checkout__brand-logo"></div></div></div>
-      <div class="ansend-checkout__field-pair">
-        <div class="ansend-checkout__field"><span id="${escapeHtml(ids.expiration)}-label">Validade</span><div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-labelledby="${escapeHtml(ids.expiration)}-label"></div></div>
-        <div class="ansend-checkout__field"><span id="${escapeHtml(ids.cvv)}-label">Código de segurança</span><div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-labelledby="${escapeHtml(ids.cvv)}-label"></div></div>
+      <div class="ansend-checkout__field">
+        <span>Informações do cartão</span>
+        <div class="ansend-checkout__group">
+          <div class="ansend-checkout__field-wrapper">
+            <div id="${escapeHtml(ids.cardNumber)}" class="ansend-checkout__secure-field" data-checkout-card-number aria-label="Número do cartão"></div>
+            <div class="ansend-checkout__card-brands">
+              <img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo">
+              <img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo">
+              <img src="assets/payment/stripe.svg" alt="Stripe" class="ansend-checkout__brand-logo">
+            </div>
+          </div>
+          <div class="ansend-checkout__field-row">
+            <div id="${escapeHtml(ids.expiration)}" class="ansend-checkout__secure-field" data-checkout-card-expiration aria-label="Validade"></div>
+            <div id="${escapeHtml(ids.cvv)}" class="ansend-checkout__secure-field" data-checkout-card-cvv aria-label="Código de segurança"></div>
+          </div>
+        </div>
       </div>
       <label class="ansend-checkout__field"><span>Nome impresso no cartão</span><input id="${escapeHtml(ids.cardholderName)}" data-checkout-cardholder-name name="cardholder_name" placeholder="Como aparece no cartão" autocomplete="cc-name" required></label>
       <label class="ansend-checkout__field"><span>CPF/CNPJ</span><input id="${escapeHtml(ids.identification)}" name="identification_number" placeholder="Somente números" inputmode="numeric" autocomplete="off" required></label>
