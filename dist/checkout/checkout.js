@@ -836,6 +836,165 @@
     initPaymentMethodDock(checkoutState);
   }
 
+  /* ================================================================ */
+  /* macOS Reverse Genie Animation (SVG clipPath + rAF)                */
+  /* ================================================================ */
+
+  function genieEase(t) {
+    // cubic-bezier(0.16, 1, 0.3, 1) approximation — fast start, smooth decel
+    const c = 1.008;
+    return 1 - Math.pow(1 - t, 3) * (1 + (c - 1) * (1 - t));
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function runGenieAnimation(root, direction, origin, callback) {
+    // Respect prefers-reduced-motion
+    if (global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      root.style.opacity = direction === "enter" ? "1" : "0";
+      if (callback) requestAnimationFrame(() => callback());
+      return;
+    }
+
+    const duration = direction === "enter" ? 480 : 360;
+    const vw = global.innerWidth || document.documentElement.clientWidth || 1;
+    const vh = global.innerHeight || document.documentElement.clientHeight || 1;
+
+    // Origin as fraction of viewport
+    const ox = (origin.x ?? vw / 2) / vw;
+    const oy = (origin.y ?? vh) / vh;
+    const ow = Math.max((origin.w ?? 120) / vw, 0.04);
+    const oh = Math.max((origin.h ?? 40) / vh, 0.02);
+
+    // Create SVG clipPath
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svgEl = document.createElementNS(svgNS, "svg");
+    svgEl.setAttribute("width", "0");
+    svgEl.setAttribute("height", "0");
+    svgEl.style.cssText = "position:absolute;pointer-events:none;";
+    const clipPathEl = document.createElementNS(svgNS, "clipPath");
+    const clipId = "genie-clip-" + Date.now();
+    clipPathEl.id = clipId;
+    clipPathEl.setAttribute("clipPathUnits", "objectBoundingBox");
+    const pathEl = document.createElementNS(svgNS, "path");
+    clipPathEl.appendChild(pathEl);
+    svgEl.appendChild(clipPathEl);
+    document.body.appendChild(svgEl);
+
+    // Apply clip-path to root
+    root.style.clipPath = `url(#${clipId})`;
+    root.style.willChange = "clip-path, opacity, filter";
+
+    const startTime = performance.now();
+    let rafId;
+
+    function buildPath(t) {
+      // t goes 0 → 1 for enter, 1 → 0 for exit
+      const e = genieEase(t);
+
+      // Bottom edge: starts at button width, expands to full width
+      const bottomLeft  = lerp(ox - ow / 2, 0, e);
+      const bottomRight = lerp(ox + ow / 2, 1, e);
+
+      // Top edge: starts at button width (slightly narrower), expands to full width
+      const topNarrow = 0.7; // top starts narrower than bottom for funnel
+      const topLeft   = lerp(ox - (ow * topNarrow) / 2, 0, e);
+      const topRight  = lerp(ox + (ow * topNarrow) / 2, 1, e);
+
+      // Vertical: bottom starts at button Y, top starts at button Y, expands to 0..1
+      const bottom = lerp(oy + oh / 2, 1, e);
+      const top    = lerp(oy - oh / 2, 0, e);
+
+      // Curve control points — create the funnel / Genie neck
+      const curveIntensity = 1 - e; // stronger curve when collapsed
+      const midY = lerp(top, bottom, 0.4);
+      const neckLeft  = lerp(topLeft, bottomLeft, 0.5)   + curveIntensity * 0.08;
+      const neckRight = lerp(topRight, bottomRight, 0.5) - curveIntensity * 0.08;
+
+      // Clamp all values
+      const cl = (v) => Math.max(0, Math.min(1, v));
+
+      return [
+        `M ${cl(topLeft)} ${cl(top)}`,
+        `C ${cl(neckLeft)} ${cl(midY)}, ${cl(bottomLeft)} ${cl(bottom)}, ${cl(bottomLeft)} ${cl(bottom)}`,
+        `L ${cl(bottomRight)} ${cl(bottom)}`,
+        `C ${cl(bottomRight)} ${cl(bottom)}, ${cl(neckRight)} ${cl(midY)}, ${cl(topRight)} ${cl(top)}`,
+        `Z`
+      ].join(" ");
+    }
+
+    function frame(now) {
+      const elapsed = now - startTime;
+      let progress = Math.min(elapsed / duration, 1);
+      const t = direction === "enter" ? progress : 1 - progress;
+
+      pathEl.setAttribute("d", buildPath(t));
+
+      // Opacity: fade in during first 30% of enter, fade out during last 30% of exit
+      if (direction === "enter") {
+        root.style.opacity = String(Math.min(progress / 0.3, 1));
+      } else {
+        root.style.opacity = String(Math.min((1 - progress) / 0.3, 1));
+      }
+
+      // Blur: slight blur at start
+      const blurAmount = direction === "enter"
+        ? lerp(6, 0, Math.min(progress / 0.5, 1))
+        : lerp(0, 6, Math.max((progress - 0.5) / 0.5, 0));
+      if (blurAmount > 0.1) {
+        root.style.filter = `blur(${blurAmount.toFixed(1)}px)`;
+      } else {
+        root.style.filter = "";
+      }
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(frame);
+      } else {
+        // Cleanup
+        root.style.clipPath = "";
+        root.style.willChange = "";
+        root.style.filter = "";
+        if (direction === "enter") {
+          root.style.opacity = "1";
+        }
+        svgEl.remove();
+        if (callback) callback();
+      }
+    }
+
+    // Set initial state
+    if (direction === "enter") {
+      root.style.opacity = "0";
+    }
+    rafId = requestAnimationFrame(frame);
+
+    // Return cancel function
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      root.style.clipPath = "";
+      root.style.willChange = "";
+      root.style.filter = "";
+      root.style.opacity = direction === "enter" ? "1" : "0";
+      svgEl.remove();
+    };
+  }
+
+  function closeWithAnimation(root, callback) {
+    if (!root) { if (callback) callback(); return; }
+    let ox = global.innerWidth / 2, oy = global.innerHeight, ow = 120, oh = 40;
+    try {
+      const sx = localStorage.getItem("ansend-checkout-origin-x");
+      const sy = localStorage.getItem("ansend-checkout-origin-y");
+      const sw = localStorage.getItem("ansend-checkout-origin-w");
+      const sh = localStorage.getItem("ansend-checkout-origin-h");
+      if (sx) ox = parseFloat(sx);
+      if (sy) oy = parseFloat(sy);
+      if (sw) ow = parseFloat(sw);
+      if (sh) oh = parseFloat(sh);
+    } catch (e) { /* ignore */ }
+    runGenieAnimation(root, "exit", { x: ox, y: oy, w: ow, h: oh }, callback);
+  }
+
   async function open(options) {
     teardownActiveCheckout(active, { invalidate: true });
     const instanceId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
@@ -851,24 +1010,27 @@
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
 
-    // Set dynamic transform-origin based on click location for Genie effect
-    let originX = null;
-    let originY = null;
+    // Read click-origin coordinates for Genie animation
+    let genieOrigin = { x: null, y: null, w: null, h: null };
     try {
-      originX = localStorage.getItem("ansend-checkout-origin-x");
-      originY = localStorage.getItem("ansend-checkout-origin-y");
-      if (originX && originY) {
-        localStorage.removeItem("ansend-checkout-origin-x");
-        localStorage.removeItem("ansend-checkout-origin-y");
+      const sx = localStorage.getItem("ansend-checkout-origin-x");
+      const sy = localStorage.getItem("ansend-checkout-origin-y");
+      const sw = localStorage.getItem("ansend-checkout-origin-w");
+      const sh = localStorage.getItem("ansend-checkout-origin-h");
+      if (sx && sy) {
+        genieOrigin = { x: parseFloat(sx), y: parseFloat(sy), w: parseFloat(sw) || 120, h: parseFloat(sh) || 40 };
+        // Keep in localStorage so exit animation can read them too
       }
     } catch (e) {
       console.warn("localStorage access denied:", e);
     }
-    if (originX && originY) {
-      root.style.transformOrigin = `${originX}px ${originY}px`;
-    } else {
-      root.style.transformOrigin = "center center";
-    }
+    // Run the Genie enter animation
+    runGenieAnimation(root, "enter", {
+      x: genieOrigin.x ?? (global.innerWidth || 960) / 2,
+      y: genieOrigin.y ?? (global.innerHeight || 600),
+      w: genieOrigin.w ?? 120,
+      h: genieOrigin.h ?? 40,
+    });
     active = { root, options, formIds, method: "pix", quote: options.quote, couponCode: "", attemptId: "", idempotencyKey: global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`, cardFormAmountCents: 0, installmentFetchCount: 0, installmentOutsidePointerHandler: null };
     const checkoutState = active;
     root.querySelector("[data-checkout-buyer-email]").value = options.prefillEmail || "";
@@ -898,7 +1060,7 @@
     return checkoutState;
   }
 
-  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money, parseProviderInstallmentLabel, formatProviderInstallmentLabel };
+  const api = { open, renderCheckout, renderPixResult, renderCardResult, setPaymentMethod, applyCoupon, money, parseProviderInstallmentLabel, formatProviderInstallmentLabel, closeWithAnimation };
   global.AnsendCheckout = api;
   if (typeof window !== "undefined") window.AnsendCheckout = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

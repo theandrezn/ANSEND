@@ -18494,6 +18494,17 @@ function showToast(message, icon = "check-circle-2") {
 }
 
 function closeModal() {
+  const checkoutElement = document.querySelector("[data-ansend-checkout]");
+  if (checkoutElement && !checkoutElement.classList.contains("is-closing")) {
+    checkoutElement.classList.add("is-closing");
+    if (window.AnsendCheckout && typeof window.AnsendCheckout.closeWithAnimation === "function") {
+      window.AnsendCheckout.closeWithAnimation(checkoutElement, () => {
+        document.querySelector(".app-modal")?.remove();
+        document.body.classList.remove("modal-open");
+      });
+      return;
+    }
+  }
   document.querySelector(".app-modal")?.remove();
   document.body.classList.remove("modal-open");
 }
@@ -24492,6 +24503,8 @@ document.addEventListener("click", (event) => {
     try {
       localStorage.setItem("ansend-checkout-origin-x", originX);
       localStorage.setItem("ansend-checkout-origin-y", originY);
+      localStorage.setItem("ansend-checkout-origin-w", rect.width);
+      localStorage.setItem("ansend-checkout-origin-h", rect.height);
     } catch (e) {
       console.warn("localStorage setItem access denied:", e);
     }
