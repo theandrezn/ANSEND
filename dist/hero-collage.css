@@ -458,3 +458,22 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   }
 }
 
+/* ==========================================
+   REPOSITIONING OVERRIDES FOR THE HERO CATALOG
+   ========================================== */
+
+/* Telas Grandes (Desktop >= 1280px) */
+@media (min-width: 1280px) {
+  body[data-route="feed"] .ai-hero .ai-hero-layout .ansend-hero-catalog {
+    margin-left: 120px !important;
+    margin-top: -55px !important;
+  }
+}
+
+/* Telas Médias (Desktop/Tablet 1024px a 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  body[data-route="feed"] .ai-hero .ai-hero-layout .ansend-hero-catalog {
+    margin-left: 60px !important;
+    margin-top: -30px !important;
+  }
+}
