@@ -82,9 +82,9 @@ async function main() {
       heroSubtitle: ".an-hero-copy p",
       searchInput: ".ai-input-shell textarea",
       searchButton: ".ai-inline-submit",
-      topBeatCard: ".top-beat-card",
-      recentBuyButton: ".recent-activity-section .airbit-buy-btn",
-      catalogBuyButton: ".minimal-beat-card .beat-card-buy-btn",
+      heroCatalog: ".ansend-hero-catalog",
+      recentBuyButton: "[data-typography-fixture] .recent-activity-section .airbit-buy-btn",
+      catalogBuyButton: "[data-typography-fixture] .minimal-beat-card .beat-card-buy-btn",
       footer: ".cinematic-footer",
     };
 
@@ -117,7 +117,7 @@ async function main() {
       heroSubtitle: ["plus jakarta sans", "inter"],
       searchInput: ["plus jakarta sans", "inter"],
       searchButton: ["plus jakarta sans", "inter"],
-      topBeatCard: ["plus jakarta sans", "inter", "poppins"],
+      heroCatalog: ["plus jakarta sans", "inter", "poppins"],
       recentBuyButton: ["plus jakarta sans", "inter"],
       catalogBuyButton: ["plus jakarta sans", "inter"],
       footer: ["plus jakarta sans", "inter", "montserrat"],

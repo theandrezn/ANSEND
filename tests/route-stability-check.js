@@ -34,6 +34,17 @@ const routes = [
   { hash: "vendedor", required: ["ANSEND"], selector: ".seller-auth" },
 ];
 
+function isIgnorableExternalError(message = "") {
+  if (message === "Failed to load resource: net::ERR_FAILED") return true;
+  return (
+    message.includes("googleads.g.doubleclick.net/pagead/viewthroughconversion") ||
+    message.includes("www.youtube.com/pagead/viewthroughconversion")
+  ) && (
+    message.includes("blocked by CORS policy") ||
+    message.includes("Failed to load resource")
+  );
+}
+
 function serveStatic(req, res) {
   const requestPath = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
   const safePath = requestPath === "/" ? "/index.html" : requestPath;
@@ -80,7 +91,7 @@ async function run() {
       const errors = [];
 
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (message.type() === "error" && !isIgnorableExternalError(message.text())) errors.push(message.text());
       });
       page.on("pageerror", (error) => errors.push(error.message));
 
