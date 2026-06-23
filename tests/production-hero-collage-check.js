@@ -47,6 +47,14 @@ async function run() {
           const rect = catalog.getBoundingClientRect();
           const columns = catalog.querySelectorAll(".spotify-collage-column");
           const columnsVisible = Array.from(columns).filter(col => getComputedStyle(col).display !== "none");
+          const firstCard = catalog.querySelector(".spotify-track-card:not(.skeleton-card)");
+          let cardAspectRatio = 1.0;
+          let cardHeight = 0;
+          if (firstCard) {
+            const crect = firstCard.getBoundingClientRect();
+            cardHeight = crect.height;
+            cardAspectRatio = crect.width / Math.max(1, crect.height);
+          }
           
           catalogMetrics = {
             found: true,
@@ -58,6 +66,8 @@ async function run() {
             },
             columnsCount: columns.length,
             visibleColumnsCount: columnsVisible.length,
+            cardHeight,
+            cardAspectRatio,
           };
         }
 
@@ -93,6 +103,16 @@ async function run() {
       }
       if (vp.width >= 1101 && metrics.catalog && metrics.catalog.visibleColumnsCount < 3) {
         failures.push(`Expected at least 3 visible columns on desktop (${vp.width}px), got ${metrics.catalog.visibleColumnsCount}`);
+      }
+      if (metrics.catalog && metrics.catalog.cardHeight > 0) {
+        const ratio = metrics.catalog.cardAspectRatio;
+        const height = metrics.catalog.cardHeight;
+        if (Math.abs(ratio - 1) > 0.08) {
+          failures.push(`Card aspect ratio is distorted (${ratio.toFixed(2)}) at ${vp.width}x${vp.height}`);
+        }
+        if (height > 300) {
+          failures.push(`Card height is overly stretched (${height.toFixed(1)}px) at ${vp.width}x${vp.height}`);
+        }
       }
       if (metrics.headline && !metrics.headline.visible) {
         failures.push(`Headline is not visible at ${vp.width}x${vp.height}`);
