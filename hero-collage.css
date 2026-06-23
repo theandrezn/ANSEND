@@ -309,6 +309,8 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
   display: block !important;
   position: relative !important;
   width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
   aspect-ratio: 1 / 1 !important;
   border-radius: 16px !important; /* Discrete rounded corners (16px) */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
