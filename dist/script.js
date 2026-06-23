@@ -11918,17 +11918,25 @@ function renderFavorites() {
 }
 
 async function loadUserPurchases() {
-  if (!supabaseClient || !appState.authUser) return { orders: [], attempts: [], beats: new Map(), profiles: new Map() };
+  if (!supabaseClient || !appState.authUser) return { orders: [], attempts: [], beats: new Map(), profiles: new Map(), entitlements: new Map(), documents: new Map() };
   try {
     const { data: orders, error: ordersError } = await supabaseClient
       .from("orders")
       .select(`
         id,
+        buyer_id,
         total_cents,
+        subtotal_cents,
+        discount_cents,
+        service_fee_cents,
         status,
+        payment_provider,
+        payment_method,
+        provider_payment_id,
         buyer_name,
         buyer_email,
         created_at,
+        completed_at,
         order_items (
           id,
           beat_id,
@@ -11939,6 +11947,14 @@ async function loadUserPurchases() {
           buyer_royalty_snapshot,
           producer_royalty_snapshot,
           files_included_snapshot,
+          beat_title_snapshot,
+          beat_cover_url_snapshot,
+          producer_id_snapshot,
+          producer_name_snapshot,
+          license_key_snapshot,
+          currency_snapshot,
+          license_rights_snapshot,
+          file_manifest_snapshot,
           accepted_contract_at,
           accepted_contract_version
         )
@@ -11946,7 +11962,7 @@ async function loadUserPurchases() {
       .eq("buyer_id", appState.authUser.id)
       .order("created_at", { ascending: false });
 
-    if (ordersError) console.error("Error loading user orders:", ordersError);
+    if (ordersError) throw ordersError;
 
     const { data: attempts, error: attemptsError } = await supabaseClient
       .from("payment_attempts")
@@ -11956,6 +11972,38 @@ async function loadUserPurchases() {
       .order("created_at", { ascending: false });
 
     if (attemptsError) console.error("Error loading user payment attempts:", attemptsError);
+
+    const orderIds = (orders || []).map(order => order.id).filter(Boolean);
+    const orderItemIds = [];
+    (orders || []).forEach(order => {
+      (order.order_items || []).forEach(item => {
+        if (item.id) orderItemIds.push(item.id);
+      });
+    });
+
+    const entitlementsByItem = new Map();
+    if (orderIds.length > 0) {
+      const { data: entitlements, error: entitlementsError } = await supabaseClient
+        .from("purchase_entitlements")
+        .select("id,order_id,order_item_id,beat_id,status,allowed_files,download_limit,download_count")
+        .in("order_id", orderIds);
+      if (entitlementsError) console.error("Error loading purchase entitlements:", entitlementsError);
+      (entitlements || []).forEach(entitlement => {
+        if (entitlement.order_item_id) entitlementsByItem.set(String(entitlement.order_item_id), entitlement);
+      });
+    }
+
+    const documentsByItem = new Map();
+    if (orderItemIds.length > 0) {
+      const { data: documents, error: documentsError } = await supabaseClient
+        .from("license_documents")
+        .select("id,order_item_id,contract_number,contract_text,created_at")
+        .in("order_item_id", orderItemIds);
+      if (documentsError) console.error("Error loading license documents:", documentsError);
+      (documents || []).forEach(document => {
+        if (document.order_item_id) documentsByItem.set(String(document.order_item_id), document);
+      });
+    }
 
     const beatIds = new Set();
     if (orders) {
@@ -12007,6 +12055,11 @@ async function loadUserPurchases() {
     resolvedBeats.forEach(b => {
       if (b.user_id) producerIds.add(b.user_id);
     });
+    (orders || []).forEach(order => {
+      (order.order_items || []).forEach(item => {
+        if (item.producer_id_snapshot) producerIds.add(item.producer_id_snapshot);
+      });
+    });
     if (attempts) {
       attempts.forEach(attempt => {
         if (attempt.cart_items) {
@@ -12034,12 +12087,121 @@ async function loadUserPurchases() {
       orders: orders || [],
       attempts: attempts || [],
       beats: resolvedBeats,
-      profiles: resolvedProfiles
+      profiles: resolvedProfiles,
+      entitlements: entitlementsByItem,
+      documents: documentsByItem
     };
   } catch (error) {
     console.error("Error loading user purchases:", error);
-    return { orders: [], attempts: [], beats: new Map(), profiles: new Map() };
+    return { orders: [], attempts: [], beats: new Map(), profiles: new Map(), entitlements: new Map(), documents: new Map(), error };
   }
+}
+
+function normalizePurchaseStatus(status = "") {
+  const value = String(status || "").toLowerCase();
+  if (["completed", "approved", "paid"].includes(value)) return "completed";
+  if (["pending", "created", "waiting_payment"].includes(value)) return "pending";
+  if (["in_process", "processing", "authorized"].includes(value)) return "processing";
+  if (["rejected", "failed", "failure", "expired"].includes(value)) return "failed";
+  if (["cancelled", "canceled"].includes(value)) return "cancelled";
+  if (["refunded", "charged_back"].includes(value)) return "refunded";
+  if (["in_mediation", "disputed", "dispute"].includes(value)) return "disputed";
+  return value || "unknown";
+}
+
+function purchaseStatusPresentation(status = "") {
+  const normalized = normalizePurchaseStatus(status);
+  const map = {
+    completed: {
+      label: "Aprovado",
+      desc: "Pagamento confirmado com sucesso. Os arquivos autorizados pela licença ficam disponíveis abaixo.",
+      style: "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);"
+    },
+    pending: {
+      label: "Aguardando pagamento",
+      desc: "O pagamento está pendente. Os downloads serão liberados automaticamente após a aprovação.",
+      style: "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);"
+    },
+    processing: {
+      label: "Em processamento",
+      desc: "O pagamento está em análise pelo provedor. Isso não é uma falha; os downloads ainda não foram liberados.",
+      style: "background: rgba(0, 150, 255, 0.1); color: #33aaff; border: 1px solid rgba(0, 150, 255, 0.2);"
+    },
+    failed: {
+      label: "Falhou",
+      desc: "O pagamento não foi aprovado. Os downloads não estão disponíveis para esta transação.",
+      style: "background: rgba(150, 150, 150, 0.1); color: #a3a3a3; border: 1px solid rgba(150, 150, 150, 0.2);"
+    },
+    cancelled: {
+      label: "Cancelado",
+      desc: "Este pedido foi cancelado. Os downloads não estão disponíveis.",
+      style: "background: rgba(150, 150, 150, 0.1); color: #a3a3a3; border: 1px solid rgba(150, 150, 150, 0.2);"
+    },
+    refunded: {
+      label: "Reembolsado",
+      desc: "Esta compra foi reembolsada e o acesso aos arquivos correspondentes foi revogado.",
+      style: "background: rgba(255, 100, 100, 0.1); color: #ff5555; border: 1px solid rgba(255, 100, 100, 0.2);"
+    },
+    disputed: {
+      label: "Em disputa",
+      desc: "O pagamento está em disputa. Os downloads seguem bloqueados até a resolução pelo backend.",
+      style: "background: rgba(255, 140, 0, 0.1); color: #ff9f33; border: 1px solid rgba(255, 140, 0, 0.2);"
+    },
+    unknown: {
+      label: "Status desconhecido",
+      desc: "Não foi possível reconhecer o status do gateway. Nenhum download será liberado pelo frontend.",
+      style: "background: rgba(150, 150, 150, 0.1); color: #a3a3a3; border: 1px solid rgba(150, 150, 150, 0.2);"
+    }
+  };
+  return { normalized, ...(map[normalized] || map.unknown) };
+}
+
+function formatPurchaseMoney(cents = 0, currency = "BRL") {
+  const amount = Number(cents || 0) / 100;
+  try {
+    return amount.toLocaleString("pt-BR", { style: "currency", currency: currency || "BRL" });
+  } catch (_) {
+    return `R$ ${amount.toFixed(2)}`;
+  }
+}
+
+function normalizePurchaseOrderItem(order, item, context) {
+  const beat = context.beats.get(String(item.beat_id)) || {};
+  const producerId = item.producer_id_snapshot || beat.user_id || "";
+  const entitlement = context.entitlements.get(String(item.id)) || null;
+  const document = context.documents.get(String(item.id)) || null;
+  return {
+    type: "order_item",
+    id: item.id,
+    orderId: order.id,
+    buyerId: order.buyer_id,
+    buyerName: order.buyer_name,
+    buyerEmail: order.buyer_email,
+    createdAt: order.created_at,
+    completedAt: order.completed_at,
+    beatId: item.beat_id,
+    beatTitle: item.beat_title_snapshot || beat.title || "",
+    beatCover: item.beat_cover_url_snapshot || beat.cover || "",
+    producerId,
+    producerName: item.producer_name_snapshot || beat.producer_name || "",
+    licenseId: item.license_id,
+    licenseName: item.license_name_snapshot || "Licença",
+    licenseKey: item.license_key_snapshot || "",
+    licenseTerms: item.license_terms_snapshot || "",
+    licenseRights: item.license_rights_snapshot || {},
+    fileManifest: item.file_manifest_snapshot || {},
+    priceCents: item.price_cents_snapshot || 0,
+    currency: item.currency_snapshot || "BRL",
+    buyerRoyalty: item.buyer_royalty_snapshot,
+    producerRoyalty: item.producer_royalty_snapshot,
+    filesIncluded: item.files_included_snapshot || entitlement?.allowed_files || "",
+    status: order.status,
+    provider: order.payment_provider || "mercado_pago",
+    method: order.payment_method || "online",
+    providerPaymentId: order.provider_payment_id || null,
+    entitlement,
+    licenseDocument: document
+  };
 }
 
 async function renderPurchases() {
@@ -12103,6 +12265,15 @@ async function renderPurchases() {
     
     try {
       const context = await loadUserPurchases();
+      if (context.error) {
+        appView.innerHTML = `${pageHeader}
+          <div style="padding:24px; text-align:center;">
+            <p style="color:var(--beat-muted); margin-bottom:16px;">Erro ao carregar os detalhes reais deste pedido.</p>
+            <button type="button" class="an-secondary" onclick="renderPurchases()" style="padding:8px 16px; border-radius:6px;">Tentar novamente</button>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
       
       let item = null;
       let order = null;
@@ -12111,11 +12282,13 @@ async function renderPurchases() {
       if (queryParams.id) {
         order = context.orders.find(o => String(o.id) === String(queryParams.id));
         if (order && order.order_items) {
+          let rawItem = null;
           if (queryParams.item_id) {
-            item = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
+            rawItem = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
           } else {
-            item = order.order_items[0];
+            rawItem = order.order_items[0];
           }
+          if (rawItem) item = normalizePurchaseOrderItem(order, rawItem, context);
         }
       } else if (queryParams.attempt_id) {
         attempt = context.attempts.find(a => String(a.id) === String(queryParams.attempt_id));
@@ -12150,53 +12323,28 @@ async function renderPurchases() {
       }
       
       const beat = context.beats.get(String(item.beatId)) || {};
-      const beatTitle = beat.title || item.title || "Beat Indisponível";
-      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
-      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const beatTitle = item.beatTitle || beat.title || "Beat Indisponível";
+      const beatCover = item.beatCover || beat.cover || "assets/top-beat-psiiiko-cover.jpg";
+      const producer = context.profiles.get(String(item.producerId || beat.user_id || item.sellerId));
+      const producerName = item.producerName || (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor"));
       const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
       const producerUsername = producer?.username || "";
       
       const orderNum = order ? `PED-${order.id.slice(0, 8).toUpperCase()}` : `ATT-${attempt.id.slice(0, 8).toUpperCase()}`;
-      const priceText = `R$ ${((order ? item.priceCents : item.priceCents) / 100).toFixed(2)}`;
+      const priceText = formatPurchaseMoney(item.priceCents, item.currency || "BRL");
       const dateString = new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
       
-      let statusLabel = "Aprovado";
-      let badgeStyle = "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);";
-      let statusDesc = "Pagamento confirmado com sucesso. Seus arquivos e contrato de licença estão liberados abaixo.";
       const statusValue = order ? order.status : attempt.status;
-      
-      if (statusValue === "refunded") {
-        statusLabel = "Reembolsado";
-        badgeStyle = "background: rgba(255, 100, 100, 0.1); color: #ff5555; border: 1px solid rgba(255, 100, 100, 0.2);";
-        statusDesc = "Esta compra foi reembolsada e o acesso aos arquivos correspondentes foi revogado.";
-      } else if (statusValue === "pending" || statusValue === "created") {
-        statusLabel = "Aguardando pagamento";
-        badgeStyle = "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);";
-        statusDesc = "O pagamento está pendente ou aguardando confirmação do Mercado Pago. Os downloads serão liberados automaticamente após a aprovação.";
-      } else if (statusValue === "in_process") {
-        statusLabel = "Em processamento";
-        badgeStyle = "background: rgba(0, 150, 255, 0.1); color: #33aaff; border: 1px solid rgba(0, 150, 255, 0.2);";
-        statusDesc = "O pagamento está sendo analisado pelo provedor. Os downloads estarão disponíveis em breve.";
-      } else if (statusValue === "rejected" || statusValue === "cancelled" || statusValue === "expired") {
-        statusLabel = statusValue === "cancelled" ? "Cancelado" : (statusValue === "expired" ? "Expirado" : "Recusado");
-        badgeStyle = "background: rgba(150, 150, 150, 0.1); color: #888888; border: 1px solid rgba(150, 150, 150, 0.2);";
-        statusDesc = `O pagamento foi ${statusLabel.toLowerCase()}. Os downloads não estão disponíveis para esta transação.`;
-      }
-      
-      const isCompleted = statusValue === "completed" || statusValue === "approved";
+      const statusInfo = purchaseStatusPresentation(statusValue);
+      const isCompleted = statusInfo.normalized === "completed";
+      const hasActiveEntitlement = item.type === "order_item" && item.entitlement?.status === "active";
       
       // Contract loading
       let contractText = "";
-      if (order && isCompleted) {
-        const { data: doc } = await supabaseClient
-          .from("license_documents")
-          .select("contract_text")
-          .eq("order_item_id", item.id)
-          .maybeSingle();
-        if (doc) contractText = doc.contract_text;
+      if (order && isCompleted && item.licenseDocument?.contract_text) {
+        contractText = item.licenseDocument.contract_text;
       }
-      if (!contractText) {
+      if (!contractText && !order) {
         contractText = generateContractText(
           beatTitle,
           producerName,
@@ -12214,13 +12362,14 @@ async function renderPurchases() {
       
       // Downloads section
       let downloadsHtml = "";
-      if (isCompleted) {
+      if (isCompleted && hasActiveEntitlement) {
         const includedFiles = String(item.filesIncluded || "").toUpperCase();
         const hasMp3 = includedFiles.includes("MP3");
         const hasWav = includedFiles.includes("WAV");
         const hasStems = includedFiles.includes("STEMS") || includedFiles.includes("ZIP");
+        const downloadData = `data-order-id="${htmlEscape(item.orderId || "")}" data-order-item-id="${htmlEscape(item.id || "")}" data-beat-id="${htmlEscape(item.beatId || "")}"`;
         
-        downloadsHtml += `
+        if (contractText) downloadsHtml += `
           <div class="download-row">
             <div>
               <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Contrato de Licença (.txt)</span>
@@ -12232,6 +12381,15 @@ async function renderPurchases() {
             </div>
           </div>
         `;
+        else downloadsHtml += `
+          <div class="download-row">
+            <div>
+              <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Documento da Licença</span>
+              <small style="color:var(--beat-muted); font-size:11px;">Documento ainda não gerado para este item</small>
+            </div>
+            <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
+          </div>
+        `;
         
         if (hasMp3) {
           downloadsHtml += `
@@ -12240,7 +12398,11 @@ async function renderPurchases() {
                 <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio MP3</span>
                 <small style="color:var(--beat-muted); font-size:11px;">Formato de alta qualidade (320kbps)</small>
               </div>
-              <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+              ${beat.mp3_path || beat.audio_path ? `
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+              ` : `
+                <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
+              `}
             </div>
           `;
         }
@@ -12252,9 +12414,9 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Formato sem perdas de áudio profissional</small>
               </div>
               ${beat.wav_path || beat.audio_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
               ` : `
-                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo sendo preparado</span>
+                <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
               `}
             </div>
           `;
@@ -12267,18 +12429,21 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Pistas de áudio separadas para mixagem</small>
               </div>
               ${beat.stems_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
               ` : `
-                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo indisponível</span>
+                <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
               `}
             </div>
           `;
         }
       } else {
+        const lockedCopy = isCompleted && !hasActiveEntitlement
+          ? "Este pedido está aprovado, mas o direito de download ainda não está ativo para este item."
+          : "Os downloads e contratos estarão disponíveis assim que o pagamento for aprovado.";
         downloadsHtml = `
           <div style="background:#050505; border:1px dashed var(--beat-border); border-radius:6px; padding:24px; text-align:center; color:var(--beat-muted); font-size:13px;">
             <i data-lucide="lock" style="width:24px; height:24px; margin-bottom:8px; color:var(--orange-primary, #ff5500);"></i>
-            <p>Os downloads e contratos estarão disponíveis assim que o pagamento for aprovado.</p>
+            <p>${lockedCopy}</p>
           </div>
         `;
       }
@@ -12370,9 +12535,9 @@ async function renderPurchases() {
               </div>
               <div class="detail-info-row" style="align-items: center; padding-top: 12px; border-top: 1px solid var(--beat-border-soft); margin-top: 8px;">
                 <span style="color:var(--beat-muted);">Status Financeiro:</span>
-                <span class="badge-status" style="${badgeStyle}">${statusLabel}</span>
+                <span class="badge-status" style="${statusInfo.style}">${statusInfo.label}</span>
               </div>
-              <p style="font-size: 12px; color: var(--beat-muted); margin: 12px 0 0 0; line-height: 1.5;">${statusDesc}</p>
+              <p style="font-size: 12px; color: var(--beat-muted); margin: 12px 0 0 0; line-height: 1.5;">${statusInfo.desc}</p>
             </div>
 
             <!-- Beat Adquirido -->
@@ -12427,8 +12592,8 @@ async function renderPurchases() {
                     <i data-lucide="user" style="width: 14px; height: 14px;"></i> Ver perfil completo
                   </a>
                 ` : ''}
-                ${beat.user_id ? `
-                  <button type="button" onclick="openOrCreateDirectConversation('${beat.user_id}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
+                ${item.producerId || beat.user_id ? `
+                  <button type="button" onclick="openOrCreateDirectConversation('${htmlEscape(item.producerId || beat.user_id)}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
                     <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Iniciar Conversa
                   </button>
                 ` : ''}
@@ -12441,6 +12606,10 @@ async function renderPurchases() {
               <h3 style="font-size:14px; font-weight:bold; color:var(--orange-primary, #ff5500); margin:0 0 8px 0;">${htmlEscape(item.licenseName)}</h3>
               
               <div style="font-size:12px; color:var(--beat-muted); line-height:1.6;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span>Preço contratado:</span>
+                  <strong style="color:#fff;">${priceText}</strong>
+                </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
                   <span>Divisão de Royalties:</span>
                   <strong style="color:#fff;">${item.buyerRoyalty || 50}% Artista / ${item.producerRoyalty || 50}% Produtor</strong>
@@ -12481,32 +12650,24 @@ async function renderPurchases() {
 
   try {
     const context = await loadUserPurchases();
+    if (context.error) {
+      appView.innerHTML = `${pageHeader}
+        <div class="empty-state">
+          <i data-lucide="triangle-alert"></i>
+          <h3>Erro ao carregar seus pedidos</h3>
+          <p>Não foi possível consultar o histórico real da sua conta agora. Isso não significa que você não tenha pedidos.</p>
+          <button type="button" class="an-secondary" onclick="renderPurchases()" style="padding:8px 16px; border-radius:6px; margin-top:12px;">Tentar novamente</button>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
     const allUnifiedItems = [];
     
     // Process order items
     context.orders.forEach(order => {
       if (order.order_items) {
         order.order_items.forEach(oi => {
-          allUnifiedItems.push({
-            type: "order_item",
-            id: oi.id,
-            orderId: order.id,
-            buyerId: order.buyer_id,
-            buyerName: order.buyer_name,
-            buyerEmail: order.buyer_email,
-            createdAt: order.created_at,
-            beatId: oi.beat_id,
-            licenseId: oi.license_id,
-            licenseName: oi.license_name_snapshot,
-            licenseTerms: oi.license_terms_snapshot,
-            priceCents: oi.price_cents_snapshot,
-            buyerRoyalty: oi.buyer_royalty_snapshot,
-            producerRoyalty: oi.producer_royalty_snapshot,
-            filesIncluded: oi.files_included_snapshot,
-            status: order.status,
-            provider: "mercado_pago",
-            providerPaymentId: null,
-          });
+          allUnifiedItems.push(normalizePurchaseOrderItem(order, oi, context));
         });
       }
     });
@@ -12543,15 +12704,15 @@ async function renderPurchases() {
     const activeTab = appState.comprasActiveTab || "Todos";
     let filteredItems = allUnifiedItems;
     if (activeTab === "Disponíveis") {
-      filteredItems = allUnifiedItems.filter(item => item.status === "completed" || item.status === "approved");
+      filteredItems = allUnifiedItems.filter(item => purchaseStatusPresentation(item.status).normalized === "completed");
     } else if (activeTab === "Aguardando pagamento") {
-      filteredItems = allUnifiedItems.filter(item => item.status === "pending" || item.status === "created");
+      filteredItems = allUnifiedItems.filter(item => purchaseStatusPresentation(item.status).normalized === "pending");
     } else if (activeTab === "Em processamento") {
-      filteredItems = allUnifiedItems.filter(item => item.status === "in_process");
+      filteredItems = allUnifiedItems.filter(item => purchaseStatusPresentation(item.status).normalized === "processing");
     } else if (activeTab === "Cancelados") {
-      filteredItems = allUnifiedItems.filter(item => item.status === "rejected" || item.status === "cancelled" || item.status === "expired");
+      filteredItems = allUnifiedItems.filter(item => ["failed", "cancelled", "disputed"].includes(purchaseStatusPresentation(item.status).normalized));
     } else if (activeTab === "Reembolsados") {
-      filteredItems = allUnifiedItems.filter(item => item.status === "refunded");
+      filteredItems = allUnifiedItems.filter(item => purchaseStatusPresentation(item.status).normalized === "refunded");
     }
 
     // 2. Apply Search Filter
@@ -12559,9 +12720,9 @@ async function renderPurchases() {
     if (searchQuery) {
       filteredItems = filteredItems.filter(item => {
         const beat = context.beats.get(String(item.beatId)) || {};
-        const beatTitle = (beat.title || item.title || "").toLowerCase();
-        const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-        const producerName = (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "")).toLowerCase();
+        const beatTitle = (item.beatTitle || beat.title || item.title || "").toLowerCase();
+        const producer = context.profiles.get(String(item.producerId || beat.user_id || item.sellerId));
+        const producerName = (item.producerName || (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || ""))).toLowerCase();
         const license = (item.licenseName || "").toLowerCase();
         const idStr = (item.orderId || item.attemptId || "").toLowerCase();
         
@@ -12576,8 +12737,8 @@ async function renderPurchases() {
     filteredItems.sort((a, b) => {
       const beatA = context.beats.get(String(a.beatId)) || {};
       const beatB = context.beats.get(String(b.beatId)) || {};
-      const titleA = (beatA.title || a.title || "").toLowerCase();
-      const titleB = (beatB.title || b.title || "").toLowerCase();
+      const titleA = (a.beatTitle || beatA.title || a.title || "").toLowerCase();
+      const titleB = (b.beatTitle || beatB.title || b.title || "").toLowerCase();
       
       if (appState.comprasSort === "recent") {
         return new Date(b.createdAt) - new Date(a.createdAt);
@@ -12606,14 +12767,13 @@ async function renderPurchases() {
     // Render cards
     const cardsHtml = paginatedItems.map(item => {
       const beat = context.beats.get(String(item.beatId)) || {};
-      const beatTitle = beat.title || item.title || "Beat Indisponível";
-      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
-      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const beatTitle = item.beatTitle || beat.title || item.title || "Beat Indisponível";
+      const beatCover = item.beatCover || beat.cover || "assets/top-beat-psiiiko-cover.jpg";
+      const producer = context.profiles.get(String(item.producerId || beat.user_id || item.sellerId));
+      const producerName = item.producerName || (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor"));
       const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
-      const producerUsername = producer?.username || "";
       
-      const priceText = `R$ ${(item.priceCents / 100).toFixed(2)}`;
+      const priceText = formatPurchaseMoney(item.priceCents, item.currency || "BRL");
       const dateString = new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
       const orderNum = item.orderId ? `PED-${item.orderId.slice(0, 8).toUpperCase()}` : `ATT-${item.attemptId.slice(0, 8).toUpperCase()}`;
       
@@ -12628,24 +12788,9 @@ async function renderPurchases() {
       if (hasStems) formatsList.push("Stems");
       const formatsText = formatsList.join(" • ") || "MP3";
 
-      let badgeLabel = "Aprovado";
-      let badgeStyle = "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);";
-      
-      if (item.status === "refunded") {
-        badgeLabel = "Reembolsado";
-        badgeStyle = "background: rgba(255, 100, 100, 0.1); color: #ff5555; border: 1px solid rgba(255, 100, 100, 0.2);";
-      } else if (item.status === "pending" || item.status === "created") {
-        badgeLabel = "Aguardando pagamento";
-        badgeStyle = "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);";
-      } else if (item.status === "in_process") {
-        badgeLabel = "Em processamento";
-        badgeStyle = "background: rgba(0, 150, 255, 0.1); color: #33aaff; border: 1px solid rgba(0, 150, 255, 0.2);";
-      } else if (item.status === "rejected" || item.status === "cancelled" || item.status === "expired") {
-        badgeLabel = item.status === "cancelled" ? "Cancelado" : (item.status === "expired" ? "Expirado" : "Recusado");
-        badgeStyle = "background: rgba(150, 150, 150, 0.1); color: #888888; border: 1px solid rgba(150, 150, 150, 0.2);";
-      }
+      const statusInfo = purchaseStatusPresentation(item.status);
 
-      const isCompleted = item.status === "completed" || item.status === "approved";
+      const isCompleted = statusInfo.normalized === "completed";
       const detailHref = `#compras?${item.orderId ? 'id=' + item.orderId + '&item_id=' + item.id : 'attempt_id=' + item.attemptId}`;
       
       const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
@@ -12668,7 +12813,7 @@ async function renderPurchases() {
             <div style="flex:1; min-width: 200px;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom: 4px;">
                 <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0; cursor:pointer;" onclick="location.hash='${detailHref}'">${htmlEscape(beatTitle)}</h3>
-                <span class="badge-status" style="${badgeStyle}">${badgeLabel}</span>
+                <span class="badge-status" style="${statusInfo.style}">${statusInfo.label}</span>
               </div>
               
               <div style="font-size:12px; color:var(--beat-muted); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; align-items:center;">
@@ -12696,8 +12841,6 @@ async function renderPurchases() {
         </article>
       `;
     }).join("");
-
-    const hasLocalOrdersBtn = context.orders.length > 0 || context.attempts.length > 0;
 
     appView.innerHTML = `
       ${pageHeader}
@@ -12775,7 +12918,7 @@ async function renderPurchases() {
         <!-- Total purchases description -->
         <div style="font-size: 13px; color: var(--beat-muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
           <span>Exibindo <strong>${filteredItems.length}</strong> de <strong>${allUnifiedItems.length}</strong> compras</span>
-          ${hasLocalOrdersBtn ? `<button type="button" class="commerce-clear-btn" data-action="clear-purchases" style="display:flex; align-items:center; gap:6px; font-size:12px; background:none; border:none; color:var(--beat-muted); cursor:pointer;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i>Limpar dados locais</button>` : ''}
+          <button type="button" class="commerce-clear-btn" onclick="renderPurchases()" style="display:flex; align-items:center; gap:6px; font-size:12px; background:none; border:none; color:var(--beat-muted); cursor:pointer;"><i data-lucide="refresh-cw" style="width:14px; height:14px;"></i>Atualizar consulta</button>
         </div>
 
         <!-- Purchase cards list -->
@@ -21912,7 +22055,9 @@ document.addEventListener("click", async (event) => {
   if (action === "download-secure-file") {
     const beatId = target.dataset.beatId;
     const fileType = target.dataset.fileType;
-    downloadPurchasedFile(beatId, fileType);
+    const orderId = target.dataset.orderId;
+    const orderItemId = target.dataset.orderItemId;
+    downloadPurchasedFile(beatId, fileType, { orderId, orderItemId });
     return;
   }
   if (action === "view-purchased-contract") {
@@ -24429,15 +24574,20 @@ function openContractModal(text) {
   lucide.createIcons();
 }
 
-async function downloadPurchasedFile(beatId, fileType) {
+async function downloadPurchasedFile(beatId, fileType, options = {}) {
   const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
   if (!session) {
     showToast("Você precisa estar logado para baixar arquivos.", "triangle-alert");
     return;
   }
+  const params = new URLSearchParams();
+  if (beatId) params.set("beat_id", beatId);
+  if (fileType) params.set("file_type", fileType);
+  if (options.orderId) params.set("order_id", options.orderId);
+  if (options.orderItemId) params.set("order_item_id", options.orderItemId);
   showToast("Gerando link de download seguro...", "loader");
   try {
-    const response = await fetch(`/api/orders/download?beat_id=${beatId}&file_type=${fileType}`, {
+    const response = await fetch(`/api/orders/download?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }
