@@ -2209,6 +2209,58 @@ function beatCard(item) {
   </article>`;
 }
 
+function heroTopBeatCard(item, isClone = false) {
+  const title = htmlEscape(item.title || "Beat ANSEND");
+  const producer = htmlEscape(item.producer || "ANSEND");
+  const beatId = htmlEscape(String(item.id || ""));
+  return `<article class="ansend-hero-catalog__card" data-beat-id="${beatId}"${isClone ? ' aria-hidden="true"' : ""}>
+    <a class="ansend-hero-catalog__link" href="#beat-${beatId}" aria-label="Abrir beat ${title}" tabindex="${isClone ? "-1" : "0"}">
+      ${optimizedImageMarkup({ src: item.cover, alt: `Capa do beat ${item.title || "ANSEND"}`, className: "ansend-hero-catalog__cover", width: 220, height: 260, priority: true })}
+      <span class="ansend-hero-catalog__info">
+        <strong>${title}</strong>
+        <span>${producer}</span>
+      </span>
+    </a>
+  </article>`;
+}
+
+function renderHeroTopBeatsCatalog(items = marketplaceBeats()) {
+  const host = document.querySelector("#heroTopBeatsCatalog");
+  if (!host) return;
+  const beats = dedupeById(items)
+    .filter((item) => item?.id && item?.cover)
+    .slice(0, 15);
+  host.hidden = beats.length === 0;
+  if (!beats.length) {
+    host.innerHTML = "";
+    return;
+  }
+  const visualBeats = Array.from(
+    { length: Math.max(12, beats.length) },
+    (_, index) => beats[index % beats.length]
+  );
+  const columns = [[], [], []];
+  visualBeats.forEach((item, index) => columns[index % columns.length].push(item));
+  host.innerHTML = `<div class="ansend-hero-catalog__viewport">
+    <div class="ansend-hero-catalog__columns">
+      ${columns.map((column, index) => {
+        const repeatedColumn = column.concat(column);
+        return `<div class="ansend-hero-catalog__column ansend-hero-catalog__column--${index + 1}">
+          <div class="ansend-hero-catalog__track">
+            ${repeatedColumn.map((item, cardIndex) => heroTopBeatCard(item, cardIndex >= column.length)).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>`;
+}
+
+function refreshHeroTopBeatsCatalog() {
+  if (document.querySelector("#heroTopBeatsCatalog")) {
+    renderHeroTopBeatsCatalog(marketplaceBeats());
+  }
+}
+
 function avatarCard(name, i) {
   return `<article class="avatar-card"><button type="button" data-action="producer" data-title="${name}" aria-label="Abrir perfil de ${name}">${optimizedImageMarkup({ src: img(avatarImages[i % avatarImages.length]), alt: `Avatar de ${name}`, width: 120, height: 120 })}<h3>${name}<i data-lucide="badge-check"></i></h3><p>${420 + i * 137} vendas</p></button></article>`;
 }
@@ -4082,6 +4134,7 @@ function renderHomeDashboard() {
   const recs = buildNexoRecommendations(profile || createDefaultMusicProfile());
   const catalogBeats = marketplaceBeats();
   const realProfessionals = activeProfessionalProfiles();
+  renderHeroTopBeatsCatalog(catalogBeats);
   const setText = (id, title, subtitle) => {
     const head = document.querySelector(`#${id}`);
     const copy = head?.closest(".section-head")?.querySelector("p");
@@ -5438,6 +5491,7 @@ async function loadPublicPlatformData() {
     ...appState.publicCatalogItems.map((item) => ({ targetType: "beat", targetId: item.id, item, updatedAt: item.updated_at, createdAt: item.created_at })),
   ]);
   await loadPersonalizedRecommendations();
+  refreshHeroTopBeatsCatalog();
 }
 
 async function loadOwnedCatalogItems() {
@@ -10900,6 +10954,7 @@ async function applySession(session, options = {}) {
 
   if (!user?.id) {
     clearAuthenticatedApplicationState(`apply_session_${source}_anonymous`);
+    await loadPublicPlatformDataSafe(`apply_session_${source}_anonymous`);
     appState.authReady = true;
     appState.authLoading = false;
     return false;
