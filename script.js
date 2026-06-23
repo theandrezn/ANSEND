@@ -11924,10 +11924,15 @@ async function loadUserPurchases() {
       .from("orders")
       .select(`
         id,
+        buyer_id,
         total_cents,
         status,
         buyer_name,
         buyer_email,
+        completed_at,
+        payment_provider,
+        payment_method,
+        provider_payment_id,
         created_at,
         order_items (
           id,
@@ -11939,6 +11944,14 @@ async function loadUserPurchases() {
           buyer_royalty_snapshot,
           producer_royalty_snapshot,
           files_included_snapshot,
+          beat_title_snapshot,
+          beat_cover_url_snapshot,
+          producer_id_snapshot,
+          producer_name_snapshot,
+          license_key_snapshot,
+          currency_snapshot,
+          license_rights_snapshot,
+          file_manifest_snapshot,
           accepted_contract_at,
           accepted_contract_version
         )
@@ -11946,7 +11959,7 @@ async function loadUserPurchases() {
       .eq("buyer_id", appState.authUser.id)
       .order("created_at", { ascending: false });
 
-    if (ordersError) console.error("Error loading user orders:", ordersError);
+    if (ordersError) throw ordersError;
 
     const { data: attempts, error: attemptsError } = await supabaseClient
       .from("payment_attempts")
@@ -11955,7 +11968,7 @@ async function loadUserPurchases() {
       .is("order_id", null)
       .order("created_at", { ascending: false });
 
-    if (attemptsError) console.error("Error loading user payment attempts:", attemptsError);
+    if (attemptsError) throw attemptsError;
 
     const beatIds = new Set();
     if (orders) {
@@ -11988,7 +12001,7 @@ async function loadUserPurchases() {
     if (missingBeatIds.length > 0) {
       const { data: fetchedBeats } = await supabaseClient
         .from("beats")
-        .select("id,title,cover,user_id,producer_name,genre,bpm,key,tags,audio_path,mp3_path,wav_path,stems_path,status")
+        .select("id,title,cover,cover_url,user_id,producer_name,genre,bpm,key,tags,audio_path,mp3_path,wav_path,stems_path,status")
         .in("id", missingBeatIds);
 
       if (fetchedBeats) {
@@ -12016,6 +12029,13 @@ async function loadUserPurchases() {
         }
       });
     }
+    if (orders) {
+      orders.forEach(order => {
+        (order.order_items || []).forEach(item => {
+          if (item.producer_id_snapshot) producerIds.add(item.producer_id_snapshot);
+        });
+      });
+    }
 
     const resolvedProfiles = new Map();
     const missingProducerIds = [...producerIds];
@@ -12038,8 +12058,78 @@ async function loadUserPurchases() {
     };
   } catch (error) {
     console.error("Error loading user purchases:", error);
-    return { orders: [], attempts: [], beats: new Map(), profiles: new Map() };
+    return { orders: [], attempts: [], beats: new Map(), profiles: new Map(), error };
   }
+}
+
+function normalizePurchaseOrderItem(order, orderItem) {
+  if (!order || !orderItem) return null;
+  return {
+    type: "order_item",
+    id: orderItem.id,
+    orderId: order.id,
+    buyerId: order.buyer_id,
+    buyerName: order.buyer_name,
+    buyerEmail: order.buyer_email,
+    createdAt: order.created_at,
+    completedAt: order.completed_at,
+    beatId: orderItem.beat_id,
+    beatTitle: orderItem.beat_title_snapshot,
+    beatCoverUrl: orderItem.beat_cover_url_snapshot,
+    producerId: orderItem.producer_id_snapshot,
+    producerName: orderItem.producer_name_snapshot,
+    licenseId: orderItem.license_id,
+    licenseKey: orderItem.license_key_snapshot,
+    licenseName: orderItem.license_name_snapshot,
+    licenseTerms: orderItem.license_terms_snapshot,
+    licenseRights: orderItem.license_rights_snapshot || {},
+    fileManifest: orderItem.file_manifest_snapshot || {},
+    currency: orderItem.currency_snapshot || "BRL",
+    priceCents: Number(orderItem.price_cents_snapshot || 0),
+    buyerRoyalty: orderItem.buyer_royalty_snapshot,
+    producerRoyalty: orderItem.producer_royalty_snapshot,
+    filesIncluded: orderItem.files_included_snapshot,
+    status: order.status,
+    provider: order.payment_provider || "mercado_pago",
+    method: order.payment_method || "online",
+    providerPaymentId: order.provider_payment_id || null,
+  };
+}
+
+function normalizePaymentAttemptItem(attempt, item, index = 0) {
+  if (!attempt || !item) return null;
+  return {
+    type: "attempt_item",
+    id: `${attempt.id}-${index}`,
+    attemptId: attempt.id,
+    itemIndex: index,
+    buyerId: attempt.buyer_id,
+    buyerName: attempt.buyer_name,
+    buyerEmail: attempt.buyer_email,
+    createdAt: attempt.created_at,
+    beatId: item.beat_id,
+    beatTitle: item.title,
+    beatCoverUrl: item.cover_url || item.cover,
+    producerId: item.seller_id,
+    producerName: item.producer_name,
+    licenseId: item.license_id,
+    licenseName: item.license_name || "Licenca",
+    licenseTerms: null,
+    priceCents: Number(item.price_cents || 0),
+    buyerRoyalty: 50,
+    producerRoyalty: 50,
+    filesIncluded: null,
+    status: attempt.status,
+    provider: attempt.provider,
+    method: attempt.method,
+    providerPaymentId: attempt.provider_payment_id,
+  };
+}
+
+function localPurchaseArtifactCount() {
+  return (Array.isArray(appState.purchases) ? appState.purchases.length : 0)
+    + (Array.isArray(appState.orders) ? appState.orders.length : 0)
+    + (Array.isArray(appState.contracts) ? appState.contracts.length : 0);
 }
 
 async function renderPurchases() {
@@ -12103,6 +12193,16 @@ async function renderPurchases() {
     
     try {
       const context = await loadUserPurchases();
+      if (context.error) {
+        appView.innerHTML = `${pageHeader}
+          <div style="padding:24px; text-align:center;">
+            <p style="color:var(--beat-muted); margin-bottom:16px;">Nao foi possivel carregar os detalhes deste pedido.</p>
+            <button type="button" class="an-secondary" onclick="renderPurchases()" style="padding:8px 16px; border-radius:6px; cursor:pointer;">Tentar novamente</button>
+            <a href="#compras" class="an-secondary" style="display:inline-flex; align-items:center; margin-left:8px; padding:8px 16px; border-radius:6px; text-decoration:none;">Voltar para pedidos</a>
+          </div>`;
+        lucide.createIcons();
+        return;
+      }
       
       let item = null;
       let order = null;
@@ -12111,31 +12211,19 @@ async function renderPurchases() {
       if (queryParams.id) {
         order = context.orders.find(o => String(o.id) === String(queryParams.id));
         if (order && order.order_items) {
+          let rawItem = null;
           if (queryParams.item_id) {
-            item = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
+            rawItem = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
           } else {
-            item = order.order_items[0];
+            rawItem = order.order_items[0];
           }
+          item = normalizePurchaseOrderItem(order, rawItem);
         }
       } else if (queryParams.attempt_id) {
         attempt = context.attempts.find(a => String(a.id) === String(queryParams.attempt_id));
         if (attempt && attempt.cart_items) {
-          item = {
-            type: "attempt_item",
-            id: attempt.id,
-            attemptId: attempt.id,
-            buyerId: attempt.buyer_id,
-            buyerName: attempt.buyer_name,
-            buyerEmail: attempt.buyer_email,
-            createdAt: attempt.created_at,
-            beatId: attempt.cart_items[0]?.beat_id,
-            licenseId: attempt.cart_items[0]?.license_id,
-            licenseName: attempt.cart_items[0]?.license_name || "Licença",
-            priceCents: attempt.cart_items[0]?.price_cents || 0,
-            status: attempt.status,
-            provider: attempt.provider,
-            providerPaymentId: attempt.provider_payment_id,
-          };
+          const itemIndex = Math.max(0, Number.parseInt(queryParams.item_index || "0", 10) || 0);
+          item = normalizePaymentAttemptItem(attempt, attempt.cart_items[itemIndex], itemIndex);
         }
       }
       
@@ -12150,15 +12238,16 @@ async function renderPurchases() {
       }
       
       const beat = context.beats.get(String(item.beatId)) || {};
-      const beatTitle = beat.title || item.title || "Beat Indisponível";
-      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
-      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const beatTitle = beat.title || item.beatTitle || "Beat Indisponível";
+      const beatCover = beat.cover || beat.cover_url || item.beatCoverUrl || "assets/top-beat-psiiiko-cover.jpg";
+      const producerId = beat.user_id || item.producerId;
+      const producer = context.profiles.get(String(producerId));
+      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producerName || "Produtor");
       const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
       const producerUsername = producer?.username || "";
       
       const orderNum = order ? `PED-${order.id.slice(0, 8).toUpperCase()}` : `ATT-${attempt.id.slice(0, 8).toUpperCase()}`;
-      const priceText = `R$ ${((order ? item.priceCents : item.priceCents) / 100).toFixed(2)}`;
+      const priceText = `R$ ${(Number(item.priceCents || 0) / 100).toFixed(2)}`;
       const dateString = new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
       
       let statusLabel = "Aprovado";
@@ -12200,7 +12289,7 @@ async function renderPurchases() {
         contractText = generateContractText(
           beatTitle,
           producerName,
-          order ? order.buyer_name : attempt.buyer_name,
+          item.buyerName,
           item.licenseName,
           item.buyerRoyalty || 50,
           item.producerRoyalty || 50,
@@ -12240,7 +12329,11 @@ async function renderPurchases() {
                 <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio MP3</span>
                 <small style="color:var(--beat-muted); font-size:11px;">Formato de alta qualidade (320kbps)</small>
               </div>
-              <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+              ${beat.mp3_path || beat.audio_path ? `
+                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-order-id="${item.orderId || ""}" data-order-item-id="${item.type === "order_item" ? item.id : ""}" data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+              ` : `
+                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo indisponivel</span>
+              `}
             </div>
           `;
         }
@@ -12252,7 +12345,7 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Formato sem perdas de áudio profissional</small>
               </div>
               ${beat.wav_path || beat.audio_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-order-id="${item.orderId || ""}" data-order-item-id="${item.type === "order_item" ? item.id : ""}" data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
               ` : `
                 <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo sendo preparado</span>
               `}
@@ -12267,7 +12360,7 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Pistas de áudio separadas para mixagem</small>
               </div>
               ${beat.stems_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-order-id="${item.orderId || ""}" data-order-item-id="${item.type === "order_item" ? item.id : ""}" data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
               ` : `
                 <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo indisponível</span>
               `}
@@ -12380,7 +12473,7 @@ async function renderPurchases() {
               <h2 class="compras-section-title"><i data-lucide="music-4"></i>Beat Adquirido</h2>
               <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div style="position: relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--beat-border);">
-                  <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
+                  <img src="${beatCover}" alt="Capa de ${htmlEscape(beatTitle)}" style="width: 100%; height: 100%; object-fit: cover;">
                   ${beat.id ? `
                     <button type="button" data-action="play" data-id="${beat.id}"
                             style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.2s;"
@@ -12417,7 +12510,7 @@ async function renderPurchases() {
           <div>
             <!-- Produtor Card -->
             <div class="compras-section-card" style="text-align: center; padding: 24px 16px;">
-              <img src="${producerAvatar}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--beat-border); margin: 0 auto 12px;">
+              <img src="${producerAvatar}" alt="Avatar de ${htmlEscape(producerName)}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--beat-border); margin: 0 auto 12px;">
               <h3 style="font-size: 15px; color:#fff; font-weight:bold; margin: 0 0 4px 0;">${htmlEscape(producerName)}</h3>
               <p style="font-size: 12px; color:var(--beat-muted); margin: 0 0 16px 0;">@${htmlEscape(producerUsername || 'produtor')}</p>
               
@@ -12427,8 +12520,8 @@ async function renderPurchases() {
                     <i data-lucide="user" style="width: 14px; height: 14px;"></i> Ver perfil completo
                   </a>
                 ` : ''}
-                ${beat.user_id ? `
-                  <button type="button" onclick="openOrCreateDirectConversation('${beat.user_id}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
+                ${producerId ? `
+                  <button type="button" onclick="openOrCreateDirectConversation('${producerId}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
                     <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Iniciar Conversa
                   </button>
                 ` : ''}
@@ -12481,32 +12574,23 @@ async function renderPurchases() {
 
   try {
     const context = await loadUserPurchases();
+    if (context.error) {
+      appView.innerHTML = `${pageHeader}
+        <div style="padding:24px; text-align:center;">
+          <p style="color:var(--beat-muted); margin-bottom:16px;">Erro ao carregar seu histórico de compras.</p>
+          <button type="button" class="an-secondary" onclick="renderPurchases()" style="padding:8px 16px; border-radius:6px; cursor:pointer;">Tentar novamente</button>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
     const allUnifiedItems = [];
     
     // Process order items
     context.orders.forEach(order => {
       if (order.order_items) {
         order.order_items.forEach(oi => {
-          allUnifiedItems.push({
-            type: "order_item",
-            id: oi.id,
-            orderId: order.id,
-            buyerId: order.buyer_id,
-            buyerName: order.buyer_name,
-            buyerEmail: order.buyer_email,
-            createdAt: order.created_at,
-            beatId: oi.beat_id,
-            licenseId: oi.license_id,
-            licenseName: oi.license_name_snapshot,
-            licenseTerms: oi.license_terms_snapshot,
-            priceCents: oi.price_cents_snapshot,
-            buyerRoyalty: oi.buyer_royalty_snapshot,
-            producerRoyalty: oi.producer_royalty_snapshot,
-            filesIncluded: oi.files_included_snapshot,
-            status: order.status,
-            provider: "mercado_pago",
-            providerPaymentId: null,
-          });
+          const normalized = normalizePurchaseOrderItem(order, oi);
+          if (normalized) allUnifiedItems.push(normalized);
         });
       }
     });
@@ -12515,26 +12599,8 @@ async function renderPurchases() {
     context.attempts.forEach(attempt => {
       if (attempt.cart_items) {
         attempt.cart_items.forEach((item, index) => {
-          allUnifiedItems.push({
-            type: "attempt_item",
-            id: `${attempt.id}-${index}`,
-            attemptId: attempt.id,
-            buyerId: attempt.buyer_id,
-            buyerName: attempt.buyer_name,
-            buyerEmail: attempt.buyer_email,
-            createdAt: attempt.created_at,
-            beatId: item.beat_id,
-            licenseId: item.license_id,
-            licenseName: item.license_name || "Licença",
-            licenseTerms: null,
-            priceCents: item.price_cents || 0,
-            buyerRoyalty: 50,
-            producerRoyalty: 50,
-            filesIncluded: null,
-            status: attempt.status,
-            provider: attempt.provider,
-            providerPaymentId: attempt.provider_payment_id,
-          });
+          const normalized = normalizePaymentAttemptItem(attempt, item, index);
+          if (normalized) allUnifiedItems.push(normalized);
         });
       }
     });
@@ -12559,9 +12625,9 @@ async function renderPurchases() {
     if (searchQuery) {
       filteredItems = filteredItems.filter(item => {
         const beat = context.beats.get(String(item.beatId)) || {};
-        const beatTitle = (beat.title || item.title || "").toLowerCase();
-        const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-        const producerName = (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "")).toLowerCase();
+        const beatTitle = (beat.title || item.beatTitle || "").toLowerCase();
+        const producer = context.profiles.get(String(beat.user_id || item.producerId));
+        const producerName = (producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producerName || "")).toLowerCase();
         const license = (item.licenseName || "").toLowerCase();
         const idStr = (item.orderId || item.attemptId || "").toLowerCase();
         
@@ -12576,8 +12642,8 @@ async function renderPurchases() {
     filteredItems.sort((a, b) => {
       const beatA = context.beats.get(String(a.beatId)) || {};
       const beatB = context.beats.get(String(b.beatId)) || {};
-      const titleA = (beatA.title || a.title || "").toLowerCase();
-      const titleB = (beatB.title || b.title || "").toLowerCase();
+      const titleA = (beatA.title || a.beatTitle || "").toLowerCase();
+      const titleB = (beatB.title || b.beatTitle || "").toLowerCase();
       
       if (appState.comprasSort === "recent") {
         return new Date(b.createdAt) - new Date(a.createdAt);
@@ -12606,10 +12672,10 @@ async function renderPurchases() {
     // Render cards
     const cardsHtml = paginatedItems.map(item => {
       const beat = context.beats.get(String(item.beatId)) || {};
-      const beatTitle = beat.title || item.title || "Beat Indisponível";
-      const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
-      const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const beatTitle = beat.title || item.beatTitle || "Beat Indisponível";
+      const beatCover = beat.cover || beat.cover_url || item.beatCoverUrl || "assets/top-beat-psiiiko-cover.jpg";
+      const producer = context.profiles.get(String(beat.user_id || item.producerId));
+      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producerName || "Produtor");
       const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
       const producerUsername = producer?.username || "";
       
@@ -12646,7 +12712,7 @@ async function renderPurchases() {
       }
 
       const isCompleted = item.status === "completed" || item.status === "approved";
-      const detailHref = `#compras?${item.orderId ? 'id=' + item.orderId + '&item_id=' + item.id : 'attempt_id=' + item.attemptId}`;
+      const detailHref = `#compras?${item.orderId ? 'id=' + item.orderId + '&item_id=' + item.id : 'attempt_id=' + item.attemptId + '&item_index=' + item.itemIndex}`;
       
       const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
       const playBtnHtml = beat.id ? `
@@ -12660,20 +12726,22 @@ async function renderPurchases() {
       return `
         <article class="purchase-item purchase-card-hover" style="display:flex; flex-direction:column; gap:16px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; transition: border-color 0.2s, background 0.2s;">
           <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
-            <div class="compras-cover-wrapper" style="position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer;" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
-              <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
+            <div class="compras-cover-wrapper" style="position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer;">
+              <a href="${detailHref}" aria-label="Abrir detalhes de ${htmlEscape(beatTitle)}" style="display:block; width:100%; height:100%;">
+                <img src="${beatCover}" alt="Capa de ${htmlEscape(beatTitle)}" style="width: 100%; height: 100%; object-fit: cover;">
+              </a>
               ${playBtnHtml}
             </div>
             
             <div style="flex:1; min-width: 200px;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom: 4px;">
-                <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0; cursor:pointer;" onclick="location.hash='${detailHref}'">${htmlEscape(beatTitle)}</h3>
+                <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0;"><a href="${detailHref}" style="color:inherit; text-decoration:none;">${htmlEscape(beatTitle)}</a></h3>
                 <span class="badge-status" style="${badgeStyle}">${badgeLabel}</span>
               </div>
               
               <div style="font-size:12px; color:var(--beat-muted); display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; align-items:center;">
                 <div style="display:flex; align-items:center; gap:6px;">
-                  <img src="${producerAvatar}" style="width:16px; height:16px; border-radius:50%; object-fit:cover;">
+                  <img src="${producerAvatar}" alt="Avatar de ${htmlEscape(producerName)}" style="width:16px; height:16px; border-radius:50%; object-fit:cover;">
                   <span>Produtor: <strong>${htmlEscape(producerName)}</strong></span>
                 </div>
                 <span>Licença: <strong>${htmlEscape(item.licenseName)}</strong></span>
@@ -12697,7 +12765,7 @@ async function renderPurchases() {
       `;
     }).join("");
 
-    const hasLocalOrdersBtn = context.orders.length > 0 || context.attempts.length > 0;
+    const hasLocalOrdersBtn = localPurchaseArtifactCount() > 0;
 
     appView.innerHTML = `
       ${pageHeader}
@@ -21912,7 +21980,10 @@ document.addEventListener("click", async (event) => {
   if (action === "download-secure-file") {
     const beatId = target.dataset.beatId;
     const fileType = target.dataset.fileType;
-    downloadPurchasedFile(beatId, fileType);
+    downloadPurchasedFile(beatId, fileType, {
+      orderId: target.dataset.orderId,
+      orderItemId: target.dataset.orderItemId
+    });
     return;
   }
   if (action === "view-purchased-contract") {
@@ -24429,7 +24500,7 @@ function openContractModal(text) {
   lucide.createIcons();
 }
 
-async function downloadPurchasedFile(beatId, fileType) {
+async function downloadPurchasedFile(beatId, fileType, options = {}) {
   const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
   if (!session) {
     showToast("Você precisa estar logado para baixar arquivos.", "triangle-alert");
@@ -24437,7 +24508,10 @@ async function downloadPurchasedFile(beatId, fileType) {
   }
   showToast("Gerando link de download seguro...", "loader");
   try {
-    const response = await fetch(`/api/orders/download?beat_id=${beatId}&file_type=${fileType}`, {
+    const params = new URLSearchParams({ beat_id: beatId, file_type: fileType });
+    if (options.orderId) params.set("order_id", options.orderId);
+    if (options.orderItemId) params.set("order_item_id", options.orderItemId);
+    const response = await fetch(`/api/orders/download?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }

@@ -156,7 +156,6 @@
             <div class="ansend-checkout__card-brands">
               <img src="assets/payment/visa.svg" alt="Visa" class="ansend-checkout__brand-logo">
               <img src="assets/payment/mastercard.svg" alt="Mastercard" class="ansend-checkout__brand-logo">
-              <img src="assets/payment/stripe.svg" alt="Stripe" class="ansend-checkout__brand-logo">
             </div>
           </div>
           <div class="ansend-checkout__field-row">
@@ -335,6 +334,11 @@
 
   function setPaymentMethod(method) {
     if (!active || !["card", "pix", "paypal"].includes(method)) return;
+    if (method === "paypal") {
+      const feedback = active.root.querySelector("[data-checkout-feedback]");
+      if (feedback) feedback.textContent = "PayPal ainda nao esta disponivel neste checkout. Use Pix ou cartao via Mercado Pago.";
+      return;
+    }
     if (method === "card" && active.config && !active.config.supported_methods?.includes("card")) return;
     active.method = method;
     active.root.dataset.checkoutMethod = method;
@@ -387,24 +391,7 @@
     const form = checkoutState.root.querySelector("form");
     const feedback = checkoutState.root.querySelector("[data-checkout-feedback]");
     if (!form.querySelector('[name="accept_terms"]')?.checked) throw new Error("Aceite os termos para continuar.");
-    if (active.method === "paypal") {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const mockResult = {
-        success: true,
-        attempt_id: "paypal-" + (global.crypto?.randomUUID?.() || Date.now()),
-        status: "approved",
-        paid: true,
-      };
-      active.attemptId = mockResult.attempt_id;
-      const resultPanel = active.root.querySelector("[data-checkout-result]");
-      form.hidden = true;
-      resultPanel.hidden = false;
-      resultPanel.innerHTML = renderCardResult(mockResult);
-      active.options.refreshIcons?.();
-      if (active.options.onPaid) active.options.onPaid(mockResult);
-      if (feedback) feedback.textContent = "";
-      return mockResult;
-    }
+    if (active.method === "paypal") throw new Error("PayPal ainda nao esta disponivel neste checkout. Use Pix ou cartao via Mercado Pago.");
     const response = await fetch("/api/checkout/payment", {
       method: "POST",
       headers: authHeaders(checkoutState),

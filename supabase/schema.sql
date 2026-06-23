@@ -1385,18 +1385,8 @@ create policy "Users can read their own secure files"
 on storage.objects for select to authenticated
 using (
   bucket_id = 'beat-secure-files'
-  and (
-    ((storage.foldername(name))[1] = (auth.uid())::text and (storage.foldername(name))[2] = 'beat-secure-files')
-    or exists (
-      select 1
-      from public.order_items oi
-      join public.orders o on o.id = oi.order_id
-      where coalesce((storage.foldername(name))[3], '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-        and oi.beat_id = ((storage.foldername(name))[3])::uuid
-        and o.buyer_id = auth.uid()
-        and o.status = 'completed'
-    )
-  )
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
 );
 
 drop policy if exists "Users can manage own profile avatars" on storage.objects;
@@ -1854,18 +1844,8 @@ on storage.objects for select
 to authenticated
 using (
   bucket_id = 'beat-secure-files'
-  and (
-    (storage.foldername(name))[1] = (auth.uid())::text
-    -- Or they bought the beat
-    or exists (
-      select 1
-      from public.order_items oi
-      join public.orders o on o.id = oi.order_id
-      where oi.beat_id = ((storage.foldername(name))[3])::uuid -- folder format is {user_id}/beat-secure-files/{beat_id}/{file}
-      and o.buyer_id = auth.uid()
-      and o.status = 'completed'
-    )
-  )
+  and (storage.foldername(name))[1] = (auth.uid())::text
+  and (storage.foldername(name))[2] = 'beat-secure-files'
 );
 
 -- 6. RPC function to process checkout securely and concurrent-safe

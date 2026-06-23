@@ -5,6 +5,8 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const schema = read("supabase/schema.sql").toLowerCase();
 const worker = read("src/worker.mjs").toLowerCase();
+const script = read("script.js").toLowerCase();
+const checkout = read("checkout/checkout.js").toLowerCase();
 
 const migrations = [
   "supabase/migrations/20260622210000_purchase_constraints_idempotency.sql",
@@ -12,6 +14,7 @@ const migrations = [
   "supabase/migrations/20260622220000_immutable_purchase_snapshot.sql",
   "supabase/migrations/20260622223000_purchase_rls_authorization.sql",
   "supabase/migrations/20260622230000_purchase_backfill.sql",
+  "supabase/migrations/20260622233000_restrict_secure_file_storage_reads.sql",
 ];
 
 for (const migration of migrations) {
@@ -76,5 +79,21 @@ assertIncludes(worker, "orders?select=id,status,buyer_id", "Download endpoint mu
 assertIncludes(worker, "order?.status === \"completed\"", "Download endpoint must require completed order");
 assertNotIncludes(worker, "download_url: filePath", "Worker must not expose permanent private paths");
 
-console.log("Phase 2 purchase lifecycle contract checks passed.");
+assertIncludes(script, "function normalizepurchaseorderitem", "Purchases UI must normalize order_items before detail/list rendering");
+assertIncludes(script, "normalizepurchaseorderitem(order, rawitem)", "Purchase detail must not use raw order_items snake_case fields");
+assertIncludes(script, "item_index=", "Payment-attempt detail links must preserve the selected cart item index");
+assertIncludes(script, "params.set(\"order_item_id\"", "Download requests must pass order_item_id when available");
+assertIncludes(script, "localpurchaseartifactcount() > 0", "Local cleanup button must not be tied to real Supabase orders");
+assertIncludes(script, "if (context.error)", "Purchase detail must show retry state for load errors");
+assertIncludes(script, "nao foi possivel carregar os detalhes deste pedido", "Purchase detail error must not be masked as not found");
+assertIncludes(script, "beat.title || item.beattitle", "Purchases search/sort must use normalized beat title snapshots");
+assertIncludes(script, "beat.user_id || item.producerid", "Purchases search must use normalized producer snapshots");
+assertIncludes(script, "beat.mp3_path || beat.audio_path", "MP3 downloads must not render an action when the file path is missing");
 
+assertNotIncludes(checkout, "mockresult", "Checkout must not simulate approved PayPal payments");
+assertIncludes(checkout, "paypal ainda nao esta disponivel", "Unavailable PayPal must fail closed instead of pretending payment success");
+
+assertIncludes(allSql, "purchased-file authorization", "Secure file read restriction migration must be represented in lifecycle SQL");
+assertNotIncludes(schema, "oi.beat_id = ((storage.foldername(name))[3])::uuid", "Storage RLS must not allow direct buyer reads by completed beat purchase");
+
+console.log("Phase 2 purchase lifecycle contract checks passed.");
