@@ -12120,7 +12120,7 @@ function purchaseStatusPresentation(status = "") {
     pending: {
       label: "Aguardando pagamento",
       desc: "O pagamento está pendente. Os downloads serão liberados automaticamente após a aprovação.",
-      style: "background: rgba(255, 200, 0, 0.1); color: #ffbb00; border: 1px solid rgba(255, 200, 0, 0.2);"
+      style: "background: rgba(255, 255, 255, 0.06); color: #d8d8d8; border: 1px solid rgba(255, 255, 255, 0.12);"
     },
     processing: {
       label: "Em processamento",
@@ -12145,7 +12145,7 @@ function purchaseStatusPresentation(status = "") {
     disputed: {
       label: "Em disputa",
       desc: "O pagamento está em disputa. Os downloads seguem bloqueados até a resolução pelo backend.",
-      style: "background: rgba(255, 140, 0, 0.1); color: #ff9f33; border: 1px solid rgba(255, 140, 0, 0.2);"
+      style: "background: rgba(255, 255, 255, 0.06); color: #d8d8d8; border: 1px solid rgba(255, 255, 255, 0.12);"
     },
     unknown: {
       label: "Status desconhecido",
@@ -12377,7 +12377,7 @@ async function renderPurchases() {
             </div>
             <div style="display:flex; gap:8px;">
               <button type="button" class="an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Visualizar</button>
-              <button type="button" class="an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar</button>
+              <button type="button" class="an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer; background:#f2f2f2; color:#050505; border:0;">Baixar</button>
             </div>
           </div>
         `;
@@ -12399,7 +12399,7 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Formato de alta qualidade (320kbps)</small>
               </div>
               ${beat.mp3_path || beat.audio_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer; background:#f2f2f2; color:#050505; border:0;">Baixar MP3</button>
               ` : `
                 <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
               `}
@@ -12414,7 +12414,7 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Formato sem perdas de áudio profissional</small>
               </div>
               ${beat.wav_path || beat.audio_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer; background:#f2f2f2; color:#050505; border:0;">Baixar WAV</button>
               ` : `
                 <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
               `}
@@ -12429,7 +12429,7 @@ async function renderPurchases() {
                 <small style="color:var(--beat-muted); font-size:11px;">Pistas de áudio separadas para mixagem</small>
               </div>
               ${beat.stems_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
+                <button type="button" class="an-primary" data-action="download-secure-file" ${downloadData} data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer; background:#f2f2f2; color:#050505; border:0;">Baixar Stems</button>
               ` : `
                 <span style="color:var(--beat-muted); font-size:11px;">Arquivo indisponível</span>
               `}
@@ -12442,7 +12442,7 @@ async function renderPurchases() {
           : "Os downloads e contratos estarão disponíveis assim que o pagamento for aprovado.";
         downloadsHtml = `
           <div style="background:#050505; border:1px dashed var(--beat-border); border-radius:6px; padding:24px; text-align:center; color:var(--beat-muted); font-size:13px;">
-            <i data-lucide="lock" style="width:24px; height:24px; margin-bottom:8px; color:var(--orange-primary, #ff5500);"></i>
+            <i data-lucide="lock" style="width:24px; height:24px; margin-bottom:8px; color:#d8d8d8;"></i>
             <p>${lockedCopy}</p>
           </div>
         `;
@@ -12548,7 +12548,7 @@ async function renderPurchases() {
                   <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
                   ${beat.id ? `
                     <button type="button" data-action="play" data-id="${beat.id}"
-                            style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.2s;"
+                            style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.24); color: #fff; cursor: pointer; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.2s;"
                             onmouseover="this.style.transform='translate(-50%, -50%) scale(1.1)'"
                             onmouseout="this.style.transform='translate(-50%, -50%) scale(1)'">
                       <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 20px; height: 20px;"></i>
@@ -12593,7 +12593,7 @@ async function renderPurchases() {
                   </a>
                 ` : ''}
                 ${item.producerId || beat.user_id ? `
-                  <button type="button" onclick="openOrCreateDirectConversation('${htmlEscape(item.producerId || beat.user_id)}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
+                  <button type="button" onclick="openOrCreateDirectConversation('${htmlEscape(item.producerId || beat.user_id)}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 1px solid rgba(255,255,255,0.14); background: #f2f2f2; color: #050505; border-radius: 6px; cursor: pointer;">
                     <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Iniciar Conversa
                   </button>
                 ` : ''}
@@ -12603,7 +12603,7 @@ async function renderPurchases() {
             <!-- Licença -->
             <div class="compras-section-card">
               <h2 class="compras-section-title"><i data-lucide="scroll"></i>Licença Adquirida</h2>
-              <h3 style="font-size:14px; font-weight:bold; color:var(--orange-primary, #ff5500); margin:0 0 8px 0;">${htmlEscape(item.licenseName)}</h3>
+              <h3 style="font-size:14px; font-weight:bold; color:#fff; margin:0 0 8px 0;">${htmlEscape(item.licenseName)}</h3>
               
               <div style="font-size:12px; color:var(--beat-muted); line-height:1.6;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -12796,7 +12796,7 @@ async function renderPurchases() {
       const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
       const playBtnHtml = beat.id ? `
         <button type="button" data-action="play" data-id="${beat.id}" class="compras-card-play-btn"
-                style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; transition: all 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none;"
+                style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.24); color: #fff; cursor: pointer; transition: all 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none;"
                 aria-label="Tocar beat">
           <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 16px; height: 16px;"></i>
         </button>
@@ -12850,7 +12850,7 @@ async function renderPurchases() {
           pointer-events: auto !important;
         }
         .purchase-card-hover:hover {
-          border-color: rgba(255, 85, 0, 0.4) !important;
+          border-color: rgba(255, 255, 255, 0.18) !important;
           background: #0d0d0d !important;
         }
         .badge-status {
@@ -12903,10 +12903,10 @@ async function renderPurchases() {
             ${["Todos", "Disponíveis", "Aguardando pagamento", "Em processamento", "Cancelados", "Reembolsados"].map(tab => {
               const isActive = (appState.comprasActiveTab || "Todos") === tab;
               return `
-                <button type="button" onclick="handleComprasTabClick('${tab}')" 
-                        style="background: ${isActive ? 'var(--orange-primary, #ff5500)' : 'transparent'}; 
-                               color: ${isActive ? '#fff' : 'var(--beat-muted)'}; 
-                               border: 1px solid ${isActive ? 'transparent' : 'var(--beat-border)'}; 
+                <button type="button" onclick="handleComprasTabClick('${tab}')"
+                        style="background: ${isActive ? '#f2f2f2' : 'transparent'};
+                               color: ${isActive ? '#050505' : 'var(--beat-muted)'};
+                               border: 1px solid ${isActive ? 'rgba(255,255,255,0.18)' : 'var(--beat-border)'};
                                padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s;">
                   ${tab}
                 </button>
