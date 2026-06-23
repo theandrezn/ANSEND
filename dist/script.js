@@ -12403,58 +12403,7 @@ async function renderPurchases() {
 
       appView.innerHTML = `
         ${pageIntro("compras")}
-        <style>
-          .compras-detail-layout {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-            margin-top: 16px;
-            padding: 0 16px;
-          }
-          @media (min-width: 768px) {
-            .compras-detail-layout {
-              grid-template-columns: 2fr 1fr;
-            }
-          }
-          .compras-section-card {
-            background: #0a0a0a;
-            border: 1px solid var(--beat-border);
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 24px;
-          }
-          .compras-section-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #fff;
-            margin: 0 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid var(--beat-border-soft);
-            padding-bottom: 10px;
-          }
-          .download-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            border: 1px solid var(--beat-border-soft);
-            border-radius: 6px;
-            margin-bottom: 12px;
-            background: #050505;
-          }
-          .detail-info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 8px 0;
-            border-bottom: 1px dashed var(--beat-border-soft);
-          }
-          .detail-info-row:last-child {
-            border-bottom: 0;
-          }
-        </style>
+
 
         <div style="padding: 0 16px; margin-bottom: 16px;">
           <a href="#compras" style="display: inline-flex; align-items: center; gap: 8px; color: var(--beat-muted); text-decoration: none; font-size: 13px; font-weight: 500;">
@@ -12766,24 +12715,22 @@ async function renderPurchases() {
       
       const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
       const playBtnHtml = beat.id ? `
-        <button type="button" data-action="play" data-id="${beat.id}" class="compras-card-play-btn"
-                style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; transition: all 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none;"
-                aria-label="Tocar beat">
+        <button type="button" data-action="play" data-id="${beat.id}" class="compras-card-play-btn" aria-label="Tocar beat">
           <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 16px; height: 16px;"></i>
         </button>
       ` : '';
 
       return `
-        <article class="purchase-item purchase-card-hover" style="display:flex; flex-direction:column; gap:16px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; transition: border-color 0.2s, background 0.2s;">
+        <article class="purchase-item purchase-card-hover">
           <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
-            <div class="compras-cover-wrapper" style="position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer;" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
-              <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
+            <div class="compras-cover-wrapper" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
+              <img src="${beatCover}">
               ${playBtnHtml}
             </div>
             
             <div style="flex:1; min-width: 200px;">
               <div style="display:flex; align-items:center; gap:8px; margin-bottom: 4px;">
-                <h3 style="font-size:15px; color:#fff; font-weight:bold; margin:0; cursor:pointer;" onclick="location.hash='${detailHref}'">${htmlEscape(beatTitle)}</h3>
+                <h3 style="cursor:pointer;" onclick="location.hash='${detailHref}'">${htmlEscape(beatTitle)}</h3>
                 <span class="badge-status" style="${badgeStyle}">${badgeLabel}</span>
               </div>
               
@@ -12803,8 +12750,7 @@ async function renderPurchases() {
             
             <div style="text-align: right; flex-shrink: 0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 120px;">
               <span style="font-size: 16px; font-weight: bold; color: #fff;">${priceText}</span>
-              <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}" 
-                 style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 6px; text-decoration: none; transition: background 0.2s; ${isCompleted ? 'background:#fff; color:#000;' : ''}">
+              <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}">
                 ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
               </a>
             </div>
@@ -12817,51 +12763,25 @@ async function renderPurchases() {
 
     appView.innerHTML = `
       ${pageHeader}
-      <style>
-        .compras-cover-wrapper:hover .compras-card-play-btn {
-          opacity: 1 !important;
-          pointer-events: auto !important;
-        }
-        .purchase-card-hover:hover {
-          border-color: rgba(255, 85, 0, 0.4) !important;
-          background: #0d0d0d !important;
-        }
-        .badge-status {
-          display: inline-flex;
-          align-items: center;
-          padding: 3px 10px;
-          border-radius: 12px;
-          font-size: 11px;
-          font-weight: 500;
-        }
-        .compras-tabs::-webkit-scrollbar {
-          display: none;
-        }
-        .compras-tabs {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      </style>
 
-      <div class="compras-container" style="padding: 0 16px 24px; max-width: 1200px; margin: 0 auto; width: 100%;">
+
+      <div class="compras-container">
         <!-- Search, Filters, Sort toolbar -->
-        <div class="compras-toolbar" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+        <div class="compras-toolbar">
           
           <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
             <!-- Search input -->
-            <div class="compras-search-wrapper" style="position: relative; flex: 1; min-width: 280px; max-width: 480px;">
-              <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--beat-muted);"></i>
+            <div class="compras-search-wrapper">
+              <i data-lucide="search"></i>
               <input type="text" id="compras-search-input" placeholder="Buscar por beat, produtor, licença ou ID..." 
                      value="${htmlEscape(appState.comprasSearch || '')}"
-                     style="width: 100%; padding: 10px 12px 10px 38px; background: #0a0a0a; border: 1px solid var(--beat-border); border-radius: 6px; color: #fff; font-size: 13px; outline: none; transition: border-color 0.2s;"
                      oninput="handleComprasSearch(this.value)">
             </div>
             
             <!-- Sorting dropdown -->
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 12px; color: var(--beat-muted);">Ordenar por:</span>
-              <select id="compras-sort-select" onchange="handleComprasSort(this.value)" 
-                      style="background: #0a0a0a; border: 1px solid var(--beat-border); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer;">
+              <select id="compras-sort-select" onchange="handleComprasSort(this.value)">
                 <option value="recent" ${appState.comprasSort === 'recent' ? 'selected' : ''}>Mais recente</option>
                 <option value="oldest" ${appState.comprasSort === 'oldest' ? 'selected' : ''}>Mais antigo</option>
                 <option value="highest" ${appState.comprasSort === 'highest' ? 'selected' : ''}>Maior valor</option>
@@ -12872,15 +12792,11 @@ async function renderPurchases() {
           </div>
           
           <!-- Filter Tabs -->
-          <div class="compras-tabs" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid var(--beat-border-soft);">
+          <div class="compras-tabs">
             ${["Todos", "Disponíveis", "Aguardando pagamento", "Em processamento", "Cancelados", "Reembolsados"].map(tab => {
               const isActive = (appState.comprasActiveTab || "Todos") === tab;
               return `
-                <button type="button" onclick="handleComprasTabClick('${tab}')" 
-                        style="background: ${isActive ? 'var(--orange-primary, #ff5500)' : 'transparent'}; 
-                               color: ${isActive ? '#fff' : 'var(--beat-muted)'}; 
-                               border: 1px solid ${isActive ? 'transparent' : 'var(--beat-border)'}; 
-                               padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s;">
+                <button type="button" class="compras-tab-btn ${isActive ? 'is-active' : ''}" onclick="handleComprasTabClick('${tab}')">
                   ${tab}
                 </button>
               `;
