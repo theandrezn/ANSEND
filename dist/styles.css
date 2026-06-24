@@ -368,7 +368,7 @@ body.requires-auth .seller-auth-panel {
     place-items: center !important;
   }
 
-  body[data-route="feed"] .navbar-auth-container {
+  body .navbar-auth-container {
     display: none !important;
   }
 
@@ -7694,7 +7694,7 @@ body.onboarding-open { overflow: hidden; }
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  padding: 104px clamp(24px, 4vw, 64px) 48px !important;
+  padding: 20px clamp(24px, 4vw, 64px) 48px !important;
   background: var(--beat-bg) !important;
   color: var(--beat-text) !important;
   display: grid !important;
@@ -7737,13 +7737,15 @@ body[data-route="detalhe"] #appView.app-view {
   position: sticky !important;
   top: 86px !important;
   display: grid !important;
-  gap: 12px !important;
-  padding: 14px !important;
+  gap: 8px !important;
+  padding: 12px !important;
 }
 
 .beat-market-detail .beat-sidebar-cover {
   position: relative !important;
   width: 100% !important;
+  max-width: 180px !important;
+  margin-inline: auto !important;
   aspect-ratio: 1 !important;
   display: block !important;
   padding: 0 !important;
@@ -7840,7 +7842,7 @@ body[data-route="detalhe"] #appView.app-view {
   display: flex !important;
   justify-content: space-between !important;
   gap: 14px !important;
-  padding: 8px 0 !important;
+  padding: 5px 0 !important;
   border-bottom: 1px solid var(--beat-border-soft) !important;
 }
 
@@ -7883,11 +7885,11 @@ body[data-route="detalhe"] #appView.app-view {
 .beat-market-detail .beat-main-content {
   min-width: 0 !important;
   display: grid !important;
-  gap: 18px !important;
+  gap: 14px !important;
 }
 
 .beat-market-detail .beat-licensing-panel {
-  padding: 16px !important;
+  padding: 14px !important;
 }
 
 .beat-market-detail .beat-panel-head {
@@ -7895,7 +7897,7 @@ body[data-route="detalhe"] #appView.app-view {
   grid-template-columns: minmax(0, 1fr) auto auto auto !important;
   gap: 10px !important;
   align-items: center !important;
-  margin-bottom: 14px !important;
+  margin-bottom: 10px !important;
 }
 
 .beat-market-detail .beat-panel-head span,
@@ -8002,7 +8004,7 @@ body[data-route="detalhe"] #appView.app-view {
 }
 
 .beat-market-detail .beat-terms-panel {
-  padding: 14px 16px !important;
+  padding: 12px 16px !important;
 }
 
 .beat-market-detail .beat-terms-panel header,
@@ -8011,7 +8013,7 @@ body[data-route="detalhe"] #appView.app-view {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 12px !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
 }
 
 .beat-market-detail .beat-terms-panel header button {
@@ -8173,7 +8175,7 @@ body[data-route="detalhe"] #appView.app-view {
 
 .beat-market-detail .beat-comment-empty,
 .beat-market-detail .beat-detail-empty {
-  padding: 14px !important;
+  padding: 10px 12px !important;
   border: 1px dashed var(--beat-border) !important;
   border-radius: 6px !important;
   color: var(--beat-muted) !important;
@@ -8182,7 +8184,7 @@ body[data-route="detalhe"] #appView.app-view {
 }
 
 .beat-market-detail .beat-about-strip {
-  padding: 14px 16px !important;
+  padding: 12px 16px !important;
   display: grid !important;
   grid-template-columns: 140px minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -8241,7 +8243,7 @@ body[data-route="detalhe"] #appView.app-view {
 
 @media (max-width: 800px) {
   .beat-market-detail {
-    padding: 86px 12px 34px !important;
+    padding: 80px 12px 34px !important;
   }
   .beat-market-detail .beat-sidebar-card,
   .beat-market-detail .beat-panel-head,
@@ -37056,8 +37058,8 @@ body[data-route="feed"] .ai-hero .ai-hero-layout .ansend-hero-catalog {
     padding: 6px 8px !important;
   }
 
-  body[data-route="feed"] .navbar-auth-container,
-  body[data-route="feed"] .navbar-auth-btn {
+  body .navbar-auth-container,
+  body .navbar-auth-btn {
     display: none !important;
   }
 

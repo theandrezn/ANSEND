@@ -15412,9 +15412,20 @@ function renderBeatDetail() {
             <div class="beat-terms-list" data-license-terms>${licenseTermsMarkup(null)}</div>
           </section>
 
+          <section class="beat-about-strip">
+            <strong>Sobre este beat</strong>
+            <p>${htmlEscape(description)}</p>
+            ${ownerProfessional ? `<button type="button" data-action="producer" ${profileTargetAttrs({ id: ownerProfile?.id, username: ownerProfile?.username, title: producerName })}>Ver perfil do produtor</button>` : ""}
+          </section>
+
           <section class="beat-rail-section">
             <header><h3>Mais de ${htmlEscape(producerName)}</h3><button type="button" data-route="explorar">Ver todos</button></header>
             <div class="beat-mini-grid">${sameProducerMarkup}</div>
+          </section>
+
+          <section class="beat-rail-section">
+            <header><h3>Beats relacionados</h3><button type="button" data-route="explorar">Explorar</button></header>
+            <div class="beat-mini-grid">${relatedMarkup}</div>
           </section>
 
           <section class="beat-comments-panel">
@@ -15426,18 +15437,8 @@ function renderBeatDetail() {
             </label>
             <div class="beat-comment-empty">Seja o primeiro a comentar.</div>
           </section>
-
-          <section class="beat-rail-section">
-            <header><h3>Beats relacionados</h3><button type="button" data-route="explorar">Explorar</button></header>
-            <div class="beat-mini-grid">${relatedMarkup}</div>
-          </section>
         </section>
       </div>
-      <section class="beat-about-strip">
-        <strong>Sobre este beat</strong>
-        <p>${htmlEscape(description)}</p>
-        ${ownerProfessional ? `<button type="button" data-action="producer" ${profileTargetAttrs({ id: ownerProfile?.id, username: ownerProfile?.username, title: producerName })}>Ver perfil do produtor</button>` : ""}
-      </section>
     </main>`;
     
   lucide.createIcons();
