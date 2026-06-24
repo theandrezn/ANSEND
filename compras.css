@@ -320,61 +320,543 @@ body[data-route="compras"] .view-header-compras p {
 }
 
 /* 4. Details View Redesign */
-.compras-detail-layout {
-  padding: 0 !important;
-  margin-top: 24px !important;
+.compras-detail-container {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 16px 48px 16px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
+.compras-detail-header {
+  margin-bottom: 32px !important;
+  padding-top: 24px !important;
+}
+
+.compras-back-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  text-decoration: none !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: color 0.2s ease !important;
+  margin-bottom: 20px !important;
+}
+
+.compras-back-btn:hover {
+  color: #ffffff !important;
+}
+
+.compras-back-btn i {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.compras-detail-title-row {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  margin-bottom: 8px !important;
+}
+
+.compras-detail-title-row h1 {
+  font-family: "Montserrat", sans-serif !important;
+  font-size: clamp(24px, 4vw, 32px) !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.compras-detail-date {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  margin: 0 !important;
+}
+
+/* Grid structure */
+.compras-detail-grid {
+  display: grid !important;
+  grid-template-columns: 1.9fr 1fr !important;
+  gap: 32px !important;
+  align-items: start !important;
+}
+
+@media (max-width: 992px) {
+  .compras-detail-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+}
+
+.compras-detail-main {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+}
+
+.compras-detail-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+  position: sticky !important;
+  top: 96px !important;
+}
+
+@media (max-width: 992px) {
+  .compras-detail-sidebar {
+    position: static !important;
+  }
+}
+
+/* Cards */
 .compras-section-card {
-  background: #070707 !important;
-  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  background: #090909 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 12px !important;
   padding: 24px !important;
-  margin-bottom: 24px !important;
+  box-sizing: border-box !important;
 }
 
 .compras-section-title {
   font-family: "Montserrat", sans-serif !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
   font-weight: 700 !important;
   color: #ffffff !important;
   margin: 0 0 20px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   padding-bottom: 12px !important;
-  letter-spacing: -0.01em !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
 }
 
-.download-row {
-  background: #0a0a0a !important;
+.compras-section-title i {
+  width: 18px !important;
+  height: 18px !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* COLUMN 1 COMPONENT: Beat Adquirido */
+.compras-beat-card-layout {
+  display: flex !important;
+  gap: 20px !important;
+  align-items: center !important;
+}
+
+@media (max-width: 576px) {
+  .compras-beat-card-layout {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+}
+
+.compras-beat-cover-wrapper {
+  position: relative !important;
+  width: 112px !important;
+  height: 112px !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.compras-beat-cover-wrapper img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.compras-beat-cover-wrapper .compras-card-play-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.compras-beat-info-wrapper {
+  flex: 1 !important;
+}
+
+.compras-beat-info-wrapper h2 {
+  font-family: "Montserrat", sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 0 6px 0 !important;
+  line-height: 1.3 !important;
+}
+
+.compras-beat-producer {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  margin: 0 0 14px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.compras-beat-producer img {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+
+.compras-beat-producer strong {
+  color: #ffffff !important;
+}
+
+.compras-beat-badges {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.compras-beat-badge {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+/* COLUMN 1 COMPONENT: Seus Arquivos */
+.compras-files-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.compras-file-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 18px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-radius: 8px !important;
-  padding: 14px 18px !important;
+  box-sizing: border-box !important;
   transition: all 0.2s ease !important;
 }
 
-.download-row:hover {
-  background: #0f0f0f !important;
+.compras-file-item:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-.detail-info-row {
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.06) !important;
-  padding: 10px 0 !important;
+.compras-file-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
 }
 
-.detail-info-row:last-child {
-  border-bottom: none !important;
-}
-
-.compras-detail-layout .an-secondary {
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+.compras-file-icon {
+  width: 36px !important;
+  height: 36px !important;
   border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+.compras-file-icon i {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.compras-file-name {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  display: block !important;
+  margin-bottom: 2px !important;
+}
+
+.compras-file-meta {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.compras-file-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* File state labels */
+.compras-file-status {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+}
+
+.compras-file-status--preparing {
+  color: #ffbb00 !important;
+  font-style: italic !important;
+}
+
+.compras-file-status--unavailable {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.compras-file-status--locked {
+  color: rgba(255, 255, 255, 0.4) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.compras-file-status--locked i {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+/* Compact button for list items */
+.compras-btn-download-sm {
+  height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: none !important;
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif !important;
+  transition: all 0.2s ease !important;
+}
+
+.compras-btn-download-sm.an-primary {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.compras-btn-download-sm.an-primary:hover {
+  background: rgba(255, 255, 255, 0.88) !important;
+  transform: translateY(-1px) !important;
+}
+
+.compras-btn-download-sm.an-secondary {
   background: transparent !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.compras-btn-download-sm.an-secondary:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* COLUMN 1 COMPONENT: Licença Adquirida */
+.compras-license-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px 24px !important;
+  margin-bottom: 20px !important;
+}
+
+.compras-license-item {
+  font-size: 13px !important;
+}
+
+.compras-license-item span {
+  display: block !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  margin-bottom: 4px !important;
+}
+
+.compras-license-item strong {
+  color: #ffffff !important;
+  font-size: 14px !important;
+}
+
+.compras-license-terms-box {
+  background: rgba(255, 255, 255, 0.01) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  margin-top: 16px !important;
+}
+
+/* SIDEBAR COMPONENT: Resumo do Pedido */
+.compras-summary-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin-bottom: 16px !important;
+}
+
+.compras-summary-table td {
+  padding: 8px 0 !important;
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.compras-summary-table tr:last-child td {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-top: 12px !important;
+  margin-top: 4px !important;
+}
+
+.compras-summary-total-label {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.compras-summary-total-value {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.compras-pending-alert {
+  background: rgba(255, 170, 0, 0.06) !important;
+  border: 1px solid rgba(255, 170, 0, 0.15) !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #ffbb00 !important;
+  margin-top: 14px !important;
+  display: flex !important;
+  gap: 10px !important;
+  align-items: flex-start !important;
+}
+
+.compras-pending-alert i {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+  margin-top: 2px !important;
+}
+
+/* SIDEBAR COMPONENT: Produtor Card */
+.compras-producer-card-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+.compras-producer-avatar {
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid rgba(255, 255, 255, 0.06) !important;
+  margin-bottom: 12px !important;
+}
+
+.compras-producer-name {
+  font-family: "Montserrat", sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 0 4px 0 !important;
+}
+
+.compras-producer-username {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  margin: 0 0 20px 0 !important;
+}
+
+.compras-producer-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+.compras-producer-actions .an-primary,
+.compras-producer-actions .an-secondary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 36px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+  border: none !important;
+}
+
+.compras-producer-actions .an-primary {
+  background: rgba(255, 106, 0, 0.9) !important;
+  color: #ffffff !important;
+}
+
+.compras-producer-actions .an-primary:hover {
+  background: #ff6a00 !important;
+  transform: translateY(-1px) !important;
+}
+
+.compras-producer-actions .an-secondary {
+  background: transparent !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.compras-producer-actions .an-secondary:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* SIDEBAR COMPONENT: Suporte */
+.compras-help-card h4 {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 0 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.compras-help-card p {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  margin: 0 0 16px 0 !important;
+  line-height: 1.5 !important;
+}
+
+.compras-help-card .an-secondary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
   transition: all 0.2s ease !important;
 }
 
-.compras-detail-layout .an-secondary:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+.compras-help-card .an-secondary:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
+

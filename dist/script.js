@@ -12214,7 +12214,7 @@ async function renderPurchases() {
 
   // If viewing details
   if (queryParams.id || queryParams.attempt_id) {
-    appView.innerHTML = `${pageHeader}<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
+    appView.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; min-height:200px;"><i data-lucide="loader-circle" class="animate-spin" style="width:32px; height:32px; color:#fff;"></i></div>`;
     lucide.createIcons();
     
     try {
@@ -12227,10 +12227,33 @@ async function renderPurchases() {
       if (queryParams.id) {
         order = context.orders.find(o => String(o.id) === String(queryParams.id));
         if (order && order.order_items) {
+          let oi = null;
           if (queryParams.item_id) {
-            item = order.order_items.find(oi => String(oi.id) === String(queryParams.item_id));
+            oi = order.order_items.find(x => String(x.id) === String(queryParams.item_id));
           } else {
-            item = order.order_items[0];
+            oi = order.order_items[0];
+          }
+          if (oi) {
+            item = {
+              type: "order_item",
+              id: oi.id,
+              orderId: order.id,
+              buyerId: order.buyer_id,
+              buyerName: order.buyer_name,
+              buyerEmail: order.buyer_email,
+              createdAt: order.created_at,
+              beatId: oi.beat_id,
+              licenseId: oi.license_id,
+              licenseName: oi.license_name_snapshot,
+              licenseTerms: oi.license_terms_snapshot,
+              priceCents: oi.price_cents_snapshot,
+              buyerRoyalty: oi.buyer_royalty_snapshot,
+              producerRoyalty: oi.producer_royalty_snapshot,
+              filesIncluded: oi.files_included_snapshot,
+              status: order.status,
+              provider: "mercado_pago",
+              providerPaymentId: null,
+            };
           }
         }
       } else if (queryParams.attempt_id) {
@@ -12247,7 +12270,11 @@ async function renderPurchases() {
             beatId: attempt.cart_items[0]?.beat_id,
             licenseId: attempt.cart_items[0]?.license_id,
             licenseName: attempt.cart_items[0]?.license_name || "Licença",
+            licenseTerms: null,
             priceCents: attempt.cart_items[0]?.price_cents || 0,
+            buyerRoyalty: 50,
+            producerRoyalty: 50,
+            filesIncluded: null,
             status: attempt.status,
             provider: attempt.provider,
             providerPaymentId: attempt.provider_payment_id,
@@ -12256,7 +12283,7 @@ async function renderPurchases() {
       }
       
       if (!item) {
-        appView.innerHTML = `${pageHeader}
+        appView.innerHTML = `
           <div style="padding:24px; text-align:center;">
             <p style="color:var(--beat-muted); margin-bottom:16px;">Pedido ou compra não encontrada.</p>
             <a href="#compras" class="an-secondary" style="padding:8px 16px; border-radius:6px; text-decoration:none;">Voltar para pedidos</a>
@@ -12266,21 +12293,21 @@ async function renderPurchases() {
       }
       
       const beat = context.beats.get(String(item.beatId)) || {};
-      const beatTitle = beat.title || item.title || "Beat Indisponível";
+      const beatTitle = beat.title || "Beat Indisponível";
       const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
       const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || item.producer || "Produtor");
+      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || "Produtor");
       const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
       const producerUsername = producer?.username || "";
       
       const orderNum = order ? `PED-${order.id.slice(0, 8).toUpperCase()}` : `ATT-${attempt.id.slice(0, 8).toUpperCase()}`;
-      const priceText = `R$ ${((order ? item.priceCents : item.priceCents) / 100).toFixed(2)}`;
-      const dateString = new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const priceText = `R$ ${(item.priceCents / 100).toFixed(2)}`;
+      const dateString = new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
       
       let statusLabel = "Aprovado";
       let badgeStyle = "background: rgba(0, 200, 100, 0.1); color: #00cc66; border: 1px solid rgba(0, 200, 100, 0.2);";
-      let statusDesc = "Pagamento confirmado com sucesso. Seus arquivos e contrato de licença estão liberados abaixo.";
-      const statusValue = order ? order.status : attempt.status;
+      let statusDesc = "Pagamento confirmado com sucesso. Seus arquivos e contrato de licença estão liberados.";
+      const statusValue = item.status;
       
       if (statusValue === "refunded") {
         statusLabel = "Reembolsado";
@@ -12316,13 +12343,13 @@ async function renderPurchases() {
         contractText = generateContractText(
           beatTitle,
           producerName,
-          order ? order.buyer_name : attempt.buyer_name,
+          item.buyerName,
           item.licenseName,
           item.buyerRoyalty || 50,
           item.producerRoyalty || 50,
           "Ilimitados",
           item.filesIncluded || "MP3",
-          new Date(order ? order.created_at : attempt.created_at).toLocaleDateString("pt-BR")
+          new Date(item.createdAt).toLocaleDateString("pt-BR")
         );
       }
       
@@ -12330,199 +12357,300 @@ async function renderPurchases() {
       
       // Downloads section
       let downloadsHtml = "";
-      if (isCompleted) {
-        const includedFiles = String(item.filesIncluded || "").toUpperCase();
-        const hasMp3 = includedFiles.includes("MP3");
-        const hasWav = includedFiles.includes("WAV");
-        const hasStems = includedFiles.includes("STEMS") || includedFiles.includes("ZIP");
-        
-        downloadsHtml += `
-          <div class="download-row">
-            <div>
-              <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Contrato de Licença (.txt)</span>
-              <small style="color:var(--beat-muted); font-size:11px;">Documento legal oficial da compra</small>
+      const includedFiles = String(item.filesIncluded || "").toUpperCase();
+      const hasMp3 = includedFiles.includes("MP3") || includedFiles === ""; // default to MP3 if blank
+      const hasWav = includedFiles.includes("WAV");
+      const hasStems = includedFiles.includes("STEMS") || includedFiles.includes("ZIP");
+      
+      // 1. Contract PDF
+      downloadsHtml += `
+        <div class="compras-file-item">
+          <div class="compras-file-info">
+            <div class="compras-file-icon">
+              <i data-lucide="file-text"></i>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button type="button" class="an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Visualizar</button>
-              <button type="button" class="an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar</button>
+            <div>
+              <span class="compras-file-name">Contrato de Licença</span>
+              <span class="compras-file-meta">Documento legal oficial (.txt)</span>
             </div>
           </div>
-        `;
-        
-        if (hasMp3) {
-          downloadsHtml += `
-            <div class="download-row">
-              <div>
-                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio MP3</span>
-                <small style="color:var(--beat-muted); font-size:11px;">Formato de alta qualidade (320kbps)</small>
+          <div class="compras-file-actions">
+            ${isCompleted ? `
+              <button type="button" class="compras-btn-download-sm an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))">Visualizar</button>
+              <button type="button" class="compras-btn-download-sm an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))">
+                <i data-lucide="download"></i> Baixar
+              </button>
+            ` : `
+              <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
+            `}
+          </div>
+        </div>
+      `;
+      
+      // 2. MP3
+      if (hasMp3) {
+        downloadsHtml += `
+          <div class="compras-file-item">
+            <div class="compras-file-info">
+              <div class="compras-file-icon">
+                <i data-lucide="file-audio"></i>
               </div>
-              <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar MP3</button>
+              <div>
+                <span class="compras-file-name">Arquivo de Áudio MP3</span>
+                <span class="compras-file-meta">Alta qualidade (320kbps)</span>
+              </div>
             </div>
-          `;
-        }
-        if (hasWav) {
-          downloadsHtml += `
-            <div class="download-row">
-              <div>
-                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Arquivo de Áudio WAV</span>
-                <small style="color:var(--beat-muted); font-size:11px;">Formato sem perdas de áudio profissional</small>
-              </div>
-              ${beat.wav_path || beat.audio_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar WAV</button>
+            <div class="compras-file-actions">
+              ${isCompleted ? `
+                <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3">
+                  <i data-lucide="download"></i> Baixar MP3
+                </button>
               ` : `
-                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo sendo preparado</span>
+                <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
               `}
             </div>
-          `;
-        }
-        if (hasStems) {
-          downloadsHtml += `
-            <div class="download-row">
-              <div>
-                <span style="font-weight:bold; color:#fff; display:block; font-size:13px;">Stems do Beat (ZIP/RAR)</span>
-                <small style="color:var(--beat-muted); font-size:11px;">Pistas de áudio separadas para mixagem</small>
-              </div>
-              ${beat.stems_path ? `
-                <button type="button" class="an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems" style="height:32px; padding:0 12px; font-size:12px; cursor:pointer;">Baixar Stems</button>
-              ` : `
-                <span style="color:var(--orange-primary, #ff5500); font-size:11px; font-style:italic;">Arquivo indisponível</span>
-              `}
-            </div>
-          `;
-        }
-      } else {
-        downloadsHtml = `
-          <div style="background:#050505; border:1px dashed var(--beat-border); border-radius:6px; padding:24px; text-align:center; color:var(--beat-muted); font-size:13px;">
-            <i data-lucide="lock" style="width:24px; height:24px; margin-bottom:8px; color:var(--orange-primary, #ff5500);"></i>
-            <p>Os downloads e contratos estarão disponíveis assim que o pagamento for aprovado.</p>
           </div>
         `;
       }
-
-      const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
-
-      appView.innerHTML = `
-        ${pageIntro("compras")}
-
-
-        <div style="padding: 0 16px; margin-bottom: 16px;">
-          <a href="#compras" style="display: inline-flex; align-items: center; gap: 8px; color: var(--beat-muted); text-decoration: none; font-size: 13px; font-weight: 500;">
-            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i> Voltar para meus pedidos
-          </a>
-        </div>
-
-        <div class="compras-detail-layout">
-          <!-- Left Column -->
-          <div>
-            <!-- Resumo -->
-            <div class="compras-section-card">
-              <h2 class="compras-section-title"><i data-lucide="receipt"></i>Resumo do Pedido</h2>
-              <div class="detail-info-row">
-                <span style="color:var(--beat-muted);">Identificador:</span>
-                <strong style="color:#fff; font-family:monospace;">${orderNum}</strong>
+      
+      // 3. WAV
+      if (hasWav) {
+        downloadsHtml += `
+          <div class="compras-file-item">
+            <div class="compras-file-info">
+              <div class="compras-file-icon">
+                <i data-lucide="file-audio"></i>
               </div>
-              <div class="detail-info-row">
-                <span style="color:var(--beat-muted);">Data do Pedido:</span>
-                <strong style="color:#fff;">${dateString}</strong>
+              <div>
+                <span class="compras-file-name">Arquivo de Áudio WAV</span>
+                <span class="compras-file-meta">Áudio profissional sem perdas</span>
               </div>
-              <div class="detail-info-row">
-                <span style="color:var(--beat-muted);">Total Pago:</span>
-                <strong style="color:#fff;">${priceText}</strong>
-              </div>
-              <div class="detail-info-row">
-                <span style="color:var(--beat-muted);">Método de Pagamento:</span>
-                <strong style="color:#fff; text-transform:uppercase;">${item.provider === "mercado_pago" ? "Mercado Pago" : item.provider} (${item.method || 'online'})</strong>
-              </div>
-              <div class="detail-info-row" style="align-items: center; padding-top: 12px; border-top: 1px solid var(--beat-border-soft); margin-top: 8px;">
-                <span style="color:var(--beat-muted);">Status Financeiro:</span>
-                <span class="badge-status" style="${badgeStyle}">${statusLabel}</span>
-              </div>
-              <p style="font-size: 12px; color: var(--beat-muted); margin: 12px 0 0 0; line-height: 1.5;">${statusDesc}</p>
             </div>
-
-            <!-- Beat Adquirido -->
-            <div class="compras-section-card">
-              <h2 class="compras-section-title"><i data-lucide="music-4"></i>Beat Adquirido</h2>
-              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div style="position: relative; width: 120px; height: 120px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--beat-border);">
-                  <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
-                  ${beat.id ? `
-                    <button type="button" data-action="play" data-id="${beat.id}"
-                            style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.7); border: 1px solid var(--orange-primary, #ff5500); color: #fff; cursor: pointer; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.2s;"
-                            onmouseover="this.style.transform='translate(-50%, -50%) scale(1.1)'"
-                            onmouseout="this.style.transform='translate(-50%, -50%) scale(1)'">
-                      <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon" style="width: 20px; height: 20px;"></i>
-                    </button>
-                  ` : ''}
-                </div>
-                
-                <div style="flex: 1; min-width: 200px;">
-                  <h3 style="font-size: 18px; color: #fff; font-weight: bold; margin: 0 0 8px 0;">${htmlEscape(beatTitle)}</h3>
-                  <p style="font-size: 13px; color: var(--beat-muted); margin: 0 0 12px 0;">Por: <strong style="color:#fff;">${htmlEscape(producerName)}</strong></p>
-                  
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    ${beat.genre ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">Gênero: ${beat.genre}</span>` : ''}
-                    ${beat.bpm ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">BPM: ${beat.bpm}</span>` : ''}
-                    ${beat.key ? `<span style="background:#111; color:var(--beat-muted); padding:3px 8px; border-radius:4px; font-size:11px;">Tom: ${beat.key}</span>` : ''}
+            <div class="compras-file-actions">
+              ${isCompleted ? (
+                (beat.wav_path || beat.audio_path) ? `
+                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav">
+                    <i data-lucide="download"></i> Baixar WAV
+                  </button>
+                ` : `
+                  <span class="compras-file-status compras-file-status--preparing"><i data-lucide="loader-circle" class="animate-spin" style="width:12px; height:12px; display:inline-block;"></i> Preparando</span>
+                `
+              ) : `
+                <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
+              `}
+            </div>
+          </div>
+        `;
+      }
+      
+      // 4. Stems
+      if (hasStems) {
+        downloadsHtml += `
+          <div class="compras-file-item">
+            <div class="compras-file-info">
+              <div class="compras-file-icon">
+                <i data-lucide="file-archive"></i>
+              </div>
+              <div>
+                <span class="compras-file-name">Stems do Beat</span>
+                <span class="compras-file-meta">Pistas separadas (ZIP/RAR)</span>
+              </div>
+            </div>
+            <div class="compras-file-actions">
+              ${isCompleted ? (
+                beat.stems_path ? `
+                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems">
+                    <i data-lucide="download"></i> Baixar Stems
+                  </button>
+                ` : `
+                  <span class="compras-file-status compras-file-status--unavailable">Indisponível</span>
+                `
+              ) : `
+                <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
+              `}
+            </div>
+          </div>
+        `;
+      }
+      
+      const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
+      const totalCents = order ? order.total_cents : attempt.total_cents;
+      const subtotalCents = order ? order.total_cents : (attempt.subtotal_cents || attempt.total_cents);
+      const serviceFeeCents = order ? 0 : (attempt.service_fee_cents || 0);
+      
+      const subtotalText = `R$ ${(subtotalCents / 100).toFixed(2)}`;
+      const serviceFeeText = `R$ ${(serviceFeeCents / 100).toFixed(2)}`;
+      const totalText = `R$ ${(totalCents / 100).toFixed(2)}`;
+      
+      appView.innerHTML = `
+        <div class="compras-detail-container">
+          <div class="compras-detail-header">
+            <a href="#compras" class="compras-back-btn">
+              <i data-lucide="arrow-left"></i> Voltar para meus pedidos
+            </a>
+            <div class="compras-detail-title-row">
+              <h1>Pedido #${orderNum}</h1>
+              <span class="badge-status" style="${badgeStyle}">${statusLabel}</span>
+            </div>
+            <p class="compras-detail-date">Realizado em ${dateString}</p>
+          </div>
+          
+          <div class="compras-detail-grid">
+            <!-- Left Column: Beat & Deliverables -->
+            <div class="compras-detail-main">
+              <!-- Beat Card -->
+              <div class="compras-section-card">
+                <h2 class="compras-section-title"><i data-lucide="music-4"></i>Beat Adquirido</h2>
+                <div class="compras-beat-card-layout">
+                  <div class="compras-beat-cover-wrapper">
+                    <img src="${beatCover}" alt="${htmlEscape(beatTitle)}">
+                    ${beat.id ? `
+                      <button type="button" class="compras-card-play-btn" data-action="play" data-id="${beat.id}">
+                        <i data-lucide="${isPlaying ? 'pause' : 'play'}" class="player-state-icon"></i>
+                      </button>
+                    ` : ''}
+                  </div>
+                  <div class="compras-beat-info-wrapper">
+                    <h2>${htmlEscape(beatTitle)}</h2>
+                    <div class="compras-beat-producer">
+                      <img src="${producerAvatar}" alt="${htmlEscape(producerName)}">
+                      <span>Por: <strong>${htmlEscape(producerName)}</strong></span>
+                    </div>
+                    <div class="compras-beat-badges">
+                      ${beat.genre ? `<span class="compras-beat-badge">Gênero: ${htmlEscape(beat.genre)}</span>` : ''}
+                      ${beat.bpm ? `<span class="compras-beat-badge">BPM: ${htmlEscape(beat.bpm)}</span>` : ''}
+                      ${beat.key ? `<span class="compras-beat-badge">Tom: ${htmlEscape(beat.key)}</span>` : ''}
+                      <span class="compras-beat-badge">Licença: ${htmlEscape(item.licenseName)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            <!-- Arquivos e Entregáveis -->
-            <div class="compras-section-card">
-              <h2 class="compras-section-title"><i data-lucide="download-cloud"></i>Arquivos Autorizados</h2>
-              <div style="display: flex; flex-direction: column;">
-                ${downloadsHtml}
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column -->
-          <div>
-            <!-- Produtor Card -->
-            <div class="compras-section-card" style="text-align: center; padding: 24px 16px;">
-              <img src="${producerAvatar}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--beat-border); margin: 0 auto 12px;">
-              <h3 style="font-size: 15px; color:#fff; font-weight:bold; margin: 0 0 4px 0;">${htmlEscape(producerName)}</h3>
-              <p style="font-size: 12px; color:var(--beat-muted); margin: 0 0 16px 0;">@${htmlEscape(producerUsername || 'produtor')}</p>
               
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                ${producerUsername ? `
-                  <a href="#perfil-${producerUsername}" class="an-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; text-decoration: none; border-radius: 6px;">
-                    <i data-lucide="user" style="width: 14px; height: 14px;"></i> Ver perfil completo
-                  </a>
-                ` : ''}
-                ${beat.user_id ? `
-                  <button type="button" onclick="openOrCreateDirectConversation('${beat.user_id}')" class="an-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; font-size: 12px; font-weight:bold; border: 0; background: var(--orange-primary, #ff5500); color: #fff; border-radius: 6px; cursor: pointer;">
-                    <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> Iniciar Conversa
-                  </button>
-                ` : ''}
+              <!-- Files List -->
+              <div class="compras-section-card">
+                <h2 class="compras-section-title"><i data-lucide="download-cloud"></i>Arquivos Autorizados</h2>
+                <div class="compras-files-list">
+                  ${downloadsHtml}
+                </div>
               </div>
-            </div>
-
-            <!-- Licença -->
-            <div class="compras-section-card">
-              <h2 class="compras-section-title"><i data-lucide="scroll"></i>Licença Adquirida</h2>
-              <h3 style="font-size:14px; font-weight:bold; color:var(--orange-primary, #ff5500); margin:0 0 8px 0;">${htmlEscape(item.licenseName)}</h3>
               
-              <div style="font-size:12px; color:var(--beat-muted); line-height:1.6;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                  <span>Divisão de Royalties:</span>
-                  <strong style="color:#fff;">${item.buyerRoyalty || 50}% Artista / ${item.producerRoyalty || 50}% Produtor</strong>
+              <!-- License Card -->
+              <div class="compras-section-card">
+                <h2 class="compras-section-title"><i data-lucide="scroll"></i>Licença Adquirida</h2>
+                <div class="compras-license-grid">
+                  <div class="compras-license-item">
+                    <span>Tipo de Licença:</span>
+                    <strong>${htmlEscape(item.licenseName)}</strong>
+                  </div>
+                  <div class="compras-license-item">
+                    <span>Divisão de Royalties:</span>
+                    <strong>${item.buyerRoyalty || 50}% Artista / ${item.producerRoyalty || 50}% Produtor</strong>
+                  </div>
                 </div>
                 ${item.licenseTerms ? `
-                  <p style="margin-top:8px; border-top:1px dashed var(--beat-border-soft); padding-top:8px;">${htmlEscape(item.licenseTerms)}</p>
+                  <div class="compras-license-terms-box">
+                    ${htmlEscape(item.licenseTerms)}
+                  </div>
                 ` : ''}
               </div>
             </div>
-
-            <!-- Ajuda -->
-            <div class="compras-section-card" style="padding: 16px;">
-              <h4 style="font-size:12px; font-weight:bold; color:#fff; margin:0 0 6px 0; display:flex; align-items:center; gap:6px;"><i data-lucide="help-circle" style="width:14px; height:14px;"></i>Precisa de ajuda?</h4>
-              <p style="font-size:11px; color:var(--beat-muted); margin:0 0 12px 0; line-height:1.4;">Se você encontrar problemas com seus arquivos ou licença, entre em contato.</p>
-              <a href="#suporte" class="an-secondary" style="display: flex; align-items: center; justify-content: center; gap: 4px; height: 28px; font-size: 11px; text-decoration: none; border-radius: 4px;">
-                Central de Suporte
-              </a>
+            
+            <!-- Right Column: Sidebar Summaries -->
+            <div class="compras-detail-sidebar">
+              <!-- Order Summary Card -->
+              <div class="compras-section-card">
+                <h2 class="compras-section-title"><i data-lucide="receipt"></i>Resumo do Pedido</h2>
+                <table class="compras-summary-table">
+                  <tbody>
+                    <tr>
+                      <td>Identificador:</td>
+                      <td style="text-align: right; font-family: monospace; color: #fff;">${orderNum}</td>
+                    </tr>
+                    <tr>
+                      <td>Data:</td>
+                      <td style="text-align: right; color: #fff;">${dateString}</td>
+                    </tr>
+                    <tr>
+                      <td>Subtotal:</td>
+                      <td style="text-align: right; color: #fff;">${subtotalText}</td>
+                    </tr>
+                    <tr>
+                      <td>Taxa de Serviço:</td>
+                      <td style="text-align: right; color: #fff;">${serviceFeeText}</td>
+                    </tr>
+                    <tr>
+                      <td>Método:</td>
+                      <td style="text-align: right; color: #fff; text-transform: uppercase;">
+                        ${item.provider === "mercado_pago" ? "Mercado Pago" : item.provider} (${item.method || 'online'})
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="compras-summary-total-label">Total:</td>
+                      <td class="compras-summary-total-value" style="text-align: right;">${totalText}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); margin-top: 8px;">
+                  <span style="font-size: 13px; color: rgba(255,255,255,0.5);">Status:</span>
+                  <span class="badge-status" style="${badgeStyle}">${statusLabel}</span>
+                </div>
+                
+                ${!isCompleted ? `
+                  <div class="compras-pending-alert">
+                    <i data-lucide="alert-circle"></i>
+                    <div>
+                      <strong>Aguardando Aprovação</strong>
+                      <p style="margin: 4px 0 0 0; font-size: 11px; color: rgba(255, 170, 0, 0.8);">${statusDesc}</p>
+                    </div>
+                  </div>
+                ` : ''}
+                ${statusValue === "refunded" ? `
+                  <div class="compras-pending-alert" style="background: rgba(255, 100, 100, 0.06); border-color: rgba(255, 100, 100, 0.15); color: #ff5555;">
+                    <i data-lucide="x-circle"></i>
+                    <div>
+                      <strong>Compra Reembolsada</strong>
+                      <p style="margin: 4px 0 0 0; font-size: 11px; color: rgba(255, 100, 100, 0.8);">${statusDesc}</p>
+                    </div>
+                  </div>
+                ` : ''}
+                ${statusValue === "rejected" || statusValue === "cancelled" || statusValue === "expired" ? `
+                  <div class="compras-pending-alert" style="background: rgba(150, 150, 150, 0.06); border-color: rgba(150, 150, 150, 0.15); color: #888888;">
+                    <i data-lucide="x-circle"></i>
+                    <div>
+                      <strong>Pagamento Recusado/Cancelado</strong>
+                      <p style="margin: 4px 0 0 0; font-size: 11px; color: rgba(150, 150, 150, 0.8);">${statusDesc}</p>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+              
+              <!-- Producer Card -->
+              <div class="compras-section-card compras-producer-card-layout">
+                <img src="${producerAvatar}" alt="${htmlEscape(producerName)}" class="compras-producer-avatar">
+                <h3 class="compras-producer-name">${htmlEscape(producerName)}</h3>
+                <p class="compras-producer-username">@${htmlEscape(producerUsername || 'produtor')}</p>
+                
+                <div class="compras-producer-actions">
+                  ${producerUsername ? `
+                    <a href="#perfil-${producerUsername}" class="an-secondary">
+                      <i data-lucide="external-link"></i> Ver perfil
+                    </a>
+                  ` : ''}
+                  ${beat.user_id ? `
+                    <button type="button" class="an-primary" onclick="openOrCreateDirectConversation('${beat.user_id}')">
+                      <i data-lucide="message-square"></i> Iniciar Conversa
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+              
+              <!-- Help Card -->
+              <div class="compras-section-card compras-help-card">
+                <h4><i data-lucide="help-circle"></i>Precisa de ajuda?</h4>
+                <p>Se tiver dúvidas sobre os arquivos ou licença deste pedido, entre em contato com nosso suporte.</p>
+                <a href="#suporte" class="an-secondary">Central de Ajuda</a>
+              </div>
             </div>
           </div>
         </div>
