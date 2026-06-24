@@ -41185,3 +41185,9 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
   background: #121214 !important;
 }
 
+/* NEXO Beats Section Font Overrides to Untitled Sans */
+.featured-preview-section,
+.featured-preview-section * {
+  font-family: "Untitled Sans", "Unitilited Sans", "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif !important;
+}
+
