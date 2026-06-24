@@ -18934,46 +18934,105 @@ function renderSellerAuth() {
   </label>`).join("");
 
   appView.innerHTML = `<section class="seller-auth" aria-label="Sistema de contas ANSEND">
-    <div class="seller-auth-panel">
-      <a class="seller-auth-logo" href="#feed" data-route="feed" aria-label="ANSEND inicio"><img src="assets/ansend-logo-horizontal.png" alt="ANSEND"></a>
-      ${languageSwitcherMarkup()}
-      <div class="seller-auth-copy">
-        <span>${isLogin ? "ACESSO ANSEND" : "CONTA INTELIGENTE ANSEND"}</span>
-        <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta ANSEND"}</h1>
-        <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
+    <div class="seller-auth-container">
+      
+      <!-- Left Column: Auth Panel -->
+      <div class="seller-auth-left">
+        <header class="seller-auth-header-bar">
+          <a class="seller-auth-brand" href="#feed" data-route="feed" aria-label="ANSEND início">
+            <img src="assets/ansend-logo-sidebar.png?v=20260617-typography-restore-v2" alt="ANSEND" class="seller-auth-logo-img">
+          </a>
+          <div class="seller-auth-lang-wrapper">
+            ${languageSwitcherMarkup()}
+          </div>
+        </header>
+
+        <div class="seller-auth-card-wrapper">
+          <div class="seller-auth-glass-card">
+            <div class="seller-auth-copy">
+              <span>${isLogin ? "ACESSO ANSEND" : "CONTA INTELIGENTE ANSEND"}</span>
+              <h1>${isLogin ? "Entre na sua conta" : "Crie sua conta"}</h1>
+              <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
+            </div>
+
+            <!-- Social Logins (Reference 3 style) -->
+            <div class="seller-auth-social-buttons">
+              <button type="button" class="social-btn google-btn" data-action="seller-google">
+                ${GOOGLE_ICON_MARKUP} Google
+              </button>
+              <button type="button" class="social-btn apple-btn" data-action="seller-google">
+                <i data-lucide="brand-apple"></i> Apple
+              </button>
+            </div>
+
+            <div class="auth-divider">ou entre com e-mail</div>
+
+            <!-- Form -->
+            <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}" novalidate>
+              ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name"></label>
+              <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
+              <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
+              <div class="account-style-picker" aria-label="Escolha estilos musicais">${styleOptions}</div>`}
+              
+              <label for="seller-email">
+                <span>E-mail</span>
+                <div class="input-icon-wrapper">
+                  <i data-lucide="mail" class="input-icon"></i>
+                  <input id="seller-email" name="email" type="email" placeholder="voce@email.com" autocomplete="email" required>
+                </div>
+              </label>
+
+              <label for="seller-password">
+                <div class="label-header">
+                  <span>Senha</span>
+                </div>
+                <div class="input-icon-wrapper password-wrap">
+                  <i data-lucide="lock" class="input-icon"></i>
+                  <input id="seller-password" name="password" type="password" placeholder="Sua senha" autocomplete="${isLogin ? "current-password" : "new-password"}" required>
+                  <button type="button" data-action="toggle-password" class="toggle-password-btn" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
+                </div>
+              </label>
+
+              <p class="seller-auth-message" data-auth-message hidden></p>
+              
+              <button class="seller-submit" type="submit">
+                <span>${isLogin ? "Entrar" : "Criar conta"}</span>
+                <i data-lucide="arrow-right"></i>
+              </button>
+            </form>
+
+            <footer class="seller-auth-card-footer">
+              <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} 
+                <button type="button" class="switch-mode-btn" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">
+                  ${isLogin ? "Criar conta" : "Entrar"}
+                </button>
+              </p>
+            </footer>
+          </div>
+        </div>
       </div>
-      <form class="seller-auth-form" autocomplete="on" data-mode="${isLogin ? "login" : "signup"}" novalidate>
-        ${isLogin ? "" : `<label for="seller-name">Nome completo<input id="seller-name" name="name" type="text" placeholder="Seu nome completo" autocomplete="name"></label>
-        <label for="seller-store">Nome artístico ou marca<input id="seller-store" name="store" type="text" placeholder="Ex: Viana Beats" autocomplete="organization"></label>
-        <div class="account-role-picker" aria-label="Escolha a função da conta">${roleOptions}</div>
-        <div class="account-style-picker" aria-label="Escolha estilos musicais">${styleOptions}</div>`}
-        <label for="seller-email">E-mail<input id="seller-email" name="email" type="email" placeholder="voce@email.com" autocomplete="email" required></label>
-        <label for="seller-password">Senha
-          <span class="password-wrap">
-            <input id="seller-password" name="password" type="password" placeholder="Sua senha" autocomplete="${isLogin ? "current-password" : "new-password"}" required>
-            <button type="button" data-action="toggle-password" aria-label="Mostrar senha"><i data-lucide="eye"></i></button>
-          </span>
-        </label>
-        <p class="seller-auth-message" data-auth-message hidden></p>
-        <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i></button>
-      </form>
-      <div class="seller-auth-actions">
-        <div class="auth-divider">ou</div>
-        <button type="button" data-action="seller-google">${GOOGLE_ICON_MARKUP}Continuar com Google</button>
-        <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
+
+      <!-- Right Column: Marketing Showcase with float animations (Reference 1 style) -->
+      <div class="seller-auth-right">
+        <div class="showcase-visuals">
+          <div class="showcase-glowing-blob"></div>
+          <div class="showcase-3d-box-container">
+            <div class="showcase-3d-wireframe"></div>
+            <div class="showcase-orbit-ring ring-1"></div>
+            <div class="showcase-orbit-ring ring-2"></div>
+          </div>
+        </div>
+
+        <div class="seller-auth-showcase-content">
+          <h1>Mais de 400.000 usuários.<br>A maior comunidade de beatmakers e artistas da América Latina.</h1>
+          <p>Junte-se à maior rede de criação, licenciamento e distribuição de beats independentes.</p>
+          <button type="button" class="showcase-join-btn" onclick="location.hash='explorar'">
+            Explorar beats
+          </button>
+        </div>
       </div>
+
     </div>
-    <aside class="seller-auth-showcase" aria-label="Benefícios para vendedores">
-      <div class="seller-shader-bg" data-hero-shader aria-hidden="true"></div>
-      <div class="seller-showcase-card">
-        <strong>Venda beats, organize licenças e acompanhe downloads em tempo real.</strong>
-        <ul>
-          <li><i data-lucide="shield-check"></i>Licenças seguras</li>
-          <li><i data-lucide="audio-lines"></i>Catálogo profissional</li>
-          <li><i data-lucide="download"></i>Entrega imediata</li>
-        </ul>
-      </div>
-    </aside>
   </section>`;
 }
 
@@ -19135,6 +19194,8 @@ function renderRoute() {
   appView.classList.toggle("feed", route === "feed");
   document.body.classList.toggle("is-authenticated", accountAccess);
   document.body.classList.toggle("requires-auth", authRequiredForRoute);
+  const isAuthScreen = (route === "vendedor" && !accountAccess) || route === "confirmar-email" || route === "email-confirmed";
+  document.body.classList.toggle("auth-not-logged-in", isAuthScreen);
   if (route !== COMMUNITY_ROUTE) document.body.classList.remove("community-route-enter");
   document.body.classList.remove("release-mode");
   document.body.classList.toggle("chat-dm-mode", route === "chat");

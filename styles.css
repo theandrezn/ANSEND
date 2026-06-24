@@ -41340,4 +41340,556 @@ body[data-route="feed"] .featured-preview-section .section-head p {
   display: none !important;
 }
 
+/* STANDALONE AUTHENTICATION PAGE LAYOUT (WITHOUT SIDEBAR / TOPBAR) */
+body.auth-not-logged-in {
+  background: #000000 !important;
+}
+
+body.auth-not-logged-in > .sidebar,
+body.auth-not-logged-in > .page > .topbar,
+body.auth-not-logged-in > .footer,
+body.auth-not-logged-in > .cinematic-footer,
+body.auth-not-logged-in > .ambient-glow,
+body.auth-not-logged-in .nexo-button,
+body.auth-not-logged-in .nexo-floating-assistant,
+body.auth-not-logged-in #nexoFloatingAssistantRoot {
+  display: none !important;
+}
+
+body.auth-not-logged-in > .page {
+  width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.auth-not-logged-in #appView.app-view {
+  width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* PREMIUM 2-COLUMN GLASSMORPHIC AUTHENTICATION SCREEN */
+.seller-auth {
+  width: 100% !important;
+  min-height: 100vh !important;
+  background: #000000 !important;
+  display: block !important;
+  padding: 0 !important;
+  position: relative !important;
+}
+
+.seller-auth-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .seller-auth-container {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+}
+
+/* Left block: Form and header */
+.seller-auth-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(24px, 4vw, 48px);
+  min-height: 100vh;
+  position: relative;
+  z-index: 2;
+  background: #000000;
+}
+
+.seller-auth-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.seller-auth-brand {
+  display: flex;
+  align-items: center;
+}
+
+.seller-auth-logo-img {
+  height: 38px;
+  width: auto;
+}
+
+.seller-auth-card-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  width: 100%;
+  padding: 32px 0;
+}
+
+/* Glassmorphism Auth Card */
+.seller-auth-glass-card {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(12, 12, 14, 0.45) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 24px !important;
+  padding: clamp(24px, 5vw, 40px) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+}
+
+.seller-auth-glass-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(127, 0, 255, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.seller-auth-glass-card::after {
+  content: '';
+  position: absolute;
+  bottom: -50px;
+  right: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(236, 0, 140, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.seller-auth-glass-card .seller-auth-copy {
+  text-align: left !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.seller-auth-glass-card .seller-auth-copy span {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.15em !important;
+  color: #ec008c !important;
+}
+
+.seller-auth-glass-card .seller-auth-copy h1 {
+  font-size: clamp(26px, 3.2vw, 34px) !important;
+  font-weight: 850 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.02em !important;
+}
+
+.seller-auth-glass-card .seller-auth-copy p {
+  font-size: 14.5px !important;
+  line-height: 1.5 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-weight: 400 !important;
+}
+
+/* Social Buttons */
+.seller-auth-social-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.seller-auth-social-buttons .social-btn {
+  height: 50px;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s !important;
+}
+
+.seller-auth-social-buttons .social-btn:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.seller-auth-social-buttons .social-btn:active {
+  transform: scale(0.98);
+}
+
+.seller-auth-social-buttons .social-btn svg,
+.seller-auth-social-buttons .social-btn i {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Auth Divider */
+.seller-auth-glass-card .auth-divider {
+  display: flex !important;
+  align-items: center !important;
+  text-align: center !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  margin: 6px 0 !important;
+}
+
+.seller-auth-glass-card .auth-divider::before,
+.seller-auth-glass-card .auth-divider::after {
+  content: '' !important;
+  flex: 1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.seller-auth-glass-card .auth-divider::before {
+  margin-right: 16px !important;
+}
+
+.seller-auth-glass-card .auth-divider::after {
+  margin-left: 16px !important;
+}
+
+/* Form Styles */
+.seller-auth-glass-card .seller-auth-form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+
+.seller-auth-glass-card .seller-auth-form label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+}
+
+.seller-auth-glass-card .seller-auth-form label .label-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.seller-auth-glass-card .seller-auth-form label .forgot-password-link {
+  color: #7f00ff !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  transition: color 0.2s !important;
+}
+
+.seller-auth-glass-card .seller-auth-form label .forgot-password-link:hover {
+  color: #ec008c !important;
+}
+
+.seller-auth-glass-card .input-icon-wrapper {
+  position: relative !important;
+  width: 100% !important;
+}
+
+.seller-auth-glass-card .input-icon-wrapper .input-icon {
+  position: absolute !important;
+  left: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  width: 18px !important;
+  height: 18px !important;
+  pointer-events: none !important;
+}
+
+.seller-auth-glass-card .seller-auth-form input {
+  width: 100% !important;
+  height: 50px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 0 16px 0 46px !important;
+  color: #ffffff !important;
+  font-size: 14.5px !important;
+  font-weight: 500 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01) !important;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s !important;
+}
+
+.seller-auth-glass-card .seller-auth-form input:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.seller-auth-glass-card .seller-auth-form input:focus {
+  outline: none !important;
+  border-color: rgba(127, 0, 255, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(127, 0, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Password Toggle */
+.seller-auth-glass-card .toggle-password-btn {
+  position: absolute !important;
+  right: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 8px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  cursor: pointer !important;
+  transition: color 0.2s !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.seller-auth-glass-card .toggle-password-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Submit Button */
+.seller-auth-glass-card .seller-submit {
+  width: 100% !important;
+  height: 50px !important;
+  background: linear-gradient(135deg, #7f00ff 0%, #ec008c 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  border-radius: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 8px 24px rgba(127, 0, 255, 0.25) !important;
+  cursor: pointer !important;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s !important;
+}
+
+.seller-auth-glass-card .seller-submit:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 30px rgba(127, 0, 255, 0.35) !important;
+}
+
+.seller-auth-glass-card .seller-submit:active {
+  transform: translateY(0) scale(0.99) !important;
+}
+
+/* Form switch footer */
+.seller-auth-card-footer {
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 20px;
+}
+
+.seller-auth-card-footer p {
+  margin: 0 !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 13.5px !important;
+}
+
+.seller-auth-card-footer .switch-mode-btn {
+  border: 0 !important;
+  color: #ffffff !important;
+  background: transparent !important;
+  font-weight: 700 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin-left: 4px !important;
+  transition: color 0.2s !important;
+}
+
+.seller-auth-card-footer .switch-mode-btn:hover {
+  color: #ec008c !important;
+}
+
+/* Right block: Showcase and rotating 3D animations */
+.seller-auth-right {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .seller-auth-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: clamp(40px, 8vw, 96px);
+    background: #050505;
+    border-left: 1px solid rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    position: relative;
+  }
+}
+
+.showcase-visuals {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.showcase-glowing-blob {
+  position: absolute;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(127, 0, 255, 0.12) 0%, rgba(236, 0, 140, 0.08) 50%, transparent 100%);
+  border-radius: 50%;
+  top: 15%;
+  right: -5%;
+  filter: blur(80px);
+  animation: showcaseBlobFloat 12s infinite alternate ease-in-out;
+}
+
+.showcase-3d-box-container {
+  position: absolute;
+  bottom: 8%;
+  right: 12%;
+  width: 320px;
+  height: 320px;
+  perspective: 800px;
+}
+
+.showcase-3d-wireframe {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  top: 100px;
+  left: 100px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  transform: rotateX(45deg) rotateY(45deg);
+  animation: rotate3DBox 24s infinite linear;
+  box-shadow: 0 0 40px rgba(127, 0, 255, 0.1);
+}
+
+.showcase-orbit-ring {
+  position: absolute;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.showcase-orbit-ring.ring-1 {
+  width: 300px;
+  height: 110px;
+  top: 105px;
+  left: 10px;
+  transform: rotateX(70deg) rotateY(15deg);
+  animation: spinOrbit 30s infinite linear;
+}
+
+.showcase-orbit-ring.ring-2 {
+  width: 360px;
+  height: 130px;
+  top: 95px;
+  left: -20px;
+  transform: rotateX(70deg) rotateY(-20deg);
+  animation: spinOrbitInverse 35s infinite linear;
+}
+
+.seller-auth-showcase-content {
+  position: relative;
+  z-index: 2;
+  max-width: 520px;
+}
+
+.seller-auth-showcase-content h1 {
+  font-size: clamp(32px, 3.8vw, 42px);
+  line-height: 1.15;
+  font-weight: 850;
+  color: #ffffff;
+  margin-bottom: 20px;
+  letter-spacing: -0.03em;
+}
+
+.seller-auth-showcase-content p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 32px;
+  font-weight: 450;
+}
+
+.showcase-join-btn {
+  height: 50px;
+  padding: 0 28px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #ffffff;
+  font-weight: 650;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.showcase-join-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.showcase-join-btn:active {
+  transform: translateY(0);
+}
+
+/* Animations */
+@keyframes showcaseBlobFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-30px, 40px) scale(1.1);
+  }
+}
+
+@keyframes rotate3DBox {
+  0% {
+    transform: rotateX(25deg) rotateY(0deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(25deg) rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+@keyframes spinOrbit {
+  0% {
+    transform: rotateX(70deg) rotateY(15deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(70deg) rotateY(15deg) rotateZ(360deg);
+  }
+}
+
+@keyframes spinOrbitInverse {
+  0% {
+    transform: rotateX(70deg) rotateY(-20deg) rotateZ(360deg);
+  }
+  100% {
+    transform: rotateX(70deg) rotateY(-20deg) rotateZ(0deg);
+  }
+}
+
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+
+
 
