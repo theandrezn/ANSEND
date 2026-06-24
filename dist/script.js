@@ -9,6 +9,7 @@ const OAUTH_REDIRECT_STORAGE_KEY = "ansend-oauth-redirect";
 const EMAIL_CONFIRMATION_STORAGE_KEY = "ansend-pending-email-confirmation";
 const ANSEND_PUBLIC_APP_URL = "https://ansendmusic.site";
 const ANSEND_BUILD_ID = window.ANSEND_BUILD_ID || "dev";
+const ANSEND_SERVICE_FEE_RATE = 0.06;
 const SUPABASE_AUTH_STORAGE_KEY = `sb-${SUPABASE_PROJECT_REF}-auth-token`;
 const ANSEND_ADMIN_EMAIL = "games123ytsupremo@gmail.com";
 const COMMUNITY_ROUTE = "comunidade";
@@ -13145,7 +13146,7 @@ async function calculateCartPrices() {
   const rawSubtotalCents = items.reduce((sum, item) => sum + item.priceValCents, 0);
   const totalDiscountsCents = promoDiscountCents + couponDiscountCents;
   const subtotalCents = Math.max(0, rawSubtotalCents - totalDiscountsCents);
-  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const serviceFeeCents = Math.round(subtotalCents * ANSEND_SERVICE_FEE_RATE);
   const totalCents = subtotalCents + serviceFeeCents;
 
   return {
@@ -13423,7 +13424,7 @@ async function checkoutModelFromDirectSelection(beatId, licenseId) {
   if (!selectedLicense) throw new Error("Licença indisponível. Selecione uma licença válida.");
 
   const subtotalCents = Number(selectedLicense.price_cents || 0);
-  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const serviceFeeCents = Math.round(subtotalCents * ANSEND_SERVICE_FEE_RATE);
   const totalCents = subtotalCents + serviceFeeCents;
   const licenseIdForProvider = selectedLicense.id || licenseId;
 
@@ -14057,7 +14058,7 @@ async function renderDirectCheckout() {
     }
 
     const subtotalCents = license.price_cents || 0;
-    const serviceFeeCents = Math.round(subtotalCents * 0.12);
+    const serviceFeeCents = Math.round(subtotalCents * ANSEND_SERVICE_FEE_RATE);
     
     // Calculate direct checkout coupon discount
     const couponCode = appState.directCheckoutCoupon || "";

@@ -13,6 +13,7 @@ import {
 
 const rateLimitStore = globalThis.__ANSEND_RATE_LIMITS || new Map();
 globalThis.__ANSEND_RATE_LIMITS = rateLimitStore;
+const ANSEND_SERVICE_FEE_RATE = 0.06;
 
 function securityHeadersFor(request, contentType = "") {
   const url = new URL(request.url);
@@ -452,7 +453,7 @@ async function validateCheckoutCart(env, cartItems = [], userId = "", authHeader
     });
   }
 
-  const serviceFeeCents = Math.round(subtotalCents * 0.12);
+  const serviceFeeCents = Math.round(subtotalCents * ANSEND_SERVICE_FEE_RATE);
   const totalCents = subtotalCents + serviceFeeCents;
   const fingerprint = await cartFingerprint(userId, resolvedItems);
   return { ok: true, cleanItems: resolvedItems, items, subtotalCents, serviceFeeCents, totalCents, fingerprint };
@@ -623,7 +624,7 @@ async function validateCheckoutQuote(env, cartItems, userId, authHeader, couponC
   checkout.rawSubtotalCents = checkout.items.reduce((sum, item) => sum + item.price_cents, 0);
   checkout.discountCents = checkout.items.reduce((sum, item) => sum + item.discount_cents, 0);
   checkout.subtotalCents = Math.max(0, checkout.rawSubtotalCents - checkout.discountCents);
-  checkout.serviceFeeCents = Math.round(checkout.subtotalCents * 0.12);
+  checkout.serviceFeeCents = Math.round(checkout.subtotalCents * ANSEND_SERVICE_FEE_RATE);
   checkout.totalCents = checkout.subtotalCents + checkout.serviceFeeCents;
   checkout.fingerprint = await cartFingerprint(userId, checkout.cleanItems);
   return checkout;
