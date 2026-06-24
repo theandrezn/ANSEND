@@ -34808,7 +34808,7 @@ body[data-route="cadastrar"] .release-field select,
 body[data-route="cadastrar"] .release-field textarea {
   background: #0D0D0D !important;
   border: 1px solid #1F1F1F !important;
-  border-radius: 8px !important;
+  border-radius: 12px !important;
   color: #FFFFFF !important;
 }
 
@@ -40430,16 +40430,33 @@ body[data-route="cadastrar"] .release-stepper {
   gap: 20px !important;
 }
 
-.release-upload-card {
+body[data-route="cadastrar"] .release-upload-card {
   background: #0b0b0b !important;
   border: 1px solid #242424 !important;
   border-radius: 12px !important;
-  padding: 20px !important;
-  min-height: 180px !important;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  box-sizing: border-box;
+  padding: 14px !important;
+  min-height: 155px !important;
+  height: 155px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-bar {
+  height: 72px !important;
+  background: #000000 !important;
+  border-top: 1px solid #1F1F1F !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-bottom-inner {
+  padding: 0 24px !important;
+}
+
+body[data-route="cadastrar"] .release-container {
+  padding-bottom: 100px !important;
 }
 
 @media (max-width: 980px) {

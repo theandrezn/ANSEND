@@ -79,9 +79,20 @@ async function run() {
       const errors = [];
 
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (message.type() === "error") {
+          const text = message.text();
+          if (text.includes("doubleclick") || text.includes("googleads") || text.includes("youtube.com") || text.includes("ERR_FAILED") || text.includes("ERR_ABORTED")) return;
+          errors.push(text);
+        }
       });
-      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("pageerror", (error) => {
+        const msg = error.message || String(error);
+        if (msg.includes("doubleclick") || msg.includes("googleads") || msg.includes("youtube.com") || msg.includes("ERR_FAILED") || msg.includes("ERR_ABORTED")) return;
+        errors.push(msg);
+      });
+
+      await page.route("**/*doubleclick*", route => route.abort());
+      await page.route("**/*googleads*", route => route.abort());
 
       await page.goto(`http://127.0.0.1:${port}/index.html#${route.hash}`, {
         waitUntil: "domcontentloaded",

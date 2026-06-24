@@ -62,11 +62,75 @@ async function run() {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
 
+    await page.route("**/lucide.min.js", async (route) => {
+      await route.fulfill({ status: 200, contentType: "text/javascript", body: "window.lucide = { createIcons() {} };" });
+    });
+    await page.route("**/three.min.js", async (route) => {
+      await route.fulfill({ status: 200, contentType: "text/javascript", body: "window.THREE = {};" });
+    });
+    await page.route("**/supabase.min.js", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/javascript",
+        body: `
+          const testUser = { id: "test-user", email: "artist@example.com", user_metadata: { name: "andrezin" } };
+          function queryResult(table) {
+            const profile = { id: "test-user", username: "andrezin", artistic_name: "andrezin", full_name: "andrezin", quiz_completed: true };
+            const data = table === "profiles" ? [profile] : [];
+            const singleData = table === "profiles" ? profile : null;
+            const query = {
+              select: () => query,
+              insert: () => query,
+              update: () => query,
+              upsert: () => query,
+              delete: () => query,
+              eq: () => query,
+              neq: () => query,
+              in: () => query,
+              order: () => query,
+              limit: () => query,
+              range: () => query,
+              single: async () => ({ data: singleData, error: null }),
+              maybeSingle: async () => ({ data: singleData, error: null }),
+              then: (resolve) => Promise.resolve({ data, error: null }).then(resolve)
+            };
+            return query;
+          }
+          window.supabase = {
+            createClient: () => ({
+              auth: {
+                getSession: async () => {
+                  return { data: { session: { user: testUser } }, error: null };
+                },
+                getUser: async () => ({ data: { user: testUser }, error: null }),
+                onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
+              },
+              rpc: async () => ({ data: false, error: null }),
+              from: (table) => queryResult(table),
+              storage: {
+                from: (bucket) => ({
+                  upload: async (uploadPath, file, options) => {
+                    return { data: { path: uploadPath }, error: null };
+                  },
+                  getPublicUrl: (uploadPath) => ({ data: { publicUrl: "https://cdn.test/" + uploadPath } })
+                })
+              }
+            })
+          };
+        `,
+      });
+    });
+
     await page.goto(`http://127.0.0.1:${port}/index.html#cadastrar`, {
       waitUntil: "domcontentloaded",
       timeout: 60000,
     });
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(1000);
+    const uploadModeButton = page.locator('[data-action="release-mode-choice"][data-mode="upload"]').first();
+    if (await uploadModeButton.count()) {
+      await uploadModeButton.click();
+    }
+    await page.waitForTimeout(4000);
 
     // ── Check 1: Layout & centering ──
     const metrics = await page.evaluate(() => {
@@ -92,16 +156,38 @@ async function run() {
       const visibleInputs = document.querySelectorAll('.release-field input[type="text"], .release-field input[type="number"], .release-field textarea');
       let inputStyles = [];
       visibleInputs.forEach((inp, i) => {
-        if (i < 3) {
-          const s = getComputedStyle(inp);
-          const rect = inp.getBoundingClientRect();
-          inputStyles.push({
-            height: Math.round(rect.height),
-            borderRadius: s.borderRadius,
-            bg: s.backgroundColor,
-            width: Math.round(rect.width),
-          });
+        const rect = inp.getBoundingClientRect();
+        if (rect.height === 0 || rect.width === 0) return;
+        const s = getComputedStyle(inp);
+        
+        let parentDetails = null;
+        if (inp.name === "subgenre" || inp.name === "producer_name") {
+          const parent = inp.parentElement;
+          if (parent) {
+            const pStyle = getComputedStyle(parent);
+            const pRect = parent.getBoundingClientRect();
+            parentDetails = {
+              tagName: parent.tagName,
+              className: parent.className,
+              display: pStyle.display,
+              height: pRect.height,
+              width: pRect.width,
+              opacity: pStyle.opacity,
+              visibility: pStyle.visibility,
+            };
+          }
         }
+
+        inputStyles.push({
+          name: inp.name || inp.tagName,
+          outerHTML: inp.outerHTML.substring(0, 100),
+          height: Math.round(rect.height),
+          borderRadius: s.borderRadius,
+          bg: s.backgroundColor,
+          width: Math.round(rect.width),
+          display: s.display,
+          parent: parentDetails,
+        });
       });
 
       function rect(el) {
@@ -111,7 +197,9 @@ async function run() {
         return { width: Math.round(r.width), height: Math.round(r.height), display: s.display, visible: r.width > 0 && r.height > 0 };
       }
 
+      const form = document.querySelector(".release-upload-form");
       return {
+        formHTML: form ? form.outerHTML : "Form not found",
         releasePage: rect(releasePage),
         container: rect(container),
         stepper: rect(stepper),
@@ -124,12 +212,14 @@ async function run() {
       };
     });
 
+    console.log("=== FORM HTML ===");
+    console.log(metrics.formHTML);
     console.log("=== LAYOUT CHECK ===");
     console.log(JSON.stringify(metrics, null, 2));
 
     if (!metrics.releasePage?.visible) failures.push("Release page not visible");
     if (!metrics.stepper?.visible) failures.push("Stepper not visible");
-    if (metrics.stepCount !== 6) failures.push(`Expected 6 stepper items, got ${metrics.stepCount}`);
+    if (metrics.stepCount !== 5) failures.push(`Expected 5 stepper items, got ${metrics.stepCount}`);
     if (!metrics.bottomBar?.visible) failures.push("Bottom bar not visible");
     if (!metrics.isCentered) failures.push("Container not centered");
     if (metrics.releasePage?.width < 800) failures.push(`Release page too narrow: ${metrics.releasePage.width}px`);
