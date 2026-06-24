@@ -16826,9 +16826,19 @@ function setupMusicUploadEventListeners() {
   // Real-time active status check toggles
   form.addEventListener("change", (e) => {
     if (e.target.classList.contains("license-active-toggle")) {
-      const idx = Number(e.target.closest("[data-license-index]")?.dataset.licenseIndex);
+      const cardEl = e.target.closest(".release-license-editor-card");
+      const idx = cardEl ? Number(cardEl.dataset.licenseIndex) : NaN;
       if (!isNaN(idx) && appState.releaseLicenses?.[idx]) {
         appState.releaseLicenses[idx].is_active = e.target.checked;
+        if (cardEl) {
+          if (e.target.checked) {
+            cardEl.classList.remove("is-inactive-license");
+            cardEl.classList.add("is-active-license");
+          } else {
+            cardEl.classList.remove("is-active-license");
+            cardEl.classList.add("is-inactive-license");
+          }
+        }
       }
     }
   });
@@ -16849,6 +16859,7 @@ function setupMusicUploadEventListeners() {
     if (e.target.closest(".license-duplicate-btn")) {
       if (idx !== null && appState.releaseLicenses?.[idx]) {
         const copy = { ...appState.releaseLicenses[idx], id: generateUUID(), is_default: false, is_custom: true };
+        copy.license_key = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
         copy.name = `${copy.name} (Cópia)`;
         appState.releaseLicenses.splice(idx + 1, 0, copy);
         refreshReleaseLicensesUI();
@@ -24570,7 +24581,7 @@ function refreshReleaseLicensesUI() {
   if (!container) return;
   
   const cardsHtml = appState.releaseLicenses.map((lic, idx) => {
-    const priceText = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
+    const priceText = lic.price_cents ? formatPriceBRL(lic.price_cents) : "";
 
     const filesLabel = [
       lic.included_mp3 ? "MP3" : "",
@@ -24639,7 +24650,7 @@ function refreshReleaseLicensesUI() {
           </div>
           <div class="license-card-spec-item">
             <strong>Royalties</strong>
-            <span>${lic.buyer_royalty_percentage}% / ${lic.producer_royalty_percentage}%</span>
+            <span>${lic.buyer_royalty_percentage}% Art. / ${lic.producer_royalty_percentage}% Prod.</span>
           </div>
           <div class="license-card-spec-item">
             <strong>Streams</strong>
@@ -24649,7 +24660,7 @@ function refreshReleaseLicensesUI() {
 
         <div class="license-card-footer">
           <div class="license-card-price-wrapper">
-            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required>
+            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required aria-label="Preço da licença">
           </div>
           <button type="button" class="license-edit-terms-btn">
             <i data-lucide="settings" style="width: 13px; height: 13px;"></i>
@@ -25662,7 +25673,7 @@ O LICENCIADO declara ter lido, compreendido e aceitado todos os termos deste con
 Identificador do Pedido: Gerado eletronicamente na confirmacao do pagamento pela ANSEND.`;
 }
 function formatPriceBRL(value) {
-  const cleanValue = String(value).replace(/\\D/g, "");
+  const cleanValue = String(value).replace(/\D/g, "");
   if (!cleanValue) return "";
   const cents = parseInt(cleanValue, 10);
   const formatter = new Intl.NumberFormat("pt-BR", {
@@ -25673,7 +25684,7 @@ function formatPriceBRL(value) {
 }
 
 function parsePriceCents(formattedValue) {
-  const cleanValue = String(formattedValue).replace(/\\D/g, "");
+  const cleanValue = String(formattedValue).replace(/\D/g, "");
   return parseInt(cleanValue, 10) || 0;
 }
 /* === END ANSEND BEAT LICENSING SYSTEM HELPERS === */

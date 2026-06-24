@@ -40509,7 +40509,7 @@ body[data-route="cadastrar"] .release-submit-btn {
   border: 1px solid #ffffff !important;
   color: #000000 !important;
   box-shadow: none !important;
-  font-family: "Montserrat", sans-serif !important;
+  font-family: var(--font-heading) !important;
   font-weight: 600 !important;
 }
 
@@ -40525,7 +40525,7 @@ body[data-route="cadastrar"] .release-draft-btn {
   border: 1px solid #252529 !important;
   color: #f5f5f7 !important;
   box-shadow: none !important;
-  font-family: "Montserrat", sans-serif !important;
+  font-family: var(--font-heading) !important;
   font-weight: 500 !important;
 }
 
@@ -40539,7 +40539,7 @@ body[data-route="cadastrar"] .release-back-btn {
   background: transparent !important;
   border: 1px solid #252529 !important;
   color: #a1a1aa !important;
-  font-family: "Montserrat", sans-serif !important;
+  font-family: var(--font-heading) !important;
   font-weight: 500 !important;
 }
 
@@ -40606,7 +40606,7 @@ body[data-route="cadastrar"] .release-back-btn:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: "Montserrat", sans-serif;
+  font-family: var(--font-heading);
   font-size: 13px;
   color: #f5f5f7;
   cursor: pointer;
@@ -40808,7 +40808,7 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
 }
 
 .license-card-desc {
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-size: 12px;
   line-height: 1.5;
   color: #8e8e93;
@@ -40845,12 +40845,12 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-weight: 600;
 }
 
 .license-card-spec-item span {
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-size: 12px;
   font-weight: 500;
   color: #e4e4e7;
@@ -40884,7 +40884,7 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
   color: #ffffff;
   padding: 0 12px !important;
   border-radius: 8px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 13px;
   box-sizing: border-box;
@@ -40905,7 +40905,7 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
   color: #e4e4e7;
   padding: 0 14px;
   border-radius: 8px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 12px;
   display: inline-flex;
@@ -40932,7 +40932,7 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
 }
 
 .license-badge {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-ui);
   font-size: 9px;
   font-weight: 650;
   padding: 2px 8px;
@@ -40969,9 +40969,9 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
 }
 
 .license-badge-custom {
-  background: rgba(245, 158, 11, 0.08);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.18);
+  background: rgba(45, 212, 191, 0.08);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.18);
 }
 
 .add-custom-license-card {
