@@ -8,6 +8,9 @@ const styles = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 
 const checks = [
   [worker.includes("MERCADO_PAGO_ACCESS_TOKEN"), "Worker requires Mercado Pago access token secret"],
+  [worker.includes("const ANSEND_SERVICE_FEE_RATE = 0.06"), "Worker keeps ANSEND service fee fixed at 6%"],
+  [worker.includes("Math.round(subtotalCents * ANSEND_SERVICE_FEE_RATE)"), "Initial checkout cart quote uses the 6% service fee constant"],
+  [worker.includes("Math.round(checkout.subtotalCents * ANSEND_SERVICE_FEE_RATE)"), "Final checkout quote uses the 6% service fee constant"],
   [worker.includes('payment_method_id: "pix"'), "Worker creates Pix payments"],
   [worker.includes('"/v1/payments"'), "Worker calls Mercado Pago payments API"],
   [worker.includes('"X-Idempotency-Key"'), "Worker sends Mercado Pago idempotency key"],

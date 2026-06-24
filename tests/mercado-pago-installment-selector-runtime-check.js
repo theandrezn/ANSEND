@@ -21,7 +21,7 @@ const root = path.resolve(__dirname, "..");
         return new Response(JSON.stringify({ success: true, public_key: "TEST-PUBLIC-KEY", supported_methods: ["pix", "card"] }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       if (href.includes("/api/checkout/quote")) {
-        return new Response(JSON.stringify({ success: true, quote: { subtotal_cents: 9990, service_fee_cents: 1199, discount_cents: 0, total_cents: 11189 } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: true, quote: { subtotal_cents: 9990, service_fee_cents: 599, discount_cents: 0, total_cents: 10589 } }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     };
@@ -44,7 +44,7 @@ const root = path.resolve(__dirname, "..");
     await page.evaluate(async () => {
       await window.AnsendCheckout.open({
         mountTarget: document.querySelector("#app"),
-        quote: { subtotalCents: 9990, serviceFeeCents: 1199, discountCents: 0, totalCents: 11189 },
+        quote: { subtotalCents: 9990, serviceFeeCents: 599, discountCents: 0, totalCents: 10589 },
         items: [{ beatId: "beat", cartId: "cart", title: "Beat", producer: "ANSEND", licenseName: "Premium", formats: "MP3, WAV", priceCents: 9990 }],
         cartItems: [{ beat_id: "beat", license_id: "premium" }],
         refreshIcons() {},
@@ -100,7 +100,7 @@ const root = path.resolve(__dirname, "..");
     const staleCallbacks = window.__cardFormConfigs[0].callbacks;
     await window.AnsendCheckout.open({
       mountTarget: document.querySelector("#app"),
-      quote: { subtotalCents: 9990, serviceFeeCents: 1199, discountCents: 0, totalCents: 11189 },
+      quote: { subtotalCents: 9990, serviceFeeCents: 599, discountCents: 0, totalCents: 10589 },
       items: [{ beatId: "beat", cartId: "cart", title: "Beat", producer: "ANSEND", licenseName: "Premium", formats: "MP3, WAV", priceCents: 9990 }],
       cartItems: [{ beat_id: "beat", license_id: "premium" }],
       refreshIcons() {},
