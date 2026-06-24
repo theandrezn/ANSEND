@@ -12876,18 +12876,8 @@ async function renderPurchases() {
         </button>
       ` : '';
 
-      const deleteBtnHtml = !isCompleted ? `
-        <button type="button" onclick="event.stopPropagation(); deleteUnpaidPurchase('${item.orderId || item.attemptId}', '${item.type}')" title="Remover pedido" 
-                style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: rgba(255,255,255,0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; transition: all 0.2s ease; z-index: 10;" 
-                onmouseover="this.style.color='#ff4444'; this.style.background='rgba(255,68,68,0.1)'" 
-                onmouseout="this.style.color='rgba(255,255,255,0.4)'; this.style.background='transparent'">
-          <i data-lucide="x" style="width: 14px; height: 14px;"></i>
-        </button>
-      ` : '';
-
       return `
-        <article class="purchase-item purchase-card-hover" style="position: relative;">
-          ${deleteBtnHtml}
+        <article class="purchase-item purchase-card-hover">
           <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
             <div class="compras-cover-wrapper" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
               <img src="${beatCover}">
@@ -12914,11 +12904,22 @@ async function renderPurchases() {
               </div>
             </div>
             
-            <div style="text-align: right; flex-shrink: 0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 120px;">
-              <span style="font-size: 16px; font-weight: bold; color: #fff;">${priceText}</span>
-              <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}">
-                ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
-              </a>
+            <div style="text-align: right; flex-shrink: 0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 130px;">
+              <span style="font-size: 16px; font-weight: bold; color: #fff; margin-bottom: 4px;">${priceText}</span>
+              <div style="display:flex; gap:8px; align-items:center; width:100%; justify-content:flex-end;">
+                ${!isCompleted ? `
+                  <button type="button" onclick="event.stopPropagation(); deleteUnpaidPurchase('${item.orderId || item.attemptId}', '${item.type}')" 
+                          title="Remover pedido" 
+                          style="background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: #ff5555; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;" 
+                          onmouseover="this.style.background='rgba(255,68,68,0.2)'; this.style.color='#ff3333'; this.style.borderColor='rgba(255,68,68,0.5)';" 
+                          onmouseout="this.style.background='rgba(255,68,68,0.1)'; this.style.color='#ff5555'; this.style.borderColor='rgba(255,68,68,0.3)';">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                  </button>
+                ` : ''}
+                <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}" style="height:34px; display:inline-flex; align-items:center; justify-content:center; padding:0 16px; font-size:12px; font-weight:600; border-radius:8px; text-decoration:none; white-space:nowrap; box-sizing:border-box;">
+                  ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
+                </a>
+              </div>
             </div>
           </div>
         </article>
