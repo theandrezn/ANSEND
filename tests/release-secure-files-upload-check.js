@@ -86,7 +86,7 @@ async function run() {
           window.__releaseUploads = [];
           window.__releaseDrafts = [];
           function queryResult(table) {
-            const profile = { id: testUser.id, username: "andrezin", artistic_name: "andrezin", full_name: "andrezin" };
+            const profile = { id: testUser.id, username: "andrezin", artistic_name: "andrezin", full_name: "andrezin", quiz_completed: true };
             const query = {
               select: () => query,
               insert: () => query,

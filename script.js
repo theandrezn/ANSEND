@@ -9442,7 +9442,8 @@ function profileTrackRows(items, display, isOwner) {
       const meta = [raw.genre || beat.tags?.[0], raw.bpm ? `${raw.bpm} BPM` : beat.tags?.[1]].filter(Boolean).join(" / ");
       const producer = raw.producer_name || raw.artist_name || display.name || beat.producer;
       const cover = beat.cover || raw.cover_url || "";
-      return `<article class="profile-track-row" data-beat-id="${htmlEscape(beat.id)}">
+      const isPublished = item.status === "published";
+      return `<article class="profile-track-row" data-beat-id="${htmlEscape(beat.id)}" ${isOwner ? 'style="grid-template-columns: 36px minmax(0, 1fr) minmax(100px, 150px) 90px 180px !important;"' : ''}>
         ${adminDeleteButton("beat", beat, "admin-delete-beat-row")}
         <span class="profile-track-index">${index + 1}</span>
         <div class="profile-track-main">
@@ -9454,7 +9455,17 @@ function profileTrackRows(items, display, isOwner) {
         </div>
         <span class="profile-track-meta">${htmlEscape(meta || display.roleLabel)}</span>
         <span class="profile-track-price">${htmlEscape(price)}</span>
-        <button type="button" class="profile-play-mini" data-action="play" data-id="${htmlEscape(beat.id)}" aria-label="Tocar ${htmlEscape(beat.title)}"><i data-lucide="play"></i></button>
+        ${isOwner ? `
+          <div class="profile-track-actions" style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
+            <button type="button" class="track-action-btn edit-btn" onclick="event.stopPropagation(); continueReleaseDraft('${beat.id}')" title="Editar rascunho / beat"><i data-lucide="pencil" style="width: 14px; height: 14px;"></i></button>
+            <button type="button" class="track-action-btn duplicate-btn" onclick="event.stopPropagation(); duplicateReleaseBeat('${beat.id}')" title="Duplicar release"><i data-lucide="copy" style="width: 14px; height: 14px;"></i></button>
+            <button type="button" class="track-action-btn toggle-btn" data-action="toggle-catalog-status" data-id="${beat.id}" title="${isPublished ? "Tornar Rascunho" : "Publicar"}"><i data-lucide="${isPublished ? "eye-off" : "eye"}" style="width: 14px; height: 14px;"></i></button>
+            <button type="button" class="track-action-btn delete-btn" data-action="delete-catalog" data-id="${beat.id}" title="Excluir" aria-label="Remover ${htmlEscape(beat.title)}"><i data-lucide="trash-2" style="width: 14px; height: 14px;"></i></button>
+            <button type="button" class="profile-play-mini" data-action="play" data-id="${htmlEscape(beat.id)}" aria-label="Tocar ${htmlEscape(beat.title)}"><i data-lucide="play"></i></button>
+          </div>
+        ` : `
+          <button type="button" class="profile-play-mini" data-action="play" data-id="${htmlEscape(beat.id)}" aria-label="Tocar ${htmlEscape(beat.title)}"><i data-lucide="play"></i></button>
+        `}
       </article>`;
     }).join("")}
   </div>`;
@@ -12196,8 +12207,95 @@ async function renderPurchases() {
       a.remove();
       showToast("Contrato baixado!", "check-circle");
     };
+    window.showCustomConfirm = function(title, message) {
+      return new Promise((resolve) => {
+        const existing = document.querySelector(".compras-confirm-modal");
+        if (existing) {
+          existing.remove();
+        }
+        
+        const modalHtml = `
+          <div class="compras-confirm-modal" role="dialog" aria-modal="true">
+            <div class="compras-confirm-backdrop"></div>
+            <div class="compras-confirm-panel">
+              <div class="compras-confirm-header">
+                <h3 class="compras-confirm-title">${htmlEscape(title)}</h3>
+                <button type="button" class="compras-confirm-close-btn" aria-label="Fechar">
+                  <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+              </div>
+              <div class="compras-confirm-body">
+                <p>${htmlEscape(message)}</p>
+              </div>
+              <div class="compras-confirm-footer">
+                <button type="button" class="compras-btn-cancel">Cancelar</button>
+                <button type="button" class="compras-btn-confirm">Remover</button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        document.body.classList.add("modal-open");
+        
+        const modalEl = document.querySelector(".compras-confirm-modal");
+        const backdropEl = modalEl.querySelector(".compras-confirm-backdrop");
+        const closeBtnEl = modalEl.querySelector(".compras-confirm-close-btn");
+        const cancelBtnEl = modalEl.querySelector(".compras-btn-cancel");
+        const confirmBtnEl = modalEl.querySelector(".compras-btn-confirm");
+        
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+          window.lucide.createIcons();
+        }
+        
+        const handleKeyDown = (e) => {
+          if (e.key === "Escape") {
+            close(false);
+          }
+        };
+        document.addEventListener("keydown", handleKeyDown);
+        
+        function close(value) {
+          document.removeEventListener("keydown", handleKeyDown);
+          modalEl.classList.add("is-closing");
+          setTimeout(() => {
+            modalEl.remove();
+            document.body.classList.remove("modal-open");
+          }, 200);
+          resolve(value);
+        }
+        
+        backdropEl.addEventListener("click", () => close(false));
+        closeBtnEl.addEventListener("click", () => close(false));
+        cancelBtnEl.addEventListener("click", () => close(false));
+        confirmBtnEl.addEventListener("click", () => close(true));
+      });
+    };
     window.deleteUnpaidPurchase = async function(tableId, type) {
-      if (!confirm("Deseja realmente remover este pedido pendente da sua lista?")) return;
+      const confirmed = await window.showCustomConfirm(
+        "Remover Pedido",
+        "Deseja realmente remover este pedido pendente da sua lista?"
+      );
+      if (!confirmed) return;
+      
+      // Find the card element to update optimistically
+      let cardEl = null;
+      const buttons = document.querySelectorAll("button[onclick*='deleteUnpaidPurchase']");
+      for (const btn of buttons) {
+        if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(tableId)) {
+          cardEl = btn.closest("article.purchase-item");
+          break;
+        }
+      }
+      
+      if (cardEl) {
+        cardEl.style.transition = "all 0.25s ease";
+        cardEl.style.opacity = "0";
+        cardEl.style.transform = "scale(0.95)";
+        setTimeout(() => {
+          cardEl.style.display = "none";
+        }, 250);
+      }
       
       try {
         if (type === "order_item") {
@@ -12215,11 +12313,17 @@ async function renderPurchases() {
             .eq("buyer_id", appState.authUser.id);
           if (error) throw error;
         }
-        showToast("Pedido removido com sucesso!", "trash-2");
         renderPurchases();
       } catch (err) {
         console.error("Error deleting purchase:", err);
         showToast("Erro ao remover o pedido.", "alert-triangle");
+        if (cardEl) {
+          cardEl.style.display = "";
+          setTimeout(() => {
+            cardEl.style.opacity = "1";
+            cardEl.style.transform = "scale(1)";
+          }, 50);
+        }
       }
     };
   }
@@ -15601,6 +15705,9 @@ async function clearReleaseUploadDraft() {
 
 async function restoreReleaseCoverDraft(form = releaseFormElement()) {
   if (!form || !supabaseClient || !appState.authUser?.id) return;
+  const currentBeatId = form.dataset.beatId;
+  if (!currentBeatId) return;
+
   const { data, error } = await supabaseClient
     .from("release_upload_drafts")
     .select("*")
@@ -15610,8 +15717,8 @@ async function restoreReleaseCoverDraft(form = releaseFormElement()) {
     console.warn("[ANSEND release] Nao foi possivel restaurar rascunho de upload do Supabase.", error);
     return;
   }
-  if (!data) return;
-  if (data.beat_id) form.dataset.beatId = data.beat_id;
+  if (!data || data.beat_id !== currentBeatId) return; // Discard mismatching/old release drafts
+
   if (data.cover_url && data.cover_path) {
     form.elements.cover_url.value = data.cover_url;
     form.elements.cover_path.value = data.cover_path;
@@ -16210,92 +16317,58 @@ function syncReleaseForm(form = releaseFormElement()) {
 }
 
 function prepareReleaseFilesLayout(form = releaseFormElement()) {
-  const panel = form?.querySelector('.release-panel[data-panel="2"]');
-  const layout = panel?.querySelector(".release-upload-layout");
-  if (!layout || layout.dataset.enhanced === "true") return;
-  const mp3Drop = layout.querySelector(".release-secure-mp3-drop");
-  const wavDrop = layout.querySelector(".release-secure-wav-drop");
-  const stemsDrop = layout.querySelector(".release-secure-stems-drop");
-  const audioDrop = layout.querySelector(".release-audio-drop");
-  const audioInfo = layout.querySelector(".release-requirements");
-  const previewGrid = layout.querySelector(".release-audio-drop")?.parentElement;
-  const mp3Row = mp3Drop?.parentElement;
-  const wavRow = wavDrop?.parentElement;
-  const stemsRow = stemsDrop?.parentElement;
-  const secureList = mp3Row?.parentElement;
-  if (!previewGrid || !mp3Row || !wavRow || !stemsRow || !audioDrop || !audioInfo) return;
+  if (!form) return;
+  
+  // Clean up any old listeners by using delegation or simple listeners
+  form.querySelectorAll(".release-file-menu-trigger").forEach(trigger => {
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const menu = trigger.nextElementSibling;
+      form.querySelectorAll(".release-file-menu-dropdown").forEach(m => {
+        if (m !== menu) m.style.display = "none";
+      });
+      if (menu) {
+        menu.style.display = menu.style.display === "block" ? "none" : "block";
+      }
+    };
+  });
+  
+  form.querySelectorAll(".btn-replace-file").forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetType = btn.dataset.target;
+      const input = form.querySelector(`input[data-upload-type="${targetType}"]`);
+      if (input) input.click();
+      
+      const menu = btn.closest(".release-file-menu-dropdown");
+      if (menu) menu.style.display = "none";
+    };
+  });
 
-  const makeSectionHead = (title, description, badge) => {
-    const head = document.createElement("div");
-    head.className = "release-file-section-head";
-    head.innerHTML = `<div><h3>${title}</h3><p>${description}</p></div>${badge ? `<span class="release-requirement-badge ${badge.className}">${badge.text}</span>` : ""}`;
-    return head;
-  };
+  // Fechar dropdowns ao clicar fora
+  document.addEventListener("click", () => {
+    form.querySelectorAll(".release-file-menu-dropdown").forEach(m => {
+      m.style.display = "none";
+    });
+  });
 
-  const makeCard = ({ type, icon, title, description, format, badgeClass, badgeText, row }) => {
-    const drop = row.querySelector(".release-dropzone");
-    const meta = row.querySelector(":scope > div:not(.release-dropzone)");
-    const card = document.createElement("article");
-    card.className = "release-upload-card";
-    card.dataset.deliveryCard = type;
-    const head = document.createElement("div");
-    head.className = "release-upload-card-head";
-    head.innerHTML = `<div class="release-upload-icon"><i data-lucide="${icon}"></i></div><span class="release-requirement-badge ${badgeClass}">${badgeText}</span>`;
-    const copy = document.createElement("div");
-    copy.className = "release-upload-card-copy";
-    copy.innerHTML = `<strong>${title}</strong><p>${description}</p><small>Formato aceito: ${format}</small>`;
-    drop.removeAttribute("style");
-    const dropTitle = drop.querySelector(":scope > strong");
-    const dropHelp = drop.querySelector(":scope > small");
-    if (dropTitle) dropTitle.textContent = "Selecionar arquivo";
-    if (dropHelp) dropHelp.textContent = type === "secure_stems" ? "Apenas ZIP para a licenca exclusiva" : type === "secure_wav" ? "WAV masterizado para licencas premium" : "MP3 limpo para a licenca basica";
-    card.append(head, copy, drop);
-    if (meta) {
-      meta.classList.add("release-file-actions");
-      const result = meta.querySelector(".secure-mp3-preview, .secure-wav-preview, .secure-stems-preview");
-      if (result) result.classList.add("release-file-result");
-      const usePreview = meta.querySelector(".use-preview-as-delivery-btn");
-      if (usePreview) usePreview.textContent = "Usar arquivo do preview";
-      card.append(meta);
-    }
-    return card;
-  };
-
-  audioDrop.removeAttribute("style");
-  const audioTitle = audioDrop.querySelector(":scope > strong");
-  const audioHelp = audioDrop.querySelector(":scope > small");
-  if (audioTitle) audioTitle.textContent = "Enviar audio de preview";
-  if (audioHelp) audioHelp.textContent = "MP3 ou WAV - arraste o arquivo ou clique para selecionar";
-  audioInfo.classList.add("release-preview-state");
-
-  const previewSection = document.createElement("section");
-  previewSection.className = "release-preview-upload-section";
-  const previewBody = document.createElement("div");
-  previewBody.className = "release-preview-upload-grid";
-  previewBody.append(audioDrop, audioInfo);
-  previewSection.append(
-    makeSectionHead("Audio de Preview", "Arquivo publico usado no player da pagina do beat.", { className: "is-required", text: "Obrigatorio" }),
-    previewBody
-  );
-
-  const deliverySection = document.createElement("section");
-  deliverySection.className = "release-delivery-section";
-  const deliveryGrid = document.createElement("div");
-  deliveryGrid.className = "release-delivery-grid";
-  deliveryGrid.append(
-    makeCard({ type: "secure_mp3", icon: "shield-check", title: "MP3 de Alta Qualidade", description: "Arquivo sem tags para entrega ao comprador.", format: "MP3", badgeClass: "is-required", badgeText: "Obrigatorio", row: mp3Row }),
-    makeCard({ type: "secure_wav", icon: "waveform", title: "WAV Masterizado", description: "Arquivo de alta fidelidade e sem perda.", format: "WAV", badgeClass: "is-conditional", badgeText: "Exigido na Lease Premium", row: wavRow }),
-    makeCard({ type: "secure_stems", icon: "archive", title: "ZIP de Stems", description: "Pistas individuais do beat organizadas em um arquivo ZIP.", format: "ZIP", badgeClass: "is-conditional", badgeText: "Exigido na Licenca Exclusiva", row: stemsRow })
-  );
-  deliverySection.append(
-    makeSectionHead("Arquivos para entrega", "Estes arquivos serao disponibilizados ao comprador de acordo com a licenca escolhida."),
-    deliveryGrid
-  );
-
-  layout.replaceChildren(previewSection, deliverySection);
-  layout.classList.add("release-files-layout", "release-files-redesign");
-  layout.dataset.enhanced = "true";
-  secureList?.remove?.();
+  // Clique na área do card/dropzone para abrir seleção (apenas se não houver arquivo)
+  form.querySelectorAll(".release-dropzone").forEach(card => {
+    card.onclick = (e) => {
+      // Se clicar no player de áudio ou nos botões de ação ou menu, não ativa seleção
+      if (e.target.closest(".use-preview-as-delivery-btn") || 
+          e.target.closest(".release-file-actions-menu") || 
+          e.target.closest(".release-audio-player") ||
+          card.classList.contains("has-file")) {
+        return;
+      }
+      const input = card.querySelector(".release-file-input");
+      if (input) input.click();
+    };
+  });
+  
   updateReleaseFileRequirementBadges(form);
 }
 
@@ -17173,6 +17246,38 @@ function hydrateReleaseDetailsStep(form, producerName, genreOptions, keyOptions)
 }
 
 function renderReleaseModeSelector() {
+  const drafts = appState.ownedCatalogItems ? appState.ownedCatalogItems.filter(item => item.status === "draft") : [];
+  
+  let draftsSectionHtml = "";
+  if (drafts.length > 0) {
+    draftsSectionHtml = `
+      <div class="release-drafts-list-section" style="margin-top: 32px; width: 100%; max-width: 1080px; margin-inline: auto;">
+        <h3 style="font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 16px; text-align: left;">Continuar Rascunho</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${drafts.map(d => {
+            const date = new Date(d.updated_at || d.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            const coverUrl = d.cover_url || "assets/ansend-logo-square.png";
+            return `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #0b0b0b; border: 1px solid #242424; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <img src="${coverUrl}" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                  <div style="text-align: left;">
+                    <strong style="color: #fff; font-size: 14px; display: block;">${htmlEscape(d.title || "Sem título")}</strong>
+                    <small style="color: #8a8a8a; font-size: 12px;">Última edição: ${date}</small>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="compras-btn-cancel" onclick="event.preventDefault(); continueReleaseDraft('${d.id}')" style="padding: 6px 14px; font-size: 12px;">Continuar</button>
+                  <button type="button" class="compras-btn-cancel" onclick="event.preventDefault(); deleteReleaseDraft('${d.id}')" style="padding: 6px 14px; font-size: 12px; color: #ff4d4f; border-color: rgba(255, 77, 79, 0.2); background: rgba(255, 77, 79, 0.05);">Excluir</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
   appView.innerHTML = `<section class="release-mode-selector" aria-labelledby="releaseModeTitle">
     <header class="release-mode-hero">
       <div>
@@ -17181,7 +17286,7 @@ function renderReleaseModeSelector() {
       </div>
       <aside class="release-aside-card" aria-label="Resumo do sistema de publicacao">
         <strong>Sistema ANSEND</strong>
-        <small>Uploads protegidos, metadados organizados e publicação persistente no catálogo.</small>
+        <small>Uploads protegidos, metadados organizados e publicação de rascunhos no catálogo.</small>
       </aside>
     </header>
 
@@ -17256,6 +17361,8 @@ function renderReleaseModeSelector() {
         <span class="release-mode-cta">Importar catálogo <i data-lucide="arrow-right"></i></span>
       </button>
     </div>
+
+    ${draftsSectionHtml}
 
     <footer class="release-mode-note">
       <i data-lucide="shield-check"></i>
@@ -17873,7 +17980,7 @@ async function publishCatalogImport() {
   showToast(failed ? `Catalogo publicado parcialmente: ${published} ok, ${failed} falharam.` : "Catalogo publicado com sucesso.", failed ? "triangle-alert" : "cloud-check");
 }
 
-function renderMusicUpload(mode = appState.releaseMode || "selector") {
+function renderMusicUpload(mode = appState.releaseMode || "selector", editBeatId = null) {
   if (!supabaseClient || !appState.authUser) {
     debugAuth("release_auth_blocked", { reason: !supabaseClient ? "supabase_not_configured" : "render_no_session" });
     appView.innerHTML = `
@@ -17907,7 +18014,7 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
   const profile = activeProfile();
   const display = profileDisplayData(profile);
   const releaseProducerName = display.name || profile?.artistic_name || profile?.full_name || profile?.username || appState.authUser?.email?.split("@")[0] || "ANSEND";
-  const beatId = generateUUID();
+  const beatId = editBeatId || generateUUID();
   initializeDefaultReleaseLicenses(beatId);
   const stepLabels = ["Detalhes", "Capa", "Arquivos", "Licenças", "Revisão"];
   const genreList = ["Trap","Funk","Drill","R&B","Boom Bap","Afrobeat","Gospel Trap","Pop","Lo-Fi","Piseiro","Sertanejo","Reggaeton"];
@@ -17965,126 +18072,179 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
 
     // STEP 2 — Arquivos
     + '<section class="release-panel" data-panel="2">'
-    + '  <div class="release-panel-header"><h2>Upload de Arquivos</h2><p>Envie o áudio de preview e os arquivos correspondentes para entrega segura.</p></div>'
+    + '  <div class="release-panel-header" style="margin-bottom: 24px;">'
+    + '    <h2 style="font-weight: 600; font-size: 28px;">Arquivos</h2>'
+    + '    <p style="color: #8a8a8a; font-size: 14px;">Envie o áudio de preview e os arquivos correspondentes para entrega segura.</p>'
+    + '  </div>'
     + '  <div class="release-files-section-container">'
-    + '    <div class="release-files-group-title">Áudio de Preview</div>'
-    + '    <p class="release-files-group-desc">Arquivo público usado no player da página do beat.</p>'
-    + '    <div class="release-files-grid-preview">'
-    + '      <div class="release-file-card release-dropzone release-audio-drop" data-upload-drop="audio">'
-    + '        <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio">'
-    + '        <div class="dropzone-unuploaded">'
-    + '          <div class="release-upload-icon"><i data-lucide="music"></i></div>'
-    + '          <div class="file-card-header"><strong>Áudio de Preview (Público)</strong><span class="file-badge file-badge-required">Obrigatório</span></div>'
-    + '          <small>MP3, WAV ou FLAC com tag (opcional)</small>'
-    + '        </div>'
-    + '        <p class="release-upload-error" hidden></p>'
-    + '        <div class="upload-progress-container" style="display:none;">'
-    + '          <div class="upload-progress-header"><span>Enviando preview...</span><span class="upload-progress-percent">0%</span></div>'
-    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
-    + '        </div>'
-    + '        <div class="release-audio-preview" style="display:none; flex-direction: column; gap: 8px; width: 100%;">'
-    + '          <div class="release-audio-preview-header" style="display:flex; justify-content:space-between; align-items:center;">'
-    + '            <span style="color:#22c55e; font-weight:bold; font-size:12px;">Pronto</span>'
-    + '            <button type="button" class="release-remove-btn" data-action="remove-audio"><i data-lucide="trash-2"></i> Remover</button>'
+    + '    <div style="font-family:\'Montserrat\', sans-serif; font-size:16px; font-weight:700; color:#fff; margin-bottom: 4px; text-align: left;">Áudio de Preview</div>'
+    + '    <p style="color: #8a8a8a; font-size: 13px; margin: 0 0 16px 0; text-align: left;">Arquivo público utilizado na página do beat.</p>'
+    + '    <div class="release-files-grid-preview" style="grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr) !important; gap: 20px; margin-bottom: 32px;">'
+    + '      <div class="release-preview-left-col">'
+    + '        <div class="release-dropzone release-audio-drop" data-upload-drop="audio" style="min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; box-sizing: border-box; cursor: pointer;">'
+    + '          <input class="release-file-input" type="file" accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/mp3" data-upload-type="audio" style="display: none;">'
+    + '          <div class="dropzone-unuploaded" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">'
+    + '            <div class="release-upload-icon" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; color: #fff; margin-bottom: 4px;"><i data-lucide="music"></i></div>'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 600;">Arraste seu áudio aqui</strong>'
+    + '            <span style="color: #8a8a8a; font-size: 13px;">ou selecione um arquivo</span>'
+    + '            <small style="color: #8a8a8a; font-size: 12px; margin-top: 4px;">MP3, WAV ou FLAC • máximo de 100 MB</small>'
+    + '            <button type="button" class="compras-btn-cancel" style="margin-top:12px; padding: 6px 14px; font-size: 12px;">Selecionar arquivo</button>'
     + '          </div>'
-    + '          <div class="release-audio-info" style="display:flex; gap:8px; align-items:center;">'
-    + '            <i data-lucide="file-audio" style="width:24px;height:24px;"></i>'
-    + '            <div class="release-audio-meta" style="text-align: left;">'
-    + '              <strong data-audio-name style="font-size:12px; display:block; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Nome do arquivo.wav</strong>'
-    + '              <small data-audio-size style="font-size:10px; color:var(--beat-muted);">0 MB · 0:00</small>'
+    + '          <p class="release-upload-error" hidden style="color: #ff4d4f; font-size: 12px; margin-top: 8px;"></p>'
+    + '          <div class="upload-progress-container" style="display:none; width:100%;">'
+    + '            <div class="upload-progress-header" style="display: flex; justify-content: space-between; color: #fff; font-size: 12px; margin-bottom: 8px;"><span>Enviando preview...</span><span class="upload-progress-percent">0%</span></div>'
+    + '            <div class="upload-progress-track" style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 8px;"><div class="upload-progress-bar" style="height: 100%; background: #fff; width: 0%;"></div></div>'
+    + '          </div>'
+    + '          <div class="release-audio-preview" style="display:none; flex-direction:column; gap:12px; width:100%;">'
+    + '            <div class="release-audio-preview-header" style="display:flex; justify-content:space-between; align-items:center;">'
+    + '              <span style="color:#16d46b; font-weight:700; font-size:12px; text-transform:uppercase; display:flex; align-items:center; gap:6px;"><i data-lucide="check" style="width:14px; height:14px;"></i> Upload concluído</span>'
+    + '              <div class="release-file-actions-menu">'
+    + '                <button type="button" class="release-file-menu-trigger" aria-label="Ações do arquivo"><i data-lucide="more-horizontal"></i></button>'
+    + '                <div class="release-file-menu-dropdown" style="display:none;">'
+    + '                  <button type="button" class="release-menu-item btn-replace-file" data-target="audio"><i data-lucide="refresh-cw"></i> Substituir arquivo</button>'
+    + '                  <button type="button" class="release-menu-item btn-remove-file" data-action="remove-audio" style="color:#ff4d4f;"><i data-lucide="trash-2"></i> Remover</button>'
+    + '                </div>'
+    + '              </div>'
     + '            </div>'
+    + '            <div class="release-audio-info" style="display:flex; gap:12px; align-items:center; text-align: left;">'
+    + '              <div style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.06);"><i data-lucide="file-audio" style="width:20px; height:20px; color:#fff;"></i></div>'
+    + '              <div class="release-audio-meta" style="flex:1; min-width:0;">'
+    + '                <strong data-audio-name style="font-size:14px; font-weight:600; color:#f5f5f5; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Nome do arquivo.wav</strong>'
+    + '                <small data-audio-size style="font-size:12px; color:#8a8a8a; font-weight:500;">WAV • 0 MB • 0:00</small>'
+    + '              </div>'
+    + '            </div>'
+    + '            <audio class="release-audio-player" controls preload="metadata" style="width:100%; height:32px;"></audio>'
     + '          </div>'
-    + '          <audio class="release-audio-player" controls preload="metadata" style="width:100%; height:32px;"></audio>'
     + '        </div>'
     + '      </div>'
-    + '      <div class="release-file-card release-requirements release-preview-player-card">'
-    + '        <strong>Áudio Preview</strong>'
-    + '        <p class="preview-description-text" style="font-size:11px; color:var(--beat-muted); margin-top:8px; line-height:1.6; text-align:left;">Este arquivo ficará acessível publicamente no player da página do beat. Se desejar, adicione tags de voz (tagged) para proteger sua criação.</p>'
+    + '      <div class="release-preview-right-col">'
+    + '        <div class="release-info-panel" style="text-align: left;">'
+    + '          <h3>Sobre o preview</h3>'
+    + '          <ul class="release-info-list">'
+    + '            <li><i data-lucide="globe"></i> <span>O preview será público na página do beat</span></li>'
+    + '            <li><i data-lucide="file-audio"></i> <span>Formatos aceitos: <strong>MP3, WAV ou FLAC</strong></span></li>'
+    + '            <li><i data-lucide="hard-drive"></i> <span>Limite de tamanho: <strong>100 MB</strong></span></li>'
+    + '            <li><i data-lucide="shield"></i> <span>Recomendamos o uso de <strong>tag de voz</strong></span></li>'
+    + '          </ul>'
+    + '        </div>'
     + '      </div>'
     + '    </div>'
-    + '    <div class="release-files-group-title" style="margin-top: 32px;">Arquivos para entrega</div>'
-    + '    <p class="release-files-group-desc">Estes arquivos serão disponibilizados ao comprador de acordo com a licença escolhida.</p>'
-    + '    <div class="release-files-grid-delivery release-files-layout">'
-    + '      <div class="release-file-card release-dropzone release-secure-mp3-drop" data-upload-drop="secure_mp3">'
-    + '        <input class="release-file-input" type="file" accept="audio/mpeg,audio/mp3" data-upload-type="secure_mp3">'
-    + '        <div class="dropzone-unuploaded">'
-    + '          <div class="release-upload-icon"><i data-lucide="shield-check"></i></div>'
-    + '          <div class="file-card-header"><strong>MP3 de Alta Qualidade</strong><span class="file-badge file-badge-required">Obrigatório</span></div>'
-    + '          <small>Arquivo limpo (sem tags) para o comprador</small>'
-    + '        </div>'
-    + '        <p class="release-upload-error" hidden></p>'
-    + '        <div class="upload-progress-container" style="display:none;">'
-    + '          <div class="upload-progress-header"><span>Enviando MP3 seguro...</span><span class="upload-progress-percent">0%</span></div>'
-    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
-    + '        </div>'
-    + '        <div class="secure-mp3-preview" style="display:none; width: 100%;">'
-    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
-    + '            <strong style="color:#22c55e; font-size: 12px;">Pronto</strong>'
-    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-mp3" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer; display: flex; align-items: center; gap: 4px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i> Remover</button>'
+    + '    <div style="font-family:\'Montserrat\', sans-serif; font-size:16px; font-weight:700; color:#fff; margin-bottom: 4px; text-align: left;">Arquivos para entrega</div>'
+    + '    <p style="color: #8a8a8a; font-size: 13px; margin: 0 0 16px 0; text-align: left;">Estes arquivos serão disponibilizados ao comprador de acordo com a licença escolhida.</p>'
+    + '    <div class="release-delivery-grid release-files-layout">'
+    + '      <!-- Card MP3 -->'
+    + '      <article class="release-upload-card release-dropzone release-secure-mp3-drop" data-delivery-card="secure_mp3" data-upload-drop="secure_mp3" style="cursor: pointer; position: relative;">'
+    + '        <input class="release-file-input" type="file" accept="audio/mpeg,audio/mp3" data-upload-type="secure_mp3" style="display: none;">'
+    + '        <!-- Empty State -->'
+    + '        <div class="dropzone-unuploaded" style="display: flex; flex-direction: column; height: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">MP3</strong>'
+    + '            <span class="release-requirement-badge is-required" style="font-size: 10px; font-weight: 700; color: #16d46b;">Obrigatório</span>'
     + '          </div>'
-    + '          <div style="display:flex; gap:8px; align-items:center; margin-bottom: 12px;">'
-    + '            <i data-lucide="file-audio" style="width:24px;height:24px;color:#22c55e;"></i>'
-    + '            <div style="min-width: 0; flex: 1; text-align: left;">'
-    + '              <span data-secure-mp3-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size: 12px; font-weight: 600;">mp3-seguro.mp3</span>'
-    + '              <small data-secure-mp3-size style="font-size:10px; color:var(--beat-muted);"></small>'
+    + '          <p style="font-size: 13px; color: #8a8a8a; margin: 0 0 16px 0; flex: 1;">Arquivo entregue em licenças compatíveis</p>'
+    + '          <button type="button" class="compras-btn-cancel" style="width: 100%; pointer-events: none;">Adicionar arquivo</button>'
+    + '          <button type="button" class="use-preview-as-delivery-btn" data-target="secure_mp3" style="width: 100%; margin-top: 8px; background: transparent; border: 1px solid #242424; color: #fff; border-radius: 8px; height: 38px; font-size: 12px; font-weight: 600; cursor: pointer;">Usar arquivo do preview</button>'
+    + '        </div>'
+    + '        <!-- Progress State -->'
+    + '        <div class="upload-progress-container" style="display: none; width: 100%; text-align: left;">'
+    + '          <strong style="color: #fff; font-size: 15px; font-weight: 700; display: block; margin-bottom: 12px;">MP3</strong>'
+    + '          <span style="font-size: 13px; color: #8a8a8a; display: block; margin-bottom: 8px;">Enviando MP3...</span>'
+    + '          <div class="upload-progress-track" style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 8px;"><div class="upload-progress-bar" style="height: 100%; background: #fff; width: 0%;"></div></div>'
+    + '          <span class="upload-progress-percent" style="font-size: 12px; color: #fff;">0%</span>'
+    + '        </div>'
+    + '        <!-- Success State -->'
+    + '        <div class="secure-mp3-preview" style="display: none; width: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">MP3</strong>'
+    + '            <div class="release-file-actions-menu">'
+    + '              <button type="button" class="release-file-menu-trigger" aria-label="Ações do arquivo"><i data-lucide="more-horizontal"></i></button>'
+    + '              <div class="release-file-menu-dropdown" style="display: none;">'
+    + '                <button type="button" class="release-menu-item btn-replace-file" data-target="secure_mp3"><i data-lucide="refresh-cw"></i> Substituir arquivo</button>'
+    + '                <button type="button" class="release-menu-item btn-remove-file" data-action="remove-secure-mp3" style="color: #ff4d4f;"><i data-lucide="trash-2"></i> Remover</button>'
+    + '              </div>'
     + '            </div>'
     + '          </div>'
+    + '          <span data-secure-mp3-name style="color: #fff; font-size: 14px; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;">mp3-seguro.mp3</span>'
+    + '          <span class="completed-info" style="font-size: 12px; color: #8a8a8a; display: block; margin-bottom: 12px;"><span data-secure-mp3-size>0 MB</span> • Upload concluído</span>'
+    + '          <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;"><div style="height: 100%; background: #16d46b; width: 100%;"></div></div>'
     + '        </div>'
-    + '        <button type="button" class="an-secondary use-preview-as-delivery-btn" data-target="secure_mp3">Usar o mesmo arquivo do Preview</button>'
-    + '      </div>'
-    + '      <div class="release-file-card release-dropzone release-secure-wav-drop" data-upload-drop="secure_wav">'
-    + '        <input class="release-file-input" type="file" accept="audio/wav,audio/x-wav" data-upload-type="secure_wav">'
-    + '        <div class="dropzone-unuploaded">'
-    + '          <div class="release-upload-icon"><i data-lucide="shield-check"></i></div>'
-    + '          <div class="file-card-header"><strong>WAV Masterizado</strong><span class="file-badge file-badge-optional">Opcional</span></div>'
-    + '          <small>WAV de alta fidelidade sem perda</small>'
-    + '        </div>'
-    + '        <p class="release-upload-error" hidden></p>'
-    + '        <div class="upload-progress-container" style="display:none;">'
-    + '          <div class="upload-progress-header"><span>Enviando WAV seguro...</span><span class="upload-progress-percent">0%</span></div>'
-    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
-    + '        </div>'
-    + '        <div class="secure-wav-preview" style="display:none; width: 100%;">'
-    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
-    + '            <strong style="color:#22c55e; font-size: 12px;">Pronto</strong>'
-    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-wav" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer; display: flex; align-items: center; gap: 4px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i> Remover</button>'
+    + '        <p class="release-upload-error" hidden style="color: #ff4d4f; font-size: 12px; margin-top: 8px;"></p>'
+    + '      </article>'
+    + '      <!-- Card WAV -->'
+    + '      <article class="release-upload-card release-dropzone release-secure-wav-drop" data-delivery-card="secure_wav" data-upload-drop="secure_wav" style="cursor: pointer; position: relative;">'
+    + '        <input class="release-file-input" type="file" accept="audio/wav,audio/x-wav" data-upload-type="secure_wav" style="display: none;">'
+    + '        <!-- Empty State -->'
+    + '        <div class="dropzone-unuploaded" style="display: flex; flex-direction: column; height: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">WAV masterizado</strong>'
+    + '            <span class="release-requirement-badge is-conditional" style="font-size: 10px; font-weight: 700; color: #8a8a8a;">Opcional</span>'
     + '          </div>'
-    + '          <div style="display:flex; gap:8px; align-items:center; margin-bottom: 12px;">'
-    + '            <i data-lucide="file-audio" style="width:24px;height:24px;color:#22c55e;"></i>'
-    + '            <div style="min-width: 0; flex: 1; text-align: left;">'
-    + '              <span data-secure-wav-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size: 12px; font-weight: 600;">wav-seguro.wav</span>'
-    + '              <small data-secure-wav-size style="font-size:10px; color:var(--beat-muted);"></small>'
+    + '          <p style="font-size: 13px; color: #8a8a8a; margin: 0 0 16px 0; flex: 1;">Arquivo de alta fidelidade</p>'
+    + '          <button type="button" class="compras-btn-cancel" style="width: 100%; pointer-events: none;">Adicionar arquivo</button>'
+    + '          <button type="button" class="use-preview-as-delivery-btn" data-target="secure_wav" style="width: 100%; margin-top: 8px; background: transparent; border: 1px solid #242424; color: #fff; border-radius: 8px; height: 38px; font-size: 12px; font-weight: 600; cursor: pointer;">Usar arquivo do preview</button>'
+    + '        </div>'
+    + '        <!-- Progress State -->'
+    + '        <div class="upload-progress-container" style="display: none; width: 100%; text-align: left;">'
+    + '          <strong style="color: #fff; font-size: 15px; font-weight: 700; display: block; margin-bottom: 12px;">WAV masterizado</strong>'
+    + '          <span style="font-size: 13px; color: #8a8a8a; display: block; margin-bottom: 8px;">Enviando WAV...</span>'
+    + '          <div class="upload-progress-track" style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 8px;"><div class="upload-progress-bar" style="height: 100%; background: #fff; width: 0%;"></div></div>'
+    + '          <span class="upload-progress-percent" style="font-size: 12px; color: #fff;">0%</span>'
+    + '        </div>'
+    + '        <!-- Success State -->'
+    + '        <div class="secure-wav-preview" style="display: none; width: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">WAV masterizado</strong>'
+    + '            <div class="release-file-actions-menu">'
+    + '              <button type="button" class="release-file-menu-trigger" aria-label="Ações do arquivo"><i data-lucide="more-horizontal"></i></button>'
+    + '              <div class="release-file-menu-dropdown" style="display: none;">'
+    + '                <button type="button" class="release-menu-item btn-replace-file" data-target="secure_wav"><i data-lucide="refresh-cw"></i> Substituir arquivo</button>'
+    + '                <button type="button" class="release-menu-item btn-remove-file" data-action="remove-secure-wav" style="color: #ff4d4f;"><i data-lucide="trash-2"></i> Remover</button>'
+    + '              </div>'
     + '            </div>'
     + '          </div>'
+    + '          <span data-secure-wav-name style="color: #fff; font-size: 14px; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;">wav-seguro.wav</span>'
+    + '          <span class="completed-info" style="font-size: 12px; color: #8a8a8a; display: block; margin-bottom: 12px;"><span data-secure-wav-size>0 MB</span> • Upload concluído</span>'
+    + '          <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;"><div style="height: 100%; background: #16d46b; width: 100%;"></div></div>'
     + '        </div>'
-    + '        <button type="button" class="an-secondary use-preview-as-delivery-btn" data-target="secure_wav">Usar o mesmo arquivo do Preview</button>'
-    + '      </div>'
-    + '      <div class="release-file-card release-dropzone release-secure-stems-drop" data-upload-drop="secure_stems">'
-    + '        <input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="secure_stems">'
-    + '        <div class="dropzone-unuploaded">'
-    + '          <div class="release-upload-icon"><i data-lucide="archive"></i></div>'
-    + '          <div class="file-card-header"><strong>ZIP de Stems</strong><span class="file-badge file-badge-optional">Opcional</span></div>'
-    + '          <small>Pistas individuais em formato ZIP</small>'
-    + '        </div>'
-    + '        <p class="release-upload-error" hidden></p>'
-    + '        <div class="upload-progress-container" style="display:none;">'
-    + '          <div class="upload-progress-header"><span>Enviando Stems ZIP...</span><span class="upload-progress-percent">0%</span></div>'
-    + '          <div class="upload-progress-track"><div class="upload-progress-bar"></div></div>'
-    + '        </div>'
-    + '        <div class="secure-stems-preview" style="display:none; width: 100%;">'
-    + '          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
-    + '            <strong style="color:#22c55e; font-size: 12px;">Pronto</strong>'
-    + '            <button type="button" class="release-remove-btn" data-action="remove-secure-stems" style="font-size:11px; background:transparent; border:0; color:#ff3b30; cursor:pointer; display: flex; align-items: center; gap: 4px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i> Remover</button>'
+    + '        <p class="release-upload-error" hidden style="color: #ff4d4f; font-size: 12px; margin-top: 8px;"></p>'
+    + '      </article>'
+    + '      <!-- Card STEMS -->'
+    + '      <article class="release-upload-card release-dropzone release-secure-stems-drop" data-delivery-card="secure_stems" data-upload-drop="secure_stems" style="cursor: pointer; position: relative;">'
+    + '        <input class="release-file-input" type="file" accept="application/zip,application/x-zip-compressed" data-upload-type="secure_stems" style="display: none;">'
+    + '        <!-- Empty State -->'
+    + '        <div class="dropzone-unuploaded" style="display: flex; flex-direction: column; height: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">Stems</strong>'
+    + '            <span class="release-requirement-badge is-conditional" style="font-size: 10px; font-weight: 700; color: #8a8a8a;">Opcional</span>'
     + '          </div>'
-    + '          <div style="display:flex; gap:8px; align-items:center; margin-bottom: 12px;">'
-    + '            <i data-lucide="archive" style="width:24px;height:24px;color:#22c55e;"></i>'
-    + '            <div style="min-width: 0; flex: 1; text-align: left;">'
-    + '              <span data-secure-stems-name style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; font-size: 12px; font-weight: 600;">stems.zip</span>'
-    + '              <small data-secure-stems-size style="font-size:10px; color:var(--beat-muted);"></small>'
+    + '          <p style="font-size: 13px; color: #8a8a8a; margin: 0 0 16px 0; flex: 1;">Arquivo ZIP com faixas separadas</p>'
+    + '          <button type="button" class="compras-btn-cancel" style="width: 100%; pointer-events: none;">Adicionar arquivo</button>'
+    + '        </div>'
+    + '        <!-- Progress State -->'
+    + '        <div class="upload-progress-container" style="display: none; width: 100%; text-align: left;">'
+    + '          <strong style="color: #fff; font-size: 15px; font-weight: 700; display: block; margin-bottom: 12px;">Stems</strong>'
+    + '          <span style="font-size: 13px; color: #8a8a8a; display: block; margin-bottom: 8px;">Enviando stems...</span>'
+    + '          <div class="upload-progress-track" style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 8px;"><div class="upload-progress-bar" style="height: 100%; background: #fff; width: 0%;"></div></div>'
+    + '          <span class="upload-progress-percent" style="font-size: 12px; color: #fff;">0%</span>'
+    + '        </div>'
+    + '        <!-- Success State -->'
+    + '        <div class="secure-stems-preview" style="display: none; width: 100%; text-align: left;">'
+    + '          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+    + '            <strong style="color: #fff; font-size: 15px; font-weight: 700;">Stems</strong>'
+    + '            <div class="release-file-actions-menu">'
+    + '              <button type="button" class="release-file-menu-trigger" aria-label="Ações do arquivo"><i data-lucide="more-horizontal"></i></button>'
+    + '              <div class="release-file-menu-dropdown" style="display: none;">'
+    + '                <button type="button" class="release-menu-item btn-replace-file" data-target="secure_stems"><i data-lucide="refresh-cw"></i> Substituir arquivo</button>'
+    + '                <button type="button" class="release-menu-item btn-remove-file" data-action="remove-secure-stems" style="color: #ff4d4f;"><i data-lucide="trash-2"></i> Remover</button>'
+    + '              </div>'
     + '            </div>'
     + '          </div>'
+    + '          <span data-secure-stems-name style="color: #fff; font-size: 14px; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px;">stems.zip</span>'
+    + '          <span class="completed-info" style="font-size: 12px; color: #8a8a8a; display: block; margin-bottom: 12px;"><span data-secure-stems-size>0 MB</span> • Upload concluído</span>'
+    + '          <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;"><div style="height: 100%; background: #16d46b; width: 100%;"></div></div>'
     + '        </div>'
-    + '      </div>'
+    + '        <p class="release-upload-error" hidden style="color: #ff4d4f; font-size: 12px; margin-top: 8px;"></p>'
+    + '      </article>'
     + '    </div>'
     + '  </div>'
     + '</section>'
@@ -18125,6 +18285,258 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
   syncReleaseForm();
   applyLocaleTextOverrides(appView);
   lucide.createIcons();
+}
+
+window.continueReleaseDraft = function(beatId) {
+  const item = appState.ownedCatalogItems.find(x => x.id === beatId);
+  if (!item) return;
+  appState.releaseMode = "upload";
+  renderMusicUpload("upload", beatId);
+  
+  const form = releaseFormElement();
+  if (form) {
+    form.dataset.beatId = beatId;
+    populateReleaseFormFromBeat(item, form);
+  }
+  hydrateView();
+};
+
+window.deleteReleaseDraft = async function(beatId) {
+  const confirmed = await window.showCustomConfirm("Excluir Rascunho", "Tem certeza que deseja excluir este rascunho permanentemente?");
+  if (!confirmed) return;
+  
+  const { error } = await supabaseClient.from("beats").delete().eq("id", beatId);
+  if (error) {
+    showToast("Erro ao excluir rascunho", "alert-triangle");
+    return;
+  }
+  showToast("Rascunho excluído", "trash-2");
+  appState.ownedCatalogItems = appState.ownedCatalogItems.filter(x => x.id !== beatId);
+  renderReleaseModeSelector();
+  hydrateView();
+};
+
+window.duplicateReleaseBeat = async function(beatId) {
+  const item = appState.ownedCatalogItems.find(x => x.id === beatId);
+  if (!item) return;
+  
+  const confirmed = await window.showCustomConfirm("Duplicar Lançamento", `Deseja duplicar as informações de "${item.title}" para um novo lançamento? Os arquivos de áudio e capa precisarão ser reenviados.`);
+  if (!confirmed) return;
+  
+  appState.releaseMode = "upload";
+  renderMusicUpload("upload");
+  
+  const form = releaseFormElement();
+  if (form) {
+    const newBeatId = generateUUID();
+    form.dataset.beatId = newBeatId;
+    
+    // Populate metadata
+    if (form.elements.title) form.elements.title.value = `${item.title} (Cópia)`;
+    if (form.elements.producer_name) form.elements.producer_name.value = item.producer_name || "";
+    if (form.elements.subgenre) form.elements.subgenre.value = item.subgenre || "";
+    if (form.elements.bpm) form.elements.bpm.value = item.bpm || "";
+    if (form.elements.mood) form.elements.mood.value = item.mood || "";
+    if (form.elements.release_tags) form.elements.release_tags.value = Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || "");
+    if (form.elements.description) form.elements.description.value = item.description || "";
+    
+    const genreInput = form.querySelector('input[name="genre"]');
+    if (genreInput) {
+      genreInput.value = item.genre || "";
+      const trigger = genreInput.closest(".custom-select")?.querySelector(".custom-select-trigger span");
+      if (trigger) trigger.textContent = item.genre || "Selecione o gênero";
+    }
+    const keyInput = form.querySelector('input[name="musical_key"]');
+    if (keyInput) {
+      keyInput.value = item.musical_key || "";
+      const trigger = keyInput.closest(".custom-select")?.querySelector(".custom-select-trigger span");
+      if (trigger) trigger.textContent = item.musical_key || "Selecione o tom";
+    }
+
+    // Reset cover & file hidden inputs & previews
+    form.elements.cover_url.value = "";
+    form.elements.cover_path.value = "";
+    ["audio", "secure_mp3", "secure_wav", "secure_stems"].forEach(t => {
+      clearReleaseFileState(form, t);
+    });
+    
+    // Copy licenses under new beatId
+    await loadBeatLicensesForEdit(item.id);
+    appState.releaseLicenses = appState.releaseLicenses.map(lic => ({
+      ...lic,
+      id: generateUUID(),
+      beat_id: newBeatId,
+      is_default: false,
+      is_custom: true
+    }));
+    
+    refreshReleaseLicensesUI();
+    syncReleaseForm(form);
+  }
+  
+  hydrateView();
+  showToast("Lançamento duplicado (informações copiadas, envie novos arquivos).", "copy");
+};
+
+async function loadBeatLicensesForEdit(beatId) {
+  if (!supabaseClient) {
+    appState.releaseLicenses = generateDefaultLicensesForBeat({ id: beatId });
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from("beat_licenses")
+    .select("*")
+    .eq("beat_id", beatId)
+    .order("sort_order", { ascending: true });
+  if (error || !data || !data.length) {
+    appState.releaseLicenses = generateDefaultLicensesForBeat({ id: beatId });
+  } else {
+    appState.releaseLicenses = data;
+  }
+}
+
+function populateReleaseFormFromBeat(item, form) {
+  if (!form || !item) return;
+  
+  if (form.elements.title) form.elements.title.value = item.title || "";
+  if (form.elements.producer_name) form.elements.producer_name.value = item.producer_name || "";
+  if (form.elements.subgenre) form.elements.subgenre.value = item.subgenre || "";
+  if (form.elements.bpm) form.elements.bpm.value = item.bpm || "";
+  if (form.elements.mood) form.elements.mood.value = item.mood || "";
+  if (form.elements.release_tags) form.elements.release_tags.value = Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || "");
+  if (form.elements.description) form.elements.description.value = item.description || "";
+  
+  if (form.elements.already_released) {
+    const val = String(item.already_released);
+    for (const radio of form.elements.already_released) {
+      radio.checked = (radio.value === val);
+    }
+  }
+
+  const genreInput = form.querySelector('input[name="genre"]');
+  if (genreInput) {
+    genreInput.value = item.genre || "";
+    const container = genreInput.closest(".custom-select");
+    if (container) {
+      const triggerSpan = container.querySelector(".custom-select-trigger span");
+      if (triggerSpan) triggerSpan.textContent = item.genre || "Selecione o gênero";
+      container.querySelectorAll(".custom-select-option").forEach(opt => {
+        const selected = opt.dataset.value === item.genre;
+        opt.classList.toggle("is-selected", selected);
+        const check = opt.querySelector("svg");
+        if (check) check.remove();
+        if (selected) {
+          opt.insertAdjacentHTML("beforeend", '<i data-lucide="check" style="width:16px; height:16px; color:#ff6a00;"></i>');
+        }
+      });
+    }
+  }
+
+  const keyInput = form.querySelector('input[name="musical_key"]');
+  if (keyInput) {
+    keyInput.value = item.musical_key || "";
+    const container = keyInput.closest(".custom-select");
+    if (container) {
+      const triggerSpan = container.querySelector(".custom-select-trigger span");
+      if (triggerSpan) triggerSpan.textContent = item.musical_key || "Selecione o tom";
+      container.querySelectorAll(".custom-select-option").forEach(opt => {
+        const selected = opt.dataset.value === item.musical_key;
+        opt.classList.toggle("is-selected", selected);
+        const check = opt.querySelector("svg");
+        if (check) check.remove();
+        if (selected) {
+          opt.insertAdjacentHTML("beforeend", '<i data-lucide="check" style="width:16px; height:16px; color:#ff6a00;"></i>');
+        }
+      });
+    }
+  }
+
+  if (form.elements.cover_url) form.elements.cover_url.value = item.cover_url || "";
+  if (form.elements.cover_path) form.elements.cover_path.value = item.cover_path || "";
+  if (item.cover_url) {
+    setPersistentCoverPreview(item.cover_url, form);
+  } else {
+    const preview = form.querySelector(".release-cover-preview");
+    if (preview) {
+      preview.src = "";
+      preview.classList.remove("has-preview");
+    }
+    form.querySelector(".release-cover-drop")?.classList.remove("has-file", "has-local-preview");
+    const coverActions = form.querySelector(".cover-actions-container");
+    if (coverActions) coverActions.style.display = "none";
+  }
+
+  ["audio", "secure_mp3", "secure_wav", "secure_stems"].forEach(t => {
+    clearReleaseFileState(form, t);
+  });
+
+  if (item.audio_url && item.audio_path) {
+    setReleaseFileHiddenValues(form, "audio", {
+      url: item.audio_url,
+      path: item.audio_path,
+      originalName: item.audio_original_name,
+      mimeType: item.audio_mime_type,
+      size: item.audio_size_bytes || item.file_size,
+      durationSeconds: item.audio_duration_seconds || item.duration_seconds,
+    });
+    setReleaseFilePreview(form, "audio", {
+      url: item.audio_url,
+      originalName: item.audio_original_name || "Audio de preview",
+      size: item.audio_size_bytes || item.file_size,
+      durationSeconds: item.audio_duration_seconds || item.duration_seconds,
+    });
+  }
+
+  if (item.mp3_url && item.mp3_path) {
+    setReleaseFileHiddenValues(form, "secure_mp3", {
+      url: item.mp3_url,
+      path: item.mp3_path,
+      originalName: item.mp3_original_name,
+      mimeType: item.mp3_mime_type,
+      size: item.mp3_size_bytes,
+      durationSeconds: item.mp3_duration_seconds,
+    });
+    setReleaseFilePreview(form, "secure_mp3", {
+      originalName: item.mp3_original_name || "MP3 de entrega",
+      size: item.mp3_size_bytes,
+      durationSeconds: item.mp3_duration_seconds,
+    });
+  }
+
+  if (item.wav_url && item.wav_path) {
+    setReleaseFileHiddenValues(form, "secure_wav", {
+      url: item.wav_url,
+      path: item.wav_path,
+      originalName: item.wav_original_name,
+      mimeType: item.wav_mime_type,
+      size: item.wav_size_bytes,
+      durationSeconds: item.wav_duration_seconds,
+    });
+    setReleaseFilePreview(form, "secure_wav", {
+      originalName: item.wav_original_name || "WAV masterizado",
+      size: item.wav_size_bytes,
+      durationSeconds: item.wav_duration_seconds,
+    });
+  }
+
+  if (item.stems_url && item.stems_path) {
+    setReleaseFileHiddenValues(form, "secure_stems", {
+      url: item.stems_url,
+      path: item.stems_path,
+      originalName: item.stems_original_name,
+      mimeType: item.stems_mime_type,
+      size: item.stems_size_bytes,
+    });
+    setReleaseFilePreview(form, "secure_stems", {
+      originalName: item.stems_original_name || "ZIP de stems",
+      size: item.stems_size_bytes,
+    });
+  }
+
+  void loadBeatLicensesForEdit(item.id).then(() => {
+    refreshReleaseLicensesUI();
+    syncReleaseForm(form);
+  });
 }
 
 
@@ -18253,6 +18665,12 @@ function renderProfileLegacy() {
       </td>
       <td class="col-actions">
         <div class="track-actions-cell">
+          <button type="button" class="track-action-btn edit-btn" onclick="continueReleaseDraft('${item.id}')" title="Editar rascunho / beat">
+            <i data-lucide="pencil"></i>
+          </button>
+          <button type="button" class="track-action-btn duplicate-btn" onclick="duplicateReleaseBeat('${item.id}')" title="Duplicar release">
+            <i data-lucide="copy"></i>
+          </button>
           <button type="button" class="track-action-btn toggle-btn" data-action="toggle-catalog-status" data-id="${item.id}" title="${isPublished ? "Tornar Rascunho" : "Publicar"}">
             <i data-lucide="${isPublished ? "eye-off" : "eye"}"></i>
           </button>
@@ -18748,8 +19166,7 @@ function renderRoute() {
 const TOASTS_ENABLED = false;
 
 function showToast(message, icon = "check-circle-2") {
-  const adminFeedback = /remov|permiss|excluir|executar esta ação/i.test(String(message || ""));
-  if (!TOASTS_ENABLED && !adminFeedback) {
+  if (!TOASTS_ENABLED) {
     console.debug("[ANSEND toast silenced]", icon, translateToastText(message));
     return;
   }

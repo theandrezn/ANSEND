@@ -860,3 +860,151 @@ body[data-route="compras"] .view-header-compras p {
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
+/* Custom Confirm Modal styling */
+.compras-confirm-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  animation: comprasFadeIn 0.2s ease-out forwards !important;
+}
+
+.compras-confirm-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.compras-confirm-panel {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(450px, calc(100vw - 32px)) !important;
+  background: #090909 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 106, 0, 0.05) !important;
+  animation: comprasScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+.compras-confirm-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 16px !important;
+}
+
+.compras-confirm-title {
+  font-family: "Montserrat", sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+}
+
+.compras-confirm-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  transition: all 0.2s ease !important;
+}
+
+.compras-confirm-close-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.compras-confirm-body {
+  margin-bottom: 24px !important;
+}
+
+.compras-confirm-body p {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif !important;
+  font-size: 14px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}
+
+.compras-confirm-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+}
+
+.compras-btn-cancel {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 10px 18px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.compras-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.compras-btn-confirm {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: #ff4444 !important;
+  border: 1px solid transparent !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 10px 18px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.compras-btn-confirm:hover {
+  background: #ff2222 !important;
+}
+
+/* Closing States & Keyframes */
+.compras-confirm-modal.is-closing {
+  animation: comprasFadeOut 0.2s ease-in forwards !important;
+}
+
+.compras-confirm-modal.is-closing .compras-confirm-panel {
+  animation: comprasScaleOut 0.2s ease-in forwards !important;
+}
+
+@keyframes comprasFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes comprasFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes comprasScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes comprasScaleOut {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.95); opacity: 0; }
+}
+
+

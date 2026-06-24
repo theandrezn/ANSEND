@@ -81,7 +81,7 @@ async function run() {
         body: `
           const testUser = { id: "test-user", email: "artist@example.com", user_metadata: { name: "andrezin" } };
           function queryResult(table) {
-            const profile = { id: "test-user", username: "andrezin", artistic_name: "andrezin", full_name: "andrezin" };
+            const profile = { id: "test-user", username: "andrezin", artistic_name: "andrezin", full_name: "andrezin", quiz_completed: true };
             const data = table === "profiles" ? [profile] : [];
             const singleData = table === "profiles" ? profile : null;
             const query = {
