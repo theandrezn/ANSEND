@@ -206,19 +206,19 @@
     let description = "";
 
     if (method === "card") {
-      logoHtml = `<svg class="ansend-checkout__explanation-logo-svg" viewBox="0 0 24 24" fill="none" stroke="#1688ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" style="width: 32px; height: 32px;"><rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect><line x1="2" y1="10" x2="22" y2="10" stroke-width="2.5"></line><rect x="5" y="13" width="3" height="2" rx="0.5" ry="0.5" fill="#1688ff"></rect></svg>`;
+      logoHtml = `<svg class="ansend-checkout__explanation-logo-svg" viewBox="0 0 24 24" fill="none" stroke="#1688ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; max-width: 24px; max-height: 24px;"><rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect><line x1="2" y1="10" x2="22" y2="10" stroke-width="2.5"></line><rect x="5" y="13" width="3" height="2" rx="0.5" ry="0.5" fill="#1688ff"></rect></svg>`;
       title = "Pagamento com cartão";
       description = "Pague com cartão de crédito em um ambiente seguro e protegido.";
     } else if (method === "pix") {
-      logoHtml = `<img class="ansend-checkout__explanation-logo-img" src="assets/payment/pix-user.png" alt="Pix" style="width: 36px; height: auto; object-fit: contain;">`;
+      logoHtml = `<img class="ansend-checkout__explanation-logo-img" src="assets/payment/pix-user.png" alt="Pix" style="width: 100%; height: 100%; max-width: 24px; max-height: 24px; object-fit: contain;">`;
       title = "Pagamento por Pix";
       description = "Finalize o pagamento por Pix utilizando o QR Code ou o código copia e cola.";
     } else if (method === "paypal") {
-      logoHtml = `<svg class="ansend-checkout__explanation-logo-svg" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 28px;"><path fill="#003087" d="M19.066 6.3c-.6-3.8-3.6-6.3-7.7-6.3H3.344C2.144 0 1.044.95.844 2.15L0 23.35c-.05.6.45 1.15 1.05 1.15h4.9c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.6-2.9-.1-5.5-2-6.9L19.066 6.3z"/><path fill="#0079c1" d="M22.956 8.3c-.6-3.8-3.6-6.3-7.7-6.3H7.234c-1.2 0-2.3.95-2.5 2.15l-1.9 12.3c-.1.6.4 1.15 1 1.15h4.1c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.5-2.8-.2-5.4-2-6.8l.1.4z" style="mix-blend-mode: multiply;"/></svg>`;
+      logoHtml = `<svg class="ansend-checkout__explanation-logo-svg" viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; max-width: 20px; max-height: 24px;"><path fill="#003087" d="M19.066 6.3c-.6-3.8-3.6-6.3-7.7-6.3H3.344C2.144 0 1.044.95.844 2.15L0 23.35c-.05.6.45 1.15 1.05 1.15h4.9c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.6-2.9-.1-5.5-2-6.9L19.066 6.3z"/><path fill="#0079c1" d="M22.956 8.3c-.6-3.8-3.6-6.3-7.7-6.3H7.234c-1.2 0-2.3.95-2.5 2.15l-1.9 12.3c-.1.6.4 1.15 1 1.15h4.1c.85 0 1.55-.6 1.7-1.4l1.3-8.2c.1-.8.8-1.4 1.6-1.4h1.4c4.6 0 8-2.6 8.9-7.2.5-2.8-.2-5.4-2-6.8l.1.4z" style="mix-blend-mode: multiply;"/></svg>`;
       title = "Checkout PayPal";
       description = "Entre na sua conta do PayPal e conclua o pagamento no ambiente seguro da plataforma.";
     } else if (method === "mercado_pago") {
-      logoHtml = `<img class="ansend-checkout__explanation-logo-img" src="assets/payment/mercado-pago-user.png" alt="Mercado Pago" style="width: 38px; height: auto; object-fit: contain;">`;
+      logoHtml = `<img class="ansend-checkout__explanation-logo-img" src="assets/payment/mercado-pago-user.png" alt="Mercado Pago" style="width: 100%; height: 100%; max-width: 26px; max-height: 26px; object-fit: contain;">`;
       title = "Checkout Mercado Pago";
       description = "Entre na sua conta do Mercado Pago ou pague com cartão no ambiente seguro da plataforma.";
     }
@@ -288,7 +288,7 @@
                 <span class="ansend-checkout__check-badge">${icon("check")}</span>
               </button>
               <button type="button" data-checkout-method="mercado_pago" aria-pressed="false">
-                <img class="ansend-checkout__mercado-pago-icon-img" src="assets/payment/mercado-pago-user.png" alt="Mercado Pago" style="width: 82px; height: auto; object-fit: contain;">
+                <img class="ansend-checkout__mercado-pago-icon-img" src="assets/payment/mercado-pago-user.png" alt="Mercado Pago" style="height: 24px; width: auto; object-fit: contain;">
                 <span>Mercado Pago</span>
                 <span class="ansend-checkout__check-badge">${icon("check")}</span>
               </button>

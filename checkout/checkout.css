@@ -70,8 +70,8 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__shell { width: 100%; max-width: none; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 56%) minmax(0, 44%); overflow: visible; border: 0; border-radius: 0; background: var(--checkout-left-bg); box-shadow: none; }
 .ansend-checkout__order, .ansend-checkout__payment { min-width: 0; }
 .ansend-checkout__order { padding: 60px 64px 48px 72px; background: var(--checkout-left-bg); }
-.ansend-checkout__payment { padding: 24px 24px; display: flex; align-items: center; justify-content: center; border-left: 1px solid #292c30; background: var(--checkout-right-bg); }
-.ansend-checkout__form, .ansend-checkout__result { width: 100%; max-width: 720px; margin: 0 auto; flex: 1 1 720px; display: grid; gap: 16px; }
+.ansend-checkout__payment { padding: 16px 24px; display: flex; align-items: center; justify-content: center; border-left: 1px solid #292c30; background: var(--checkout-right-bg); }
+.ansend-checkout__form, .ansend-checkout__result { width: 100%; max-width: 720px; margin: 0 auto; flex: 1 1 720px; display: grid; gap: 12px; }
 .ansend-checkout__form[hidden], .ansend-checkout__result[hidden] { display: none; }
 .ansend-checkout__breadcrumb { display: flex; align-items: center; gap: 10px; color: var(--checkout-muted); font-size: 12px; line-height: 1.4; }
 .ansend-checkout__breadcrumb button, .ansend-checkout__remove { display: grid; place-items: center; padding: 0; color: #d6d6d6; border: 1px solid var(--checkout-border-strong); background: rgba(255,255,255,.05); cursor: pointer; }
@@ -108,7 +108,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__coupon-form button { min-width: 82px; border: 0; border-radius: 10px; color: #fff; background: var(--checkout-blue); }
 .ansend-checkout__coupon p { grid-column: 1 / -1; margin: 0; font-size: 11px; }.ansend-checkout__coupon p:empty { display: none; }.ansend-checkout__coupon p[data-state="error"] { color: var(--checkout-error); }.ansend-checkout__coupon p[data-state="success"] { color: var(--checkout-success); }
 .ansend-checkout__totals { margin-top: 12px; padding: 14px; display: grid; gap: 8px; border: 1px solid var(--checkout-border); border-radius: 8px; background: var(--checkout-card-bg); }
-.ansend-checkout__totals.is-compact { margin-top: 14px; padding: 0; gap: 10px; border: 0; background: transparent; }
+.ansend-checkout__totals.is-compact { margin-top: 10px; padding: 0; gap: 8px; border: 0; background: transparent; }
 .ansend-checkout__totals > div { min-height: 18px; display: flex; justify-content: space-between; align-items: center; color: var(--checkout-secondary); font-size: 11px; }
 .ansend-checkout__totals strong { color: var(--checkout-text); font-size: 12px; font-weight: 500; }
 .ansend-checkout__totals .is-total { min-height: 34px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--checkout-border); color: var(--checkout-text); font-size: 15px; font-weight: 600; }
@@ -156,7 +156,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__promoted-banner a:hover { background: #e8e8e8; transform: translateY(-1px); }
 .ansend-checkout__promoted-banner a svg { width: 14px; height: 14px; }
 .ansend-checkout__tabs {
-  min-height: 40px;
+  min-height: 38px;
   padding: 3px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -164,7 +164,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   border: 1px solid var(--payment-border-soft);
   background: var(--payment-surface);
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 .ansend-checkout__tabs button {
   border: 0;
@@ -172,7 +172,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   color: var(--payment-text-secondary);
   background: transparent;
   font-family: var(--checkout-field-font);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
@@ -181,7 +181,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   text-align: center;
   transition: all 0.2s ease;
   position: relative;
-  height: 34px;
+  height: 32px;
 }
 .ansend-checkout__tabs button:not(:last-child)::after {
   content: "";
@@ -217,23 +217,24 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__methods {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding-top: 12px;
+  gap: 10px;
+  padding-top: 6px;
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .ansend-checkout__methods button {
   position: relative;
-  aspect-ratio: 1.35;
+  height: 70px;
+  aspect-ratio: auto;
   width: 100%;
-  padding: 14px 10px;
+  padding: 8px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 3px;
   border: 1px solid var(--payment-border-soft);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--payment-text-secondary);
   background: var(--payment-surface);
   cursor: pointer;
@@ -269,43 +270,43 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__methods svg,
 .ansend-checkout__methods img {
   display: block;
-  max-height: 24px;
-  height: 24px;
-  width: auto;
-  object-fit: contain;
+  max-height: 24px !important;
+  height: 24px !important;
+  width: auto !important;
+  object-fit: contain !important;
   margin-inline: auto;
 }
 .ansend-checkout__methods svg.ansend-checkout__card-svg {
-  width: auto;
-  height: 24px;
+  width: auto !important;
+  height: 24px !important;
 }
 .ansend-checkout__pix-logo-img {
-  width: auto;
-  height: 24px;
+  width: auto !important;
+  height: 24px !important;
 }
 .ansend-checkout__paypal-logo-img {
-  width: auto;
-  height: 22px;
+  width: auto !important;
+  height: 22px !important;
 }
 .ansend-checkout__mercado-pago-icon-img {
-  width: auto;
-  height: 24px;
+  width: auto !important;
+  height: 24px !important;
 }
 .ansend-checkout__methods span {
   font-family: var(--checkout-field-font);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 550;
-  margin-top: 2px;
+  margin-top: 0;
 }
 .ansend-checkout__methods button.is-active span {
   color: var(--payment-text-primary);
 }
 .ansend-checkout__check-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 16px;
-  height: 16px;
+  top: 6px;
+  right: 6px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--payment-blue);
   color: #fff;
@@ -316,9 +317,9 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   transition: opacity 180ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .ansend-checkout__check-badge svg {
-  width: 10px;
-  height: 10px;
-  stroke-width: 3px;
+  width: 7px;
+  height: 7px;
+  stroke-width: 3.5px;
   color: #fff;
   margin: 0;
 }
@@ -345,8 +346,8 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-top: 20px;
-  padding-block: 8px;
+  margin-top: 10px;
+  padding-block: 6px;
 }
 .ansend-checkout__security span {
   display: inline-flex;
@@ -376,25 +377,25 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__explanation-panel {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 10px 14px;
   width: 100%;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: var(--payment-surface);
-  margin-top: 16px;
-  margin-bottom: 8px;
+  margin-top: 10px;
+  margin-bottom: 6px;
   transition: opacity 180ms ease, transform 180ms ease;
 }
 .ansend-checkout__explanation-tile {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ffffff;
   display: grid;
   place-items: center;
-  padding: 10px;
+  padding: 6px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 .ansend-checkout__explanation-tile img,
@@ -406,23 +407,23 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__explanation-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 .ansend-checkout__explanation-content strong {
   color: var(--payment-text-primary);
-  font-size: 16px;
+  font-size: 13.5px;
   font-weight: 600;
   line-height: 1.25;
 }
 .ansend-checkout__explanation-content span {
   color: var(--payment-text-secondary);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 400;
   line-height: 1.45;
   max-width: 580px;
 }
-.ansend-checkout__method-panel { display: grid; gap: 10px; }.ansend-checkout__method-panel[hidden] { display: none; }
+.ansend-checkout__method-panel { display: grid; gap: 8px; }.ansend-checkout__method-panel[hidden] { display: none; }
 .ansend-checkout__field { display: grid; gap: 5px; color: #c9d3e1; font-family: var(--checkout-field-font); font-size: 10px; font-weight: 500; line-height: 1.3; }
 .ansend-checkout__field input, .ansend-checkout__field select, .ansend-checkout__field textarea, .ansend-checkout__secure-field { width: 100%; min-height: 42px; height: 42px; padding: 0 12px; border: 1px solid #292c30; border-radius: 7px; color: #ffffff; -webkit-text-fill-color: #ffffff; caret-color: #ffffff; background: #101214; font-family: var(--checkout-field-font); font-size: 13px; font-weight: 600; letter-spacing: -.015em; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 .ansend-checkout__field input::placeholder, .ansend-checkout__field textarea::placeholder { color: #ffffff; opacity: .7; -webkit-text-fill-color: #ffffff; font-family: var(--checkout-field-font); font-weight: 500; }
@@ -525,7 +526,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 .ansend-checkout__pix-intro strong { font-size: 14px; font-weight: 600; }
 .ansend-checkout__pix-intro span { color: var(--checkout-secondary); font-size: 11px; }
 .ansend-checkout__terms {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -538,44 +539,53 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   cursor: pointer;
   user-select: none;
 }
-.ansend-checkout__terms input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  width: 15px;
-  height: 15px;
-  border: 1px solid var(--payment-border);
-  border-radius: 4px;
-  background: var(--payment-surface);
-  margin-top: 2px;
-  flex-shrink: 0;
-  cursor: pointer;
-  position: relative;
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+#appView.app-view .ansend-checkout__terms input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  border: 1px solid var(--payment-border) !important;
+  border-radius: 4px !important;
+  background: var(--payment-surface) !important;
+  margin: 2px 0 0 0 !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  position: relative !important;
+  display: inline-block !important;
+  box-shadow: none !important;
 }
-.ansend-checkout__terms input[type="checkbox"]:hover {
-  border-color: var(--payment-border-hover);
-  background: var(--payment-surface-hover);
+#appView.app-view .ansend-checkout__terms input[type="checkbox"]:hover {
+  border-color: var(--payment-border-hover) !important;
+  background: var(--payment-surface-hover) !important;
 }
-.ansend-checkout__terms input[type="checkbox"]:checked {
-  background: var(--payment-blue);
-  border-color: var(--payment-blue);
+#appView.app-view .ansend-checkout__terms input[type="checkbox"]:checked {
+  background: var(--payment-blue) !important;
+  border-color: var(--payment-blue) !important;
 }
-.ansend-checkout__terms input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  left: 4.5px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid #ffffff;
-  border-width: 0 1.5px 1.5px 0;
-  transform: rotate(45deg);
+#appView.app-view .ansend-checkout__terms input[type="checkbox"]::after {
+  content: none !important;
 }
-.ansend-checkout__terms input[type="checkbox"]:focus-visible {
-  outline: none;
-  border-color: var(--payment-blue);
-  box-shadow: 0 0 0 3px var(--payment-blue-glow);
+#appView.app-view .ansend-checkout__terms input[type="checkbox"]:checked::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 4.5px !important;
+  top: 1px !important;
+  width: 5px !important;
+  height: 9px !important;
+  border: solid #ffffff !important;
+  border-width: 0 1.5px 1.5px 0 !important;
+  transform: rotate(45deg) !important;
+  display: block !important;
+}
+#appView.app-view .ansend-checkout__terms input[type="checkbox"]:focus-visible {
+  outline: none !important;
+  border-color: var(--payment-blue) !important;
+  box-shadow: 0 0 0 3px var(--payment-blue-glow) !important;
 }
 .ansend-checkout__feedback { min-height: 14px; color: var(--checkout-error); font-size: 11px; width: 100%; max-width: 480px; margin-inline: auto; }
 .ansend-checkout__feedback:empty { min-height: 0; }
@@ -591,7 +601,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
-  margin-top: 16px;
+  margin-top: 8px;
   color: var(--checkout-muted) !important;
   font-size: 11px !important;
   width: 100%;
@@ -657,7 +667,7 @@ html.checkout-standalone-active body[data-route="checkout"] > .page > #appView {
 @media (prefers-reduced-motion: reduce) { .ansend-checkout *, .ansend-checkout *::before, .ansend-checkout *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
 
 /* Visual overrides for Premium high-fidelity UI design (matching Image 2) */
-.ansend-checkout__pay.ansend-checkout__pay, .ansend-checkout__secondary.ansend-checkout__secondary { height: 48px; min-height: 48px; font-size: 14px; font-weight: 700; border-radius: 10px; }
+.ansend-checkout__pay.ansend-checkout__pay, .ansend-checkout__secondary.ansend-checkout__secondary { height: 44px; min-height: 44px; font-size: 13.5px; font-weight: 700; border-radius: 10px; }
 
 /* Custom Font & Weight Overrides for Plus Jakarta Sans */
 .ansend-checkout,
