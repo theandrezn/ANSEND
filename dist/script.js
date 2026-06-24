@@ -92,6 +92,10 @@ const i18n = {
     "sellerMini.subtitle": "Abra sua loja",
     "sellerMini.cta": "Começar",
     "search.placeholder": "Buscar serviços, artistas ou profissionais",
+    "ansendSearch.placeholder": "Tente \"Happy\" ou \"travis scott type beat\"",
+    "ansendSearch.submit": "Pesquisar",
+    "ansendSearch.explore": "Explorar beats",
+    "ansendSearch.sell": "Vender meus beats",
     "hero.kicker": "NEXO IA",
     "hero.titleLine1": "ANSEND",
     "hero.titleLine2": "O\u00a0marketplace inteligente da\u00a0música",
@@ -194,6 +198,10 @@ const i18n = {
     "sellerMini.subtitle": "Open your shop",
     "sellerMini.cta": "Start",
     "search.placeholder": "Search services, artists, or professionals",
+    "ansendSearch.placeholder": "Try \"Happy\" or \"travis scott type beat\"",
+    "ansendSearch.submit": "Search",
+    "ansendSearch.explore": "Explore Beats",
+    "ansendSearch.sell": "Sell Your Beats",
     "hero.kicker": "NEXO AI",
     "hero.titleLine1": "ANSEND",
     "hero.titleLine2": "The intelligent music marketplace",
@@ -473,6 +481,14 @@ function applyTranslations(root = document) {
   }
   const search = document.querySelector("#search");
   if (search) search.placeholder = t("search.placeholder");
+  const ansendSearchInput = document.querySelector("#ansendSearchInput");
+  if (ansendSearchInput) ansendSearchInput.placeholder = t("ansendSearch.placeholder");
+  const ansendSearchSubmit = document.querySelector(".ansend-search-submit-btn");
+  if (ansendSearchSubmit) ansendSearchSubmit.textContent = t("ansendSearch.submit");
+  const ansendExploreBtn = document.querySelector("#ansendExploreBtn");
+  if (ansendExploreBtn) ansendExploreBtn.innerHTML = `<i data-lucide="headphones"></i> ${t("ansendSearch.explore")}`;
+  const ansendSellBtn = document.querySelector("#ansendSellBtn");
+  if (ansendSellBtn) ansendSellBtn.innerHTML = `<i data-lucide="sliders"></i> ${t("ansendSearch.sell")}`;
   const hero = document.querySelector(".ai-hero");
   if (hero) {
     const title = hero.querySelector(".an-hero-copy h1");
