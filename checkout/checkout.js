@@ -208,6 +208,28 @@
     </div>`;
   }
 
+  function mercadoPagoFieldsMarkup() {
+    return `<div class="ansend-checkout__method-panel" data-checkout-panel="mercado_pago" hidden>
+      <div class="ansend-checkout__pix-intro">
+        <img class="ansend-checkout__mercado-pago-panel-logo" src="assets/payment/mercado-pago-checkout.png" alt="Mercado Pago">
+        <div>
+          <strong>Checkout Mercado Pago</strong>
+          <span>Entre na sua conta do Mercado Pago ou pague com cartão no ambiente seguro da plataforma.</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function installMercadoPagoControls(root) {
+    const tabs = root.querySelector(".ansend-checkout__tabs");
+    const methods = root.querySelector(".ansend-checkout__methods");
+    const paypalPanel = root.querySelector('[data-checkout-panel="paypal"]');
+    if (!tabs || !methods || !paypalPanel || root.querySelector('[data-checkout-method="mercado_pago"]')) return;
+    tabs.insertAdjacentHTML("beforeend", '<button type="button" data-checkout-method="mercado_pago" role="tab" aria-selected="false">Mercado Pago</button>');
+    methods.insertAdjacentHTML("beforeend", '<button type="button" data-checkout-method="mercado_pago" aria-pressed="false"><img class="ansend-checkout__mercado-pago-logo" src="assets/payment/mercado-pago-checkout.png" alt=""><span>Mercado Pago</span></button>');
+    paypalPanel.insertAdjacentHTML("afterend", mercadoPagoFieldsMarkup());
+  }
+
   function renderCheckout(options) {
     const quote = options.quote || { subtotalCents: 0, serviceFeeCents: 0, discountCents: 0, totalCents: 0 };
     const items = Array.isArray(options.items) ? options.items : [];
@@ -287,12 +309,28 @@
     };
   }
 
+  function mercadoPagoReturnParams() {
+    const params = new URLSearchParams(location.search || "");
+    return {
+      attemptId: params.get("mp_attempt") || "",
+      paymentId: params.get("payment_id") || params.get("collection_id") || "",
+      status: params.get("status") || params.get("collection_status") || "",
+    };
+  }
+
   function clearPayPalReturnParams() {
     if (typeof history === "undefined" || typeof location === "undefined") return;
     const url = new URL(location.href);
     url.searchParams.delete("paypal_attempt");
     url.searchParams.delete("paypal_cancel");
     url.searchParams.delete("token");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function clearMercadoPagoReturnParams() {
+    if (typeof history === "undefined" || typeof location === "undefined") return;
+    const url = new URL(location.href);
+    ["mp_attempt", "payment_id", "collection_id", "status", "collection_status", "external_reference", "payment_type", "merchant_order_id", "preference_id", "site_id"].forEach((key) => url.searchParams.delete(key));
     history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
@@ -323,6 +361,8 @@
         label.textContent = `Gerar Pix de ${money(checkoutState.quote.totalCents)}`;
       } else if (checkoutState.method === "paypal") {
         label.textContent = `Pagar com PayPal`;
+      } else if (checkoutState.method === "mercado_pago") {
+        label.textContent = "Continuar no Mercado Pago";
       } else {
         label.textContent = `Pagar ${money(checkoutState.quote.totalCents)}`;
       }
@@ -353,8 +393,9 @@
   }
 
   function setPaymentMethod(method) {
-    if (!active || !["card", "pix", "paypal"].includes(method)) return;
+    if (!active || !["card", "pix", "paypal", "mercado_pago"].includes(method)) return;
     if (method === "card" && active.config && !active.config.supported_methods?.includes("card")) return;
+    if (method === "mercado_pago" && active.config && !active.config.supported_methods?.includes("mercado_pago")) return;
     active.method = method;
     active.root.dataset.checkoutMethod = method;
     active.root.querySelectorAll("[data-checkout-method]").forEach((button) => {
@@ -421,6 +462,14 @@
       try { sessionStorage.setItem("ansend-paypal-attempt", checkoutState.attemptId); } catch (_error) {}
       if (feedback) feedback.textContent = "Abrindo PayPal para aprovacao segura...";
       location.assign(approveUrl);
+      return result;
+    }
+    if (checkoutState.method === "mercado_pago") {
+      const checkoutUrl = result.payment?.checkout_url || result.mercado_pago?.checkout_url || "";
+      if (!checkoutUrl) throw new Error("Mercado Pago nao retornou o link do checkout.");
+      try { sessionStorage.setItem("ansend-mercado-pago-attempt", checkoutState.attemptId); } catch (_error) {}
+      if (feedback) feedback.textContent = "Abrindo o checkout seguro do Mercado Pago...";
+      location.assign(checkoutUrl);
       return result;
     }
     const resultPanel = checkoutState.root.querySelector("[data-checkout-result]");
@@ -758,6 +807,32 @@
     }
   }
 
+  async function resumeMercadoPagoReturn(checkoutState = active) {
+    if (!checkoutState || active !== checkoutState) return;
+    const params = mercadoPagoReturnParams();
+    if (!params.attemptId) return;
+    setPaymentMethod("mercado_pago");
+    checkoutState.attemptId = params.attemptId;
+    const form = checkoutState.root.querySelector("form");
+    const resultPanel = checkoutState.root.querySelector("[data-checkout-result]");
+    form.hidden = true;
+    resultPanel.hidden = false;
+    resultPanel.innerHTML = `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status is-pending">${icon("clock-3")}<div><strong>Confirmando Mercado Pago</strong><span>Estamos consultando o pagamento no Mercado Pago.</span></div></div></div>`;
+    checkoutState.options.refreshIcons?.();
+    try {
+      if (!params.paymentId) {
+        resultPanel.innerHTML = renderCardResult({ status: params.status || "pending", paid: false });
+      } else {
+        const result = await checkStatus({ payment_id: params.paymentId });
+        if (!result?.paid) resultPanel.innerHTML = renderCardResult(result || { status: params.status || "pending", paid: false });
+      }
+      clearMercadoPagoReturnParams();
+    } catch (error) {
+      resultPanel.innerHTML = `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status is-rejected">${icon("circle-x")}<div><strong>Falha ao confirmar Mercado Pago</strong><span>${escapeHtml(error.message)}</span></div></div><button type="button" class="ansend-checkout__secondary" data-checkout-check-status>Verificar novamente</button></div>`;
+      checkoutState.options.refreshIcons?.();
+    }
+  }
+
   function bind() {
     const checkoutState = active;
     const root = checkoutState.root;
@@ -870,6 +945,7 @@
       let loadingText = "Processando...";
       if (checkoutState.method === "pix") loadingText = "Gerando Pix...";
       if (checkoutState.method === "paypal") loadingText = "Redirecionando...";
+      if (checkoutState.method === "mercado_pago") loadingText = "Abrindo Mercado Pago...";
       setBusy(true, loadingText, checkoutState);
       try { await createPayment({}, checkoutState); }
       catch (error) { root.querySelector("[data-checkout-feedback]").textContent = error.message; setBusy(false, "Processando...", checkoutState); }
@@ -1050,6 +1126,7 @@
     }
     const root = options.mountTarget?.querySelector("[data-ansend-checkout]") || document.querySelector("[data-ansend-checkout]");
     if (!root) return null;
+    installMercadoPagoControls(root);
 
     // Read click-origin coordinates for Genie animation
     let genieOrigin = { x: null, y: null, w: null, h: null };
@@ -1086,6 +1163,7 @@
       checkoutState.config = await configResponse.json();
       const cardButtons = root.querySelectorAll('[data-checkout-method="card"]');
       const paypalButtons = root.querySelectorAll('[data-checkout-method="paypal"]');
+      const mercadoPagoButtons = root.querySelectorAll('[data-checkout-method="mercado_pago"]');
       if (!checkoutState.config.supported_methods?.includes("card")) {
         cardButtons.forEach((button) => { button.hidden = true; });
         setPaymentMethod("pix");
@@ -1097,7 +1175,12 @@
         paypalButtons.forEach((button) => { button.hidden = true; });
         if (checkoutState.method === "paypal") setPaymentMethod("pix");
       }
+      if (!checkoutState.config.supported_methods?.includes("mercado_pago")) {
+        mercadoPagoButtons.forEach((button) => { button.hidden = true; });
+        if (checkoutState.method === "mercado_pago") setPaymentMethod("pix");
+      }
       await resumePayPalReturn(checkoutState);
+      await resumeMercadoPagoReturn(checkoutState);
     } catch (error) {
       if (active === checkoutState) {
         root.querySelector("[data-checkout-feedback]").textContent = error.message;

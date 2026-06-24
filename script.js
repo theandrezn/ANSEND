@@ -12793,6 +12793,13 @@ async function renderPurchases() {
 
       const isCompleted = statusInfo.normalized === "completed";
       const detailHref = `#compras?${item.orderId ? 'id=' + item.orderId + '&item_id=' + item.id : 'attempt_id=' + item.attemptId}`;
+      const removeAttemptButton = item.type === "attempt_item" && item.attemptId ? `
+        <button type="button" class="an-secondary" data-action="remove-purchase-attempt" data-attempt-id="${htmlEscape(item.attemptId)}"
+                aria-label="Remover pedido pendente"
+                style="display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border-radius:8px; border-color:rgba(255,80,80,0.28); color:#ff6262; background:rgba(255,60,60,0.08);">
+          <i data-lucide="x" style="width:16px; height:16px;"></i>
+        </button>
+      ` : "";
       
       const isPlaying = appState.player.status === "playing" && String(appState.playing) === String(beat.id);
       const playBtnHtml = beat.id ? `
@@ -12804,7 +12811,7 @@ async function renderPurchases() {
       ` : '';
 
       return `
-        <article class="purchase-item purchase-card-hover" style="display:flex; flex-direction:column; gap:16px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; transition: border-color 0.2s, background 0.2s;">
+        <article class="purchase-item purchase-card-hover" data-purchase-attempt-id="${htmlEscape(item.attemptId || "")}" style="display:flex; flex-direction:column; gap:16px; background:#0a0a0a; border:1px solid var(--beat-border); border-radius:8px; padding:16px; transition: border-color 0.2s, background 0.2s;">
           <div style="display:flex; gap:16px; align-items:center; flex-wrap: wrap;">
             <div class="compras-cover-wrapper" style="position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer;" onclick="if(event.target.closest('button')) return; location.hash='${detailHref}'">
               <img src="${beatCover}" style="width: 100%; height: 100%; object-fit: cover;">
@@ -12833,10 +12840,13 @@ async function renderPurchases() {
             
             <div style="text-align: right; flex-shrink: 0; display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 120px;">
               <span style="font-size: 16px; font-weight: bold; color: #fff;">${priceText}</span>
-              <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}" 
-                 style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 6px; text-decoration: none; transition: background 0.2s; ${isCompleted ? 'background:#fff; color:#000;' : ''}">
-                ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
-              </a>
+              <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+                ${removeAttemptButton}
+                <a href="${detailHref}" class="${isCompleted ? 'an-primary' : 'an-secondary'}"
+                   style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 6px; text-decoration: none; transition: background 0.2s; ${isCompleted ? 'background:#fff; color:#000;' : ''}">
+                  ${isCompleted ? 'Acessar arquivos' : 'Ver detalhes'}
+                </a>
+              </div>
             </div>
           </div>
         </article>
@@ -13019,6 +13029,48 @@ function clearPurchases() {
   persistState();
   showToast("Pedidos removidos", "trash-2");
   if (currentRoute() === "compras") renderPurchases();
+}
+
+async function removePurchaseAttempt(attemptId, triggerButton = null) {
+  if (!attemptId || !supabaseClient || !appState.authUser) return;
+  if (!confirm("Deseja realmente remover este pedido pendente da sua lista?")) return;
+  const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
+  if (!session) {
+    showToast("Voce precisa estar autenticado para remover pedidos.", "alert-triangle");
+    return;
+  }
+
+  const card = triggerButton?.closest("[data-purchase-attempt-id]");
+  const previousHtml = triggerButton?.innerHTML;
+  if (triggerButton) {
+    triggerButton.disabled = true;
+    triggerButton.innerHTML = `<i data-lucide="loader-circle" class="animate-spin"></i>`;
+    lucide.createIcons();
+  }
+
+  try {
+    const response = await fetch("/api/purchases/remove-attempt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ attempt_id: attemptId }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Nao foi possivel remover este pedido.");
+    card?.remove();
+    showToast("Pedido removido do banco de dados.", "trash-2");
+    if (currentRoute() === "compras") renderPurchases();
+  } catch (error) {
+    console.error("Error removing purchase attempt:", error);
+    showToast(error.message || "Nao foi possivel remover este pedido.", "alert-triangle");
+    if (triggerButton) {
+      triggerButton.disabled = false;
+      triggerButton.innerHTML = previousHtml;
+      lucide.createIcons();
+    }
+  }
 }
 
 appState.appliedCoupons = appState.appliedCoupons || JSON.parse(localStorage.getItem("ansend-applied-coupons") || "{}");
@@ -21947,6 +21999,10 @@ document.addEventListener("click", async (event) => {
   }
   if (action === "clear-purchases") {
     clearPurchases();
+    return;
+  }
+  if (action === "remove-purchase-attempt") {
+    removePurchaseAttempt(target.dataset.attemptId, target);
     return;
   }
   if (action === "finalize-cart") {

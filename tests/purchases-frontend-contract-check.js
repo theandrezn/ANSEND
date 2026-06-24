@@ -18,6 +18,8 @@ assertIncludes(script, "producer_name_snapshot", "Purchases frontend must use im
 assertIncludes(script, "license_rights_snapshot", "Purchases frontend must keep immutable license rights available.");
 assertIncludes(script, "purchase_entitlements", "Purchases frontend must read real entitlements before enabling downloads.");
 assertIncludes(script, "license_documents", "Purchases frontend must read generated license documents.");
+assertIncludes(script, 'data-action="remove-purchase-attempt"', "Pending payment attempts must expose a real removal action.");
+assertIncludes(script, "/api/purchases/remove-attempt", "Pending payment attempts must be removed through the authenticated Worker endpoint.");
 assertIncludes(script, "data-order-id", "Download buttons must carry order_id.");
 assertIncludes(script, "data-order-item-id", "Download buttons must carry order_item_id.");
 assertIncludes(script, 'params.set("order_id"', "Download request must send order_id to the Worker.");

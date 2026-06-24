@@ -2045,7 +2045,7 @@ create table if not exists public.payment_attempts (
   buyer_name text not null,
   buyer_email text not null,
   provider text not null default 'mercado_pago' check (provider in ('mercado_pago', 'paypal')),
-  method text not null check (method in ('pix', 'card', 'paypal')),
+  method text not null check (method in ('pix', 'card', 'paypal', 'mercado_pago')),
   provider_payment_id text,
   external_reference text not null unique,
   idempotency_key text not null unique,

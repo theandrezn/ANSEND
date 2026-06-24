@@ -74,6 +74,9 @@ assertIncludes(worker, "order_item_id", "Download endpoint must accept/validate 
 assertIncludes(worker, "order_id", "Download endpoint must accept/validate order_id");
 assertIncludes(worker, "orders?select=id,status,buyer_id", "Download endpoint must verify completed order server-side");
 assertIncludes(worker, "order?.status === \"completed\"", "Download endpoint must require completed order");
+assertIncludes(worker, "/api/purchases/remove-attempt", "Worker must expose authenticated pending-attempt removal.");
+assertIncludes(worker, "method: \"delete\"", "Worker must remove pending payment attempts from Supabase.");
+assertIncludes(worker, "attempt.order_id", "Worker must refuse to remove finalized order attempts.");
 assertNotIncludes(worker, "download_url: filePath", "Worker must not expose permanent private paths");
 
 console.log("Phase 2 purchase lifecycle contract checks passed.");

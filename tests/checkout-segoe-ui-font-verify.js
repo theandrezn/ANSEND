@@ -108,7 +108,7 @@ const root = path.resolve(__dirname, "..");
   assert.ok(methodsContainer, "Payment methods container must exist");
 
   const buttons = await page.$$(".ansend-checkout__methods button[data-checkout-method]");
-  assert.strictEqual(buttons.length, 3, "There should be 3 payment method buttons");
+  assert.strictEqual(buttons.length, 4, "There should be 4 payment method buttons");
 
   const firstButtonBox = await buttons[0].boundingBox();
   console.log("First button bounding box:", firstButtonBox);
