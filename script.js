@@ -12137,7 +12137,7 @@ async function loadUserPurchases() {
     const missingProducerIds = [...producerIds];
     if (missingProducerIds.length > 0) {
       const { data: profiles } = await supabaseClient
-        .from("profiles")
+        .from("public_profiles")
         .select("id,username,artistic_name,full_name,avatar_url")
         .in("id", missingProducerIds);
 
@@ -12278,6 +12278,7 @@ async function renderPurchases() {
             status: attempt.status,
             provider: attempt.provider,
             providerPaymentId: attempt.provider_payment_id,
+            sellerId: attempt.cart_items[0]?.seller_id || attempt.cart_items[0]?.sellerId || null,
           };
         }
       }
@@ -12296,9 +12297,10 @@ async function renderPurchases() {
       const beatTitle = beat.title || "Beat Indisponível";
       const beatCover = beat.cover || "assets/top-beat-psiiiko-cover.jpg";
       const producer = context.profiles.get(String(beat.user_id || item.sellerId));
-      const producerName = producer ? (producer.artistic_name || producer.full_name) : (beat.producer_name || "Produtor");
-      const producerAvatar = producer?.avatar_url || "assets/default-avatar.png";
-      const producerUsername = producer?.username || "";
+      const producerName = producer ? (producer.display_name || producer.artistic_name || producer.full_name) : (beat.producer || beat.producer_name || "Produtor");
+      const producerAvatar = producer?.avatar_url || "assets/ansend-logo-square.png";
+      const rawUsername = producer?.username || beat.owner_username || beat.username || "";
+      const producerUsername = rawUsername ? rawUsername : (producerName ? producerName.toLowerCase().replace(/[^a-z0-9_.-]/g, "") : "produtor");
       
       const orderNum = order ? `PED-${order.id.slice(0, 8).toUpperCase()}` : `ATT-${attempt.id.slice(0, 8).toUpperCase()}`;
       const priceText = `R$ ${(item.priceCents / 100).toFixed(2)}`;
