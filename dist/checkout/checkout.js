@@ -277,6 +277,25 @@
     return `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status ${approved ? "is-approved" : (rejected ? "is-rejected" : "is-pending")}">${icon(approved ? "badge-check" : (rejected ? "circle-x" : "clock-3"))}<div><strong>${title}</strong><span>${detail}</span></div></div>${approved ? `<button type="button" class="ansend-checkout__pay" data-checkout-finish>Ver minhas compras</button>` : (rejected ? `<button type="button" class="ansend-checkout__secondary" data-checkout-retry>Tentar novamente</button>` : `<button type="button" class="ansend-checkout__secondary" data-checkout-check-status>Verificar pagamento</button>`)}</div>`;
   }
 
+  function paypalReturnParams() {
+    if (typeof location === "undefined") return {};
+    const params = new URLSearchParams(location.search || "");
+    return {
+      attemptId: params.get("paypal_attempt") || "",
+      token: params.get("token") || "",
+      cancelled: params.get("paypal_cancel") || "",
+    };
+  }
+
+  function clearPayPalReturnParams() {
+    if (typeof history === "undefined" || typeof location === "undefined") return;
+    const url = new URL(location.href);
+    url.searchParams.delete("paypal_attempt");
+    url.searchParams.delete("paypal_cancel");
+    url.searchParams.delete("token");
+    history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
   let active = null;
 
   function authHeaders(checkoutState = active) {
@@ -387,24 +406,6 @@
     const form = checkoutState.root.querySelector("form");
     const feedback = checkoutState.root.querySelector("[data-checkout-feedback]");
     if (!form.querySelector('[name="accept_terms"]')?.checked) throw new Error("Aceite os termos para continuar.");
-    if (active.method === "paypal") {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const mockResult = {
-        success: true,
-        attempt_id: "paypal-" + (global.crypto?.randomUUID?.() || Date.now()),
-        status: "approved",
-        paid: true,
-      };
-      active.attemptId = mockResult.attempt_id;
-      const resultPanel = active.root.querySelector("[data-checkout-result]");
-      form.hidden = true;
-      resultPanel.hidden = false;
-      resultPanel.innerHTML = renderCardResult(mockResult);
-      active.options.refreshIcons?.();
-      if (active.options.onPaid) active.options.onPaid(mockResult);
-      if (feedback) feedback.textContent = "";
-      return mockResult;
-    }
     const response = await fetch("/api/checkout/payment", {
       method: "POST",
       headers: authHeaders(checkoutState),
@@ -414,6 +415,14 @@
     if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível processar o pagamento.");
     if (active !== checkoutState) return result;
     checkoutState.attemptId = result.attempt_id;
+    if (checkoutState.method === "paypal") {
+      const approveUrl = result.payment?.approve_url || result.paypal?.approve_url || "";
+      if (!approveUrl) throw new Error("PayPal nao retornou o link de aprovacao.");
+      try { sessionStorage.setItem("ansend-paypal-attempt", checkoutState.attemptId); } catch (_error) {}
+      if (feedback) feedback.textContent = "Abrindo PayPal para aprovacao segura...";
+      location.assign(approveUrl);
+      return result;
+    }
     const resultPanel = checkoutState.root.querySelector("[data-checkout-result]");
     form.hidden = true;
     resultPanel.hidden = false;
@@ -707,15 +716,45 @@
     if (active === checkoutState) initCardForm();
   }
 
-  async function checkStatus() {
+  async function checkStatus(extraPayload = {}) {
     if (!active?.attemptId) return;
-    const response = await fetch("/api/checkout/status", { method: "POST", headers: authHeaders(), body: JSON.stringify({ attempt_id: active.attemptId }) });
+    const response = await fetch("/api/checkout/status", { method: "POST", headers: authHeaders(), body: JSON.stringify({ attempt_id: active.attemptId, ...extraPayload }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || "Não foi possível verificar o pagamento.");
     if (result.paid) {
       active.root.querySelector("[data-checkout-result]").innerHTML = renderCardResult({ ...result, status: "approved" });
       active.options.onPaid?.(result);
       active.options.refreshIcons?.();
+    }
+    return result;
+  }
+
+  async function resumePayPalReturn(checkoutState = active) {
+    if (!checkoutState || active !== checkoutState) return;
+    const params = paypalReturnParams();
+    const attemptId = params.attemptId || params.cancelled || "";
+    if (!attemptId) return;
+    setPaymentMethod("paypal");
+    checkoutState.attemptId = attemptId;
+    const form = checkoutState.root.querySelector("form");
+    const resultPanel = checkoutState.root.querySelector("[data-checkout-result]");
+    form.hidden = true;
+    resultPanel.hidden = false;
+    if (params.cancelled) {
+      resultPanel.innerHTML = renderCardResult({ status: "cancelled", paid: false });
+      clearPayPalReturnParams();
+      checkoutState.options.refreshIcons?.();
+      return;
+    }
+    resultPanel.innerHTML = `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status is-pending">${icon("clock-3")}<div><strong>Confirmando PayPal</strong><span>Estamos capturando o pagamento aprovado no PayPal.</span></div></div></div>`;
+    checkoutState.options.refreshIcons?.();
+    try {
+      const result = await checkStatus({ paypal_token: params.token, capture: true });
+      if (!result?.paid) resultPanel.innerHTML = renderCardResult(result || { status: "pending", paid: false });
+      clearPayPalReturnParams();
+    } catch (error) {
+      resultPanel.innerHTML = `<div class="ansend-checkout__card-result"><div class="ansend-checkout__status is-rejected">${icon("circle-x")}<div><strong>Falha ao confirmar PayPal</strong><span>${escapeHtml(error.message)}</span></div></div><button type="button" class="ansend-checkout__secondary" data-checkout-check-status>Verificar novamente</button></div>`;
+      checkoutState.options.refreshIcons?.();
     }
   }
 
@@ -1046,6 +1085,7 @@
       if (active !== checkoutState) return checkoutState;
       checkoutState.config = await configResponse.json();
       const cardButtons = root.querySelectorAll('[data-checkout-method="card"]');
+      const paypalButtons = root.querySelectorAll('[data-checkout-method="paypal"]');
       if (!checkoutState.config.supported_methods?.includes("card")) {
         cardButtons.forEach((button) => { button.hidden = true; });
         setPaymentMethod("pix");
@@ -1053,6 +1093,11 @@
         await loadMercadoPagoSdk();
         if (active === checkoutState) initCardForm();
       }
+      if (!checkoutState.config.supported_methods?.includes("paypal")) {
+        paypalButtons.forEach((button) => { button.hidden = true; });
+        if (checkoutState.method === "paypal") setPaymentMethod("pix");
+      }
+      await resumePayPalReturn(checkoutState);
     } catch (error) {
       if (active === checkoutState) {
         root.querySelector("[data-checkout-feedback]").textContent = error.message;
