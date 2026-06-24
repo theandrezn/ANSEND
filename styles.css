@@ -7735,7 +7735,7 @@ body[data-route="detalhe"] #appView.app-view {
 
 .beat-market-detail .beat-sidebar-card {
   position: sticky !important;
-  top: 86px !important;
+  top: 10px !important;
   display: grid !important;
   gap: 8px !important;
   padding: 12px !important;
