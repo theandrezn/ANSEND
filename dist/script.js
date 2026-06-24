@@ -21443,6 +21443,19 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", async (event) => {
+  const targetExploreBtn = event.target.closest("#ansendExploreBtn");
+  if (targetExploreBtn) {
+    event.preventDefault();
+    location.hash = "explorar";
+    return;
+  }
+  const targetSellBtn = event.target.closest("#ansendSellBtn");
+  if (targetSellBtn) {
+    event.preventDefault();
+    location.hash = "cadastrar";
+    return;
+  }
+
   const ansendSelectToggle = event.target.closest("[data-action='ansend-select-toggle']");
   if (ansendSelectToggle) {
     event.preventDefault();
@@ -23541,19 +23554,30 @@ document.addEventListener("submit", async (event) => {
   const aiForm = event.target.closest(".ai-diagnostic-form");
   if (aiForm) {
     event.preventDefault();
+    if (aiForm.classList.contains("ansend-search-form")) {
+      const input = aiForm.querySelector("#ansendSearchInput");
+      const query = input ? input.value.trim() : "";
+      appState.query = query;
+      trackUserEvent("search", "user_interest", appState.authUser?.id, { source: "hero-search", query: appState.query });
+      location.hash = "explorar";
+      if (currentRoute() === "explorar") renderRoute();
+      return;
+    }
     const input = aiForm.elements.aiPrompt;
-    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
-    aiForm.classList.add("is-thinking");
-    const quiz = promptToNexoQuiz(prompt);
-    appState.nexoQuiz = quiz;
-    appState.nexoQuizStep = nexoQuizSteps.length - 1;
-    appState.nexoQuizEditing = true;
-    appState.nexoQuizError = "";
-    saveNexoQuiz(quiz);
-    location.hash = "ia";
-    renderRoute();
-    lucide.createIcons();
-    aiForm.classList.remove("is-thinking");
+    if (input) {
+      const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
+      aiForm.classList.add("is-thinking");
+      const quiz = promptToNexoQuiz(prompt);
+      appState.nexoQuiz = quiz;
+      appState.nexoQuizStep = nexoQuizSteps.length - 1;
+      appState.nexoQuizEditing = true;
+      appState.nexoQuizError = "";
+      saveNexoQuiz(quiz);
+      location.hash = "ia";
+      renderRoute();
+      lucide.createIcons();
+      aiForm.classList.remove("is-thinking");
+    }
     return;
   }
   const onboardingForm = event.target.closest(".onboarding-card");

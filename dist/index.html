@@ -325,23 +325,19 @@
               </h1>
               <p>Descreva sua música, letra, demo ou objetivo. A NEXO IA monta um plano e recomenda profissionais para produzir, lançar e divulgar.</p>
 
-              <form class="ai-diagnostic-form" aria-label="Diagnóstico Musical NEXO IA">
-                <label class="sr-only" for="aiPrompt">Diagnóstico Musical NEXO IA</label>
-                <div class="ai-input-shell">
-                  <i data-lucide="bot"></i>
-                  <textarea id="aiPrompt" name="aiPrompt" rows="3" placeholder="Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente..."></textarea>
-                  <button class="ai-inline-submit" type="submit" aria-label="Enviar para NEXO IA"><i data-lucide="arrow-right"></i></button>
+              <form class="ai-diagnostic-form ansend-search-form" aria-label="Busca de Beats">
+                <div class="ansend-search-bar-shell">
+                  <i data-lucide="search" class="ansend-search-icon"></i>
+                  <input type="text" id="ansendSearchInput" name="ansendSearchInput" placeholder="Try &quot;Happy&quot; or &quot;travis scott type beat&quot;" autocomplete="off" />
+                  <button type="submit" class="ansend-search-submit-btn">Search</button>
                 </div>
-                <div class="ai-chip-row" aria-label="Atalhos do diagnóstico">
-                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma ideia de música e preciso transformar em lançamento.">Tenho uma ideia</button>
-                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma letra de trap e preciso encontrar beat, capa e produção.">Tenho uma letra</button>
-                  <button type="button" data-action="ai-chip" data-prompt="Tenho uma demo gravada e quero finalizar com mixagem, master e capa.">Tenho uma demo</button>
-                  <button type="button" data-action="ai-chip" data-prompt="Quero lançar no Spotify com distribuição, curadoria e divulgação.">Quero lançar</button>
-                  <button type="button" data-action="ai-chip" data-prompt="Preciso divulgar minha música com curadoria, marketing musical e tráfego.">Preciso divulgar</button>
-                </div>
-                <div class="an-hero-actions ai-actions">
-                  <button class="an-primary" type="submit">Gerar meu plano <i data-lucide="arrow-right"></i></button>
-                  <button class="an-secondary" type="button" data-action="ai-professionals">Explorar serviços <i data-lucide="users-round"></i></button>
+                <div class="ansend-search-actions-row">
+                  <button type="button" id="ansendExploreBtn" class="ansend-explore-btn">
+                    <i data-lucide="headphones"></i> Explore Beats
+                  </button>
+                  <button type="button" id="ansendSellBtn" class="ansend-sell-btn">
+                    <i data-lucide="sliders"></i> Sell Your Beats
+                  </button>
                 </div>
               </form>
 
@@ -474,7 +470,7 @@
     <script src="https://unpkg.com/three@0.124.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.min.js"></script>
     <script>
-      window.ANSEND_BUILD_ID = "20260624183451-1b39458";
+      window.ANSEND_BUILD_ID = "20260624185344-4d10e9d";
       window.ANSEND_SUPABASE = {
         url: "https://qxujynzqdursxaehchik.supabase.co",
         publishableKey: "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe",

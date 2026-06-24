@@ -41197,3 +41197,147 @@ body[data-route="feed"] .featured-preview-section .section-head p {
   font-family: "Untitled Sans", "Unitilited Sans", "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif !important;
 }
 
+/* ==========================================================================
+   ANSEND BEAT SEARCH BAR REDESIGN (IMAGEM 1)
+   ========================================================================== */
+.ansend-search-form {
+  width: min(100%, 640px) !important;
+  margin-top: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.ansend-search-bar-shell {
+  display: flex !important;
+  align-items: center !important;
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 8px 10px 8px 16px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25) !important;
+  transition: box-shadow 0.2s ease !important;
+  height: 56px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+.ansend-search-bar-shell:focus-within {
+  box-shadow: 0 4px 28px rgba(127, 0, 255, 0.3) !important;
+}
+
+.ansend-search-icon {
+  width: 20px !important;
+  height: 20px !important;
+  color: #7f00ff !important;
+  margin-right: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+#ansendSearchInput {
+  flex-grow: 1 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  color: #1a1a1a !important;
+  font-family: var(--font-ui) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+#ansendSearchInput::placeholder {
+  color: #8e8e93 !important;
+  font-weight: 400 !important;
+}
+
+.ansend-search-submit-btn {
+  background: #7f00ff !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 10px 24px !important;
+  font-family: var(--font-ui) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease, transform 0.1s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.ansend-search-submit-btn:hover {
+  background: #6a00d7 !important;
+}
+
+.ansend-search-submit-btn:active {
+  transform: scale(0.98) !important;
+}
+
+.ansend-search-actions-row {
+  display: flex !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+.ansend-explore-btn,
+.ansend-sell-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 14px 28px !important;
+  font-family: var(--font-ui) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  flex: 1 !important;
+}
+
+.ansend-explore-btn svg,
+.ansend-sell-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.ansend-explore-btn {
+  background: #7f00ff !important;
+}
+
+.ansend-explore-btn:hover {
+  background: #6a00d7 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(127, 0, 255, 0.25) !important;
+}
+
+.ansend-sell-btn {
+  background: #ec008c !important;
+}
+
+.ansend-sell-btn:hover {
+  background: #c90077 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(236, 0, 140, 0.25) !important;
+}
+
+.ansend-explore-btn:active,
+.ansend-sell-btn:active {
+  transform: translateY(0) !important;
+}
+
+/* Hide or override other conflicting styles inside hero diagnostic form */
+.ansend-search-form .ai-input-shell {
+  display: none !important;
+}
+.ansend-search-form .ai-chip-row {
+  display: none !important;
+}
+.ansend-search-form .ai-actions {
+  display: none !important;
+}
+
+
