@@ -14881,6 +14881,32 @@ async function sendNexoChatMessage(rawMessage) {
   }
 }
 
+async function startNexoHeroChat(rawPrompt, form = null) {
+  const prompt = String(rawPrompt || "").trim() || "Tenho uma ideia musical e preciso transformar em lancamento profissional.";
+  if (!prompt || appState.nexoChatLoading) return;
+  const quiz = promptToNexoQuiz(prompt);
+  appState.nexoQuiz = quiz;
+  appState.nexoQuizStep = nexoQuizSteps.length - 1;
+  appState.nexoQuizEditing = true;
+  appState.nexoQuizError = "";
+  saveNexoQuiz(quiz);
+  appState.nexoAssistant.open = true;
+  appState.nexoAssistant.minimized = false;
+  appState.nexoAssistant.expanded = false;
+  appState.nexoAssistant.unread = false;
+  writeNexoAssistantPrefs();
+  form?.classList.add("is-thinking");
+  form?.querySelector("button[type='submit']")?.setAttribute("disabled", "true");
+  renderNexoFloatingAssistant();
+  try {
+    await sendNexoChatMessage(prompt);
+  } finally {
+    form?.classList.remove("is-thinking");
+    form?.querySelector("button[type='submit']")?.removeAttribute("disabled");
+    lucide.createIcons();
+  }
+}
+
 function professionalStats(profile) {
   const ownerItems = appState.publicCatalogItems.filter((item) => profile.id && item.user_id === profile.id);
   const beatCount = ownerItems.filter((item) => item.source_table === "beats" || item.kind === "beat").length;
@@ -20743,6 +20769,11 @@ document.addEventListener("keydown", (event) => {
     form?.requestSubmit();
     return;
   }
+  if (event.target?.matches?.("#aiPrompt") && event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    event.target.closest(".ai-diagnostic-form")?.requestSubmit();
+    return;
+  }
   if (event.target?.matches?.(".nexo-assistant-form textarea") && event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     event.target.closest(".nexo-assistant-form")?.requestSubmit();
@@ -22884,18 +22915,8 @@ document.addEventListener("submit", async (event) => {
   if (aiForm) {
     event.preventDefault();
     const input = aiForm.elements.aiPrompt;
-    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lançamento profissional.";
-    aiForm.classList.add("is-thinking");
-    const quiz = promptToNexoQuiz(prompt);
-    appState.nexoQuiz = quiz;
-    appState.nexoQuizStep = nexoQuizSteps.length - 1;
-    appState.nexoQuizEditing = true;
-    appState.nexoQuizError = "";
-    saveNexoQuiz(quiz);
-    location.hash = "ia";
-    renderRoute();
-    lucide.createIcons();
-    aiForm.classList.remove("is-thinking");
+    const prompt = input.value.trim() || "Tenho uma ideia musical e preciso transformar em lancamento profissional.";
+    await startNexoHeroChat(prompt, aiForm);
     return;
   }
   const onboardingForm = event.target.closest(".onboarding-card");

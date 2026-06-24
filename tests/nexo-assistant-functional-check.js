@@ -31,6 +31,7 @@ for (const marker of [
 for (const marker of [
   "executeNexoAssistantActions",
   "applyNexoPendingRouteQuery",
+  "startNexoHeroChat",
   "nexo-assistant-cancel",
   "historyLoaded",
   "historyLoadRequested",
@@ -43,6 +44,14 @@ for (const marker of [
 
 if (/OPENAI_API_KEY/.test(script)) {
   throw new Error("OPENAI_API_KEY must never appear in the frontend bundle source");
+}
+
+if (!script.includes('event.target?.matches?.("#aiPrompt")') || !script.includes("await startNexoHeroChat(prompt, aiForm)")) {
+  throw new Error("NEXO hero prompt must submit into the real NEXO chat flow.");
+}
+
+if (script.includes('location.hash = "ia";\n    renderRoute();\n    lucide.createIcons();\n    aiForm.classList.remove("is-thinking");')) {
+  throw new Error("NEXO hero prompt must not only redirect to the IA workspace.");
 }
 
 const normalizedScript = script.replace(/\r\n/g, "\n");
