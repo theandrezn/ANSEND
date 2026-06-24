@@ -99,6 +99,7 @@ const i18n = {
     "hero.kicker": "NEXO IA",
     "hero.titleLine1": "ANSEND",
     "hero.titleLine2": "O\u00a0marketplace inteligente da\u00a0música",
+    "hero.titleLine2Alternative": "A\u00a0rede social da\u00a0música",
     "hero.subtitle": "Descreva sua música, letra, demo ou objetivo. A NEXO IA conecta você aos profissionais certos.",
     "hero.prompt": "Ex: Tenho uma música de trap pronta e preciso lançar profissionalmente...",
     "hero.primaryCta": "Começar com IA",
@@ -205,6 +206,7 @@ const i18n = {
     "hero.kicker": "NEXO AI",
     "hero.titleLine1": "ANSEND",
     "hero.titleLine2": "The intelligent music marketplace",
+    "hero.titleLine2Alternative": "The music social network",
     "hero.subtitle": "Describe your song, lyrics, demo, or goal. NEXO AI connects you with the right professionals.",
     "hero.prompt": "Ex: I have a trap song ready and need to release it professionally...",
     "hero.primaryCta": "Start with AI",
@@ -499,7 +501,7 @@ function applyTranslations(root = document) {
     const mapEyebrow = hero.querySelector(".ai-map-card > span");
     const mapTitle = hero.querySelector(".ai-map-card > strong");
     const mapSubtitle = hero.querySelector(".ai-map-card > p");
-    if (title) animateHeadlineReveal(title, t("hero.titleLine1"), t("hero.titleLine2"));
+    if (title) runHeroHeadlineCycler(title);
     if (subtitle) subtitle.textContent = t("hero.subtitle");
     if (input) input.placeholder = t("hero.prompt");
     if (primary) primary.innerHTML = `${t("hero.primaryCta")} <i data-lucide="arrow-right"></i>`;
@@ -4367,6 +4369,8 @@ let lastRoute = null;
 let lastPageTransitionKey = null;
 let heroTypewriterTimer = null;
 let heroTypewriterToken = 0;
+let heroHeadlineIndex = 0;
+let heroHeadlineInterval = null;
 
 function currentRouteFromHash() {
   const route = (location.hash.replace("#", "") || "feed").split("?")[0];
@@ -5243,6 +5247,31 @@ function runHeroTypewriter(textElement, text) {
   typeNext();
 }
 
+function runHeroHeadlineCycler(titleElement) {
+  if (!titleElement) return;
+  if (heroHeadlineInterval) {
+    clearInterval(heroHeadlineInterval);
+    heroHeadlineInterval = null;
+  }
+
+  const updateHeroTitle = () => {
+    const line2 = heroHeadlineIndex === 0 ? t("hero.titleLine2") : t("hero.titleLine2Alternative");
+    animateHeadlineReveal(titleElement, t("hero.titleLine1"), line2);
+  };
+
+  updateHeroTitle();
+
+  heroHeadlineInterval = setInterval(() => {
+    if (!document.body.contains(titleElement)) {
+      clearInterval(heroHeadlineInterval);
+      heroHeadlineInterval = null;
+      return;
+    }
+    heroHeadlineIndex = (heroHeadlineIndex + 1) % 2;
+    updateHeroTitle();
+  }, 10000);
+}
+
 function animateHeadlineReveal(titleElement, line1, line2) {
   if (!titleElement) return;
   const nextKey = `${appLocale.current}|${line1}|${line2}`;
@@ -5293,7 +5322,7 @@ function applyRoleDashboard() {
   const quickSubtitle = document.querySelector(".quick-actions-section .section-head p");
 
   if (kicker) kicker.textContent = role === "beatmaker" ? "NEXO IA PARA BEATMAKERS" : "NEXO IA";
-  if (title) animateHeadlineReveal(title, heroHeadline[0], heroHeadline[1]);
+  if (title) runHeroHeadlineCycler(title);
   if (subtitle) subtitle.textContent = dashboard.subheadline;
   if (input) input.placeholder = dashboard.placeholder;
   if (chips) {

@@ -13562,7 +13562,7 @@ body.modal-open {
   font-size: clamp(58px, 5.05vw, 92px);
   font-weight: 400;
   letter-spacing: 0;
-  line-height: .9;
+  line-height: 1.05;
   text-transform: uppercase;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .72);
 }
@@ -13576,7 +13576,7 @@ body.modal-open {
 .feed .ai-hero .an-hero-copy h1 span {
   color: var(--orange);
   font-size: 1.16em;
-  line-height: .84;
+  line-height: 1.0;
   text-shadow:
     0 0 18px rgba(255, 106, 0, .28),
     0 8px 34px rgba(255, 106, 0, .18);
@@ -20736,7 +20736,7 @@ body.nexo-feed-comments-open {
 .hero-morph-title .hero-morph-brand {
   color: var(--orange) !important;
   font-size: 1.22em;
-  line-height: .8;
+  line-height: 1.0;
   text-shadow:
     0 0 18px rgba(255, 106, 0, .34),
     0 14px 42px rgba(255, 106, 0, .18);
