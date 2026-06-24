@@ -1680,6 +1680,7 @@ create table if not exists public.beat_licenses (
   duration text default 'lifetime',
   territory text default 'worldwide',
   custom_terms text,
+  terms_config jsonb not null default '{}'::jsonb,
   sort_order integer default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

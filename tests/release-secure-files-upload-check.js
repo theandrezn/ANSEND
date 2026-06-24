@@ -86,7 +86,7 @@ async function run() {
           window.__releaseUploads = [];
           window.__releaseDrafts = [];
           function queryResult(table) {
-            const profile = { id: testUser.id, username: "andrezin", artistic_name: "andrezin", full_name: "andrezin" };
+            const profile = { id: testUser.id, username: "andrezin", artistic_name: "andrezin", full_name: "andrezin", quiz_completed: true };
             const query = {
               select: () => query,
               insert: () => query,
@@ -158,6 +158,8 @@ async function run() {
 
     const result = await page.evaluate(() => {
       const form = document.querySelector(".release-upload-form");
+      const deliveryGrid = document.querySelector(".release-delivery-grid") || document.querySelector(".release-files-grid-delivery");
+      const filesLayout = document.querySelector(".release-files-layout") || deliveryGrid?.parentElement;
       return {
         audioPath: form.elements.audio_path.value,
         mp3Path: form.elements.mp3_path.value,
@@ -169,9 +171,9 @@ async function run() {
         stepValid: window.validateReleaseStep(2),
         uploads: window.__releaseUploads,
         drafts: window.__releaseDrafts,
-        layoutColumns: getComputedStyle(document.querySelector(".release-files-layout")).gridTemplateColumns,
-        deliveryColumns: getComputedStyle(document.querySelector(".release-delivery-grid")).gridTemplateColumns,
-        deliveryCards: document.querySelectorAll(".release-upload-card").length,
+        layoutColumns: filesLayout ? getComputedStyle(filesLayout).gridTemplateColumns : "missing",
+        deliveryColumns: deliveryGrid ? getComputedStyle(deliveryGrid).gridTemplateColumns : "missing",
+        deliveryCards: document.querySelectorAll(".release-delivery-grid .release-upload-card, .release-files-grid-delivery .release-file-card").length,
       };
     });
 
@@ -189,9 +191,9 @@ async function run() {
       || !result.drafts.some((draft) => draft.payload?.stems_path)) {
       throw new Error("Release upload draft did not persist secure file paths.");
     }
-    if (result.layoutColumns === "none") throw new Error("Release upload layout did not become a responsive grid.");
+    if (result.layoutColumns === "missing" || result.layoutColumns === "none") throw new Error("Release upload layout did not become a responsive grid.");
     if (result.deliveryCards !== 3) throw new Error("Release upload delivery grid must render three file cards.");
-    if (!/\s/.test(result.deliveryColumns) || result.deliveryColumns === "none") throw new Error("Release delivery files did not become a three-card responsive grid.");
+    if (!/\s/.test(result.deliveryColumns) || result.deliveryColumns === "missing" || result.deliveryColumns === "none") throw new Error("Release delivery files did not become a three-card responsive grid.");
   } finally {
     await browser.close();
     server.close();

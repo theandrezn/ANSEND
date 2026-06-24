@@ -26,6 +26,7 @@
     "test:chat-focus-stability": "node tests/chat-focus-stability-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
     "test:release-secure-files": "node tests/release-secure-files-upload-check.js",
+    "test:release-licenses": "node tests/release-license-manager-check.js",
     "test:typography": "node tests/typography-font-check.js",
     "test:i18n": "node tests/i18n-language-check.js",
     "test:recommendations": "node tests/recommendations-architecture-check.js",

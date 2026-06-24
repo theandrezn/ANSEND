@@ -16699,6 +16699,8 @@ function setupMusicUploadEventListeners() {
       const idx = Number(e.target.closest("[data-license-index]")?.dataset.licenseIndex);
       if (!isNaN(idx) && appState.releaseLicenses?.[idx]) {
         appState.releaseLicenses[idx].is_active = e.target.checked;
+        refreshReleaseLicensesUI();
+        syncReleaseForm(form);
       }
     }
   });
@@ -16750,6 +16752,21 @@ function setupMusicUploadEventListeners() {
       if (idx !== null) {
         openLicenseTermsEditModal(idx);
       }
+      return;
+    }
+
+    if (e.target.closest(".license-info-btn")) {
+      if (idx !== null) openLicenseInfoModal(idx);
+      return;
+    }
+
+    const accordionButton = e.target.closest(".license-accordion-toggle");
+    if (accordionButton) {
+      const details = document.getElementById(accordionButton.getAttribute("aria-controls"));
+      const expanded = accordionButton.getAttribute("aria-expanded") === "true";
+      accordionButton.setAttribute("aria-expanded", String(!expanded));
+      accordionButton.closest(".release-license-row")?.classList.toggle("is-expanded", !expanded);
+      if (details) details.hidden = expanded;
       return;
     }
     
@@ -16965,9 +16982,9 @@ async function saveBeatRelease(status = "published") {
         is_custom: lic.is_custom || false,
         is_active: lic.is_active,
         is_exclusive: lic.is_exclusive || false,
-        included_mp3: lic.included_mp3 || false,
-        included_wav: lic.included_wav || false,
-        included_stems: lic.included_stems || false,
+        included_mp3: Boolean(lic.included_mp3 && releaseFileIsConfirmed(form, "secure_mp3")),
+        included_wav: Boolean(lic.included_wav && releaseFileIsConfirmed(form, "secure_wav")),
+        included_stems: Boolean(lic.included_stems && releaseFileIsConfirmed(form, "secure_stems")),
         buyer_royalty_percentage: lic.buyer_royalty_percentage || 50,
         producer_royalty_percentage: lic.producer_royalty_percentage || 50,
         stream_limit: lic.stream_limit || null,
@@ -16983,6 +17000,7 @@ async function saveBeatRelease(status = "published") {
         duration: lic.duration || 'lifetime',
         territory: lic.territory || 'worldwide',
         custom_terms: lic.custom_terms || null,
+        terms_config: lic.terms_config || defaultLicenseTermsConfig(lic.license_key),
         sort_order: idx,
         ...(isUUID ? { id: lic.id } : {})
       };
@@ -18036,12 +18054,6 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<section class="release-panel" data-panel="3">'
     + '<div class="release-panel-header"><h2>Licenças e Valores</h2><p>Defina individualmente os valores e ative ou configure os termos de cada licença.</p></div>'
     + '<div class="release-licenses-container"></div>'
-    + '<div style="margin-top: 16px;">'
-    + '  <button type="button" class="an-secondary add-custom-license-btn" style="width:100%; border-style:dashed; height:45px; display:flex; justify-content:center; align-items:center; gap:8px;">'
-    + '    <i data-lucide="plus-circle" style="width:18px; height:18px;"></i>'
-    + '    + Adicionar outro tipo de licença'
-    + '  </button>'
-    + '</div>'
     + '</section>'
 
     // STEP 4 - Revisão
@@ -22959,6 +22971,23 @@ document.addEventListener("submit", async (event) => {
       return;
     }
 
+    const nullableLimit = (name) => {
+      const value = customLicenseForm.elements[name]?.value;
+      return value === "" || value === undefined ? null : Math.max(0, Number(value) || 0);
+    };
+    const termsConfig = {
+      distribution_copies: nullableLimit("distribution_copies"),
+      free_downloads: nullableLimit("free_downloads"),
+      audio_streams: customLicenseForm.elements.unlimited_streams.checked ? null : (Number(customLicenseForm.elements.stream_limit.value) || null),
+      video_streams: nullableLimit("video_streams"),
+      music_videos: customLicenseForm.elements.unlimited_music_videos.checked ? null : (Number(customLicenseForm.elements.music_video_limit.value) || null),
+      nonprofit_performances: nullableLimit("nonprofit_performances"),
+      paid_performances: nullableLimit("paid_performances"),
+      radio_stations: nullableLimit("radio_stations"),
+      broadcasting_rights: customLicenseForm.elements.broadcasting_rights?.checked !== false,
+      contract_summary: customLicenseForm.elements.contract_summary?.value.trim() || ""
+    };
+
     const licenseData = {
       id: isEditing ? appState.releaseLicenses[editingIdx].id : crypto.randomUUID(),
       beat_id: releaseFormElement()?.dataset.beatId,
@@ -22989,6 +23018,7 @@ document.addEventListener("submit", async (event) => {
       duration: customLicenseForm.elements.duration.value.trim() || "lifetime",
       territory: customLicenseForm.elements.territory.value.trim() || "worldwide",
       custom_terms: customLicenseForm.elements.custom_terms.value.trim(),
+      terms_config: termsConfig,
       sort_order: isEditing ? appState.releaseLicenses[editingIdx].sort_order : appState.releaseLicenses.length
     };
 
@@ -23739,168 +23769,162 @@ function formatRelativeTime(dateString) {
 }
 
 /* === BEGIN ANSEND BEAT LICENSING SYSTEM HELPERS === */
+const LICENSE_TYPE_CONFIG = Object.freeze({
+  basic: { badge: "BÁSICA", name: "Lease Básica — MP3", files: [true, false, false], royalties: [50, 50], streams: 50000, exclusive: false },
+  premium: { badge: "PREMIUM", name: "Lease Premium — WAV", files: [true, true, false], royalties: [50, 50], streams: 250000, exclusive: false },
+  unlimited: { badge: "UNLIMITED", name: "Licença Unlimited — WAV + Stems", files: [true, true, true], royalties: [50, 50], streams: null, exclusive: false },
+  exclusive: { badge: "EXCLUSIVA", name: "Licença Exclusiva — WAV + Stems", files: [true, true, true], royalties: [90, 10], streams: null, exclusive: true }
+});
+
+function defaultLicenseTermsConfig(key) {
+  const unlimited = key === "unlimited" || key === "exclusive";
+  return {
+    distribution_copies: unlimited ? null : key === "premium" ? 250000 : 50000,
+    free_downloads: unlimited ? null : key === "premium" ? 10000 : 2500,
+    audio_streams: unlimited ? null : key === "premium" ? 250000 : 50000,
+    video_streams: unlimited ? null : key === "premium" ? 250000 : 50000,
+    music_videos: unlimited ? null : key === "premium" ? 2 : 1,
+    nonprofit_performances: null,
+    paid_performances: unlimited ? null : key === "premium" ? 250 : 50,
+    radio_stations: unlimited ? null : key === "premium" ? 25 : 5,
+    broadcasting_rights: true,
+    contract_summary: key === "exclusive"
+      ? "Uma única venda exclusiva. O beat deixa de ser oferecido após a confirmação da compra."
+      : "Licença não exclusiva. O beat permanece disponível para novas vendas."
+  };
+}
+
+function createReleaseLicense(key, beatId) {
+  const config = LICENSE_TYPE_CONFIG[key];
+  const descriptions = {
+    basic: "Licença de entrada para lançamentos menores, com MP3 e limite controlado de reproduções.",
+    premium: "Licença profissional com MP3 e WAV, maior alcance e uso comercial não exclusivo.",
+    unlimited: "Licença não exclusiva para lançamentos de maior alcance, com arquivos completos e limites ilimitados.",
+    exclusive: "Transfere a exclusividade e encerra novas vendas do beat após a compra confirmada."
+  };
+  return {
+    id: key,
+    beat_id: beatId,
+    license_key: key,
+    name: config.name,
+    description: descriptions[key],
+    price_cents: 0,
+    currency: "BRL",
+    is_default: true,
+    is_custom: false,
+    is_active: true,
+    is_exclusive: config.exclusive,
+    included_mp3: config.files[0],
+    included_wav: config.files[1],
+    included_stems: config.files[2],
+    buyer_royalty_percentage: config.royalties[0],
+    producer_royalty_percentage: config.royalties[1],
+    stream_limit: config.streams,
+    unlimited_streams: config.streams === null,
+    music_video_limit: config.streams === null ? null : key === "premium" ? 2 : 1,
+    unlimited_music_videos: config.streams === null,
+    commercial_use: true,
+    monetization_allowed: true,
+    live_performance_allowed: true,
+    content_id_allowed: key === "exclusive",
+    credit_required: true,
+    credit_text: "Prod. por [Produtor]",
+    duration: "lifetime",
+    territory: "worldwide",
+    custom_terms: "",
+    terms_config: defaultLicenseTermsConfig(key)
+  };
+}
+
 function initializeDefaultReleaseLicenses(beatId) {
-  appState.releaseLicenses = [
-    {
-      id: "basic",
-      beat_id: beatId,
-      license_key: "basic",
-      name: "Lease Básica — MP3",
-      description: "Ideal para artistas que estão começando ou desejam testar o lançamento. Inclui o arquivo MP3 em alta qualidade, autorização para uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
-      price_cents: 0,
-      is_default: true,
-      is_custom: false,
-      is_active: true,
-      is_exclusive: false,
-      included_mp3: true,
-      included_wav: false,
-      included_stems: false,
-      buyer_royalty_percentage: 50,
-      producer_royalty_percentage: 50,
-      stream_limit: 50000,
-      unlimited_streams: false,
-      music_video_limit: 1,
-      unlimited_music_videos: false,
-      commercial_use: true,
-      monetization_allowed: true,
-      live_performance_allowed: true,
-      content_id_allowed: false,
-      credit_required: true,
-      credit_text: "Prod. por [Produtor]",
-      duration: "lifetime",
-      territory: "worldwide",
-      custom_terms: ""
-    },
-    {
-      id: "premium",
-      beat_id: beatId,
-      license_key: "premium",
-      name: "Lease Premium — WAV",
-      description: "Licença indicada para lançamentos profissionais. Inclui arquivos MP3 e WAV em alta qualidade, maior limite de streams, uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
-      price_cents: 0,
-      is_default: true,
-      is_custom: false,
-      is_active: true,
-      is_exclusive: false,
-      included_mp3: true,
-      included_wav: true,
-      included_stems: false,
-      buyer_royalty_percentage: 50,
-      producer_royalty_percentage: 50,
-      stream_limit: 250000,
-      unlimited_streams: false,
-      music_video_limit: 2,
-      unlimited_music_videos: false,
-      commercial_use: true,
-      monetization_allowed: true,
-      live_performance_allowed: true,
-      content_id_allowed: false,
-      credit_required: true,
-      credit_text: "Prod. por [Produtor]",
-      duration: "lifetime",
-      territory: "worldwide",
-      custom_terms: ""
-    },
-    {
-      id: "exclusive",
-      beat_id: beatId,
-      license_key: "exclusive",
-      name: "Licença Exclusiva — WAV + Stems",
-      description: "Licença para lançamentos de maior escala. Inclui MP3, WAV e todas as faixas separadas do beat. O artista recebe 90% dos royalties e o produtor mantém 10%. Após a compra, o beat deixa de ser vendido para novos clientes.",
-      price_cents: 0,
-      is_default: true,
-      is_custom: false,
-      is_active: true,
-      is_exclusive: true,
-      included_mp3: true,
-      included_wav: true,
-      included_stems: true,
-      buyer_royalty_percentage: 90,
-      producer_royalty_percentage: 10,
-      stream_limit: null,
-      unlimited_streams: true,
-      music_video_limit: null,
-      unlimited_music_videos: true,
-      commercial_use: true,
-      monetization_allowed: true,
-      live_performance_allowed: true,
-      content_id_allowed: true,
-      credit_required: true,
-      credit_text: "Prod. por [Produtor]",
-      duration: "lifetime",
-      territory: "worldwide",
-      custom_terms: ""
-    }
+  appState.releaseLicenses = ["basic", "premium", "unlimited", "exclusive"]
+    .map((key) => createReleaseLicense(key, beatId));
+}
+
+function releaseLicenseTermsPreview(lic) {
+  const terms = { ...defaultLicenseTermsConfig(lic.license_key), ...(lic.terms_config || {}) };
+  const files = [lic.included_mp3 && "MP3", lic.included_wav && "WAV", lic.included_stems && "Stems"].filter(Boolean).join(" + ") || "Nenhum arquivo";
+  const limit = (value) => value == null ? "Ilimitado" : Number(value).toLocaleString("pt-BR");
+  return [
+    ["Arquivos", files],
+    ["Cópias para distribuição", limit(terms.distribution_copies)],
+    ["Downloads gratuitos", limit(terms.free_downloads)],
+    ["Streams de áudio", lic.unlimited_streams ? "Ilimitado" : limit(lic.stream_limit)],
+    ["Streams de vídeo", limit(terms.video_streams)],
+    ["Videoclipes", lic.unlimited_music_videos ? "Ilimitado" : limit(lic.music_video_limit)],
+    ["Apresentações sem fins lucrativos", limit(terms.nonprofit_performances)],
+    ["Apresentações remuneradas", limit(terms.paid_performances)],
+    ["Direitos de transmissão", terms.broadcasting_rights ? "Permitidos" : "Não permitidos"],
+    ["Estações de rádio", limit(terms.radio_stations)]
   ];
 }
 
 function refreshReleaseLicensesUI() {
   const container = document.querySelector(".release-licenses-container");
   if (!container) return;
-  
+
   container.innerHTML = appState.releaseLicenses.map((lic, idx) => {
-    const priceText = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
+    const key = LICENSE_TYPE_CONFIG[lic.license_key] ? lic.license_key : "basic";
+    const priceText = lic.price_cents ? formatPriceBRL(lic.price_cents) : "";
     const filesLabel = [
       lic.included_mp3 ? "MP3" : "",
       lic.included_wav ? "WAV" : "",
       lic.included_stems ? "Stems" : ""
-    ].filter(Boolean).join(" + ");
-    
-    const isDefault = lic.is_default;
-    
-    return `
-      <div class="release-license-editor-card" data-license-index="${idx}" style="border: 1px solid var(--beat-border); border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #0c0c0c; display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <strong style="font-size: 15px; color: #fff;">${htmlEscape(lic.name)}</strong>
-            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${lic.is_exclusive ? "#ff3b30" : "#0a84ff"}; color: #fff; text-transform: uppercase;">
-              ${lic.is_exclusive ? "Exclusiva" : "Lease"}
-            </span>
+    ].filter(Boolean).join(" + ") || "Nenhum arquivo";
+    const terms = { ...defaultLicenseTermsConfig(lic.license_key), ...(lic.terms_config || {}) };
+    const detailsId = `release-license-details-${idx}`;
+    const rows = [
+      ["Arquivos", filesLabel],
+      ["Cópias para distribuição", terms.distribution_copies == null ? "Ilimitado" : Number(terms.distribution_copies).toLocaleString("pt-BR")],
+      ["Downloads gratuitos", terms.free_downloads == null ? "Ilimitado" : Number(terms.free_downloads).toLocaleString("pt-BR")],
+      ["Streams de áudio", lic.unlimited_streams ? "Ilimitado" : Number(lic.stream_limit || 0).toLocaleString("pt-BR")],
+      ["Streams de vídeo", terms.video_streams == null ? "Ilimitado" : Number(terms.video_streams).toLocaleString("pt-BR")],
+      ["Direitos de transmissão", terms.broadcasting_rights ? "Permitidos" : "Não permitidos"],
+      ["Estações de rádio", terms.radio_stations == null ? "Ilimitado" : Number(terms.radio_stations).toLocaleString("pt-BR")]
+    ];
+    return `<article class="release-license-row ${lic.is_active ? "" : "is-inactive"}" data-license-index="${idx}" data-license-key="${htmlEscape(lic.license_key)}">
+      <div class="release-license-summary">
+        <label class="license-switch">
+          <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""} aria-label="Ativar ${htmlEscape(lic.name)}">
+          <span aria-hidden="true"></span><small>${lic.is_active ? "Ativa" : "Inativa"}</small>
+        </label>
+        <div class="release-license-copy">
+          <div class="release-license-title-line">
+            <strong>${htmlEscape(lic.name)}</strong>
+            <span class="license-plan-badge is-${key}">${htmlEscape(LICENSE_TYPE_CONFIG[key].badge)}</span>
+            <button type="button" class="license-info-btn" aria-label="Ver informações de ${htmlEscape(lic.name)}" title="Ver informações"><i data-lucide="info"></i></button>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="display: flex; gap: 6px; align-items: center; cursor: pointer; font-size: 12px; color: var(--beat-muted);">
-              <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""}>
-              <span>Ativa</span>
-            </label>
-            ${!isDefault ? `
-              <button type="button" class="license-delete-btn" style="background: transparent; border: 0; color: #ff3b30; cursor: pointer; padding: 4px;" title="Excluir"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
-            ` : ""}
-            <button type="button" class="license-duplicate-btn" style="background: transparent; border: 0; color: #a3a3a3; cursor: pointer; padding: 4px;" title="Duplicar"><i data-lucide="copy" style="width: 16px; height: 16px;"></i></button>
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              ${idx > 0 ? `<button type="button" class="license-move-up" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Subir">â–²</button>` : ""}
-              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Descer">â–¼</button>` : ""}
-            </div>
+          <p>${htmlEscape(lic.description)}</p>
+          <div class="release-license-chips">
+            <span>${htmlEscape(filesLabel)}</span>
+            <span>${lic.buyer_royalty_percentage}% artista / ${lic.producer_royalty_percentage}% produtor</span>
+            <span>${lic.unlimited_streams ? "Streams ilimitados" : `${Number(lic.stream_limit || 0).toLocaleString("pt-BR")} streams`}</span>
+            <span>${lic.is_exclusive ? "Exclusiva" : "Não exclusiva"}</span>
           </div>
         </div>
-        
-        <div style="font-size: 12px; color: var(--beat-muted); line-height: 1.45;">
-          ${htmlEscape(lic.description)}
-        </div>
-        
-        <div style="display: flex; gap: 12px; font-size: 11px; color: var(--beat-dim);">
-          <span><strong>Arquivos:</strong> ${filesLabel || "Nenhum"}</span>
-          <span><strong>Royalties:</strong> Artista ${lic.buyer_royalty_percentage}% / Produtor ${lic.producer_royalty_percentage}%</span>
-          <span><strong>Limite:</strong> ${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0} streams`}</span>
-        </div>
-
-        <div style="display: flex; gap: 14px; align-items: center; margin-top: 4px;">
-          <label style="display: flex; flex-direction: column; gap: 4px; width: 140px;">
-            <span style="font-size: 11px; color: var(--beat-muted);">Preço (R$) *</span>
-            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; font-weight: bold;">
-          </label>
-          <button type="button" class="an-secondary license-edit-terms-btn" style="height: 35px; margin-top: 15px; font-size: 11px; padding: 0 12px;">
-            Ver e editar termos
-          </button>
+        <div class="release-license-actions">
+          <label class="license-price-field"><span>Preço</span><input type="text" inputmode="numeric" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" aria-label="Preço de ${htmlEscape(lic.name)}"></label>
+          <button type="button" class="license-edit-terms-btn">Editar termos</button>
+          <button type="button" class="license-accordion-toggle" aria-expanded="false" aria-controls="${detailsId}" aria-label="Expandir resumo de ${htmlEscape(lic.name)}"><i data-lucide="chevron-down"></i></button>
         </div>
       </div>
-    `;
+      <div class="release-license-details" id="${detailsId}" hidden>
+        <dl>${rows.map(([label, value]) => `<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join("")}</dl>
+        <p>${htmlEscape(terms.contract_summary || "")}</p>
+      </div>
+    </article>`;
   }).join("");
+  container.classList.add("release-license-manager");
   lucide.createIcons();
   updateReleaseFileRequirementBadges();
 }
 
 function openLicenseTermsEditModal(idx = null) {
   const isEditing = idx !== null;
+  const releaseForm = releaseFormElement();
+  const hasMp3 = releaseFileIsConfirmed(releaseForm, "secure_mp3");
+  const hasWav = releaseFileIsConfirmed(releaseForm, "secure_wav");
+  const hasStems = releaseFileIsConfirmed(releaseForm, "secure_stems");
   const lic = isEditing ? appState.releaseLicenses[idx] : {
     name: "",
     description: "",
@@ -23924,11 +23948,12 @@ function openLicenseTermsEditModal(idx = null) {
     territory: "worldwide",
     custom_terms: ""
   };
+  const terms = { ...defaultLicenseTermsConfig(lic.license_key), ...(lic.terms_config || {}) };
 
   const priceFormatted = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
 
   const markup = `
-    <form class="custom-license-form" ${isEditing ? `data-editing-index="${idx}"` : ""} style="display: flex; flex-direction: column; gap: 14px; padding: 8px 4px; max-height: 85vh; overflow-y: auto;">
+    <form class="custom-license-form license-terms-drawer" ${isEditing ? `data-editing-index="${idx}"` : ""}>
       <span style="font-size: 11px; color: var(--beat-muted); text-transform: uppercase;"><i data-lucide="${isEditing ? "edit" : "plus-circle"}" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>${isEditing ? "Editar Termos" : "Nova Licença"}</span>
       <h2 style="font-size: 20px; font-weight: bold; color: #fff; margin: 0;">${isEditing ? "Editar Termos da Licença" : "Criar Tipo de Licença"}</h2>
       
@@ -23959,9 +23984,9 @@ function openLicenseTermsEditModal(idx = null) {
       <fieldset style="border: 1px solid var(--beat-border); border-radius: 6px; padding: 10px 12px;">
         <legend style="font-size: 11px; color: var(--beat-muted); padding: 0 6px;">Arquivos incluídos *</legend>
         <div style="display: flex; gap: 16px; font-size: 12px; color: #fff;">
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_mp3" type="checkbox" ${lic.included_mp3 ? "checked" : ""}> MP3</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_wav" type="checkbox" ${lic.included_wav ? "checked" : ""}> WAV</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_stems" type="checkbox" ${lic.included_stems ? "checked" : ""}> Stems (ZIP)</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_mp3" type="checkbox" ${lic.included_mp3 && hasMp3 ? "checked" : ""} ${hasMp3 ? "" : "disabled"}> MP3 ${hasMp3 ? "" : "<small>Envie o MP3 na etapa Arquivos</small>"}</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_wav" type="checkbox" ${lic.included_wav && hasWav ? "checked" : ""} ${hasWav ? "" : "disabled"}> WAV ${hasWav ? "" : "<small>Envie um WAV na etapa Arquivos</small>"}</label>
+          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_stems" type="checkbox" ${lic.included_stems && hasStems ? "checked" : ""} ${hasStems ? "" : "disabled"}> Stems ${hasStems ? "" : "<small>Envie os Stems na etapa Arquivos</small>"}</label>
         </div>
       </fieldset>
 
@@ -24025,6 +24050,24 @@ function openLicenseTermsEditModal(idx = null) {
         <textarea name="custom_terms" rows="2" placeholder="Termos adicionais..." style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; resize: none;">${htmlEscape(lic.custom_terms || "")}</textarea>
       </label>
 
+      <fieldset class="license-limit-grid">
+        <legend>Distribuição e reprodução</legend>
+        ${[
+          ["distribution_copies", "Cópias para distribuição"],
+          ["free_downloads", "Downloads gratuitos"],
+          ["video_streams", "Streams de vídeo"],
+          ["nonprofit_performances", "Apresentações sem fins lucrativos"],
+          ["paid_performances", "Apresentações remuneradas"],
+          ["radio_stations", "Estações de rádio"]
+        ].map(([name, label]) => `<label><span>${label}</span><input name="${name}" type="number" min="0" value="${terms[name] == null ? "" : terms[name]}" placeholder="Ilimitado"></label>`).join("")}
+        <label class="license-broadcast-toggle"><input name="broadcasting_rights" type="checkbox" ${terms.broadcasting_rights ? "checked" : ""}><span>Direitos de transmissão permitidos</span></label>
+      </fieldset>
+
+      <label style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 11px; color: var(--beat-muted);">Resumo dos termos</span>
+        <textarea name="contract_summary" rows="2">${htmlEscape(terms.contract_summary || "")}</textarea>
+      </label>
+
       <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
         <button type="button" class="an-secondary" data-action="close-modal" style="height: 38px; padding: 0 16px;">Cancelar</button>
         <button type="submit" class="an-primary" style="background: #fff; border: 0; color: #000; font-weight: bold; height: 38px; padding: 0 20px; border-radius: 6px; cursor: pointer;">${isEditing ? "Salvar Termos" : "Criar Licença"}</button>
@@ -24032,6 +24075,17 @@ function openLicenseTermsEditModal(idx = null) {
     </form>
   `;
   openModal(markup);
+}
+
+function openLicenseInfoModal(idx) {
+  const lic = appState.releaseLicenses?.[idx];
+  if (!lic) return;
+  const rows = releaseLicenseTermsPreview(lic);
+  openModal(`<section class="license-info-popup" role="dialog" aria-modal="true" aria-labelledby="licenseInfoTitle">
+    <header><span>Termos da licença</span><h2 id="licenseInfoTitle">${htmlEscape(lic.name)}</h2></header>
+    <dl>${rows.map(([label, value]) => `<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join("")}</dl>
+    <p>${htmlEscape((lic.terms_config || defaultLicenseTermsConfig(lic.license_key)).contract_summary || "")}</p>
+  </section>`);
 }
 
 async function fetchBeatLicenses(beatId) {
