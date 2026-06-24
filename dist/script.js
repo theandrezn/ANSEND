@@ -18277,9 +18277,9 @@ function renderMusicUpload(mode = appState.releaseMode || "selector", editBeatId
 
     // STEP 3 — Licenças
     + '<section class="release-panel" data-panel="3">'
-    + '<div class="release-panel-header" style="margin-bottom: 24px;">'
-    + '  <h2 style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 28px; margin: 0 0 6px 0; color: #f5f5f7;">Licenças e valores</h2>'
-    + '  <p style="color: #a1a1aa; font-family: \'Montserrat\', sans-serif; font-size: 14px; margin: 0;">Defina os preços, arquivos e condições de uso disponíveis para este lançamento.</p>'
+    + '<div class="release-panel-header" style="margin-bottom: 32px; text-align: left;">'
+    + '  <h2 style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -0.025em; margin: 0 0 8px 0; color: #f5f5f7; line-height: 1.2;">Licenças e valores</h2>'
+    + '  <p style="color: #8e8e93; font-family: \'Montserrat\', sans-serif; font-size: 14px; margin: 0; max-width: 500px; line-height: 1.5;">Defina os preços, arquivos e condições de uso disponíveis para este lançamento.</p>'
     + '</div>'
     + '<div class="release-licenses-container"></div>'
     + '</section>'
