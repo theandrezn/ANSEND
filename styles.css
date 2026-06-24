@@ -40465,4 +40465,300 @@ body[data-route="cadastrar"] .release-container {
   }
 }
 
+/* ========================================== */
+/* BEAT PUBLISHING STEP 3: LICENSES REDESIGN */
+/* ========================================== */
+
+/* Grid container for license cards */
+body[data-route="cadastrar"] .release-licenses-container {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  margin-bottom: 24px !important;
+}
+
+@media (max-width: 900px) {
+  body[data-route="cadastrar"] .release-licenses-container {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* Page container limits & centering */
+body[data-route="cadastrar"] .release-container {
+  width: calc(100% - 40px) !important;
+  max-width: 1200px !important;
+  margin-inline: auto !important;
+  padding-top: 32px !important;
+  padding-bottom: 120px !important; /* spacing for bottom bar */
+}
+
+/* Overrides for release bottom bar layout */
+body[data-route="cadastrar"] .release-bottom-inner {
+  max-width: 1200px !important;
+  margin-inline: auto !important;
+  width: 100% !important;
+  padding: 0 24px !important;
+  box-sizing: border-box !important;
+}
+
+/* Override bottom bar buttons to eliminate orange styling */
+body[data-route="cadastrar"] .release-next-btn,
+body[data-route="cadastrar"] .release-submit-btn {
+  background: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+  font-family: "Montserrat", sans-serif !important;
+  font-weight: 600 !important;
+}
+
+body[data-route="cadastrar"] .release-next-btn:hover,
+body[data-route="cadastrar"] .release-submit-btn:hover {
+  background: #e5e5e7 !important;
+  border-color: #e5e5e7 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-draft-btn {
+  background: transparent !important;
+  border: 1px solid #252529 !important;
+  color: #f5f5f7 !important;
+  box-shadow: none !important;
+  font-family: "Montserrat", sans-serif !important;
+  font-weight: 500 !important;
+}
+
+body[data-route="cadastrar"] .release-draft-btn:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: #3a3a40 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-back-btn {
+  background: transparent !important;
+  border: 1px solid #252529 !important;
+  color: #a1a1aa !important;
+  font-family: "Montserrat", sans-serif !important;
+  font-weight: 500 !important;
+}
+
+body[data-route="cadastrar"] .release-back-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: #3a3a40 !important;
+  color: #f5f5f7 !important;
+}
+
+/* Custom Switch for License Cards & Modal */
+.release-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.release-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.release-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #2a2a2d;
+  transition: .2s;
+  border-radius: 20px;
+}
+
+.release-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.release-switch input:checked + .release-slider {
+  background-color: #2563eb !important;
+}
+
+.release-switch input:checked + .release-slider:before {
+  transform: translateX(16px);
+}
+
+.release-switch input:focus-visible + .release-slider {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Custom Checkbox */
+.release-checkbox-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Montserrat", sans-serif;
+  font-size: 13px;
+  color: #f5f5f7;
+  cursor: pointer;
+  user-select: none;
+}
+
+.release-checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.release-checkmark {
+  height: 18px;
+  width: 18px;
+  background-color: #080809;
+  border: 1px solid #29292d;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.release-checkbox-container:hover input ~ .release-checkmark {
+  border-color: #3a3a40;
+}
+
+.release-checkbox-container input:checked ~ .release-checkmark {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.release-checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.release-checkbox-container input:checked ~ .release-checkmark:after {
+  display: block;
+}
+
+.release-checkbox-container .release-checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.release-checkbox-container input:focus-visible ~ .release-checkmark {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Scoped Modal Panel styling for Terms Editing Modal */
+.app-modal:has(.custom-license-form) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.app-modal:has(.custom-license-form) .app-modal-backdrop {
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.app-modal:has(.custom-license-form) .app-modal-panel {
+  width: 760px !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: 84vh !important;
+  border-radius: 16px !important;
+  background: #09090a !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Hide default global close button */
+.app-modal:has(.custom-license-form) .app-modal-panel > .app-modal-close {
+  display: none !important;
+}
+
+/* Custom Scrollbar for Modal Body */
+.custom-license-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-license-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-license-modal-body::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 10px;
+}
+
+.custom-license-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Pricing Input overrides to match theme and disable orange glows */
+body[data-route="cadastrar"] .license-price-formatter:focus,
+.custom-license-price-formatter:focus {
+  border-color: #2563eb !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Dotted Add License Card Custom Styling */
+.add-custom-license-card:hover {
+  border-color: #3a3a40 !important;
+  background: #080809 !important;
+}
+
+.add-custom-license-card:hover .add-icon-wrapper {
+  color: #ffffff !important;
+  border-color: #3a3a40 !important;
+  background: #111113 !important;
+}
+
+/* Responsive Modal styles for smaller screens */
+@media (max-width: 768px) {
+  .app-modal:has(.custom-license-form) .app-modal-panel {
+    width: calc(100% - 24px) !important;
+    max-height: 90vh !important;
+    margin: 12px !important;
+  }
+  
+  .app-modal:has(.custom-license-form) .custom-license-form {
+    max-height: 90vh !important;
+  }
+  
+  .custom-license-modal-body {
+    padding: 16px !important;
+  }
+  
+  /* Make all grids inside form 1-column on mobile */
+  .custom-license-modal-body section > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
 

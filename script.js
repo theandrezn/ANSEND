@@ -12207,7 +12207,7 @@ async function renderPurchases() {
       a.remove();
       showToast("Contrato baixado!", "check-circle");
     };
-    window.showCustomConfirm = function(title, message) {
+    window.showCustomConfirm = function(title, message, confirmText = "Remover", cancelText = "Cancelar") {
       return new Promise((resolve) => {
         const existing = document.querySelector(".compras-confirm-modal");
         if (existing) {
@@ -12228,8 +12228,8 @@ async function renderPurchases() {
                 <p>${htmlEscape(message)}</p>
               </div>
               <div class="compras-confirm-footer">
-                <button type="button" class="compras-btn-cancel">Cancelar</button>
-                <button type="button" class="compras-btn-confirm">Remover</button>
+                <button type="button" class="compras-btn-cancel">${htmlEscape(cancelText)}</button>
+                <button type="button" class="compras-btn-confirm">${htmlEscape(confirmText)}</button>
               </div>
             </div>
           </div>
@@ -16878,12 +16878,14 @@ function setupMusicUploadEventListeners() {
     
     if (e.target.closest(".license-edit-terms-btn")) {
       if (idx !== null) {
+        window.lastEditTermsTriggerBtn = e.target.closest(".license-edit-terms-btn");
         openLicenseTermsEditModal(idx);
       }
       return;
     }
     
     if (e.target.closest(".add-custom-license-btn")) {
+      window.lastEditTermsTriggerBtn = e.target.closest(".add-custom-license-btn");
       openLicenseTermsEditModal();
       return;
     }
@@ -18275,14 +18277,11 @@ function renderMusicUpload(mode = appState.releaseMode || "selector", editBeatId
 
     // STEP 3 — Licenças
     + '<section class="release-panel" data-panel="3">'
-    + '<div class="release-panel-header"><h2>Licenças e Valores</h2><p>Defina individualmente os valores e ative ou configure os termos de cada licença.</p></div>'
-    + '<div class="release-licenses-container"></div>'
-    + '<div style="margin-top: 16px;">'
-    + '  <button type="button" class="an-secondary add-custom-license-btn" style="width:100%; border-style:dashed; height:45px; display:flex; justify-content:center; align-items:center; gap:8px;">'
-    + '    <i data-lucide="plus-circle" style="width:18px; height:18px;"></i>'
-    + '    + Adicionar outro tipo de licença'
-    + '  </button>'
+    + '<div class="release-panel-header" style="margin-bottom: 24px;">'
+    + '  <h2 style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 28px; margin: 0 0 6px 0; color: #f5f5f7;">Licenças e valores</h2>'
+    + '  <p style="color: #a1a1aa; font-family: \'Montserrat\', sans-serif; font-size: 14px; margin: 0;">Defina os preços, arquivos e condições de uso disponíveis para este lançamento.</p>'
     + '</div>'
+    + '<div class="release-licenses-container"></div>'
     + '</section>'
 
     // STEP 4 - Revisão
@@ -22110,8 +22109,29 @@ document.addEventListener("click", async (event) => {
     writeNexoFeedEvent(feedItemId, action === "buy" ? "purchase_intent" : "click_cta", { item: feedItem });
   }
   if (action === "close-modal") {
-    closeModal();
-    closeMusicPreferenceQuiz();
+    const customLicenseForm = document.querySelector(".custom-license-form");
+    if (customLicenseForm && customLicenseForm.dataset.dirty === "true") {
+      window.showCustomConfirm(
+        "Sair sem salvar?",
+        "Você possui alterações não salvas nos termos da licença. Deseja realmente descartar as alterações?",
+        "Sim, descartar",
+        "Continuar editando"
+      ).then((confirmed) => {
+        if (confirmed) {
+          closeModal();
+          closeMusicPreferenceQuiz();
+          if (window.lastEditTermsTriggerBtn) {
+            window.lastEditTermsTriggerBtn.focus();
+          }
+        }
+      });
+    } else {
+      closeModal();
+      closeMusicPreferenceQuiz();
+      if (window.lastEditTermsTriggerBtn) {
+        window.lastEditTermsTriggerBtn.focus();
+      }
+    }
     return;
   }
   if (action === "close-feed-comments") {
@@ -23682,6 +23702,42 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    const customLicenseForm = document.querySelector(".custom-license-form");
+    if (customLicenseForm) {
+      if (customLicenseForm.dataset.saving === "true") {
+        event.preventDefault();
+        return;
+      }
+      if (customLicenseForm.dataset.dirty === "true") {
+        event.preventDefault();
+        window.showCustomConfirm(
+          "Sair sem salvar?",
+          "Você possui alterações não salvas nos termos da licença. Deseja realmente descartar as alterações?",
+          "Sim, descartar",
+          "Continuar editando"
+        ).then((confirmed) => {
+          if (confirmed) {
+            document.body.classList.remove("menu-open");
+            closePlayerFloatingPanels();
+            closeNexoFeedComments();
+            closeModal();
+            if (window.lastEditTermsTriggerBtn) {
+              window.lastEditTermsTriggerBtn.focus();
+            }
+          }
+        });
+        return;
+      } else {
+        document.body.classList.remove("menu-open");
+        closePlayerFloatingPanels();
+        closeNexoFeedComments();
+        closeModal();
+        if (window.lastEditTermsTriggerBtn) {
+          window.lastEditTermsTriggerBtn.focus();
+        }
+        return;
+      }
+    }
     if (appState.nexoAssistant.open && !appState.nexoAssistant.minimized) {
       appState.nexoAssistant.open = false;
       appState.nexoAssistant.minimized = false;
@@ -24447,6 +24503,36 @@ function initializeDefaultReleaseLicenses(beatId) {
       custom_terms: ""
     },
     {
+      id: "unlimited",
+      beat_id: beatId,
+      license_key: "unlimited",
+      name: "Lease Unlimited — MP3 + WAV",
+      description: "Licença recomendada para distribuição em larga escala sem limites de reprodução. Inclui arquivos MP3 e WAV, streams ilimitados, videoclipes ilimitados, uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      price_cents: 0,
+      is_default: true,
+      is_custom: false,
+      is_active: true,
+      is_exclusive: false,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: false,
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: null,
+      unlimited_streams: true,
+      music_video_limit: null,
+      unlimited_music_videos: true,
+      commercial_use: true,
+      monetization_allowed: true,
+      live_performance_allowed: true,
+      content_id_allowed: false,
+      credit_required: true,
+      credit_text: "Prod. por [Produtor]",
+      duration: "lifetime",
+      territory: "worldwide",
+      custom_terms: ""
+    },
+    {
       id: "exclusive",
       beat_id: beatId,
       license_key: "exclusive",
@@ -24483,7 +24569,7 @@ function refreshReleaseLicensesUI() {
   const container = document.querySelector(".release-licenses-container");
   if (!container) return;
   
-  container.innerHTML = appState.releaseLicenses.map((lic, idx) => {
+  const cardsHtml = appState.releaseLicenses.map((lic, idx) => {
     const priceText = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
     const filesLabel = [
       lic.included_mp3 ? "MP3" : "",
@@ -24492,54 +24578,107 @@ function refreshReleaseLicensesUI() {
     ].filter(Boolean).join(" + ");
     
     const isDefault = lic.is_default;
-    
+    const activeClass = lic.is_active ? "is-active-license" : "is-inactive-license";
+
+    // Set badge text & styling
+    let badgeText = "Lease";
+    let badgeStyle = "background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.15);";
+
+    if (lic.license_key === "basic") {
+      badgeText = "Básica";
+      badgeStyle = "background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.15);";
+    } else if (lic.license_key === "premium") {
+      badgeText = "Premium";
+      badgeStyle = "background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2);";
+    } else if (lic.license_key === "unlimited") {
+      badgeText = "Unlimited";
+      badgeStyle = "background: rgba(139, 92, 246, 0.1); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.2);";
+    } else if (lic.is_exclusive || lic.license_key === "exclusive") {
+      badgeText = "Exclusiva";
+      badgeStyle = "background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);";
+    } else if (lic.is_custom) {
+      badgeText = "Personalizada";
+      badgeStyle = "background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2);";
+    }
+
+    const badgeHtml = `<span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; ${badgeStyle}">${badgeText}</span>`;
+
     return `
-      <div class="release-license-editor-card" data-license-index="${idx}" style="border: 1px solid var(--beat-border); border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #0c0c0c; display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <strong style="font-size: 15px; color: #fff;">${htmlEscape(lic.name)}</strong>
-            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${lic.is_exclusive ? "#ff3b30" : "#0a84ff"}; color: #fff; text-transform: uppercase;">
-              ${lic.is_exclusive ? "Exclusiva" : "Lease"}
-            </span>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="display: flex; gap: 6px; align-items: center; cursor: pointer; font-size: 12px; color: var(--beat-muted);">
-              <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""}>
-              <span>Ativa</span>
-            </label>
-            ${!isDefault ? `
-              <button type="button" class="license-delete-btn" style="background: transparent; border: 0; color: #ff3b30; cursor: pointer; padding: 4px;" title="Excluir"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></button>
-            ` : ""}
-            <button type="button" class="license-duplicate-btn" style="background: transparent; border: 0; color: #a3a3a3; cursor: pointer; padding: 4px;" title="Duplicar"><i data-lucide="copy" style="width: 16px; height: 16px;"></i></button>
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              ${idx > 0 ? `<button type="button" class="license-move-up" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Subir">â–²</button>` : ""}
-              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" style="background: transparent; border:0; color:#a3a3a3; cursor:pointer; padding: 2px 4px; font-size: 10px;" title="Descer">â–¼</button>` : ""}
+      <div class="release-license-editor-card ${activeClass}" data-license-index="${idx}">
+        <div class="license-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <strong class="license-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 600; color: #f5f5f7;">${htmlEscape(lic.name)}</strong>
+              ${badgeHtml}
             </div>
+          </div>
+          <div class="license-header-actions" style="display: flex; align-items: center; gap: 10px;">
+            <div class="license-reorder-buttons" style="display: flex; gap: 4px; align-items: center;">
+              ${idx > 0 ? `<button type="button" class="license-move-up" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Subir" aria-label="Mover para cima"><i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i></button>` : ""}
+              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Descer" aria-label="Mover para baixo"><i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i></button>` : ""}
+            </div>
+            
+            <button type="button" class="license-duplicate-btn" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Duplicar" aria-label="Duplicar licença"><i data-lucide="copy" style="width: 15px; height: 15px;"></i></button>
+            
+            ${!isDefault ? `
+              <button type="button" class="license-delete-btn" style="background: transparent; border: 0; color: #ef4444; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Excluir" aria-label="Excluir licença"><i data-lucide="trash-2" style="width: 15px; height: 15px;"></i></button>
+            ` : ""}
+            
+            <label class="release-switch" title="Ativar/Desativar" style="margin-left: 4px;">
+              <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""}>
+              <span class="release-slider"></span>
+            </label>
           </div>
         </div>
         
-        <div style="font-size: 12px; color: var(--beat-muted); line-height: 1.45;">
+        <div class="license-card-desc">
           ${htmlEscape(lic.description)}
         </div>
         
-        <div style="display: flex; gap: 12px; font-size: 11px; color: var(--beat-dim);">
-          <span><strong>Arquivos:</strong> ${filesLabel || "Nenhum"}</span>
-          <span><strong>Royalties:</strong> Artista ${lic.buyer_royalty_percentage}% / Produtor ${lic.producer_royalty_percentage}%</span>
-          <span><strong>Limite:</strong> ${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0} streams`}</span>
+        <div class="license-card-features" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; font-family: 'Montserrat', sans-serif; font-size: 12px; color: #a1a1aa; text-align: left;">
+          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f;">
+            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Arquivos</strong>
+            <span style="font-size: 12px; font-weight: 500;">${filesLabel || "Nenhum"}</span>
+          </div>
+          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f;">
+            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Royalties</strong>
+            <span style="font-size: 12px; font-weight: 500;">Artista ${lic.buyer_royalty_percentage}% / Produtor ${lic.producer_royalty_percentage}%</span>
+          </div>
+          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f; grid-column: span 2;">
+            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Limite de streams</strong>
+            <span style="font-size: 12px; font-weight: 500;">${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0} streams`}</span>
+          </div>
         </div>
 
-        <div style="display: flex; gap: 14px; align-items: center; margin-top: 4px;">
-          <label style="display: flex; flex-direction: column; gap: 4px; width: 140px;">
-            <span style="font-size: 11px; color: var(--beat-muted);">Preço (R$) *</span>
-            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; font-weight: bold;">
+        <div class="license-card-footer" style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid #232326;">
+          <label style="display: flex; flex-direction: column; gap: 6px; flex: 1; text-align: left;">
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Preço</span>
+            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required 
+                   style="width: 100%; height: 44px; background: #080809; border: 1px solid #29292d; color: #f5f5f7; padding: 0 12px; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px; box-sizing: border-box; transition: all 0.2s ease;">
           </label>
-          <button type="button" class="an-secondary license-edit-terms-btn" style="height: 35px; margin-top: 15px; font-size: 11px; padding: 0 12px;">
-            Ver e editar termos
+          <button type="button" class="license-edit-terms-btn" 
+                  style="height: 44px; background: #111113; border: 1px solid #29292d; color: #f5f5f7; padding: 0 16px; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; box-shadow: none;">
+            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+            Editar termos
           </button>
         </div>
       </div>
     `;
   }).join("");
+
+  const addCardHtml = `
+    <div class="add-custom-license-card add-custom-license-btn" style="border: 1px dashed #2d2d30; border-radius: 14px; padding: 22px; background: transparent; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 280px; cursor: pointer; transition: all 0.2s ease; box-sizing: border-box; text-align: center; gap: 12px;">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #0c0c0d; border: 1px solid #232326; display: flex; align-items: center; justify-content: center; color: #a1a1aa; transition: all 0.2s ease;" class="add-icon-wrapper">
+        <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+      </div>
+      <div>
+        <strong style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; color: #f5f5f7; display: block; margin-bottom: 4px;">Adicionar licença personalizada</strong>
+        <span style="font-family: 'Montserrat', sans-serif; font-size: 12px; color: #71717a; display: block; max-width: 220px; margin: 0 auto; line-height: 1.4;">Crie uma opção com arquivos e condições próprias.</span>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = cardsHtml + addCardHtml;
   lucide.createIcons();
   updateReleaseFileRequirementBadges();
 }
@@ -24573,110 +24712,313 @@ function openLicenseTermsEditModal(idx = null) {
   const priceFormatted = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
 
   const markup = `
-    <form class="custom-license-form" ${isEditing ? `data-editing-index="${idx}"` : ""} style="display: flex; flex-direction: column; gap: 14px; padding: 8px 4px; max-height: 85vh; overflow-y: auto;">
-      <span style="font-size: 11px; color: var(--beat-muted); text-transform: uppercase;"><i data-lucide="${isEditing ? "edit" : "plus-circle"}" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>${isEditing ? "Editar Termos" : "Nova Licença"}</span>
-      <h2 style="font-size: 20px; font-weight: bold; color: #fff; margin: 0;">${isEditing ? "Editar Termos da Licença" : "Criar Tipo de Licença"}</h2>
-      
-      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Nome da licença *</span>
-          <input name="name" type="text" value="${htmlEscape(lic.name)}" placeholder="Ex: Lease Básica — MP3" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-        </label>
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Preço *</span>
-          <input name="price_formatted" class="custom-license-price-formatter" type="text" value="${priceFormatted}" placeholder="R$ 0,00" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; font-weight: bold;">
-        </label>
-      </div>
-
-      <label style="display: flex; flex-direction: column; gap: 4px;">
-        <span style="font-size: 11px; color: var(--beat-muted);">Descrição resumida</span>
-        <textarea name="description" rows="2" placeholder="Descreva esta licença..." style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; resize: none;">${htmlEscape(lic.description)}</textarea>
-      </label>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;">
-        <label style="display: flex; gap: 8px; align-items: center; font-size: 12px; color: #fff; cursor: pointer;">
-          <input name="is_exclusive" type="checkbox" value="true" ${lic.is_exclusive ? "checked" : ""}>
-          <span>Esta licença é exclusiva?</span>
-        </label>
-        <div style="font-size: 11px; color: var(--beat-dim);">Licença exclusiva remove o beat do catálogo após a compra.</div>
-      </div>
-
-      <fieldset style="border: 1px solid var(--beat-border); border-radius: 6px; padding: 10px 12px;">
-        <legend style="font-size: 11px; color: var(--beat-muted); padding: 0 6px;">Arquivos incluídos *</legend>
-        <div style="display: flex; gap: 16px; font-size: 12px; color: #fff;">
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_mp3" type="checkbox" ${lic.included_mp3 ? "checked" : ""}> MP3</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_wav" type="checkbox" ${lic.included_wav ? "checked" : ""}> WAV</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="included_stems" type="checkbox" ${lic.included_stems ? "checked" : ""}> Stems (ZIP)</label>
+    <form class="custom-license-form" ${isEditing ? `data-editing-index="${idx}"` : ""} style="display: flex; flex-direction: column; height: 100%; max-height: 84vh; overflow: hidden; box-sizing: border-box; background: transparent;">
+      <!-- Fixed Header -->
+      <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #27272a; background: #09090a; flex-shrink: 0;">
+        <div style="text-align: left;">
+          <span style="font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px;">Termos da licença</span>
+          <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: #f5f5f7; margin: 0;">${isEditing ? "Editar termos" : "Criar tipo de licença"}</h2>
         </div>
-      </fieldset>
+        <button type="button" data-action="close-modal" aria-label="Fechar" style="width: 36px; height: 36px; border-radius: 8px; background: #18181b; border: 1px solid #27272a; color: #a1a1aa; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </header>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Royalties do Artista (%) *</span>
-          <input name="buyer_royalty_percentage" type="number" min="0" max="100" value="${lic.buyer_royalty_percentage}" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-        </label>
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Royalties do Produtor (%) *</span>
-          <input name="producer_royalty_percentage" type="number" min="0" max="100" value="${lic.producer_royalty_percentage}" required style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-        </label>
+      <!-- Scrollable Body -->
+      <div class="custom-license-modal-body" style="flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box;">
+        <!-- Seção 1: Informações Básicas -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Informações básicas</h3>
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Nome da licença *</span>
+              <input name="name" type="text" value="${htmlEscape(lic.name)}" placeholder="Ex: Lease Básica — MP3" required 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Preço *</span>
+              <input name="price_formatted" class="custom-license-price-formatter" type="text" value="${priceFormatted}" placeholder="R$ 0,00" required 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Descrição resumida</span>
+            <textarea name="description" rows="2" placeholder="Descreva esta licença..." 
+                      style="background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 10px 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box; width: 100%; min-height: 60px;">${htmlEscape(lic.description)}</textarea>
+          </label>
+        </section>
+
+        <!-- Seção 2: Arquivos Incluídos -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Arquivos incluídos</h3>
+          <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <label class="release-checkbox-container">
+              <input name="included_mp3" type="checkbox" ${lic.included_mp3 ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>MP3</span>
+            </label>
+            <label class="release-checkbox-container">
+              <input name="included_wav" type="checkbox" ${lic.included_wav ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>WAV</span>
+            </label>
+            <label class="release-checkbox-container">
+              <input name="included_stems" type="checkbox" ${lic.included_stems ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Stems (ZIP)</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Seção 3: Royalties -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Royalties</h3>
+            <span class="royalties-badge" style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 6px;">Soma: 100%</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Royalties do Artista (%) *</span>
+              <input name="buyer_royalty_percentage" type="number" min="0" max="100" value="${lic.buyer_royalty_percentage}" required 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Royalties do Produtor (%) *</span>
+              <input name="producer_royalty_percentage" type="number" min="0" max="100" value="${lic.producer_royalty_percentage}" required 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+          </div>
+        </section>
+
+        <!-- Seção 4: Limites de Uso -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Limites de uso</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Limite de streams</span>
+                <input name="stream_limit" type="number" value="${lic.stream_limit || ""}" placeholder="Ex: 100000" ${lic.unlimited_streams ? "disabled" : ""}
+                       style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+              </label>
+              <label class="release-checkbox-container">
+                <input name="unlimited_streams" type="checkbox" ${lic.unlimited_streams ? "checked" : ""}>
+                <span class="release-checkmark"></span>
+                <span style="font-size: 12px; color: #a1a1aa;">Streams ilimitados</span>
+              </label>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Limite de videoclipes</span>
+                <input name="music_video_limit" type="number" value="${lic.music_video_limit || ""}" placeholder="Ex: 2" ${lic.unlimited_music_videos ? "disabled" : ""}
+                       style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+              </label>
+              <label class="release-checkbox-container">
+                <input name="unlimited_music_videos" type="checkbox" ${lic.unlimited_music_videos ? "checked" : ""}>
+                <span class="release-checkmark"></span>
+                <span style="font-size: 12px; color: #a1a1aa;">Videoclipes ilimitados</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Seção 5: Direitos e Permissões -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Direitos e permissões</h3>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <label class="release-checkbox-container">
+              <input name="commercial_use" type="checkbox" ${lic.commercial_use ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Uso Comercial</span>
+            </label>
+            <label class="release-checkbox-container">
+              <input name="monetization_allowed" type="checkbox" ${lic.monetization_allowed ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Monetização permitida</span>
+            </label>
+            <label class="release-checkbox-container">
+              <input name="live_performance_allowed" type="checkbox" ${lic.live_performance_allowed ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Apresentação ao vivo</span>
+            </label>
+            <label class="release-checkbox-container">
+              <input name="content_id_allowed" type="checkbox" ${lic.content_id_allowed ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Registro no Content ID</span>
+            </label>
+            <label class="release-checkbox-container" style="grid-column: span 2;">
+              <input name="credit_required" type="checkbox" ${lic.credit_required ? "checked" : ""}>
+              <span class="release-checkmark"></span>
+              <span>Crédito obrigatório</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Seção 6: Contrato -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Contrato</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Duração do contrato</span>
+              <input name="duration" type="text" value="${htmlEscape(lic.duration)}" placeholder="Ex: lifetime, 5 anos" 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Território</span>
+              <input name="territory" type="text" value="${htmlEscape(lic.territory)}" placeholder="Ex: worldwide, Brasil" 
+                     style="height: 42px; background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 0 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; box-sizing: border-box; width: 100%;">
+            </label>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Termos / Cláusulas personalizadas</span>
+            <textarea name="custom_terms" rows="2" placeholder="Termos adicionais..." 
+                      style="background: #080809; border: 1px solid #222226; color: #f5f5f7; padding: 10px 12px; border-radius: 9px; font-family: 'Montserrat', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box; width: 100%; min-height: 60px;">${htmlEscape(lic.custom_terms || "")}</textarea>
+          </label>
+        </section>
+
+        <!-- Seção 7: Exclusividade -->
+        <section class="modal-form-section" style="background: #0f0f11; border: 1px solid #222226; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; margin: 0;">Exclusividade</h3>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 13px; color: #a1a1aa; max-width: 75%; line-height: 1.4; text-align: left;">Ativar exclusividade para esta licença (remove o beat do catálogo após a compra).</span>
+            <label class="release-switch" style="flex-shrink: 0;">
+              <input name="is_exclusive" type="checkbox" value="true" ${lic.is_exclusive ? "checked" : ""}>
+              <span class="release-slider"></span>
+            </label>
+          </div>
+        </section>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <label style="display: flex; flex-direction: column; gap: 4px;">
-            <span style="font-size: 11px; color: var(--beat-muted);">Limite de streams</span>
-            <input name="stream_limit" type="number" value="${lic.stream_limit || ""}" placeholder="Ex: 100000" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-          </label>
-          <label style="display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--beat-muted); cursor: pointer; margin-top: 2px;">
-            <input name="unlimited_streams" type="checkbox" ${lic.unlimited_streams ? "checked" : ""}> <span>Streams ilimitados</span>
-          </label>
+      <!-- Fixed Footer -->
+      <footer style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-top: 1px solid #27272a; background: #09090a; flex-shrink: 0; box-sizing: border-box;">
+        <div class="modal-validation-message" style="color: #ef4444; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 500; text-align: left;"></div>
+        <div style="display: flex; gap: 12px; margin-left: auto;">
+          <button type="button" data-action="close-modal" 
+                  style="height: 40px; background: transparent; border: 1px solid #27272a; color: #a1a1aa; padding: 0 18px; border-radius: 8px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s ease;">
+            Cancelar
+          </button>
+          <button type="submit" class="modal-submit-btn" 
+                  style="height: 40px; background: #2563eb; border: 1px solid #2563eb; color: #ffffff; padding: 0 20px; border-radius: 8px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s ease;">
+            ${isEditing ? "Salvar termos" : "Criar licença"}
+          </button>
         </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <label style="display: flex; flex-direction: column; gap: 4px;">
-            <span style="font-size: 11px; color: var(--beat-muted);">Limite de videoclipes</span>
-            <input name="music_video_limit" type="number" value="${lic.music_video_limit || ""}" placeholder="Ex: 2" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-          </label>
-          <label style="display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--beat-muted); cursor: pointer; margin-top: 2px;">
-            <input name="unlimited_music_videos" type="checkbox" ${lic.unlimited_music_videos ? "checked" : ""}> <span>Videoclipes ilimitados</span>
-          </label>
-        </div>
-      </div>
-
-      <fieldset style="border: 1px solid var(--beat-border); border-radius: 6px; padding: 10px 12px;">
-        <legend style="font-size: 11px; color: var(--beat-muted); padding: 0 6px;">Direitos e Usos</legend>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 11px; color: #fff;">
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="commercial_use" type="checkbox" ${lic.commercial_use ? "checked" : ""}> Uso Comercial</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="monetization_allowed" type="checkbox" ${lic.monetization_allowed ? "checked" : ""}> Monetização permitida</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="live_performance_allowed" type="checkbox" ${lic.live_performance_allowed ? "checked" : ""}> Apresentação ao vivo</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="content_id_allowed" type="checkbox" ${lic.content_id_allowed ? "checked" : ""}> Registro Content ID permitido</label>
-          <label style="display: flex; gap: 6px; align-items: center; cursor: pointer;"><input name="credit_required" type="checkbox" ${lic.credit_required ? "checked" : ""}> Crédito obrigatório</label>
-        </div>
-      </fieldset>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Duração do contrato</span>
-          <input name="duration" type="text" value="${htmlEscape(lic.duration)}" placeholder="Ex: lifetime, 5 anos" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-        </label>
-        <label style="display: flex; flex-direction: column; gap: 4px;">
-          <span style="font-size: 11px; color: var(--beat-muted);">Território</span>
-          <input name="territory" type="text" value="${htmlEscape(lic.territory)}" placeholder="Ex: worldwide, Brasil" style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px;">
-        </label>
-      </div>
-
-      <label style="display: flex; flex-direction: column; gap: 4px;">
-        <span style="font-size: 11px; color: var(--beat-muted);">Termos / Cláusulas personalizadas</span>
-        <textarea name="custom_terms" rows="2" placeholder="Termos adicionais..." style="background: #050505; border: 1px solid var(--beat-border); color: #fff; padding: 8px 10px; border-radius: 5px; resize: none;">${htmlEscape(lic.custom_terms || "")}</textarea>
-      </label>
-
-      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-        <button type="button" class="an-secondary" data-action="close-modal" style="height: 38px; padding: 0 16px;">Cancelar</button>
-        <button type="submit" class="an-primary" style="background: #fff; border: 0; color: #000; font-weight: bold; height: 38px; padding: 0 20px; border-radius: 6px; cursor: pointer;">${isEditing ? "Salvar Termos" : "Criar Licença"}</button>
-      </div>
+      </footer>
     </form>
   `;
+
   openModal(markup);
+
+  // Initialize event listeners for modal form fields
+  const formEl = document.querySelector(".custom-license-form");
+  if (formEl) {
+    // A. Dirty check tracking
+    formEl.addEventListener("input", () => {
+      formEl.dataset.dirty = "true";
+    });
+    formEl.addEventListener("change", () => {
+      formEl.dataset.dirty = "true";
+    });
+
+    // B. Real-time royalties validation
+    const buyerRoyaltyInput = formEl.elements.buyer_royalty_percentage;
+    const producerRoyaltyInput = formEl.elements.producer_royalty_percentage;
+    const royaltiesBadge = formEl.querySelector(".royalties-badge");
+    
+    const updateRoyaltiesBadge = () => {
+      const buyerVal = Number(buyerRoyaltyInput.value || 0);
+      const producerVal = Number(producerRoyaltyInput.value || 0);
+      const sum = buyerVal + producerVal;
+      if (royaltiesBadge) {
+        royaltiesBadge.textContent = `Soma: ${sum}%`;
+        if (sum === 100) {
+          royaltiesBadge.style.color = "#10b981";
+          royaltiesBadge.style.background = "rgba(16, 185, 129, 0.1)";
+        } else {
+          royaltiesBadge.style.color = "#ef4444";
+          royaltiesBadge.style.background = "rgba(239, 68, 68, 0.1)";
+          royaltiesBadge.textContent = `Soma: ${sum}% (Deve ser 100%)`;
+        }
+      }
+    };
+    
+    buyerRoyaltyInput.addEventListener("input", updateRoyaltiesBadge);
+    producerRoyaltyInput.addEventListener("input", updateRoyaltiesBadge);
+    updateRoyaltiesBadge(); // Run immediately
+
+    // C. Streams and Video unlimited checkbox toggling
+    const unlimitedStreamsChk = formEl.elements.unlimited_streams;
+    const streamLimitInput = formEl.elements.stream_limit;
+    
+    unlimitedStreamsChk.addEventListener("change", () => {
+      if (unlimitedStreamsChk.checked) {
+        streamLimitInput.disabled = true;
+        streamLimitInput.value = "";
+      } else {
+        streamLimitInput.disabled = false;
+        streamLimitInput.value = lic.stream_limit || "50000";
+      }
+    });
+    
+    const unlimitedVideosChk = formEl.elements.unlimited_music_videos;
+    const videoLimitInput = formEl.elements.music_video_limit;
+    
+    unlimitedVideosChk.addEventListener("change", () => {
+      if (unlimitedVideosChk.checked) {
+        videoLimitInput.disabled = true;
+        videoLimitInput.value = "";
+      } else {
+        videoLimitInput.disabled = false;
+        videoLimitInput.value = lic.music_video_limit || "1";
+      }
+    });
+
+    // D. Formatting custom license price
+    const customPriceInput = formEl.querySelector(".custom-license-price-formatter");
+    if (customPriceInput) {
+      customPriceInput.addEventListener("input", (e) => {
+        e.target.value = formatPriceBRL(parsePriceCents(e.target.value));
+      });
+    }
+
+    // E. Setup Focus Trap
+    const modalEl = document.querySelector(".app-modal");
+    if (modalEl) {
+      const focusableSelectors = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      modalEl.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
+        const focusableElements = Array.from(modalEl.querySelectorAll(focusableSelectors))
+          .filter(el => !el.disabled && el.offsetWidth > 0 && el.offsetHeight > 0);
+        if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      });
+
+      // Focus first input automatically
+      const firstInput = formEl.querySelector('input[name="name"]');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+    }
+
+    // F. Clear dirty state on submit so it does not trigger confirm prompt
+    formEl.addEventListener("submit", () => {
+      formEl.dataset.saving = "true";
+      formEl.dataset.dirty = "false";
+    });
+  }
 }
 
 async function fetchBeatLicenses(beatId) {
@@ -24742,7 +25084,24 @@ function generateDefaultLicensesForBeat(beat) {
       stream_limit: 250000,
       unlimited_streams: false,
       music_video_limit: 2,
-      unlimited_music_videos: false,
+      included_mp3: true,
+      included_wav: true,
+      included_stems: false,
+      is_exclusive: false,
+    },
+    {
+      id: "unlimited",
+      beat_id: beat?.id,
+      license_key: "unlimited",
+      name: "Lease Unlimited — MP3 + WAV",
+      price_cents: Math.max(149, Math.round(basePrice * 1.8)) * 100,
+      description: "Licença recomendada para distribuição em larga escala sem limites de reprodução. Inclui arquivos MP3 e WAV, streams ilimitados, videoclipes ilimitados, uso comercial e divisão de royalties de 50% para o artista e 50% para o produtor.",
+      buyer_royalty_percentage: 50,
+      producer_royalty_percentage: 50,
+      stream_limit: null,
+      unlimited_streams: true,
+      music_video_limit: null,
+      unlimited_music_videos: true,
       included_mp3: true,
       included_wav: true,
       included_stems: false,
