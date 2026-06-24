@@ -41186,8 +41186,14 @@ body[data-route="cadastrar"] .license-price-formatter:focus,
 }
 
 /* NEXO Beats Section Font Overrides to Untitled Sans */
-.featured-preview-section,
-.featured-preview-section * {
+body[data-route="feed"] .featured-preview-section,
+body[data-route="feed"] .featured-preview-section *,
+body[data-route="feed"] .featured-preview-section .card-title,
+body[data-route="feed"] .featured-preview-section .card-producer,
+body[data-route="feed"] .featured-preview-section .beat-card-buy-btn span,
+body[data-route="feed"] .featured-preview-section .beat-card-buy-btn,
+body[data-route="feed"] .featured-preview-section .section-head h2,
+body[data-route="feed"] .featured-preview-section .section-head p {
   font-family: "Untitled Sans", "Unitilited Sans", "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif !important;
 }
 
