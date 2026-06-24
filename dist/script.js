@@ -24571,6 +24571,7 @@ function refreshReleaseLicensesUI() {
   
   const cardsHtml = appState.releaseLicenses.map((lic, idx) => {
     const priceText = lic.price_cents ? `R$ ${(lic.price_cents / 100).toFixed(2)}` : "";
+
     const filesLabel = [
       lic.included_mp3 ? "MP3" : "",
       lic.included_wav ? "WAV" : "",
@@ -24580,51 +24581,47 @@ function refreshReleaseLicensesUI() {
     const isDefault = lic.is_default;
     const activeClass = lic.is_active ? "is-active-license" : "is-inactive-license";
 
-    // Set badge text & styling
+    // Badges premium
+    let badgeClass = "license-badge-basic";
     let badgeText = "Lease";
-    let badgeStyle = "background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.15);";
 
     if (lic.license_key === "basic") {
       badgeText = "Básica";
-      badgeStyle = "background: rgba(161, 161, 170, 0.1); color: #a1a1aa; border: 1px solid rgba(161, 161, 170, 0.15);";
+      badgeClass = "license-badge-basic";
     } else if (lic.license_key === "premium") {
       badgeText = "Premium";
-      badgeStyle = "background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2);";
+      badgeClass = "license-badge-premium";
     } else if (lic.license_key === "unlimited") {
       badgeText = "Unlimited";
-      badgeStyle = "background: rgba(139, 92, 246, 0.1); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.2);";
+      badgeClass = "license-badge-unlimited";
     } else if (lic.is_exclusive || lic.license_key === "exclusive") {
       badgeText = "Exclusiva";
-      badgeStyle = "background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);";
+      badgeClass = "license-badge-exclusive";
     } else if (lic.is_custom) {
       badgeText = "Personalizada";
-      badgeStyle = "background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2);";
+      badgeClass = "license-badge-custom";
     }
 
-    const badgeHtml = `<span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; ${badgeStyle}">${badgeText}</span>`;
+    const badgeHtml = `<span class="license-badge ${badgeClass}">${badgeText}</span>`;
 
     return `
       <div class="release-license-editor-card ${activeClass}" data-license-index="${idx}">
-        <div class="license-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
-          <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <strong class="license-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 600; color: #f5f5f7;">${htmlEscape(lic.name)}</strong>
-              ${badgeHtml}
-            </div>
+        <div class="license-card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong class="license-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; color: #f5f5f7; margin: 0; letter-spacing: -0.02em;">${htmlEscape(lic.name)}</strong>
+            ${badgeHtml}
           </div>
-          <div class="license-header-actions" style="display: flex; align-items: center; gap: 10px;">
-            <div class="license-reorder-buttons" style="display: flex; gap: 4px; align-items: center;">
-              ${idx > 0 ? `<button type="button" class="license-move-up" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Subir" aria-label="Mover para cima"><i data-lucide="chevron-up" style="width: 16px; height: 16px;"></i></button>` : ""}
-              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Descer" aria-label="Mover para baixo"><i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i></button>` : ""}
+          <div class="license-header-actions" style="display: flex; align-items: center; gap: 8px;">
+            <div class="license-action-buttons">
+              ${idx > 0 ? `<button type="button" class="license-move-up" title="Subir" aria-label="Mover para cima"><i data-lucide="chevron-up" style="width: 14px; height: 14px;"></i></button>` : ""}
+              ${idx < appState.releaseLicenses.length - 1 ? `<button type="button" class="license-move-down" title="Descer" aria-label="Mover para baixo"><i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i></button>` : ""}
+              <button type="button" class="license-duplicate-btn" title="Duplicar" aria-label="Duplicar licença"><i data-lucide="copy" style="width: 13px; height: 13px;"></i></button>
+              ${!isDefault ? `
+                <button type="button" class="license-delete-btn" title="Excluir" aria-label="Excluir licença"><i data-lucide="trash-2" style="width: 13px; height: 13px;"></i></button>
+              ` : ""}
             </div>
-            
-            <button type="button" class="license-duplicate-btn" style="background: transparent; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Duplicar" aria-label="Duplicar licença"><i data-lucide="copy" style="width: 15px; height: 15px;"></i></button>
-            
-            ${!isDefault ? `
-              <button type="button" class="license-delete-btn" style="background: transparent; border: 0; color: #ef4444; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease;" title="Excluir" aria-label="Excluir licença"><i data-lucide="trash-2" style="width: 15px; height: 15px;"></i></button>
-            ` : ""}
-            
-            <label class="release-switch" title="Ativar/Desativar" style="margin-left: 4px;">
+            <div style="width: 1px; height: 16px; background: #1e1e20; margin: 0 2px;"></div>
+            <label class="release-switch" title="Ativar/Desativar">
               <input type="checkbox" class="license-active-toggle" ${lic.is_active ? "checked" : ""}>
               <span class="release-slider"></span>
             </label>
@@ -24635,31 +24632,28 @@ function refreshReleaseLicensesUI() {
           ${htmlEscape(lic.description)}
         </div>
         
-        <div class="license-card-features" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; font-family: 'Montserrat', sans-serif; font-size: 12px; color: #a1a1aa; text-align: left;">
-          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f;">
-            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Arquivos</strong>
-            <span style="font-size: 12px; font-weight: 500;">${filesLabel || "Nenhum"}</span>
+        <div class="license-card-specs-grid">
+          <div class="license-card-spec-item">
+            <strong>Arquivos</strong>
+            <span>${filesLabel || "Nenhum"}</span>
           </div>
-          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f;">
-            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Royalties</strong>
-            <span style="font-size: 12px; font-weight: 500;">Artista ${lic.buyer_royalty_percentage}% / Produtor ${lic.producer_royalty_percentage}%</span>
+          <div class="license-card-spec-item">
+            <strong>Royalties</strong>
+            <span>${lic.buyer_royalty_percentage}% / ${lic.producer_royalty_percentage}%</span>
           </div>
-          <div style="background: #111113; padding: 8px 12px; border-radius: 8px; border: 1px solid #1c1c1f; grid-column: span 2;">
-            <strong style="color: #f5f5f7; display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-family: 'Montserrat', sans-serif; font-weight: 600;">Limite de streams</strong>
-            <span style="font-size: 12px; font-weight: 500;">${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0} streams`}</span>
+          <div class="license-card-spec-item">
+            <strong>Streams</strong>
+            <span>${lic.unlimited_streams ? "Ilimitado" : `${lic.stream_limit?.toLocaleString("pt-BR") || 0}`}</span>
           </div>
         </div>
 
-        <div class="license-card-footer" style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid #232326;">
-          <label style="display: flex; flex-direction: column; gap: 6px; flex: 1; text-align: left;">
-            <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600; color: #a1a1aa;">Preço</span>
-            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required 
-                   style="width: 100%; height: 44px; background: #080809; border: 1px solid #29292d; color: #f5f5f7; padding: 0 12px; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px; box-sizing: border-box; transition: all 0.2s ease;">
-          </label>
-          <button type="button" class="license-edit-terms-btn" 
-                  style="height: 44px; background: #111113; border: 1px solid #29292d; color: #f5f5f7; padding: 0 16px; border-radius: 10px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; box-shadow: none;">
-            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
-            Editar termos
+        <div class="license-card-footer">
+          <div class="license-card-price-wrapper">
+            <input type="text" class="license-price-formatter" value="${priceText}" placeholder="R$ 0,00" required>
+          </div>
+          <button type="button" class="license-edit-terms-btn">
+            <i data-lucide="settings" style="width: 13px; height: 13px;"></i>
+            <span>Termos</span>
           </button>
         </div>
       </div>
@@ -24667,13 +24661,13 @@ function refreshReleaseLicensesUI() {
   }).join("");
 
   const addCardHtml = `
-    <div class="add-custom-license-card add-custom-license-btn" style="border: 1px dashed #2d2d30; border-radius: 14px; padding: 22px; background: transparent; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 280px; cursor: pointer; transition: all 0.2s ease; box-sizing: border-box; text-align: center; gap: 12px;">
-      <div style="width: 44px; height: 44px; border-radius: 50%; background: #0c0c0d; border: 1px solid #232326; display: flex; align-items: center; justify-content: center; color: #a1a1aa; transition: all 0.2s ease;" class="add-icon-wrapper">
-        <i data-lucide="plus" style="width: 20px; height: 20px;"></i>
+    <div class="add-custom-license-card add-custom-license-btn">
+      <div class="add-icon-wrapper">
+        <i data-lucide="plus" style="width: 18px; height: 18px;"></i>
       </div>
       <div>
-        <strong style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 600; color: #f5f5f7; display: block; margin-bottom: 4px;">Adicionar licença personalizada</strong>
-        <span style="font-family: 'Montserrat', sans-serif; font-size: 12px; color: #71717a; display: block; max-width: 220px; margin: 0 auto; line-height: 1.4;">Crie uma opção com arquivos e condições próprias.</span>
+        <strong style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; color: #f5f5f7; display: block; margin-bottom: 2px; letter-spacing: -0.01em;">Adicionar licença personalizada</strong>
+        <span style="font-family: 'Montserrat', sans-serif; font-size: 11px; color: #71717a; display: block; max-width: 220px; margin: 0 auto; line-height: 1.4;">Crie uma opção com arquivos e condições próprias.</span>
       </div>
     </div>
   `;
