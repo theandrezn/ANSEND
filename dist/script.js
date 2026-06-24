@@ -18872,6 +18872,187 @@ function renderProfileLegacy() {
   </section>`;
 }
 
+/* ── Geometric Blur Mesh – WebGL canvas for seller-auth right panel ── */
+const _geometricBlurState = { animFrame: null, gl: null, program: null, cleanup: null };
+
+const _GBM_FRAGMENT_SHADER = `
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform vec2 u_mouse;
+uniform vec2 u_resolution;
+uniform float u_pixelRatio;
+uniform float u_time;
+uniform int u_shape;
+#define PI 3.1415926535897932384626433832795
+#define TWO_PI 6.2831853071795864769252867665590
+mat3 rotateX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0,0,c,-s,0,s,c);}
+mat3 rotateY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s,0,1,0,-s,0,c);}
+mat3 rotateZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0,s,c,0,0,0,1);}
+vec2 coord(in vec2 p){p=p/u_resolution.xy;if(u_resolution.x>u_resolution.y){p.x*=u_resolution.x/u_resolution.y;p.x+=(u_resolution.y-u_resolution.x)/u_resolution.y/2.0;}else{p.y*=u_resolution.y/u_resolution.x;p.y+=(u_resolution.x-u_resolution.y)/u_resolution.x/2.0;}p-=0.5;return p;}
+vec2 project(vec3 p){float d=2.0/(2.0-p.z);return p.xy*d;}
+float distToSegment(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0);return length(pa-ba*h);}
+float drawLine(vec2 p,vec2 a,vec2 b,float t,float bl){return smoothstep(t+bl,t-bl,distToSegment(p,a,b));}
+void getCubeVertices(out vec3 v[8]){float s=0.7;v[0]=vec3(-s,-s,-s);v[1]=vec3(s,-s,-s);v[2]=vec3(s,s,-s);v[3]=vec3(-s,s,-s);v[4]=vec3(-s,-s,s);v[5]=vec3(s,-s,s);v[6]=vec3(s,s,s);v[7]=vec3(-s,s,s);}
+void getTetrahedronVertices(out vec3 v[4]){float a=1.0/sqrt(3.0);v[0]=vec3(a,a,a);v[1]=vec3(a,-a,-a);v[2]=vec3(-a,a,-a);v[3]=vec3(-a,-a,a);}
+void getOctahedronVertices(out vec3 v[6]){v[0]=vec3(1,0,0);v[1]=vec3(-1,0,0);v[2]=vec3(0,1,0);v[3]=vec3(0,-1,0);v[4]=vec3(0,0,1);v[5]=vec3(0,0,-1);}
+void getIcosahedronVertices(out vec3 v[12]){float t=(1.0+sqrt(5.0))/2.0,s=1.0/sqrt(1.0+t*t);v[0]=vec3(-s,t*s,0);v[1]=vec3(s,t*s,0);v[2]=vec3(-s,-t*s,0);v[3]=vec3(s,-t*s,0);v[4]=vec3(0,-s,t*s);v[5]=vec3(0,s,t*s);v[6]=vec3(0,-s,-t*s);v[7]=vec3(0,s,-t*s);v[8]=vec3(t*s,0,-s);v[9]=vec3(t*s,0,s);v[10]=vec3(-t*s,0,-s);v[11]=vec3(-t*s,0,s);}
+
+float drawWireframe(vec2 p,int shape,mat3 rot,float sc,float th,float bl){
+  float r=0.0;
+  if(shape==0){vec3 v[8];getCubeVertices(v);for(int i=0;i<8;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[1]),project(v[2]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);r+=drawLine(p,project(v[3]),project(v[0]),th,bl);r+=drawLine(p,project(v[4]),project(v[5]),th,bl);r+=drawLine(p,project(v[5]),project(v[6]),th,bl);r+=drawLine(p,project(v[6]),project(v[7]),th,bl);r+=drawLine(p,project(v[7]),project(v[4]),th,bl);r+=drawLine(p,project(v[0]),project(v[4]),th,bl);r+=drawLine(p,project(v[1]),project(v[5]),th,bl);r+=drawLine(p,project(v[2]),project(v[6]),th,bl);r+=drawLine(p,project(v[3]),project(v[7]),th,bl);}
+  else if(shape==1){vec3 v[4];getTetrahedronVertices(v);for(int i=0;i<4;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[0]),project(v[2]),th,bl);r+=drawLine(p,project(v[0]),project(v[3]),th,bl);r+=drawLine(p,project(v[1]),project(v[2]),th,bl);r+=drawLine(p,project(v[1]),project(v[3]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);}
+  else if(shape==2){vec3 v[6];getOctahedronVertices(v);for(int i=0;i<6;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[2]),project(v[0]),th,bl);r+=drawLine(p,project(v[2]),project(v[1]),th,bl);r+=drawLine(p,project(v[2]),project(v[4]),th,bl);r+=drawLine(p,project(v[2]),project(v[5]),th,bl);r+=drawLine(p,project(v[3]),project(v[0]),th,bl);r+=drawLine(p,project(v[3]),project(v[1]),th,bl);r+=drawLine(p,project(v[3]),project(v[4]),th,bl);r+=drawLine(p,project(v[3]),project(v[5]),th,bl);r+=drawLine(p,project(v[0]),project(v[4]),th,bl);r+=drawLine(p,project(v[4]),project(v[1]),th,bl);r+=drawLine(p,project(v[1]),project(v[5]),th,bl);r+=drawLine(p,project(v[5]),project(v[0]),th,bl);}
+  else if(shape==3){vec3 v[12];getIcosahedronVertices(v);for(int i=0;i<12;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[0]),project(v[5]),th,bl);r+=drawLine(p,project(v[0]),project(v[7]),th,bl);r+=drawLine(p,project(v[0]),project(v[10]),th,bl);r+=drawLine(p,project(v[0]),project(v[11]),th,bl);r+=drawLine(p,project(v[1]),project(v[5]),th,bl);r+=drawLine(p,project(v[1]),project(v[7]),th,bl);r+=drawLine(p,project(v[1]),project(v[8]),th,bl);r+=drawLine(p,project(v[1]),project(v[9]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);r+=drawLine(p,project(v[2]),project(v[4]),th,bl);r+=drawLine(p,project(v[2]),project(v[6]),th,bl);r+=drawLine(p,project(v[2]),project(v[10]),th,bl);r+=drawLine(p,project(v[2]),project(v[11]),th,bl);r+=drawLine(p,project(v[3]),project(v[4]),th,bl);r+=drawLine(p,project(v[3]),project(v[6]),th,bl);r+=drawLine(p,project(v[3]),project(v[8]),th,bl);r+=drawLine(p,project(v[3]),project(v[9]),th,bl);r+=drawLine(p,project(v[4]),project(v[5]),th,bl);r+=drawLine(p,project(v[4]),project(v[11]),th,bl);r+=drawLine(p,project(v[5]),project(v[11]),th,bl);r+=drawLine(p,project(v[6]),project(v[7]),th,bl);r+=drawLine(p,project(v[6]),project(v[8]),th,bl);r+=drawLine(p,project(v[6]),project(v[10]),th,bl);r+=drawLine(p,project(v[7]),project(v[10]),th,bl);r+=drawLine(p,project(v[8]),project(v[9]),th,bl);r+=drawLine(p,project(v[9]),project(v[11]),th,bl);r+=drawLine(p,project(v[10]),project(v[11]),th,bl);}
+  else if(shape==4){vec3 v[5];float s=0.7;v[0]=vec3(-s,0,-s);v[1]=vec3(s,0,-s);v[2]=vec3(s,0,s);v[3]=vec3(-s,0,s);v[4]=vec3(0,1,0);for(int i=0;i<5;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[1]),project(v[2]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);r+=drawLine(p,project(v[3]),project(v[0]),th,bl);r+=drawLine(p,project(v[0]),project(v[4]),th,bl);r+=drawLine(p,project(v[1]),project(v[4]),th,bl);r+=drawLine(p,project(v[2]),project(v[4]),th,bl);r+=drawLine(p,project(v[3]),project(v[4]),th,bl);}
+  else if(shape==5){vec3 v[6];float s=0.6;v[0]=vec3(-s,0,-s);v[1]=vec3(s,0,-s);v[2]=vec3(s,0,s);v[3]=vec3(-s,0,s);v[4]=vec3(0,1,0);v[5]=vec3(0,-1,0);for(int i=0;i<6;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[1]),project(v[2]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);r+=drawLine(p,project(v[3]),project(v[0]),th,bl);r+=drawLine(p,project(v[0]),project(v[4]),th,bl);r+=drawLine(p,project(v[1]),project(v[4]),th,bl);r+=drawLine(p,project(v[2]),project(v[4]),th,bl);r+=drawLine(p,project(v[3]),project(v[4]),th,bl);r+=drawLine(p,project(v[0]),project(v[5]),th,bl);r+=drawLine(p,project(v[1]),project(v[5]),th,bl);r+=drawLine(p,project(v[2]),project(v[5]),th,bl);r+=drawLine(p,project(v[3]),project(v[5]),th,bl);}
+  else if(shape==6){vec3 v[12];float as=TWO_PI/6.0;v[0]=vec3(cos(0.0*as),-1.0,sin(0.0*as));v[1]=vec3(cos(1.0*as),-1.0,sin(1.0*as));v[2]=vec3(cos(2.0*as),-1.0,sin(2.0*as));v[3]=vec3(cos(3.0*as),-1.0,sin(3.0*as));v[4]=vec3(cos(4.0*as),-1.0,sin(4.0*as));v[5]=vec3(cos(5.0*as),-1.0,sin(5.0*as));v[6]=vec3(cos(0.0*as),1.0,sin(0.0*as));v[7]=vec3(cos(1.0*as),1.0,sin(1.0*as));v[8]=vec3(cos(2.0*as),1.0,sin(2.0*as));v[9]=vec3(cos(3.0*as),1.0,sin(3.0*as));v[10]=vec3(cos(4.0*as),1.0,sin(4.0*as));v[11]=vec3(cos(5.0*as),1.0,sin(5.0*as));for(int i=0;i<12;i++)v[i]=rot*(v[i]*sc);r+=drawLine(p,project(v[0]),project(v[1]),th,bl);r+=drawLine(p,project(v[1]),project(v[2]),th,bl);r+=drawLine(p,project(v[2]),project(v[3]),th,bl);r+=drawLine(p,project(v[3]),project(v[4]),th,bl);r+=drawLine(p,project(v[4]),project(v[5]),th,bl);r+=drawLine(p,project(v[5]),project(v[0]),th,bl);r+=drawLine(p,project(v[6]),project(v[7]),th,bl);r+=drawLine(p,project(v[7]),project(v[8]),th,bl);r+=drawLine(p,project(v[8]),project(v[9]),th,bl);r+=drawLine(p,project(v[9]),project(v[10]),th,bl);r+=drawLine(p,project(v[10]),project(v[11]),th,bl);r+=drawLine(p,project(v[11]),project(v[6]),th,bl);r+=drawLine(p,project(v[0]),project(v[6]),th,bl);r+=drawLine(p,project(v[1]),project(v[7]),th,bl);r+=drawLine(p,project(v[2]),project(v[8]),th,bl);r+=drawLine(p,project(v[3]),project(v[9]),th,bl);r+=drawLine(p,project(v[4]),project(v[10]),th,bl);r+=drawLine(p,project(v[5]),project(v[11]),th,bl);}
+  else{float t=u_time*0.5;float morph=sin(t)*0.5+0.5;vec3 cube[8];getCubeVertices(cube);vec3 octa[6];getOctahedronVertices(octa);vec3 v[8];for(int i=0;i<8;i++){if(i<6){v[i]=mix(cube[i],octa[i]*1.5,morph);}else{v[i]=cube[i]*(1.0-morph*0.3);}v[i]=rot*(v[i]*sc);}float al=1.0-morph*0.5;r+=drawLine(p,project(v[0]),project(v[1]),th,bl)*al;r+=drawLine(p,project(v[1]),project(v[2]),th,bl)*al;r+=drawLine(p,project(v[2]),project(v[3]),th,bl)*al;r+=drawLine(p,project(v[3]),project(v[0]),th,bl)*al;r+=drawLine(p,project(v[4]),project(v[5]),th,bl)*al;r+=drawLine(p,project(v[5]),project(v[6]),th,bl)*al;r+=drawLine(p,project(v[6]),project(v[7]),th,bl)*al;r+=drawLine(p,project(v[7]),project(v[4]),th,bl)*al;r+=drawLine(p,project(v[0]),project(v[6]),th,bl)*morph;r+=drawLine(p,project(v[1]),project(v[7]),th,bl)*morph;r+=drawLine(p,project(v[2]),project(v[4]),th,bl)*morph;r+=drawLine(p,project(v[3]),project(v[5]),th,bl)*morph;}
+  return clamp(r,0.0,1.0);
+}
+
+vec3 render(vec2 st,vec2 mouse){
+  float md=length(st-mouse),mi=1.0-smoothstep(0.0,0.5,md);
+  float time=u_time*0.2;
+  mat3 rot=rotateY(time+(mouse.x-0.5)*mi*1.0)*rotateX(time*0.7+(mouse.y-0.5)*mi*1.0)*rotateZ(time*0.1);
+  float sc=0.35,bl=mix(0.0001,0.05,mi),th=mix(0.002,0.003,mi);
+  float shape=drawWireframe(st,u_shape,rot,sc,th,bl);
+  vec3 color=vec3(0.9,0.95,1.0);
+  color*=shape*(1.0-mi*0.3);
+  color*=1.0-length(st)*0.2;
+  color=pow(color,vec3(0.9));
+  return color;
+}
+
+void main(){
+  vec2 st=coord(gl_FragCoord.xy);
+  vec2 mouse=coord(u_mouse*u_pixelRatio)*vec2(1.,-1.);
+  gl_FragColor=vec4(render(st,mouse),1.0);
+}
+`;
+
+const _GBM_VERTEX_SHADER = `attribute vec3 a_position;attribute vec2 a_uv;varying vec2 v_texcoord;void main(){gl_Position=vec4(a_position,1.0);v_texcoord=a_uv;}`;
+const _GBM_SHAPES = ["Cube","Tetrahedron","Octahedron","Icosahedron","Pyramid","Diamond","Hexagonal Prism","Morphing"];
+
+function initGeometricBlurCanvas() {
+  // Cleanup previous instance
+  if (_geometricBlurState.animFrame) cancelAnimationFrame(_geometricBlurState.animFrame);
+  if (_geometricBlurState.cleanup) { try { _geometricBlurState.cleanup(); } catch(e){} }
+  _geometricBlurState.animFrame = null;
+  _geometricBlurState.gl = null;
+  _geometricBlurState.program = null;
+  _geometricBlurState.cleanup = null;
+
+  const canvas = document.getElementById("geometricBlurCanvas");
+  if (!canvas) return;
+  const container = canvas.closest(".showcase-visuals") || canvas.parentElement;
+  if (!container) return;
+
+  const gl = canvas.getContext("webgl", { antialias: true, alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false });
+  if (!gl) return;
+  _geometricBlurState.gl = gl;
+  gl.clearColor(0, 0, 0, 1);
+
+  function compileShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error("GBM shader error:", gl.getShaderInfoLog(s)); gl.deleteShader(s); return null; }
+    return s;
+  }
+  const vs = compileShader(gl.VERTEX_SHADER, _GBM_VERTEX_SHADER);
+  const fs = compileShader(gl.FRAGMENT_SHADER, _GBM_FRAGMENT_SHADER);
+  if (!vs || !fs) return;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error("GBM link error:", gl.getProgramInfoLog(prog)); return; }
+  _geometricBlurState.program = prog;
+  gl.useProgram(prog);
+
+  const uniforms = {
+    u_mouse: gl.getUniformLocation(prog, "u_mouse"),
+    u_resolution: gl.getUniformLocation(prog, "u_resolution"),
+    u_pixelRatio: gl.getUniformLocation(prog, "u_pixelRatio"),
+    u_time: gl.getUniformLocation(prog, "u_time"),
+    u_shape: gl.getUniformLocation(prog, "u_shape")
+  };
+
+  // Geometry
+  const posBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,0, 1,-1,0, -1,1,0, 1,1,0]), gl.STATIC_DRAW);
+  const posLoc = gl.getAttribLocation(prog, "a_position");
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+  const uvBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
+  const uvLoc = gl.getAttribLocation(prog, "a_uv");
+  gl.enableVertexAttribArray(uvLoc);
+  gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+
+  // State
+  let currentShape = 0;
+  const mouse = { x: 0, y: 0 };
+  const mouseDamp = { x: 0, y: 0 };
+  const startTime = Date.now();
+  let alive = true;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const w = container.clientWidth, h = container.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  resize();
+
+  function onMouseMove(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    mouse.x = cx - r.left; mouse.y = cy - r.top;
+  }
+  function onClick() { currentShape = (currentShape + 1) % _GBM_SHAPES.length; }
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("touchmove", onMouseMove);
+  container.addEventListener("click", onClick);
+
+  let lastT = performance.now();
+  function loop(t) {
+    if (!alive) return;
+    const dt = (t - lastT) / 1000; lastT = t;
+    const dampF = 8;
+    mouseDamp.x += (mouse.x - mouseDamp.x) * dampF * dt;
+    mouseDamp.y += (mouse.y - mouseDamp.y) * dampF * dt;
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const elapsed = (Date.now() - startTime) / 1000;
+    if (uniforms.u_mouse) gl.uniform2f(uniforms.u_mouse, mouseDamp.x, mouseDamp.y);
+    if (uniforms.u_resolution) gl.uniform2f(uniforms.u_resolution, canvas.width, canvas.height);
+    if (uniforms.u_pixelRatio) gl.uniform1f(uniforms.u_pixelRatio, dpr);
+    if (uniforms.u_time) gl.uniform1f(uniforms.u_time, elapsed);
+    if (uniforms.u_shape) gl.uniform1i(uniforms.u_shape, currentShape);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    _geometricBlurState.animFrame = requestAnimationFrame(loop);
+  }
+  _geometricBlurState.animFrame = requestAnimationFrame(loop);
+
+  _geometricBlurState.cleanup = () => {
+    alive = false;
+    window.removeEventListener("resize", resize);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("touchmove", onMouseMove);
+    container.removeEventListener("click", onClick);
+    gl.deleteProgram(prog); gl.deleteShader(vs); gl.deleteShader(fs);
+  };
+}
+
 function renderSellerAuth() {
   const isLogin = appState.sellerMode === "login";
   const profile = hasAccountAccess()
@@ -18955,13 +19136,10 @@ function renderSellerAuth() {
               <p>${isLogin ? "Acesse playlists, compras, favoritos e recomendações adaptadas à sua função." : "Escolha se você é produtor, curador, artista, designer, beatmaker ou selo para montar uma experiência personalizada."}</p>
             </div>
 
-            <!-- Social Logins (Reference 3 style) -->
+            <!-- Social Logins (Google only, full-width) -->
             <div class="seller-auth-social-buttons">
               <button type="button" class="social-btn google-btn" data-action="seller-google">
-                ${GOOGLE_ICON_MARKUP} Google
-              </button>
-              <button type="button" class="social-btn apple-btn" data-action="seller-google">
-                <i data-lucide="brand-apple"></i> Apple
+                ${GOOGLE_ICON_MARKUP} Continuar com Google
               </button>
             </div>
 
@@ -19012,15 +19190,10 @@ function renderSellerAuth() {
         </div>
       </div>
 
-      <!-- Right Column: Marketing Showcase with float animations (Reference 1 style) -->
+      <!-- Right Column: Marketing Showcase with WebGL GeometricBlurMesh canvas -->
       <div class="seller-auth-right">
         <div class="showcase-visuals">
-          <div class="showcase-glowing-blob"></div>
-          <div class="showcase-3d-box-container">
-            <div class="showcase-3d-wireframe"></div>
-            <div class="showcase-orbit-ring ring-1"></div>
-            <div class="showcase-orbit-ring ring-2"></div>
-          </div>
+          <canvas id="geometricBlurCanvas" class="geometric-blur-canvas"></canvas>
         </div>
 
         <div class="seller-auth-showcase-content">
@@ -19122,6 +19295,7 @@ function hydrateView() {
   setupOptimizedImages(document.querySelector(".sidebar") || document);
   applyTranslations();
   renderNexoFloatingAssistant();
+  initGeometricBlurCanvas();
   lucide.createIcons();
   requestAnimationFrame(() => setupScrollReveals());
 }
