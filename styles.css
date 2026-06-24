@@ -41222,13 +41222,13 @@ body[data-route="feed"] .featured-preview-section .section-head p {
 }
 
 .ansend-search-bar-shell:focus-within {
-  box-shadow: 0 4px 28px rgba(127, 0, 255, 0.3) !important;
+  box-shadow: 0 4px 28px rgba(255, 106, 0, 0.25) !important;
 }
 
 .ansend-search-icon {
   width: 20px !important;
   height: 20px !important;
-  color: #7f00ff !important;
+  color: var(--orange) !important;
   margin-right: 12px !important;
   flex-shrink: 0 !important;
 }
@@ -41253,7 +41253,7 @@ body[data-route="feed"] .featured-preview-section .section-head p {
 }
 
 .ansend-search-submit-btn {
-  background: #7f00ff !important;
+  background: var(--orange) !important;
   color: #ffffff !important;
   border: none !important;
   border-radius: 6px !important;
@@ -41267,7 +41267,7 @@ body[data-route="feed"] .featured-preview-section .section-head p {
 }
 
 .ansend-search-submit-btn:hover {
-  background: #6a00d7 !important;
+  background: var(--orange-shadow) !important;
 }
 
 .ansend-search-submit-btn:active {
@@ -41305,13 +41305,13 @@ body[data-route="feed"] .featured-preview-section .section-head p {
 }
 
 .ansend-explore-btn {
-  background: #7f00ff !important;
+  background: var(--orange) !important;
 }
 
 .ansend-explore-btn:hover {
-  background: #6a00d7 !important;
+  background: var(--orange-shadow) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(127, 0, 255, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(255, 106, 0, 0.2) !important;
 }
 
 .ansend-sell-btn {
@@ -41505,7 +41505,7 @@ body.auth-not-logged-in #appView.app-view {
 /* Social Buttons */
 .seller-auth-social-buttons {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
