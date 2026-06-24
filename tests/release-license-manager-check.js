@@ -23,6 +23,8 @@ assert(script.includes("license-terms-drawer"), "License terms drawer is missing
 assert(script.includes("releaseFileIsConfirmed(form, \"secure_wav\")"), "WAV availability must be tied to the uploaded file.");
 assert(script.includes("releaseFileIsConfirmed(form, \"secure_stems\")"), "Stems availability must be tied to the uploaded file.");
 assert(script.includes("terms_config"), "Granular license terms are not persisted.");
+assert(script.includes("releaseLicenseTermsConfigColumnMissing"), "Legacy remote schema fallback is missing.");
+assert(script.includes("Retrying license save without terms_config"), "License save must retry when terms_config is unavailable remotely.");
 assert(schema.includes("terms_config jsonb"), "Schema does not support granular license terms.");
 assert(styles.includes(".release-license-manager"), "License manager styles are missing.");
 assert(styles.includes(".license-terms-drawer"), "License drawer styles are missing.");

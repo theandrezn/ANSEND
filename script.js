@@ -17015,9 +17015,17 @@ async function saveBeatRelease(status = "published") {
       console.error("Error clearing old licenses:", deleteError);
     }
     
-    const { error: insertError } = await supabaseClient
+    let { error: insertError } = await supabaseClient
       .from("beat_licenses")
       .insert(licensesToSave);
+
+    if (insertError && releaseLicenseTermsConfigColumnMissing(insertError)) {
+      console.warn("Retrying license save without terms_config because the remote schema is not updated yet.", insertError);
+      const legacyLicensesToSave = licensesToSave.map(({ terms_config, ...license }) => license);
+      ({ error: insertError } = await supabaseClient
+        .from("beat_licenses")
+        .insert(legacyLicensesToSave));
+    }
       
     if (insertError) {
       console.error("Error inserting licenses:", insertError);
@@ -23857,6 +23865,15 @@ function releaseLicenseTermsPreview(lic) {
     ["Direitos de transmissão", terms.broadcasting_rights ? "Permitidos" : "Não permitidos"],
     ["Estações de rádio", limit(terms.radio_stations)]
   ];
+}
+
+function releaseLicenseTermsConfigColumnMissing(error) {
+  const details = [error?.code, error?.message, error?.details, error?.hint]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return details.includes("terms_config")
+    && (details.includes("column") || details.includes("schema cache") || details.includes("pgrst204"));
 }
 
 function refreshReleaseLicensesUI() {
