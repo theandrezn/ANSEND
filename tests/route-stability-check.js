@@ -22,7 +22,7 @@ const mimeTypes = {
 const routes = [
   { hash: "feed", required: ["ANSEND"], selector: ".ai-hero" },
   { hash: "nexo-feed", required: ["NEXO IA"], selector: ".nexo-feed-page" },
-  { hash: "explorar", required: ["Explorar"], selector: ".view-header" },
+  { hash: "explorar", required: ["Explore"], selector: ".genre-banner-section" },
   { hash: "favoritos", required: ["Favoritos"], selector: ".view-header-favoritos" },
   { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },

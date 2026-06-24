@@ -12053,7 +12053,7 @@ function renderExplore() {
   const empty = catalog.length
     ? emptyState("search-x", `Nenhum item de ${appState.genre} encontrado`, "Tente outro genero ou publique um beat nesse estilo.", "explorar")
     : emptyState("upload-cloud", "Catalogo vazio", "Cadastre seu primeiro beat ou musica para aparecer no marketplace.", "perfil");
-  appView.innerHTML = `${pageIntro("explorar")}${renderExploreGenreBanners()}${catalogSection}${chips ? `<div class="chip-row route-chips">${chips}</div>` : ""}${filtered.length ? gridView(filtered) : empty}`;
+  appView.innerHTML = `${renderExploreGenreBanners()}${catalogSection}${chips ? `<div class="chip-row route-chips">${chips}</div>` : ""}${filtered.length ? gridView(filtered) : empty}`;
 }
 function renderFavorites() {
   const items = searchableBeatPool().filter((item) => appState.favorites.has(item.id));
