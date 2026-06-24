@@ -41733,7 +41733,7 @@ body.auth-not-logged-in #appView.app-view {
     justify-content: flex-start;
     align-items: flex-start;
     padding: clamp(40px, 8vw, 96px);
-    padding-top: clamp(80px, 12vh, 160px);
+    padding-top: clamp(40px, 6vh, 80px);
     background: #050505;
     border-left: 1px solid rgba(255, 255, 255, 0.04);
     overflow: hidden;

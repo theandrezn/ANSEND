@@ -18912,13 +18912,13 @@ float drawWireframe(vec2 p,int shape,mat3 rot,float sc,float th,float bl){
 }
 
 vec3 render(vec2 st,vec2 mouse){
-  vec2 offset = vec2(0.16, -0.25);
+  vec2 offset = vec2(0.0, -0.15);
   vec2 st_shifted = st - offset;
   vec2 mouse_shifted = mouse - offset;
   float md=length(st_shifted-mouse_shifted),mi=1.0-smoothstep(0.0,0.5,md);
   float time=u_time*0.2;
   mat3 rot=rotateY(time+(mouse_shifted.x-0.5)*mi*1.0)*rotateX(time*0.7+(mouse_shifted.y-0.5)*mi*1.0)*rotateZ(time*0.1);
-  float sc=0.26,bl=mix(0.0001,0.05,mi),th=mix(0.002,0.003,mi);
+  float sc=0.32,bl=mix(0.0001,0.05,mi),th=mix(0.002,0.003,mi);
   float shape=drawWireframe(st_shifted,u_shape,rot,sc,th,bl);
   vec3 color=vec3(0.9,0.95,1.0);
   color*=shape*(1.0-mi*0.3);
