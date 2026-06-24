@@ -18,6 +18,7 @@ assert(worker.includes("/capture"), "Worker must capture the approved PayPal ord
 assert(worker.includes("reconcilePayPalAttempt"), "Worker must reconcile PayPal provider data before completing purchases");
 assert(worker.includes("finalizeApprovedAttempt(env, attempt.id)"), "PayPal approval must finalize through the existing checkout RPC");
 assert(worker.includes('provider: method === "paypal" ? "paypal" : "mercado_pago"'), "Payment attempts must persist the real PayPal provider");
+assert(worker.includes("`${auth.user.id}:${method}:${clientKey}`"), "Checkout idempotency must be scoped by payment method so PayPal never reuses approved Pix/card attempts");
 assert(worker.includes("paypalConfigured(env) ? [\"paypal\"] : []"), "Checkout config must expose PayPal only when secrets exist");
 assert(checkout.includes("location.assign(approveUrl)"), "Checkout must redirect to the real PayPal approval URL");
 assert(checkout.includes("paypal_attempt") && checkout.includes("paypal_token"), "Checkout must resume PayPal return parameters");

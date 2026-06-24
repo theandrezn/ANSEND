@@ -964,7 +964,7 @@ async function handleCheckoutPayment(request, env) {
   if (!checkout.ok) return jsonResponse({ success: false, error: checkout.error || "Carrinho invalido." }, { status: 400 });
 
   const clientKey = cleanRecommendationText(payload.idempotency_key || crypto.randomUUID(), 120);
-  const internalIdempotencyKey = `${auth.user.id}:${clientKey}`;
+  const internalIdempotencyKey = `${auth.user.id}:${method}:${clientKey}`;
   const existing = await supabaseRest(env, `payment_attempts?select=*&buyer_id=eq.${auth.user.id}&idempotency_key=eq.${encodeURIComponent(internalIdempotencyKey)}&limit=1`);
   let attempt = existing.data?.[0] || null;
   if (attempt?.provider_payment_id) {
