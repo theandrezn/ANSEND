@@ -4192,174 +4192,324 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background: #000;
   color: white;
 }
+.seller-auth,
+.seller-auth *,
+.seller-auth input,
+.seller-auth button,
+.seller-auth label,
+.seller-auth select,
+.seller-auth textarea {
+  font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
 .seller-auth {
   position: relative;
   min-height: calc(100vh - 150px);
-  display: grid;
-  grid-template-columns: minmax(360px, .9fr) minmax(360px, 1.1fr);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 0, rgba(255, 106, 0, .16), transparent 320px),
-    linear-gradient(135deg, #080604, #000);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, .48);
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 40px 24px !important;
+  background: #000000 !important;
 }
+
 .seller-auth-panel {
   position: relative;
   z-index: 2;
-  padding: clamp(28px, 4vw, 54px);
-  display: grid;
-  align-content: center;
-  gap: 26px;
-  background: transparent;
+  width: 100% !important;
+  max-width: 660px !important;
+  padding: clamp(24px, 5vw, 56px) !important;
+  background: #080808 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 28px !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8) !important;
 }
+
+.seller-auth-logo {
+  display: flex !important;
+  justify-content: center !important;
+  margin-bottom: 4px !important;
+}
+
 .seller-auth-logo img {
-  width: 150px;
-  height: auto;
-  display: block;
+  width: 160px !important;
+  height: auto !important;
+  display: block !important;
 }
-.seller-auth-copy span,
-.seller-showcase-card > span {
-  color: var(--orange);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .1em;
+
+.seller-auth-copy {
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
 }
+
+.seller-auth-copy span {
+  color: rgba(255, 255, 255, 0.62) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+}
+
 .seller-auth-copy h1 {
-  margin: 10px 0 10px;
-  font-size: clamp(34px, 4vw, 52px);
-  line-height: 1;
-  font-weight: 900;
+  margin: 0 !important;
+  font-size: clamp(32px, 3.6vw, 46px) !important;
+  line-height: 1.15 !important;
+  font-weight: 750 !important;
+  color: #ffffff !important;
 }
+
 .seller-auth-copy p {
-  max-width: 500px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.55;
+  margin: 0 !important;
+  color: rgba(255, 255, 255, 0.68) !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  font-weight: 450 !important;
 }
+
 .seller-auth-form {
-  display: grid;
-  gap: 14px;
-  max-width: 500px;
-  padding-bottom: 6px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  width: 100% !important;
 }
+
 .seller-auth-form label {
-  display: grid;
-  gap: 8px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 800;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  color: #ffffff !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  width: 100% !important;
 }
+
 .seller-auth-form input {
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid rgba(255, 106, 0, .24);
-  border-radius: 13px;
-  padding: 0 14px;
-  color: white;
-  background: rgba(8, 6, 4, .9);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  width: 100% !important;
+  height: 56px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 0 18px !important;
+  color: #ffffff !important;
+  background: #0a0a0a !important;
+  font-size: 15.5px !important;
+  font-weight: 500 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
+
 .seller-auth-form input::placeholder {
-  color: #747474;
+  color: rgba(255, 255, 255, 0.38) !important;
 }
-.seller-auth-form.is-submitting {
-  opacity: .72;
-  pointer-events: none;
+
+.seller-auth-form input:hover {
+  border-color: rgba(255, 255, 255, 0.28) !important;
 }
+
+.seller-auth-form input:focus {
+  outline: none !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06) !important;
+}
+
+.password-wrap {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+.password-wrap button {
+  position: absolute !important;
+  right: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  transition: color 0.16s ease !important;
+}
+
+.password-wrap button:hover {
+  color: #ffffff !important;
+}
+
+.password-wrap button svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+
 .seller-auth-message {
   min-height: 20px;
-  margin: -2px 0 0;
-  color: #ffb4a8;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
+  margin: 0 !important;
+  color: #ffb4a8 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
 }
+
 .seller-auth-message[hidden] {
-  display: none;
+  display: none !important;
 }
+
 .seller-auth-message[data-type="success"] {
-  color: #9ff0c2;
+  color: #9ff0c2 !important;
 }
-.password-wrap {
-  position: relative;
-  display: block;
-}
-.password-wrap input {
-  padding-right: 48px;
-}
-.password-wrap button {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-  background: rgba(255, 255, 255, .04);
-}
-.password-wrap button svg {
-  width: 17px;
-}
-.seller-submit,
-.seller-auth-actions > button {
-  min-height: 48px;
-  border-radius: 13px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-weight: 900;
-}
+
 .seller-submit {
-  margin-top: 4px;
-  border: 0;
-  color: white;
-  background: linear-gradient(135deg, var(--orange), #ff4d00);
-  box-shadow: 0 18px 34px rgba(255, 106, 0, .2);
+  width: 100% !important;
+  height: 56px !important;
+  margin-top: 10px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  font-size: 15px !important;
+  font-weight: 650 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease !important;
+  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.05) !important;
 }
+
+.seller-submit:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  transform: translateY(-1px) !important;
+}
+
+.seller-submit:active {
+  transform: translateY(0) scale(0.99) !important;
+}
+
+.seller-submit:disabled,
+.seller-submit[data-loading="true"] {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  cursor: wait !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .seller-submit svg {
-  width: 18px;
+  width: 18px !important;
+  height: 18px !important;
+  stroke: #000000 !important;
 }
+
 .seller-submit[data-loading="true"] svg {
-  animation: authSpin .8s linear infinite;
+  animation: authSpin .8s linear infinite !important;
 }
-@keyframes authSpin {
-  to { transform: rotate(360deg); }
-}
+
 .seller-auth-actions {
-  max-width: 500px;
-  display: grid;
-  gap: 13px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  width: 100% !important;
 }
+
+.auth-divider {
+  display: flex !important;
+  align-items: center !important;
+  text-align: center !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  margin: 4px 0 !important;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '' !important;
+  flex: 1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.auth-divider::before {
+  margin-right: 16px !important;
+}
+
+.auth-divider::after {
+  margin-left: 16px !important;
+}
+
 .seller-auth-actions > button {
-  border: 1px solid rgba(255, 106, 0, .26);
-  color: white;
-  background: rgba(255, 255, 255, .035);
+  width: 100% !important;
+  height: 56px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 12px !important;
+  background: #080808 !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
 }
-.google-brand-icon,
-.seller-auth-actions img {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  display: block;
+
+.seller-auth-actions > button:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
 }
+
 .seller-auth-actions p {
-  margin: 0;
-  color: var(--muted);
-  text-align: center;
-  font-size: 13px;
+  margin: 4px 0 0 !important;
+  color: rgba(255, 255, 255, 0.68) !important;
+  text-align: center !important;
+  font-size: 13.5px !important;
 }
+
 .seller-auth-actions p button {
-  border: 0;
-  color: var(--orange-glow);
-  background: transparent;
-  font-weight: 900;
+  border: 0 !important;
+  color: #ffffff !important;
+  background: transparent !important;
+  font-weight: 700 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin-left: 4px !important;
+}
+
+.seller-auth-actions p button:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.seller-auth-showcase {
+  display: none !important;
+}
+
+.google-brand-icon,
+.seller-auth-actions svg,
+.seller-auth-actions img {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+  display: block !important;
+}
+
+.seller-auth-form label.account-style-chip {
+  display: inline-block !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.seller-auth-form label.account-style-chip span {
+  display: inline-flex !important;
+  width: auto !important;
 }
 .email-confirmation-page {
   min-height: calc(100vh - 120px);
@@ -4511,67 +4661,100 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   text-align: center;
 }
 .account-role-picker {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-bottom: 4px !important;
 }
+
 .role-option {
-  min-height: 96px;
-  padding: 12px;
-  border: 1px solid rgba(255, 106, 0, .18);
-  border-radius: 15px;
-  background: rgba(0, 0, 0, .45);
-  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+  min-height: 104px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  background: #080808 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  align-items: flex-start !important;
+  cursor: pointer !important;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease !important;
 }
+
 .role-option input,
 .account-style-chip input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
+
 .role-option b {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: white;
-  font-size: 13px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
 }
+
 .role-option svg {
-  width: 17px;
-  color: var(--orange);
+  width: 18px !important;
+  height: 18px !important;
+  color: #ffffff !important;
 }
+
 .role-option small {
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.32;
+  color: rgba(255, 255, 255, 0.58) !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  font-weight: 450 !important;
+  text-align: left !important;
 }
+
 .role-option:has(input:checked) {
-  border-color: var(--orange);
-  background: linear-gradient(145deg, rgba(255, 106, 0, .16), rgba(0, 0, 0, .64));
-  box-shadow: 0 0 28px rgba(255, 106, 0, .12);
+  border-color: #ffffff !important;
+  background: #121212 !important;
 }
-.role-option:hover { transform: translateY(-1px); }
+
+.role-option:hover {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background: #0d0d0d !important;
+  transform: translateY(-1px) !important;
+}
+
 .account-style-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+  margin-bottom: 4px !important;
 }
+
 .account-style-chip span {
-  min-height: 34px;
-  padding: 0 12px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(255, 106, 0, .22);
-  border-radius: 999px;
-  color: var(--muted);
-  background: rgba(0, 0, 0, .36);
-  font-size: 11px;
-  font-weight: 900;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 999px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  background: transparent !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
 }
+
+.account-style-chip:hover span {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #ffffff !important;
+}
+
 .account-style-chip:has(input:checked) span {
-  color: white;
-  border-color: var(--orange);
-  background: rgba(255, 106, 0, .16);
+  color: #000000 !important;
+  border-color: #ffffff !important;
+  background: #ffffff !important;
 }
 .account-dashboard {
   display: grid;
@@ -6012,63 +6195,48 @@ body.onboarding-open { overflow: hidden; }
     grid-template-columns: repeat(2, 1fr);
   }
   .seller-auth {
-    border-radius: 16px;
-    min-height: auto;
-    width: calc(100vw - 28px);
-    max-width: calc(100vw - 28px);
+    min-height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 24px 16px !important;
+    background: #000000 !important;
   }
   .seller-auth-panel {
-    padding: 24px 20px;
-    gap: 20px;
-    min-width: 0;
-    overflow: visible;
+    padding: 32px 20px !important;
+    gap: 24px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
   }
   .seller-auth-logo img {
-    width: 112px;
+    width: 130px !important;
   }
   .seller-auth-copy h1 {
-    font-size: 32px;
+    font-size: 28px !important;
   }
   .seller-auth-copy p {
-    font-size: 13px;
-    width: min(100%, 32ch);
-    max-width: calc(100vw - 72px);
-  }
-  .seller-auth-form input,
-  .seller-submit,
-  .seller-auth-actions > button {
-    min-height: 46px;
+    font-size: 14px !important;
   }
   .seller-auth-form,
   .seller-auth-actions,
   .seller-auth-form label,
-  .password-wrap {
-    width: min(100%, 320px);
-    max-width: calc(100vw - 72px);
-    min-width: 0;
-  }
+  .password-wrap,
   .seller-submit,
   .seller-auth-actions > button {
-    width: min(100%, 320px);
-    max-width: calc(100vw - 72px);
+    width: 100% !important;
+    max-width: 100% !important;
   }
-  .seller-auth-form input {
-    min-width: 0;
+  .account-role-picker {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .role-option {
+    min-height: auto !important;
+    padding: 14px !important;
   }
   .seller-auth-showcase {
-    min-height: 340px;
-    padding: 22px;
-  }
-  .seller-showcase-card {
-    padding: 20px;
-    border-radius: 18px;
-    width: min(100%, 320px);
-    max-width: calc(100vw - 72px);
-    min-width: 0;
-  }
-  .seller-showcase-card strong {
-    font-size: 21px;
-    overflow-wrap: anywhere;
+    display: none !important;
   }
   .playlist-hero {
     width: calc(100vw - 28px);

@@ -18942,6 +18942,7 @@ function renderSellerAuth() {
         <button class="seller-submit" type="submit">${isLogin ? "Entrar no painel" : "Criar conta"}<i data-lucide="arrow-right"></i></button>
       </form>
       <div class="seller-auth-actions">
+        <div class="auth-divider">ou</div>
         <button type="button" data-action="seller-google">${GOOGLE_ICON_MARKUP}Continuar com Google</button>
         <p>${isLogin ? "Ainda não tem conta?" : "Já tem conta?"} <button type="button" data-action="seller-mode" data-mode="${isLogin ? "signup" : "login"}">${isLogin ? "Criar conta" : "Entrar"}</button></p>
       </div>
