@@ -25675,87 +25675,48 @@ body[data-route="feed"] #appView.app-view {
   }
 }
 
-/* Home layout repair: scope 3D perspective scroll to .page to keep sidebar fixed */
-body[data-route="feed"] {
-  height: 100vh !important;
-  overflow: hidden !important;
-}
-
-html:has(body[data-route="feed"]) {
-  overflow: hidden !important;
-}
-
-body[data-route="feed"] .page {
-  height: 100vh !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  perspective: 1px !important;
-  -webkit-perspective: 1px !important;
-  perspective-origin: 50% 50% !important;
-  transform-style: preserve-3d !important;
-  -webkit-transform-style: preserve-3d !important;
-  scroll-behavior: smooth;
+/* Home layout repair: keep parallax scoped away from sidebar/page geometry. */
+.page {
+  perspective: none !important;
+  transform-style: flat !important;
 }
 
 body[data-route="feed"] #appView.app-view {
   width: 100% !important;
   max-width: 100% !important;
   overflow-x: clip !important;
-  transform-style: preserve-3d !important;
-}
-
-body[data-route="feed"] .feed {
-  transform-style: preserve-3d !important;
+  transform-style: flat !important;
 }
 
 body[data-route="feed"] .home-parallax {
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  overflow: visible !important;
-  perspective: none !important;
+  overflow: hidden !important;
+  perspective: 900px !important;
   transform-style: preserve-3d !important;
 }
 
-body[data-route="feed"] .home-parallax__section {
-  transform-style: preserve-3d !important;
-}
-
-body[data-route="feed"] .home-parallax__content {
-  transform: translateZ(0) !important;
+body[data-route="feed"] .home-parallax__layer--base {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
   z-index: 10 !important;
-}
-
-body[data-route="feed"] .home-parallax__layer--back {
-  transform: translateZ(-0.5px) scale(1.5) !important;
-  z-index: 2 !important;
-}
-
-body[data-route="feed"] .home-parallax__layer--deep {
-  transform: translateZ(-1px) scale(2) !important;
-  z-index: 1 !important;
-}
-
-body[data-route="feed"] .home-parallax__layer--back,
-body[data-route="feed"] .home-parallax__layer--deep {
-  inset: 0 !important;
+  width: 100% !important;
   max-width: 100% !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
 }
 
-body[data-route="feed"] .featured-professionals-section,
-body[data-route="feed"] .recent-activity-section {
-  padding-left: clamp(24px, 3.5vw, 64px) !important;
-  padding-right: clamp(24px, 3.5vw, 64px) !important;
-}
-
-body[data-route="feed"] .featured-professionals-section .section-head,
-body[data-route="feed"] .featured-professionals-section .featured-professional-grid,
-body[data-route="feed"] .recent-activity-section .section-head,
-body[data-route="feed"] .recent-activity-section .track-list {
-  width: min(100%, 1440px) !important;
-  max-width: 1440px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+body[data-route="feed"] .home-parallax__layer--base > .nexo-blocks-container,
+body[data-route="feed"] .home-parallax__layer--base > .home-section {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 @media (max-width: 720px) {
@@ -41827,47 +41788,98 @@ body.auth-not-logged-in #appView.app-view {
 }
 
 /* RotatingText Component Styles */
-.text-rotate {
-  display: inline !important;
-  white-space: normal !important;
-  position: relative !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+.rotating-stage {
+  position: relative;
+  display: grid;
+  grid-template-areas: "headline";
+  align-items: start;
+  width: 100%;
+  min-height: 3.4em;
+  margin-top: 0.15em;
+  text-align: left;
 }
 
-.text-rotate-sr-only {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-
-.text-rotate-element {
-  display: inline-block !important;
-  white-space: pre !important;
-  vertical-align: baseline !important;
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
+.rotating-phrase {
+  grid-area: headline;
+  width: 100%;
+  transform-origin: left top;
   opacity: 0;
-  transform: translateY(22px);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+  pointer-events: none;
+  transition: opacity 200ms ease;
 }
 
-.text-rotate-element.is-active {
-  opacity: 1 !important;
-  transform: translateY(0) !important;
+.rotating-phrase.is-visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.text-rotate-element.is-exiting {
-  opacity: 0 !important;
-  transform: translateY(-22px) !important;
-  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease !important;
+.rotating-phrase.is-exiting {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.rotating-line {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  width: 100%;
+  justify-content: flex-start;
+  line-height: 1.05;
+}
+
+.rotating-word {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.rotating-char {
+  display: inline-block;
+  flex: 0 0 auto;
+  opacity: 0;
+  transform: translateY(0.18em);
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1), transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rotating-char.is-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rotating-space {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 0.25em;
+}
+
+/* Ensure the brand is a block element and correctly colored */
+.hero-morph-brand {
+  display: block !important;
+}
+
+/* Center flex lines on mobile viewport matching the centered text design */
+@media (max-width: 767px) {
+  body[data-route="feed"] .ai-hero .hero-morph-title .rotating-line {
+    justify-content: center;
+  }
+  .rotating-stage {
+    min-height: 3.2em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotating-char {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .rotating-phrase {
+    transition: none !important;
+  }
 }
 
 

@@ -1,68 +1,3 @@
-// Universal scroll abstraction to support CSS-only 3D parallax scroll containers
-(function() {
-  const originalScrollTo = window.scrollTo;
-  window.scrollTo = function(x, y) {
-    const page = document.querySelector('body[data-route="feed"] .page');
-    if (page) {
-      const originalBehavior = page.style.scrollBehavior;
-      if (typeof x === 'object') {
-        if (x.behavior === 'auto') {
-          page.style.setProperty('scroll-behavior', 'auto', 'important');
-        }
-        page.scrollTo(x);
-      } else {
-        page.style.setProperty('scroll-behavior', 'auto', 'important');
-        page.scrollTo(x, y);
-      }
-      if (page.style.scrollBehavior !== originalBehavior) {
-        page.offsetHeight;
-        if (originalBehavior) {
-          page.style.scrollBehavior = originalBehavior;
-        } else {
-          page.style.removeProperty('scroll-behavior');
-        }
-      }
-    } else {
-      originalScrollTo.apply(window, arguments);
-    }
-  };
-
-  const originalScrollBy = window.scrollBy;
-  window.scrollBy = function(x, y) {
-    const page = document.querySelector('body[data-route="feed"] .page');
-    if (page) {
-      const originalBehavior = page.style.scrollBehavior;
-      if (typeof x === 'object') {
-        if (x.behavior === 'auto') {
-          page.style.setProperty('scroll-behavior', 'auto', 'important');
-        }
-        page.scrollBy(x);
-      } else {
-        page.style.setProperty('scroll-behavior', 'auto', 'important');
-        page.scrollBy(x, y);
-      }
-      if (page.style.scrollBehavior !== originalBehavior) {
-        page.offsetHeight;
-        if (originalBehavior) {
-          page.style.scrollBehavior = originalBehavior;
-        } else {
-          page.style.removeProperty('scroll-behavior');
-        }
-      }
-    } else {
-      originalScrollBy.apply(window, arguments);
-    }
-  };
-
-  Object.defineProperty(window, 'scrollY', {
-    get() {
-      const page = document.querySelector('body[data-route="feed"] .page');
-      return page ? page.scrollTop : window.pageYOffset;
-    },
-    configurable: true
-  });
-})();
-
 const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
 const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
 const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
@@ -4846,7 +4781,7 @@ function setupHomeParallax() {
   });
 }
 
-window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true, capture: true });
+window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true });
 window.addEventListener("resize", requestHomeScrollAnimationTick);
 prefersReducedMotion.addEventListener?.("change", requestHomeScrollAnimationTick);
 
@@ -5277,152 +5212,64 @@ function roleDashboardStripMarkup(dashboard) {
   </section>`;
 }
 function stopHeroMorphTitle() {
-  if (heroTypewriterTimer) clearTimeout(heroTypewriterTimer);
-  heroTypewriterTimer = null;
-  heroTypewriterToken++;
-}
-
-function runHeroTypewriter(textElement, text) {
-  stopHeroMorphTitle();
-  if (!textElement) return;
-  const cursor = textElement.parentElement?.querySelector(".hero-typewriter-cursor");
-  cursor?.classList.remove("is-finished");
-  if (prefersReducedMotion.matches) {
-    textElement.textContent = text;
-    cursor?.classList.add("is-finished");
-    return;
-  }
-
-  const token = heroTypewriterToken;
-  const speed = 54;
-  let index = 0;
-  textElement.textContent = "";
-
-  const typeNext = () => {
-    if (token !== heroTypewriterToken) return;
-    textElement.textContent = text.slice(0, index);
-    if (index <= text.length) {
-      index++;
-      heroTypewriterTimer = window.setTimeout(typeNext, speed);
+  if (heroHeadlineInterval) {
+    if (typeof heroHeadlineInterval === "function") {
+      heroHeadlineInterval();
     } else {
-      cursor?.classList.add("is-finished");
+      clearInterval(heroHeadlineInterval);
     }
-  };
-
-  typeNext();
+    heroHeadlineInterval = null;
+  }
 }
 
-function initRotatingText(element, options = {}) {
-  if (!element) return null;
+function createPhraseElement(lines) {
+  const phraseDiv = document.createElement("div");
+  phraseDiv.className = "rotating-phrase";
+  
+  const srText = lines.join(" ");
+  const srSpan = document.createElement("span");
+  srSpan.className = "sr-only";
+  srSpan.textContent = srText;
+  phraseDiv.appendChild(srSpan);
 
-  const {
-    texts = [],
-    rotationInterval = 5000,
-    staggerDuration = 0.025,
-    staggerFrom = "last",
-    mainClassName = "",
-    elementLevelClassName = "",
-    startIndex = 0
-  } = options;
-
-  let currentTextIndex = startIndex;
-  let rotationTimer = null;
-  let isTransitioning = false;
-
-  element.className = `hero-morph-text text-rotate ${mainClassName}`;
-
-  const splitIntoCharacters = text => {
-    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-      const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-      return Array.from(segmenter.segment(text), segment => segment.segment);
-    }
-    return Array.from(text);
-  };
-
-  const renderTextIndex = (textIndex) => {
-    const text = texts[textIndex];
-    const chars = splitIntoCharacters(text);
-    const totalChars = chars.length;
-
-    element.innerHTML = '';
-
-    const srOnly = document.createElement('span');
-    srOnly.className = 'text-rotate-sr-only';
-    srOnly.textContent = text;
-    element.appendChild(srOnly);
-
-    chars.forEach((char, index) => {
-      const charSpan = document.createElement('span');
-      charSpan.className = `text-rotate-element ${elementLevelClassName}`;
-      charSpan.textContent = char;
-
-      let delay = 0;
-      if (staggerFrom === 'first') {
-        delay = index * staggerDuration;
-      } else if (staggerFrom === 'last') {
-        delay = (totalChars - 1 - index) * staggerDuration;
-      } else if (staggerFrom === 'center') {
-        const center = Math.floor(totalChars / 2);
-        delay = Math.abs(center - index) * staggerDuration;
+  lines.forEach((lineText) => {
+    const lineDiv = document.createElement("div");
+    lineDiv.className = "rotating-line";
+    lineDiv.setAttribute("aria-hidden", "true");
+    
+    const words = lineText.split(" ");
+    words.forEach((wordText, wordIdx) => {
+      if (wordIdx > 0) {
+        const spaceSpan = document.createElement("span");
+        spaceSpan.className = "rotating-space";
+        lineDiv.appendChild(spaceSpan);
       }
-
-      charSpan.style.transitionDelay = `${delay}s`;
-      element.appendChild(charSpan);
+      
+      const wordSpan = document.createElement("span");
+      wordSpan.className = "rotating-word";
+      
+      let chars;
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        const segmenter = new Intl.Segmenter("pt-BR", { granularity: "grapheme" });
+        chars = Array.from(segmenter.segment(wordText), (seg) => seg.segment);
+      } else {
+        chars = Array.from(wordText);
+      }
+      
+      chars.forEach((charText) => {
+        const charSpan = document.createElement("span");
+        charSpan.className = "rotating-char";
+        charSpan.textContent = charText;
+        wordSpan.appendChild(charSpan);
+      });
+      
+      lineDiv.appendChild(wordSpan);
     });
-
-    // Force style recalculation / reflow
-    element.offsetHeight;
-
-    // Add active class to start transition
-    element.querySelectorAll('.text-rotate-element').forEach(el => el.classList.add('is-active'));
-  };
-
-  const next = () => {
-    if (isTransitioning) return;
-    isTransitioning = true;
-
-    const activeElements = Array.from(element.querySelectorAll('.text-rotate-element'));
-    const totalChars = activeElements.length;
-
-    activeElements.forEach((el, index) => {
-      let delay = 0;
-      if (staggerFrom === 'first') {
-        delay = index * staggerDuration;
-      } else if (staggerFrom === 'last') {
-        delay = (totalChars - 1 - index) * staggerDuration;
-      } else if (staggerFrom === 'center') {
-        const center = Math.floor(totalChars / 2);
-        delay = Math.abs(center - index) * staggerDuration;
-      }
-      el.style.transitionDelay = `${delay}s`;
-      el.classList.remove('is-active');
-      el.classList.add('is-exiting');
-    });
-
-    const maxStaggerDelay = totalChars * staggerDuration;
-    const exitDuration = 0.3;
-    const totalExitWaitTime = (maxStaggerDelay + exitDuration) * 1000;
-
-    setTimeout(() => {
-      currentTextIndex = (currentTextIndex + 1) % texts.length;
-      renderTextIndex(currentTextIndex);
-      isTransitioning = false;
-    }, totalExitWaitTime);
-  };
-
-  renderTextIndex(currentTextIndex);
-
-  rotationTimer = setInterval(next, rotationInterval);
-
-  return {
-    next,
-    cleanup: () => {
-      if (rotationTimer) {
-        clearInterval(rotationTimer);
-        rotationTimer = null;
-      }
-    }
-  };
+    
+    phraseDiv.appendChild(lineDiv);
+  });
+  
+  return phraseDiv;
 }
 
 function runHeroHeadlineCycler(titleElement) {
@@ -5437,63 +5284,168 @@ function runHeroHeadlineCycler(titleElement) {
     heroHeadlineInterval = null;
   }
 
-  const shouldUseStaticMobileHeadline = window.matchMedia?.("(max-width: 767px)")?.matches && currentRoute() === "feed";
+  const stage = titleElement.querySelector(".rotating-stage");
+  if (!stage) return;
 
-  if (shouldUseStaticMobileHeadline) {
-    animateHeadlineReveal(titleElement, t("hero.titleLine1"), t("hero.titleLine2"));
-    return;
-  }
+  const isEn = appLocale.current === "en";
+  const headlineVariants = isEn ? [
+    {
+      lines: [
+        "THE INTELLIGENT",
+        "MUSIC",
+        "MARKETPLACE"
+      ]
+    },
+    {
+      lines: [
+        "THE MUSIC",
+        "SOCIAL NETWORK"
+      ]
+    }
+  ] : [
+    {
+      lines: [
+        "O MARKETPLACE",
+        "INTELIGENTE",
+        "DA MÚSICA"
+      ]
+    },
+    {
+      lines: [
+        "A REDE SOCIAL",
+        "DA MÚSICA"
+      ]
+    }
+  ];
 
-  // 1. Run the typewriter animation on first load
-  animateHeadlineReveal(titleElement, t("hero.titleLine1"), t("hero.titleLine2"));
+  let currentPhraseIndex = 0;
+  let generation = (window._rotatingTextGeneration || 0) + 1;
+  window._rotatingTextGeneration = generation;
 
-  // 2. Set a timeout for 5 seconds to transition using RotatingText
-  const timeoutId = setTimeout(() => {
-    const morphText = titleElement.querySelector(".hero-morph-text");
-    if (!morphText) return;
+  const timers = [];
+  const addTimeout = (fn, delay) => {
+    const id = setTimeout(() => {
+      if (window._rotatingTextGeneration !== generation) return;
+      fn();
+    }, delay);
+    timers.push(id);
+    return id;
+  };
 
-    const rotator = initRotatingText(morphText, {
-      texts: [t("hero.titleLine2"), t("hero.titleLine2Alternative")],
-      rotationInterval: 5000,
-      staggerDuration: 0.025,
-      staggerFrom: "last",
-      startIndex: 0
+  const cleanup = () => {
+    timers.forEach((id) => clearTimeout(id));
+  };
+
+  heroHeadlineInterval = cleanup;
+
+  const rotate = () => {
+    const nextPhraseIndex = (currentPhraseIndex + 1) % headlineVariants.length;
+    const nextPhraseObj = headlineVariants[nextPhraseIndex];
+    
+    const nextPhraseEl = createPhraseElement(nextPhraseObj.lines);
+    stage.appendChild(nextPhraseEl);
+    
+    const chars = Array.from(nextPhraseEl.querySelectorAll(".rotating-char"));
+    const staggerDelay = prefersReducedMotion.matches ? 0 : 16;
+    
+    requestAnimationFrame(() => {
+      if (window._rotatingTextGeneration !== generation) return;
+      
+      nextPhraseEl.classList.add("is-visible");
+      
+      chars.forEach((char, index) => {
+        char.style.transitionDelay = `${index * staggerDelay}ms`;
+        char.classList.add("is-active");
+      });
     });
 
-    if (rotator) {
-      rotator.next();
-      heroHeadlineInterval = rotator.cleanup;
+    const currentPhraseEl = stage.querySelector(".rotating-phrase.is-visible:not(:last-child)");
+    if (currentPhraseEl) {
+      addTimeout(() => {
+        currentPhraseEl.classList.remove("is-visible");
+        currentPhraseEl.classList.add("is-exiting");
+        
+        addTimeout(() => {
+          currentPhraseEl.remove();
+        }, 250);
+      }, 100);
     }
-  }, 5000);
 
+    currentPhraseIndex = nextPhraseIndex;
+    addTimeout(rotate, 4500);
+  };
+
+  addTimeout(rotate, 4500);
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      timers.forEach((id) => clearTimeout(id));
+    } else {
+      if (window._rotatingTextGeneration === generation) {
+        generation = ++window._rotatingTextGeneration;
+        
+        const phrases = Array.from(stage.querySelectorAll(".rotating-phrase"));
+        if (phrases.length > 0) {
+          const activePhrase = phrases[phrases.length - 1];
+          phrases.forEach((p) => {
+            if (p !== activePhrase) p.remove();
+          });
+          activePhrase.className = "rotating-phrase is-visible";
+          activePhrase.querySelectorAll(".rotating-char").forEach((c) => {
+            c.style.transitionDelay = "0ms";
+            c.classList.add("is-active");
+          });
+        }
+        
+        addTimeout(rotate, 4500);
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  
   heroHeadlineInterval = () => {
-    clearTimeout(timeoutId);
+    cleanup();
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
   };
 }
 
 function animateHeadlineReveal(titleElement, line1, line2) {
   if (!titleElement) return;
+  const isEn = appLocale.current === "en";
   const nextKey = `${appLocale.current}|${line1}|${line2}`;
-  const existingText = titleElement.querySelector(".hero-morph-text");
-  const shouldUseStaticMobileHeadline = window.matchMedia?.("(max-width: 767px)")?.matches && currentRoute() === "feed";
 
-  if (titleElement.dataset.revealKey !== nextKey || !existingText) {
+  if (titleElement.dataset.revealKey !== nextKey) {
     titleElement.dataset.revealKey = nextKey;
     titleElement.classList.add("hero-morph-title");
     titleElement.classList.remove("is-glitching");
     titleElement.innerHTML = `
-      <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${line1}</span>
-      <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-        <span class="hero-morph-text"></span>
-      </strong>
+      <span class="hero-morph-brand">${line1}</span>
+      <div class="rotating-stage"></div>
     `;
-    const morphText = titleElement.querySelector(".hero-morph-text");
-    if (shouldUseStaticMobileHeadline) {
-      stopHeroMorphTitle();
-      if (morphText) morphText.textContent = line2;
-    } else {
-      runHeroTypewriter(morphText, line2);
-    }
+    const stage = titleElement.querySelector(".rotating-stage");
+    const firstPhraseObj = isEn ? {
+      lines: [
+        "THE INTELLIGENT",
+        "MUSIC",
+        "MARKETPLACE"
+      ]
+    } : {
+      lines: [
+        "O MARKETPLACE",
+        "INTELIGENTE",
+        "DA MÚSICA"
+      ]
+    };
+    
+    const firstPhraseEl = createPhraseElement(firstPhraseObj.lines);
+    firstPhraseEl.classList.add("is-visible");
+    firstPhraseEl.querySelectorAll(".rotating-char").forEach((char) => {
+      char.classList.add("is-active");
+    });
+    stage.appendChild(firstPhraseEl);
+    
+    runHeroHeadlineCycler(titleElement);
     requestAnimationFrame(() => titleElement.classList.add("is-ready"));
   }
 }
