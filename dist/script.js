@@ -1,3 +1,68 @@
+// Universal scroll abstraction to support CSS-only 3D parallax scroll containers
+(function() {
+  const originalScrollTo = window.scrollTo;
+  window.scrollTo = function(x, y) {
+    const page = document.querySelector('body[data-route="feed"] .page');
+    if (page) {
+      const originalBehavior = page.style.scrollBehavior;
+      if (typeof x === 'object') {
+        if (x.behavior === 'auto') {
+          page.style.setProperty('scroll-behavior', 'auto', 'important');
+        }
+        page.scrollTo(x);
+      } else {
+        page.style.setProperty('scroll-behavior', 'auto', 'important');
+        page.scrollTo(x, y);
+      }
+      if (page.style.scrollBehavior !== originalBehavior) {
+        page.offsetHeight;
+        if (originalBehavior) {
+          page.style.scrollBehavior = originalBehavior;
+        } else {
+          page.style.removeProperty('scroll-behavior');
+        }
+      }
+    } else {
+      originalScrollTo.apply(window, arguments);
+    }
+  };
+
+  const originalScrollBy = window.scrollBy;
+  window.scrollBy = function(x, y) {
+    const page = document.querySelector('body[data-route="feed"] .page');
+    if (page) {
+      const originalBehavior = page.style.scrollBehavior;
+      if (typeof x === 'object') {
+        if (x.behavior === 'auto') {
+          page.style.setProperty('scroll-behavior', 'auto', 'important');
+        }
+        page.scrollBy(x);
+      } else {
+        page.style.setProperty('scroll-behavior', 'auto', 'important');
+        page.scrollBy(x, y);
+      }
+      if (page.style.scrollBehavior !== originalBehavior) {
+        page.offsetHeight;
+        if (originalBehavior) {
+          page.style.scrollBehavior = originalBehavior;
+        } else {
+          page.style.removeProperty('scroll-behavior');
+        }
+      }
+    } else {
+      originalScrollBy.apply(window, arguments);
+    }
+  };
+
+  Object.defineProperty(window, 'scrollY', {
+    get() {
+      const page = document.querySelector('body[data-route="feed"] .page');
+      return page ? page.scrollTop : window.pageYOffset;
+    },
+    configurable: true
+  });
+})();
+
 const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=520&q=82`;
 const SUPABASE_PROJECT_REF = "qxujynzqdursxaehchik";
 const SUPABASE_CONFIG = window.ANSEND_SUPABASE || {};
@@ -4781,7 +4846,7 @@ function setupHomeParallax() {
   });
 }
 
-window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true });
+window.addEventListener("scroll", requestHomeScrollAnimationTick, { passive: true, capture: true });
 window.addEventListener("resize", requestHomeScrollAnimationTick);
 prefersReducedMotion.addEventListener?.("change", requestHomeScrollAnimationTick);
 

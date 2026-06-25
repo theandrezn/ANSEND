@@ -25675,48 +25675,65 @@ body[data-route="feed"] #appView.app-view {
   }
 }
 
-/* Home layout repair: keep parallax scoped away from sidebar/page geometry. */
-.page {
-  perspective: none !important;
-  transform-style: flat !important;
+/* Home layout repair: scope 3D perspective scroll to .page to keep sidebar fixed */
+body[data-route="feed"] {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+html:has(body[data-route="feed"]) {
+  overflow: hidden !important;
+}
+
+body[data-route="feed"] .page {
+  height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  perspective: 1px !important;
+  -webkit-perspective: 1px !important;
+  perspective-origin: 50% 50% !important;
+  transform-style: preserve-3d !important;
+  -webkit-transform-style: preserve-3d !important;
+  scroll-behavior: smooth;
 }
 
 body[data-route="feed"] #appView.app-view {
   width: 100% !important;
   max-width: 100% !important;
   overflow-x: clip !important;
-  transform-style: flat !important;
+  transform-style: preserve-3d !important;
+}
+
+body[data-route="feed"] .feed {
+  transform-style: preserve-3d !important;
 }
 
 body[data-route="feed"] .home-parallax {
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  overflow: hidden !important;
-  perspective: 900px !important;
+  overflow: visible !important;
+  perspective: none !important;
   transform-style: preserve-3d !important;
 }
 
-body[data-route="feed"] .home-parallax__layer--base {
-  position: relative !important;
-  inset: auto !important;
-  top: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  left: auto !important;
-  z-index: 10 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  pointer-events: auto !important;
-  transform: none !important;
+body[data-route="feed"] .home-parallax__section {
+  transform-style: preserve-3d !important;
 }
 
-body[data-route="feed"] .home-parallax__layer--base > .nexo-blocks-container,
-body[data-route="feed"] .home-parallax__layer--base > .home-section {
-  width: 100% !important;
-  max-width: 100% !important;
+body[data-route="feed"] .home-parallax__content {
+  transform: translateZ(0) !important;
+  z-index: 10 !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--back {
+  transform: translateZ(-0.5px) scale(1.5) !important;
+  z-index: 2 !important;
+}
+
+body[data-route="feed"] .home-parallax__layer--deep {
+  transform: translateZ(-1px) scale(2) !important;
+  z-index: 1 !important;
 }
 
 body[data-route="feed"] .home-parallax__layer--back,
