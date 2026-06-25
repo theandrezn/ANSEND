@@ -60,6 +60,7 @@ async function snapshot(page) {
         whiteSpace: getComputedStyle(line).whiteSpace,
         wordBreak: getComputedStyle(line).wordBreak,
         overflowWrap: getComputedStyle(line).overflowWrap,
+        wordSpacing: getComputedStyle(line).wordSpacing,
         wordTops: [...line.querySelectorAll(".hero-headline-word")].map((word) => Math.round(word.getBoundingClientRect().top)),
       })),
       wordCount: document.querySelectorAll(".hero-headline-word").length,
@@ -93,15 +94,28 @@ async function run() {
 
     await page.waitForSelector('.hero-morph-title[data-headline-state="holding"]', { timeout: 4000 });
     const holding = await snapshot(page);
-    await page.waitForFunction(() => document.querySelector(".hero-morph-title")?.dataset.headlineIndex === "1", null, { timeout: 9000 });
-    await page.waitForTimeout(700);
+    await page.waitForFunction(
+      () => document.querySelector(".hero-headline-accessible")?.textContent.includes("A REDE SOCIAL"),
+      null,
+      { timeout: 9000 }
+    );
+    await page.waitForTimeout(240);
+    const transitioning = await snapshot(page);
+    await page.waitForFunction(() => document.querySelector(".hero-morph-title")?.dataset.headlineIndex === "1", null, { timeout: 2000 });
+    await page.waitForTimeout(50);
     const second = await snapshot(page);
     if (!/ANSEND A REDE SOCIAL DA M[ÚU]SICA/i.test(second.accessibleText)) throw new Error(`Unexpected second headline: ${second.accessibleText}`);
-    if (second.formTop !== holding.formTop || second.titleHeight !== holding.titleHeight) throw new Error("Headline rotation shifted layout");
+    if (second.formTop >= holding.formTop || second.titleHeight >= holding.titleHeight) {
+      throw new Error(`Short headline did not release reserved height: ${JSON.stringify({ holding, second })}`);
+    }
+    if (!(transitioning.formTop < holding.formTop && transitioning.formTop > second.formTop)) {
+      throw new Error(`Headline height did not transition smoothly: ${JSON.stringify({ holding, transitioning, second })}`);
+    }
     for (const line of second.lines) {
       if (line.whiteSpace !== "nowrap" || line.wordBreak !== "keep-all" || line.overflowWrap !== "normal") {
         throw new Error(`Headline line can break internally: ${JSON.stringify(line)}`);
       }
+      if (line.wordSpacing === "0px" || line.wordSpacing === "normal") throw new Error(`Headline word spacing was not applied: ${JSON.stringify(line)}`);
       if (new Set(line.wordTops).size !== 1) throw new Error(`Headline words are not grouped on one row: ${JSON.stringify(line)}`);
     }
     if (second.lines.map((line) => line.text).join("|") !== "A REDE SOCIAL|DA MÚSICA") {

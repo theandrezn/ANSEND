@@ -41774,7 +41774,7 @@ body.auth-not-logged-in #appView.app-view {
 
 /* Feed headline guard: keep WAAPI fragments stable after broad responsive resets. */
 body[data-route="feed"] .ai-hero .hero-morph-title {
-  min-height: 3.82em !important;
+  min-height: 0 !important;
   font-size: clamp(40px, 3.45vw, 52px) !important;
   line-height: .9 !important;
   max-width: min(540px, 100%) !important;
@@ -41783,7 +41783,7 @@ body[data-route="feed"] .ai-hero .hero-morph-title {
 body[data-route="feed"] .ai-hero .hero-morph-main,
 body[data-route="feed"] .ai-hero .hero-morph-text,
 body[data-route="feed"] .ai-hero .hero-headline-rotator {
-  min-height: 2.76em !important;
+  min-height: 0 !important;
   font-size: clamp(40px, 5.44vw, 87px) !important;
   line-height: .86 !important;
   margin: 0 !important;
@@ -41820,6 +41820,7 @@ body[data-route="feed"] .ai-hero .hero-headline-line {
   min-height: 0 !important;
   line-height: .86 !important;
   text-align: left !important;
+  word-spacing: .1em !important;
 }
 
 body[data-route="feed"] .ai-hero .hero-headline-word {
@@ -41838,7 +41839,7 @@ body[data-route="feed"] .ai-hero .hero-headline-word {
 
 @media (max-width: 767px) {
   body[data-route="feed"] .ai-hero .hero-morph-title {
-    min-height: 4.05em !important;
+    min-height: 0 !important;
     max-width: min(100%, 340px) !important;
     font-size: clamp(1.8rem, 8.5vw, 2.65rem) !important;
   }
@@ -41846,7 +41847,7 @@ body[data-route="feed"] .ai-hero .hero-headline-word {
   body[data-route="feed"] .ai-hero .hero-morph-main,
   body[data-route="feed"] .ai-hero .hero-morph-text,
   body[data-route="feed"] .ai-hero .hero-headline-rotator {
-    min-height: 3.06em !important;
+    min-height: 0 !important;
     font-size: clamp(32px, 10.3vw, 40px) !important;
   }
 }

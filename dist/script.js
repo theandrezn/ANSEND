@@ -5383,6 +5383,8 @@ class HeroHeadlineController {
       outgoing.remove();
       incoming.classList.remove("is-entering");
       incoming.classList.add("is-active");
+      rotator.style.height = "";
+      rotator.style.minHeight = "";
       this.index = nextIndex;
       this.finishRotation();
       return;
@@ -5390,6 +5392,10 @@ class HeroHeadlineController {
 
     const duration = HERO_HEADLINE_TIMING.rotateDuration;
     const easing = "cubic-bezier(.22, 1, .36, 1)";
+    const outgoingHeight = outgoing.getBoundingClientRect().height;
+    const incomingHeight = incoming.getBoundingClientRect().height;
+    rotator.style.height = `${outgoingHeight}px`;
+    rotator.style.minHeight = "0px";
     const outAnimation = this.trackAnimation(outgoing.animate([
       { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
       { opacity: 0, transform: "translate3d(0, -34%, 0)", filter: "blur(8px)" },
@@ -5398,12 +5404,19 @@ class HeroHeadlineController {
       { opacity: 0, transform: "translate3d(0, 36%, 0)", filter: "blur(8px)" },
       { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
     ], { duration, easing, fill: "forwards" }));
+    const heightAnimation = this.trackAnimation(rotator.animate([
+      { height: `${outgoingHeight}px` },
+      { height: `${incomingHeight}px` },
+    ], { duration, easing, fill: "forwards" }));
 
-    Promise.allSettled([outAnimation.finished, inAnimation.finished]).then(() => {
+    Promise.allSettled([outAnimation.finished, inAnimation.finished, heightAnimation.finished]).then(() => {
       if (this.destroyed) return;
       outgoing.remove();
       incoming.classList.remove("is-entering");
       incoming.classList.add("is-active");
+      heightAnimation.cancel();
+      rotator.style.height = "";
+      rotator.style.minHeight = "";
       this.index = nextIndex;
       this.finishRotation();
     });
