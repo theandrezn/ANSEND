@@ -5247,22 +5247,7 @@ function createPhraseElement(lines) {
       
       const wordSpan = document.createElement("span");
       wordSpan.className = "rotating-word";
-      
-      let chars;
-      if (typeof Intl !== "undefined" && Intl.Segmenter) {
-        const segmenter = new Intl.Segmenter("pt-BR", { granularity: "grapheme" });
-        chars = Array.from(segmenter.segment(wordText), (seg) => seg.segment);
-      } else {
-        chars = Array.from(wordText);
-      }
-      
-      chars.forEach((charText) => {
-        const charSpan = document.createElement("span");
-        charSpan.className = "rotating-char";
-        charSpan.textContent = charText;
-        wordSpan.appendChild(charSpan);
-      });
-      
+      wordSpan.textContent = wordText;
       lineDiv.appendChild(wordSpan);
     });
     
@@ -5299,7 +5284,8 @@ function runHeroHeadlineCycler(titleElement) {
     {
       lines: [
         "THE MUSIC",
-        "SOCIAL NETWORK"
+        "SOCIAL",
+        "NETWORK"
       ]
     }
   ] : [
@@ -5312,7 +5298,8 @@ function runHeroHeadlineCycler(titleElement) {
     },
     {
       lines: [
-        "A REDE SOCIAL",
+        "A REDE",
+        "SOCIAL",
         "DA MÚSICA"
       ]
     }
@@ -5345,37 +5332,44 @@ function runHeroHeadlineCycler(titleElement) {
     const nextPhraseEl = createPhraseElement(nextPhraseObj.lines);
     stage.appendChild(nextPhraseEl);
     
-    const chars = Array.from(nextPhraseEl.querySelectorAll(".rotating-char"));
-    const staggerDelay = prefersReducedMotion.matches ? 0 : 16;
+    const nextWords = Array.from(nextPhraseEl.querySelectorAll(".rotating-word"));
+    const staggerDelay = prefersReducedMotion.matches ? 0 : 55;
     
+    nextWords.forEach((word, index) => {
+      word.style.transitionDelay = `${index * staggerDelay}ms`;
+    });
+
     requestAnimationFrame(() => {
       if (window._rotatingTextGeneration !== generation) return;
       
       nextPhraseEl.classList.add("is-visible");
-      
-      chars.forEach((char, index) => {
-        char.style.transitionDelay = `${index * staggerDelay}ms`;
-        char.classList.add("is-active");
+      nextWords.forEach((word) => {
+        word.classList.add("is-active");
       });
     });
 
     const currentPhraseEl = stage.querySelector(".rotating-phrase.is-visible:not(:last-child)");
     if (currentPhraseEl) {
+      const currentWords = Array.from(currentPhraseEl.querySelectorAll(".rotating-word"));
+      currentPhraseEl.classList.remove("is-visible");
+      currentPhraseEl.classList.add("is-exiting");
+      
+      currentWords.forEach((word) => {
+        word.style.transitionDelay = "0ms";
+        word.classList.remove("is-active");
+        word.classList.add("is-exiting");
+      });
+      
       addTimeout(() => {
-        currentPhraseEl.classList.remove("is-visible");
-        currentPhraseEl.classList.add("is-exiting");
-        
-        addTimeout(() => {
-          currentPhraseEl.remove();
-        }, 250);
-      }, 100);
+        currentPhraseEl.remove();
+      }, 450);
     }
 
     currentPhraseIndex = nextPhraseIndex;
-    addTimeout(rotate, 4500);
+    addTimeout(rotate, 3800);
   };
 
-  addTimeout(rotate, 4500);
+  addTimeout(rotate, 3800);
 
   const handleVisibilityChange = () => {
     if (document.hidden) {
@@ -5391,13 +5385,13 @@ function runHeroHeadlineCycler(titleElement) {
             if (p !== activePhrase) p.remove();
           });
           activePhrase.className = "rotating-phrase is-visible";
-          activePhrase.querySelectorAll(".rotating-char").forEach((c) => {
-            c.style.transitionDelay = "0ms";
-            c.classList.add("is-active");
+          activePhrase.querySelectorAll(".rotating-word").forEach((w) => {
+            w.style.transitionDelay = "0ms";
+            w.className = "rotating-word is-active";
           });
         }
         
-        addTimeout(rotate, 4500);
+        addTimeout(rotate, 3800);
       }
     }
   };
@@ -5440,8 +5434,8 @@ function animateHeadlineReveal(titleElement, line1, line2) {
     
     const firstPhraseEl = createPhraseElement(firstPhraseObj.lines);
     firstPhraseEl.classList.add("is-visible");
-    firstPhraseEl.querySelectorAll(".rotating-char").forEach((char) => {
-      char.classList.add("is-active");
+    firstPhraseEl.querySelectorAll(".rotating-word").forEach((word) => {
+      word.classList.add("is-active");
     });
     stage.appendChild(firstPhraseEl);
     
