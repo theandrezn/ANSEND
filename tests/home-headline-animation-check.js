@@ -56,9 +56,11 @@ async function snapshot(page) {
       visualHidden: title?.querySelector(".hero-headline-visual")?.getAttribute("aria-hidden"),
       brand: title?.querySelector(".hero-morph-brand")?.textContent?.trim() || "",
       lines: [...document.querySelectorAll(".hero-headline-line")].map((line) => ({
+        text: line.textContent.replace(/\s+/g, " ").trim(),
         whiteSpace: getComputedStyle(line).whiteSpace,
         wordBreak: getComputedStyle(line).wordBreak,
         overflowWrap: getComputedStyle(line).overflowWrap,
+        wordTops: [...line.querySelectorAll(".hero-headline-word")].map((word) => Math.round(word.getBoundingClientRect().top)),
       })),
       wordCount: document.querySelectorAll(".hero-headline-word").length,
       activeAnimations: title?.getAnimations({ subtree: true }).length || 0,
@@ -100,6 +102,10 @@ async function run() {
       if (line.whiteSpace !== "nowrap" || line.wordBreak !== "keep-all" || line.overflowWrap !== "normal") {
         throw new Error(`Headline line can break internally: ${JSON.stringify(line)}`);
       }
+      if (new Set(line.wordTops).size !== 1) throw new Error(`Headline words are not grouped on one row: ${JSON.stringify(line)}`);
+    }
+    if (second.lines.map((line) => line.text).join("|") !== "A REDE SOCIAL|DA MÚSICA") {
+      throw new Error(`Unexpected second-headline grouping: ${JSON.stringify(second.lines)}`);
     }
 
     await page.waitForFunction(() => document.querySelector(".hero-morph-title")?.dataset.headlineIndex === "0", null, { timeout: 7000 });
