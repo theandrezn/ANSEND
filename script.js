@@ -5255,13 +5255,12 @@ function initRotatingText(element, options = {}) {
     rotationInterval = 5000,
     staggerDuration = 0.025,
     staggerFrom = "last",
-    splitBy = "characters",
     mainClassName = "",
-    splitLevelClassName = "",
-    elementLevelClassName = ""
+    elementLevelClassName = "",
+    startIndex = 0
   } = options;
 
-  let currentTextIndex = 0;
+  let currentTextIndex = startIndex;
   let rotationTimer = null;
   let isTransitioning = false;
 
@@ -5275,29 +5274,10 @@ function initRotatingText(element, options = {}) {
     return Array.from(text);
   };
 
-  const buildElements = (text) => {
-    let words = [];
-    if (splitBy === 'characters') {
-      const wordStrings = text.split(' ');
-      words = wordStrings.map((word, i) => ({
-        characters: splitIntoCharacters(word),
-        needsSpace: i !== wordStrings.length - 1
-      }));
-    } else if (splitBy === 'words') {
-      words = text.split(' ').map((word, i, arr) => ({
-        characters: [word],
-        needsSpace: i !== arr.length - 1
-      }));
-    } else {
-      words = [{ characters: [text], needsSpace: false }];
-    }
-    return words;
-  };
-
-  const renderTextIndex = (textIndex, forceImmediate = false) => {
+  const renderTextIndex = (textIndex) => {
     const text = texts[textIndex];
-    const wordsData = buildElements(text);
-    const totalChars = wordsData.reduce((sum, word) => sum + word.characters.length, 0);
+    const chars = splitIntoCharacters(text);
+    const totalChars = chars.length;
 
     element.innerHTML = '';
 
@@ -5306,40 +5286,23 @@ function initRotatingText(element, options = {}) {
     srOnly.textContent = text;
     element.appendChild(srOnly);
 
-    let charIndexAccumulator = 0;
+    chars.forEach((char, index) => {
+      const charSpan = document.createElement('span');
+      charSpan.className = `text-rotate-element ${elementLevelClassName}`;
+      charSpan.textContent = char;
 
-    wordsData.forEach((wordObj, wordIndex) => {
-      const wordSpan = document.createElement('span');
-      wordSpan.className = `text-rotate-word ${splitLevelClassName}`;
-
-      wordObj.characters.forEach((char) => {
-        const charSpan = document.createElement('span');
-        charSpan.className = `text-rotate-element ${elementLevelClassName}`;
-        charSpan.textContent = char;
-
-        let delay = 0;
-        if (staggerFrom === 'first') {
-          delay = charIndexAccumulator * staggerDuration;
-        } else if (staggerFrom === 'last') {
-          delay = (totalChars - 1 - charIndexAccumulator) * staggerDuration;
-        } else if (staggerFrom === 'center') {
-          const center = Math.floor(totalChars / 2);
-          delay = Math.abs(center - charIndexAccumulator) * staggerDuration;
-        }
-
-        charSpan.style.transitionDelay = `${delay}s`;
-        wordSpan.appendChild(charSpan);
-        charIndexAccumulator++;
-      });
-
-      element.appendChild(wordSpan);
-
-      if (wordObj.needsSpace) {
-        const spaceSpan = document.createElement('span');
-        spaceSpan.className = 'text-rotate-space';
-        spaceSpan.textContent = ' ';
-        element.appendChild(spaceSpan);
+      let delay = 0;
+      if (staggerFrom === 'first') {
+        delay = index * staggerDuration;
+      } else if (staggerFrom === 'last') {
+        delay = (totalChars - 1 - index) * staggerDuration;
+      } else if (staggerFrom === 'center') {
+        const center = Math.floor(totalChars / 2);
+        delay = Math.abs(center - index) * staggerDuration;
       }
+
+      charSpan.style.transitionDelay = `${delay}s`;
+      element.appendChild(charSpan);
     });
 
     // Force style recalculation / reflow
@@ -5372,24 +5335,27 @@ function initRotatingText(element, options = {}) {
     });
 
     const maxStaggerDelay = totalChars * staggerDuration;
-    const exitDuration = 0.35;
+    const exitDuration = 0.3;
     const totalExitWaitTime = (maxStaggerDelay + exitDuration) * 1000;
 
     setTimeout(() => {
       currentTextIndex = (currentTextIndex + 1) % texts.length;
-      renderTextIndex(currentTextIndex, false);
+      renderTextIndex(currentTextIndex);
       isTransitioning = false;
     }, totalExitWaitTime);
   };
 
-  renderTextIndex(0, true);
+  renderTextIndex(currentTextIndex);
 
   rotationTimer = setInterval(next, rotationInterval);
 
-  return () => {
-    if (rotationTimer) {
-      clearInterval(rotationTimer);
-      rotationTimer = null;
+  return {
+    next,
+    cleanup: () => {
+      if (rotationTimer) {
+        clearInterval(rotationTimer);
+        rotationTimer = null;
+      }
     }
   };
 }
@@ -5413,18 +5379,31 @@ function runHeroHeadlineCycler(titleElement) {
     return;
   }
 
-  animateHeadlineReveal(titleElement, t("hero.titleLine1"), "");
+  // 1. Run the typewriter animation on first load
+  animateHeadlineReveal(titleElement, t("hero.titleLine1"), t("hero.titleLine2"));
 
-  const morphText = titleElement.querySelector(".hero-morph-text");
-  if (!morphText) return;
+  // 2. Set a timeout for 5 seconds to transition using RotatingText
+  const timeoutId = setTimeout(() => {
+    const morphText = titleElement.querySelector(".hero-morph-text");
+    if (!morphText) return;
 
-  heroHeadlineInterval = initRotatingText(morphText, {
-    texts: [t("hero.titleLine2"), t("hero.titleLine2Alternative")],
-    rotationInterval: 5000,
-    staggerDuration: 0.025,
-    staggerFrom: "last",
-    splitBy: "characters"
-  });
+    const rotator = initRotatingText(morphText, {
+      texts: [t("hero.titleLine2"), t("hero.titleLine2Alternative")],
+      rotationInterval: 5000,
+      staggerDuration: 0.025,
+      staggerFrom: "last",
+      startIndex: 0
+    });
+
+    if (rotator) {
+      rotator.next();
+      heroHeadlineInterval = rotator.cleanup;
+    }
+  }, 5000);
+
+  heroHeadlineInterval = () => {
+    clearTimeout(timeoutId);
+  };
 }
 
 function animateHeadlineReveal(titleElement, line1, line2) {

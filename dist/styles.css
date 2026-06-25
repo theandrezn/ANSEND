@@ -41811,12 +41811,9 @@ body.auth-not-logged-in #appView.app-view {
 
 /* RotatingText Component Styles */
 .text-rotate {
-  display: block !important;
+  display: inline !important;
+  white-space: normal !important;
   position: relative !important;
-  overflow: hidden !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  min-height: 1.5em !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
@@ -41833,28 +41830,16 @@ body.auth-not-logged-in #appView.app-view {
   border: 0 !important;
 }
 
-.text-rotate-word {
-  display: inline-flex !important;
-  flex-wrap: nowrap !important;
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
-}
-
-.text-rotate-lines {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-}
-
 .text-rotate-element {
   display: inline-block !important;
+  white-space: pre !important;
+  vertical-align: baseline !important;
   width: auto !important;
   max-width: none !important;
   min-width: 0 !important;
   opacity: 0;
-  transform: translateY(100%);
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s ease;
+  transform: translateY(22px);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
 }
 
 .text-rotate-element.is-active {
@@ -41864,16 +41849,8 @@ body.auth-not-logged-in #appView.app-view {
 
 .text-rotate-element.is-exiting {
   opacity: 0 !important;
-  transform: translateY(-120%) !important;
-  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease !important;
-}
-
-.text-rotate-space {
-  display: inline-block !important;
-  white-space: pre !important;
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
+  transform: translateY(-22px) !important;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease !important;
 }
 
 
