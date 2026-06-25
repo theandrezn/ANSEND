@@ -15008,7 +15008,7 @@ body.onboarding-open {
 }
 
 .spotify-quiz-title {
-  font-family: "Inter", sans-serif;
+  font-family: "Bebas Neue", "Inter", sans-serif;
   font-size: clamp(38px, 6vw, 68px);
   font-weight: 400;
   text-align: center;
@@ -20567,7 +20567,7 @@ body.nexo-feed-comments-open {
   }
 }
 
-/* Hero morph headline: slow, readable glitch adapted from the 21st.dev prompt. */
+/* Feed headline: blur intro + vertical rotating copy, scoped to the Hero NEXO. */
 .feed .ai-hero .an-hero-copy h1.hero-morph-title,
 .feed .ai-hero.is-beatmaker-hero .an-hero-copy h1.hero-morph-title,
 .feed .ai-hero:not(.is-beatmaker-hero) .an-hero-copy h1.hero-morph-title {
@@ -20576,10 +20576,43 @@ body.nexo-feed-comments-open {
 
 .hero-morph-title {
   position: relative;
+  display: block;
+  min-height: 3.82em;
+  max-width: min(780px, 100%);
+  isolation: isolate;
 }
 
-.hero-morph-title .hero-morph-brand {
+.hero-headline-accessible {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.hero-headline-visual {
+  display: block;
+}
+
+.hero-morph-title .hero-morph-brand,
+.hero-morph-title .hero-morph-main,
+.hero-headline-panel,
+.hero-headline-line,
+.hero-headline-word {
+  font-family: var(--font-hero) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: uppercase;
+}
+
+.hero-morph-title .hero-morph-brand,
+.hero-morph-title .hero-morph-brand * {
   color: var(--orange) !important;
+  -webkit-text-fill-color: var(--orange) !important;
   font-size: 1.22em;
   line-height: .8;
   text-shadow:
@@ -20590,38 +20623,60 @@ body.nexo-feed-comments-open {
 .hero-morph-title .hero-morph-main {
   display: block;
   max-width: min(780px, 100%);
-  min-height: 1.84em;
+  min-height: 2.76em;
   color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: 0 10px 36px rgba(0, 0, 0, .8);
 }
 
-.hero-morph-text {
-  display: inline;
-  white-space: normal;
+.hero-morph-title .hero-morph-main,
+.hero-morph-title .hero-morph-main *,
+.hero-morph-text,
+.hero-headline-panel,
+.hero-headline-line,
+.hero-headline-word {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
 }
 
-.hero-morph-text .hero-keep {
-  white-space: nowrap;
+.hero-morph-text,
+.hero-headline-rotator {
+  position: relative;
+  display: block;
+  min-height: 2.76em;
+  overflow: visible;
 }
 
-.hero-morph-cursor {
+.hero-headline-panel {
+  display: block;
+  width: 100%;
+  will-change: transform, opacity, filter;
+}
+
+.hero-headline-panel:not(.is-active),
+.hero-headline-panel.is-entering {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
+
+.hero-headline-line {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  line-height: .92;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+.hero-headline-word {
   display: inline-block;
-  width: .08em;
-  height: .75em;
-  margin-left: .06em;
-  vertical-align: -.04em;
-  border-radius: 999px;
-  background: var(--orange);
-  opacity: .42;
-  box-shadow: 0 0 18px rgba(255, 106, 0, .46);
-  animation: heroMorphCursor 2s ease-in-out infinite;
-}
-
-.hero-morph-title.is-glitching .hero-morph-main {
-  animation: heroMorphGlitch .52s steps(2, end);
-  text-shadow:
-    1px 0 rgba(255, 106, 0, .5),
-    -1px 0 rgba(255, 255, 255, .18),
-    0 12px 36px rgba(0, 0, 0, .72);
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  will-change: transform, opacity, filter;
 }
 
 .feed .ai-hero .ai-hero-layout .top-beat-showcase,
@@ -20629,44 +20684,13 @@ body.nexo-feed-comments-open {
   transform: translate(42px, 34px);
 }
 
-@keyframes heroMorphCursor {
-  0%,
-  100% {
-    opacity: .18;
-    transform: scaleY(.72);
-  }
-  50% {
-    opacity: .72;
-    transform: scaleY(1);
-  }
-}
-
-@keyframes heroMorphGlitch {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-    filter: none;
-  }
-  18% {
-    transform: translate3d(-2px, 1px, 0);
-    filter: contrast(1.18);
-  }
-  38% {
-    transform: translate3d(2px, -1px, 0);
-  }
-  62% {
-    transform: translate3d(-1px, 0, 0);
-  }
-  82% {
-    transform: translate3d(1px, 1px, 0);
-    filter: contrast(1.08);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .hero-morph-cursor,
-  .hero-morph-title.is-glitching .hero-morph-main {
+  .hero-headline-panel,
+  .hero-headline-word {
     animation: none !important;
+    transition: opacity .16s ease !important;
+    transform: none !important;
+    filter: none !important;
   }
 }
 
@@ -20683,7 +20707,7 @@ body.nexo-feed-comments-open {
   }
 }
 
-/* Static hero headline reset: ANSEND orange, message white, no glitch artifacts. */
+/* Static hero headline reset: ANSEND orange, rotating message white. */
 .feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-brand {
   color: var(--orange) !important;
 }
@@ -20691,54 +20715,11 @@ body.nexo-feed-comments-open {
 .feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-main,
 .feed .ai-hero .an-hero-copy h1.hero-morph-title .hero-morph-text {
   color: #fff !important;
-  animation: none !important;
-  filter: none !important;
-  transform: none !important;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .72);
-}
-
-.hero-morph-cursor {
-  display: none !important;
-}
-
-.hero-typewriter-cursor {
-  display: none !important;
-  width: 0 !important;
-  margin: 0 !important;
-  opacity: 0 !important;
-  animation: none !important;
-}
-
-.hero-typewriter-cursor.is-finished {
-  opacity: 0 !important;
-  animation: none !important;
 }
 
 .hero-morph-title .hero-morph-text {
   color: #fff !important;
-}
-
-@keyframes heroTypewriterBlink {
-  0%,
-  48% {
-    opacity: .95;
-  }
-  49%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-typewriter-cursor {
-    display: none !important;
-    opacity: 0 !important;
-  }
-}
-
-/* Final hero polish: no typewriter bar and the NEXO prompt sits closer to the headline. */
-.feed .ai-hero .hero-typewriter-cursor {
-  display: none !important;
 }
 
 .feed .ai-hero .ai-diagnostic-form,
@@ -23259,8 +23240,10 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
-  animation: none !important;
-  filter: none !important;
+  font-family: var(--font-hero) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: uppercase !important;
 }
 
 .feed .ai-hero .hero-morph-title .hero-morph-brand {
@@ -23455,8 +23438,10 @@ body:has(.nexo-minimal-container) .nexo-minimal-container::after {
 /* Hero headline correction: only ANSEND is orange; the marketplace line remains white. */
 .feed .ai-hero .hero-morph-title,
 .feed .ai-hero .hero-morph-title * {
-  animation: none !important;
-  filter: none !important;
+  font-family: var(--font-hero) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: uppercase !important;
 }
 
 .feed .ai-hero .hero-morph-title .hero-morph-brand {
@@ -34551,6 +34536,62 @@ body[data-route="cadastrar"] .release-mode-note svg {
   color: #22C55E !important;
 }
 
+body[data-route="cadastrar"] .release-source-form {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 56px);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 20px;
+  background: #0b0b0b;
+}
+
+body[data-route="cadastrar"] .release-source-warning,
+body[data-route="cadastrar"] .release-source-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .035);
+  color: rgba(245, 245, 245, .68);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+body[data-route="cadastrar"] .release-source-warning svg,
+body[data-route="cadastrar"] .release-source-note svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #22c55e;
+}
+
+body[data-route="cadastrar"] .release-source-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+body[data-route="cadastrar"] .catalog-import-continue {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  background: #fff;
+  color: #050505;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 /* Overriding inner stepper circles in forms */
 body[data-route="cadastrar"] .release-step span {
   border-color: #1F1F1F !important;
@@ -40718,4 +40759,54 @@ body[data-route="cadastrar"] .release-bottom-inner .release-back-btn:disabled {
   color: rgba(255, 255, 255, 0.32) !important;
 }
 
+/* Feed headline guard: keep the controller's visual fragments stable after broad mobile resets. */
+body[data-route="feed"] .ai-hero .hero-morph-title {
+  min-height: 3.82em !important;
+  font-size: clamp(40px, 3.45vw, 52px) !important;
+  line-height: .9 !important;
+  max-width: min(540px, 100%) !important;
+}
 
+body[data-route="feed"] .ai-hero .hero-morph-main,
+body[data-route="feed"] .ai-hero .hero-morph-text,
+body[data-route="feed"] .ai-hero .hero-headline-rotator {
+  min-height: 2.76em !important;
+  font-size: 1em !important;
+  line-height: .92 !important;
+}
+
+body[data-route="feed"] .ai-hero .hero-headline-line,
+body[data-route="feed"] .ai-hero .hero-headline-word {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+body[data-route="feed"] .ai-hero .hero-headline-line {
+  display: block !important;
+  width: max-content !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 767px) {
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    min-height: 4.05em !important;
+    max-width: min(100%, 340px) !important;
+    font-size: clamp(1.8rem, 8.5vw, 2.65rem) !important;
+  }
+
+  body[data-route="feed"] .ai-hero .hero-morph-main,
+  body[data-route="feed"] .ai-hero .hero-morph-text,
+  body[data-route="feed"] .ai-hero .hero-headline-rotator {
+    min-height: 3.06em !important;
+    font-size: clamp(1.35rem, 6.6vw, 2.1rem) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  body[data-route="feed"] .ai-hero .hero-morph-title {
+    font-size: clamp(36px, 5.8vw, 52px) !important;
+    max-width: min(560px, 100%) !important;
+  }
+}

@@ -1408,6 +1408,7 @@ const appState = {
     activeCommentsItemId: "",
   },
   releaseMode: "",
+  releaseDraft: null,
   catalogImport: null,
   followStates: {},
   authUser: null,
@@ -4256,8 +4257,7 @@ let revealObserver = null;
 let homeScrollAnimationRaf = null;
 let lastRoute = null;
 let lastPageTransitionKey = null;
-let heroTypewriterTimer = null;
-let heroTypewriterToken = 0;
+let heroHeadlineController = null;
 
 function currentRouteFromHash() {
   const route = (location.hash.replace("#", "") || "feed").split("?")[0];
@@ -5098,67 +5098,289 @@ function roleDashboardStripMarkup(dashboard) {
     <div class="role-dashboard-actions">${actions}</div>
   </section>`;
 }
-function stopHeroMorphTitle() {
-  if (heroTypewriterTimer) clearTimeout(heroTypewriterTimer);
-  heroTypewriterTimer = null;
-  heroTypewriterToken++;
+const HERO_HEADLINE_TIMING = Object.freeze({
+  wordStagger: 75,
+  introDuration: 480,
+  introHold: 2500,
+  readDuration: 5000,
+  rotateDuration: 560,
+});
+
+const HERO_HEADLINE_STATES = Object.freeze([
+  {
+    key: "marketplace",
+    accessible: "ANSEND O MARKETPLACE INTELIGENTE DA MÚSICA",
+    lines: [["O", "MARKETPLACE"], ["INTELIGENTE"], ["DA", "MÚSICA"]],
+  },
+  {
+    key: "social",
+    accessible: "ANSEND A REDE SOCIAL DA MÚSICA",
+    lines: [["A", "REDE", "SOCIAL"], ["DA", "MÚSICA"]],
+  },
+]);
+
+class HeroHeadlineController {
+  constructor(titleElement, brand = "ANSEND") {
+    this.titleElement = titleElement;
+    this.brand = String(brand || "ANSEND").trim() || "ANSEND";
+    this.index = 0;
+    this.state = "intro";
+    this.destroyed = false;
+    this.timer = null;
+    this.timerStartedAt = 0;
+    this.timerDelay = 0;
+    this.timerRemaining = 0;
+    this.timerCallback = null;
+    this.animations = new Set();
+    this.visibilityHandler = () => this.handleVisibilityChange();
+    this.reducedMotionHandler = () => this.handleReducedMotionChange();
+  }
+
+  mount() {
+    if (!this.titleElement) return;
+    this.titleElement.classList.add("hero-morph-title");
+    this.titleElement.classList.remove("is-glitching");
+    this.titleElement.dataset.revealKey = `${appLocale.current}|${this.brand}|hero-headline-controller`;
+    this.titleElement.dataset.headlineIndex = "0";
+    this.setState("intro");
+    this.render(HERO_HEADLINE_STATES[0], true);
+    document.addEventListener("visibilitychange", this.visibilityHandler);
+    prefersReducedMotion.addEventListener?.("change", this.reducedMotionHandler);
+    requestAnimationFrame(() => this.titleElement?.classList.add("is-ready"));
+    this.playIntro();
+  }
+
+  setState(state) {
+    this.state = state;
+    if (this.titleElement) this.titleElement.dataset.headlineState = state;
+  }
+
+  isReducedMotion() {
+    return Boolean(prefersReducedMotion?.matches);
+  }
+
+  render(headlineState, includeBrand = false) {
+    const visual = includeBrand
+      ? `<span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${this.wordMarkup(this.brand, 0)}</span>
+        <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
+          <span class="hero-morph-text hero-headline-rotator">${this.panelMarkup(headlineState, true, 1)}</span>
+        </strong>`
+      : `${this.panelMarkup(headlineState, true, 0)}`;
+
+    if (includeBrand) {
+      this.titleElement.innerHTML = `
+        <span class="hero-headline-accessible">${headlineState.accessible}</span>
+        <span class="hero-headline-visual" aria-hidden="true">${visual}</span>
+      `;
+    } else {
+      const rotator = this.titleElement.querySelector(".hero-headline-rotator");
+      if (rotator) rotator.innerHTML = visual;
+      this.updateAccessible(headlineState);
+    }
+  }
+
+  updateAccessible(headlineState) {
+    const accessible = this.titleElement.querySelector(".hero-headline-accessible");
+    if (accessible) accessible.textContent = headlineState.accessible;
+  }
+
+  wordMarkup(word, index) {
+    return `<span class="hero-headline-word" style="--headline-word-index:${index}">${htmlEscape(String(word || ""))}</span>`;
+  }
+
+  panelMarkup(headlineState, isActive = false, startIndex = 0) {
+    let wordIndex = startIndex;
+    const lines = headlineState.lines.map((line) => {
+      const words = line.map((word) => this.wordMarkup(word, wordIndex++)).join(" ");
+      return `<span class="hero-headline-line">${words}</span>`;
+    }).join("");
+    return `<span class="hero-headline-panel${isActive ? " is-active" : ""}" data-headline-panel="${headlineState.key}">${lines}</span>`;
+  }
+
+  playIntro() {
+    if (this.destroyed) return;
+    const words = [...this.titleElement.querySelectorAll(".hero-headline-word")];
+    if (this.isReducedMotion() || !this.titleElement.animate) {
+      words.forEach((word) => {
+        word.style.opacity = "1";
+        word.style.transform = "none";
+        word.style.filter = "none";
+      });
+      this.finishIntro();
+      return;
+    }
+    const introAnimations = words.map((word, index) => this.trackAnimation(word.animate([
+      { opacity: 0, transform: "translate3d(0, 18px, 0)", filter: "blur(12px)" },
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+    ], {
+      duration: HERO_HEADLINE_TIMING.introDuration,
+      delay: index * HERO_HEADLINE_TIMING.wordStagger,
+      easing: "cubic-bezier(.16, 1, .3, 1)",
+      fill: "both",
+    })));
+    Promise.allSettled(introAnimations.map((animation) => animation.finished)).then(() => this.finishIntro());
+  }
+
+  finishIntro() {
+    if (this.destroyed || this.state === "destroyed") return;
+    this.setState("holding");
+    this.schedule(() => this.startRotating(), HERO_HEADLINE_TIMING.introHold);
+  }
+
+  startRotating() {
+    if (this.destroyed) return;
+    this.setState("rotating");
+    this.schedule(() => this.rotateTo((this.index + 1) % HERO_HEADLINE_STATES.length), HERO_HEADLINE_TIMING.readDuration);
+  }
+
+  rotateTo(nextIndex) {
+    if (this.destroyed) return;
+    const rotator = this.titleElement.querySelector(".hero-headline-rotator");
+    const outgoing = rotator?.querySelector(".hero-headline-panel.is-active");
+    const nextState = HERO_HEADLINE_STATES[nextIndex] || HERO_HEADLINE_STATES[0];
+    if (!rotator || !outgoing) {
+      this.index = nextIndex;
+      this.render(nextState, false);
+      this.finishRotation();
+      return;
+    }
+
+    const incomingWrapper = document.createElement("template");
+    incomingWrapper.innerHTML = this.panelMarkup(nextState, false, 0).trim();
+    const incoming = incomingWrapper.content.firstElementChild;
+    incoming.classList.add("is-entering");
+    rotator.appendChild(incoming);
+    this.updateAccessible(nextState);
+
+    if (this.isReducedMotion() || !incoming.animate || !outgoing.animate) {
+      outgoing.remove();
+      incoming.classList.remove("is-entering");
+      incoming.classList.add("is-active");
+      this.index = nextIndex;
+      this.finishRotation();
+      return;
+    }
+
+    const duration = HERO_HEADLINE_TIMING.rotateDuration;
+    const easing = "cubic-bezier(.22, 1, .36, 1)";
+    const outAnimation = this.trackAnimation(outgoing.animate([
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+      { opacity: 0, transform: "translate3d(0, -34%, 0)", filter: "blur(8px)" },
+    ], { duration, easing, fill: "forwards" }));
+    const inAnimation = this.trackAnimation(incoming.animate([
+      { opacity: 0, transform: "translate3d(0, 36%, 0)", filter: "blur(8px)" },
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+    ], { duration, easing, fill: "forwards" }));
+
+    Promise.allSettled([outAnimation.finished, inAnimation.finished]).then(() => {
+      if (this.destroyed) return;
+      outgoing.remove();
+      incoming.classList.remove("is-entering");
+      incoming.classList.add("is-active");
+      this.index = nextIndex;
+      this.finishRotation();
+    });
+  }
+
+  finishRotation() {
+    if (this.destroyed) return;
+    this.titleElement.dataset.headlineIndex = String(this.index);
+    this.setState("rotating");
+    this.schedule(() => this.rotateTo((this.index + 1) % HERO_HEADLINE_STATES.length), HERO_HEADLINE_TIMING.readDuration);
+  }
+
+  trackAnimation(animation) {
+    this.animations.add(animation);
+    animation.finished.finally(() => this.animations.delete(animation)).catch(() => {});
+    return animation;
+  }
+
+  schedule(callback, delay) {
+    this.clearTimer();
+    this.timerCallback = callback;
+    this.timerDelay = delay;
+    this.timerRemaining = delay;
+    if (document.hidden) return;
+    this.timerStartedAt = performance.now();
+    this.timer = window.setTimeout(() => {
+      this.timer = null;
+      this.timerCallback = null;
+      callback();
+    }, delay);
+  }
+
+  clearTimer() {
+    if (this.timer) window.clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  handleVisibilityChange() {
+    if (this.destroyed) return;
+    if (document.hidden) {
+      if (this.timer) {
+        const elapsed = performance.now() - this.timerStartedAt;
+        this.timerRemaining = Math.max(0, this.timerDelay - elapsed);
+        this.clearTimer();
+      }
+      this.animations.forEach((animation) => animation.pause?.());
+      return;
+    }
+    this.animations.forEach((animation) => animation.play?.());
+    if (this.timerCallback && !this.timer) {
+      const callback = this.timerCallback;
+      const delay = Math.max(0, this.timerRemaining || this.timerDelay);
+      this.timerStartedAt = performance.now();
+      this.timer = window.setTimeout(() => {
+        this.timer = null;
+        this.timerCallback = null;
+        callback();
+      }, delay);
+    }
+  }
+
+  handleReducedMotionChange() {
+    if (this.destroyed) return;
+    this.animations.forEach((animation) => animation.cancel?.());
+    this.animations.clear();
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.setState("destroyed");
+    this.clearTimer();
+    this.timerCallback = null;
+    this.animations.forEach((animation) => animation.cancel?.());
+    this.animations.clear();
+    document.removeEventListener("visibilitychange", this.visibilityHandler);
+    prefersReducedMotion.removeEventListener?.("change", this.reducedMotionHandler);
+  }
 }
 
-function runHeroTypewriter(textElement, text) {
-  stopHeroMorphTitle();
-  if (!textElement) return;
-  const cursor = textElement.parentElement?.querySelector(".hero-typewriter-cursor");
-  cursor?.classList.remove("is-finished");
-  if (prefersReducedMotion.matches) {
-    textElement.textContent = text;
-    cursor?.classList.add("is-finished");
+function cleanupHeroHeadline() {
+  if (!heroHeadlineController) return;
+  heroHeadlineController.destroy();
+  heroHeadlineController = null;
+}
+
+function animateHeadlineReveal(titleElement, line1) {
+  if (!titleElement) {
+    cleanupHeroHeadline();
     return;
   }
-
-  const token = heroTypewriterToken;
-  const speed = 54;
-  let index = 0;
-  textElement.textContent = "";
-
-  const typeNext = () => {
-    if (token !== heroTypewriterToken) return;
-    textElement.textContent = text.slice(0, index);
-    if (index <= text.length) {
-      index++;
-      heroTypewriterTimer = window.setTimeout(typeNext, speed);
-    } else {
-      cursor?.classList.add("is-finished");
-    }
-  };
-
-  typeNext();
-}
-
-function animateHeadlineReveal(titleElement, line1, line2) {
-  if (!titleElement) return;
-  const nextKey = `${appLocale.current}|${line1}|${line2}`;
-  const existingText = titleElement.querySelector(".hero-morph-text");
-  const shouldUseStaticMobileHeadline = window.matchMedia?.("(max-width: 767px)")?.matches && currentRoute() === "feed";
-
-  if (titleElement.dataset.revealKey !== nextKey || !existingText) {
-    titleElement.dataset.revealKey = nextKey;
-    titleElement.classList.add("hero-morph-title");
-    titleElement.classList.remove("is-glitching");
-    titleElement.innerHTML = `
-      <span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${line1}</span>
-      <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-        <span class="hero-morph-text"></span>
-      </strong>
-    `;
-    const morphText = titleElement.querySelector(".hero-morph-text");
-    if (shouldUseStaticMobileHeadline) {
-      stopHeroMorphTitle();
-      if (morphText) morphText.textContent = line2;
-    } else {
-      runHeroTypewriter(morphText, line2);
-    }
-    requestAnimationFrame(() => titleElement.classList.add("is-ready"));
+  const brand = String(line1 || "ANSEND").trim().split(/\s+/)[0] || "ANSEND";
+  const nextKey = `${appLocale.current}|${brand}|hero-headline-controller`;
+  if (
+    heroHeadlineController
+    && heroHeadlineController.titleElement === titleElement
+    && titleElement.dataset.revealKey === nextKey
+    && !heroHeadlineController.destroyed
+  ) {
+    return;
   }
+  cleanupHeroHeadline();
+  heroHeadlineController = new HeroHeadlineController(titleElement, brand);
+  heroHeadlineController.mount();
 }
 
 function applyRoleDashboard() {
@@ -5166,7 +5388,7 @@ function applyRoleDashboard() {
   const role = activeRoleKey();
   const hero = document.querySelector(".ai-hero");
   if (!hero) {
-    stopHeroMorphTitle();
+    cleanupHeroHeadline();
     return;
   }
   hero.classList.toggle("is-beatmaker-hero", role === "beatmaker");
@@ -14527,6 +14749,16 @@ function nexoActionRouteHash(action = {}) {
 }
 
 function executeNexoAssistantActions(actions = []) {
+  const previewAction = actions.find((action) => action && action.type === "play_beat_preview");
+  if (previewAction) {
+    const beat = findBeat(previewAction.beatId);
+    if (!beat) {
+      showToast("Este beat nao esta disponivel para reproducao.", "alert-triangle");
+      return;
+    }
+    void playBeat(beat);
+    return;
+  }
   const action = actions.find((item) => item?.type === "navigate");
   if (!action) return;
   const nextHash = nexoActionRouteHash(action);
@@ -14742,7 +14974,7 @@ function renderNexoAssistantCards(response = {}) {
       ${asArray(item.badges).length ? `<div class="nexo-assistant-card-badges">${asArray(item.badges).map((badge) => `<span>${htmlEscape(badge)}</span>`).join("")}</div>` : ""}
       <p>${htmlEscape(item.reason || "")}</p>
       <footer>
-        ${primary.label ? `<button type="button" data-action="nexo-card-primary" data-nexo-primary-action data-route-key="${htmlEscape(primary.route_key || "")}" data-params="${htmlEscape(JSON.stringify(primary.params || {}))}" data-entity-type="${htmlEscape(item.entity_type || "")}" data-entity-id="${htmlEscape(item.entity_id || "")}" data-request-id="${htmlEscape(response.request_id || "")}">${htmlEscape(primary.label)}</button>` : ""}
+        ${primary.label ? `<button type="button" data-action="nexo-card-primary" data-nexo-primary-action data-route-key="${htmlEscape(primary.route_key || "")}" data-action-key="${htmlEscape(primary.action_key || "")}" data-params="${htmlEscape(JSON.stringify(primary.params || {}))}" data-entity-type="${htmlEscape(item.entity_type || "")}" data-entity-id="${htmlEscape(item.entity_id || "")}" data-request-id="${htmlEscape(response.request_id || "")}">${htmlEscape(primary.label)}</button>` : ""}
         ${secondary.label ? `<button type="button" data-action="nexo-card-secondary" data-action-key="${htmlEscape(secondary.action_key || "")}" data-params="${htmlEscape(JSON.stringify(secondary.params || {}))}" data-entity-type="${htmlEscape(item.entity_type || "")}" data-entity-id="${htmlEscape(item.entity_id || "")}" data-request-id="${htmlEscape(response.request_id || "")}">${htmlEscape(secondary.label)}</button>` : ""}
       </footer>
     </article>`;
@@ -15444,6 +15676,144 @@ function generateUUID() {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+function createEmptyReleaseDraft(sourceType = "upload") {
+  return {
+    sourceType,
+    sourceReference: null,
+    title: "",
+    producerName: "",
+    description: "",
+    bpm: "",
+    musicalKey: "",
+    genre: "",
+    subgenre: "",
+    mood: "",
+    tags: [],
+    coverUrl: "",
+    coverPath: "",
+    audioUrl: "",
+    audioPath: "",
+    audioFile: null,
+    originalFileName: "",
+    youtube: null,
+    importSource: sourceType === "youtube" ? "youtube_single" : sourceType === "catalog" ? "catalog_selection" : null,
+  };
+}
+
+function normalizeReleaseSource(sourceType = "upload", sourceData = {}) {
+  const draft = createEmptyReleaseDraft(sourceType);
+  if (sourceType === "youtube") {
+    const meta = youtubeMetadataFromUrl(sourceData.url || sourceData.youtube_url || sourceData.youtubeVideoId || sourceData.youtube_video_id || "");
+    if (!meta) return null;
+    draft.sourceReference = meta.youtube_url;
+    draft.title = sourceData.title || sourceData.youtube_title || `YouTube Beat ${meta.youtube_video_id}`;
+    draft.coverUrl = sourceData.cover_url || meta.youtube_thumbnail_url || "";
+    draft.youtube = {
+      ...meta,
+      youtube_title: sourceData.youtube_title || sourceData.title || draft.title,
+      youtube_channel_title: sourceData.youtube_channel_title || sourceData.channelTitle || "",
+    };
+    return draft;
+  }
+  if (sourceType === "catalog") {
+    const isYoutube = sourceData.source_type === "youtube" || Boolean(sourceData.youtube_video_id);
+    draft.sourceReference = sourceData.id || sourceData.source_label || sourceData.original_file_name || null;
+    draft.title = sourceData.title || titleFromFileName(sourceData.original_file_name || sourceData.file?.name || "") || "";
+    draft.genre = sourceData.genre || "";
+    draft.bpm = sourceData.bpm || "";
+    draft.musicalKey = sourceData.musical_key || "";
+    draft.description = sourceData.description || "";
+    draft.coverUrl = sourceData.cover_url || sourceData.youtube_thumbnail_url || "";
+    draft.tags = Array.isArray(sourceData.tags)
+      ? sourceData.tags
+      : String(sourceData.tags || "").split(",").map((tag) => tag.trim()).filter(Boolean);
+    draft.audioFile = sourceData.file || null;
+    draft.originalFileName = sourceData.original_file_name || sourceData.file?.name || "";
+    draft.importSource = isYoutube ? "catalog_youtube_selection" : "catalog_upload_selection";
+    if (isYoutube) {
+      draft.sourceType = "youtube";
+      draft.youtube = {
+        youtube_url: sourceData.youtube_url,
+        youtube_video_id: sourceData.youtube_video_id,
+        youtube_embed_url: sourceData.youtube_embed_url,
+        youtube_thumbnail_url: sourceData.youtube_thumbnail_url,
+        youtube_title: sourceData.youtube_title || sourceData.title || draft.title,
+        youtube_channel_title: sourceData.youtube_channel_title || "",
+      };
+    }
+    return draft;
+  }
+  return draft;
+}
+
+function releaseDraftStorageSourceType(draft = appState.releaseDraft) {
+  return draft?.sourceType === "youtube" ? "youtube" : "upload";
+}
+
+function releaseDraftSourceLabel(draft = appState.releaseDraft) {
+  if (!draft || draft.sourceType === "upload") return "";
+  if (draft.sourceType === "youtube") return "Origem: YouTube incorporado. Envie os arquivos comerciais abaixo quando quiser vender licenças com download.";
+  return "Origem: catálogo. Os dados foram preenchidos a partir do item selecionado e podem ser editados.";
+}
+
+function applyReleaseDraftToForm(form = releaseFormElement(), draft = appState.releaseDraft) {
+  if (!form || !draft) return;
+  form.dataset.sourceType = draft.sourceType || "upload";
+  const setValue = (name, value) => {
+    if (form.elements[name] && value !== undefined && value !== null && value !== "") form.elements[name].value = value;
+  };
+  setValue("source_type", releaseDraftStorageSourceType(draft));
+  setValue("source_reference", draft.sourceReference || "");
+  setValue("import_source", draft.importSource || "");
+  setValue("original_file_name", draft.originalFileName || "");
+  setValue("title", draft.title || "");
+  setValue("producer_name", draft.producerName || "");
+  setValue("description", draft.description || "");
+  setValue("bpm", draft.bpm || "");
+  setValue("musical_key", draft.musicalKey || "");
+  setValue("genre", draft.genre || "");
+  setValue("subgenre", draft.subgenre || "");
+  setValue("mood", draft.mood || "");
+  setValue("release_tags", Array.isArray(draft.tags) ? draft.tags.join(", ") : draft.tags || "");
+  if (draft.youtube) {
+    ["youtube_url", "youtube_video_id", "youtube_embed_url", "youtube_thumbnail_url", "youtube_title", "youtube_channel_title"].forEach((name) => {
+      setValue(name, draft.youtube?.[name] || "");
+    });
+  }
+  if (draft.coverUrl && form.elements.cover_url && !form.elements.cover_url.value) {
+    form.elements.cover_url.value = draft.coverUrl;
+    setPersistentCoverPreview(draft.coverUrl, form);
+  }
+  form.querySelector("[data-release-source-note]")?.remove();
+  const sourceLabel = releaseDraftSourceLabel(draft);
+  if (sourceLabel) {
+    const panel = form.querySelector('.release-panel[data-panel="0"] .release-panel-header');
+    panel?.insertAdjacentHTML("afterend", `<div class="release-source-note" data-release-source-note><i data-lucide="git-branch"></i><span>${htmlEscape(sourceLabel)}</span></div>`);
+  }
+  syncReleaseCustomSelect(form, "genre", draft.genre);
+  syncReleaseCustomSelect(form, "musical_key", draft.musicalKey);
+  syncReleaseForm(form);
+}
+
+function syncReleaseCustomSelect(form, selectId, value) {
+  if (!form || !value) return;
+  const select = form.querySelector(`.custom-select[data-select-id="${selectId}"]`);
+  const hidden = select?.querySelector('input[type="hidden"]');
+  const trigger = select?.querySelector(".custom-select-trigger span");
+  if (!hidden || !trigger) return;
+  hidden.value = value;
+  trigger.textContent = value;
+  select.querySelectorAll(".custom-select-option").forEach((option) => {
+    const selected = option.dataset.value === value;
+    option.classList.toggle("is-selected", selected);
+    if (!selected) option.querySelector("svg")?.remove();
+  });
+}
+
+function clearReleaseDraft() {
+  appState.releaseDraft = null;
 }
 
 function releaseFormElement() {
@@ -16565,7 +16935,17 @@ function setupMusicUploadEventListeners() {
           lucide.createIcons();
         }
       } else if (form.classList.contains("catalog-import-form")) {
-        await publishCatalogImport();
+        const state = ensureCatalogImportState();
+        const item = state.items.find((entry) => !["invalid", "duplicate", "failed", "published"].includes(entry.status));
+        if (!item) {
+          showToast("Selecione ou corrija um item valido do catalogo para continuar.", "alert-triangle");
+          return;
+        }
+        appState.releaseDraft = normalizeReleaseSource("catalog", item);
+        appState.releaseMode = "upload";
+        renderMusicUpload("upload");
+        hydrateView();
+        showToast("Catalogo convertido para o fluxo unico de lancamento.", "git-branch");
       } else {
         saveBeatRelease("published");
       }
@@ -16999,6 +17379,16 @@ async function saveBeatRelease(status = "published") {
     stems_size_bytes: form.elements.stems_size_bytes?.value ? Number(form.elements.stems_size_bytes.value) : null,
     duration_seconds: form.elements.duration_seconds?.value ? Number(form.elements.duration_seconds.value) : null,
     file_size: form.elements.file_size?.value ? Number(form.elements.file_size.value) : null,
+    source_type: form.elements.source_type?.value || "upload",
+    import_source: form.elements.import_source?.value || null,
+    import_status: form.elements.import_source?.value ? status : null,
+    original_file_name: form.elements.original_file_name?.value || null,
+    youtube_url: form.elements.youtube_url?.value || null,
+    youtube_video_id: form.elements.youtube_video_id?.value || null,
+    youtube_embed_url: form.elements.youtube_embed_url?.value || null,
+    youtube_thumbnail_url: form.elements.youtube_thumbnail_url?.value || null,
+    youtube_title: form.elements.youtube_title?.value || null,
+    youtube_channel_title: form.elements.youtube_channel_title?.value || null,
     status: status,
     updated_at: new Date().toISOString()
   };
@@ -17122,7 +17512,10 @@ async function saveBeatRelease(status = "published") {
   syncCatalogCompatibilityState();
   
   showToast(status === "published" ? "Beat publicado no Supabase!" : "Rascunho salvo no Supabase!", "cloud-check");
-  if (status === "published") void clearReleaseUploadDraft();
+  if (status === "published") {
+    clearReleaseDraft();
+    void clearReleaseUploadDraft();
+  }
 
   if (savedCatalogItem) {
     if (status === "published") {
@@ -17309,6 +17702,38 @@ function renderReleaseModeSelector() {
       <span>Você revisa tudo antes de publicar. Nenhum beat aparece no marketplace sem sua confirmação.</span>
     </footer>
   </section>`;
+  lucide.createIcons();
+}
+
+function renderReleaseYouTubeSourceImport() {
+  appView.innerHTML = `<section class="release-page release-source-page" aria-label="Importar beat por link">
+    <div class="release-container">
+      <form class="release-source-form" data-release-source-form="youtube" onsubmit="event.preventDefault();">
+        <header class="release-panel-header">
+          <span class="release-eyebrow">Origem do beat</span>
+          <h2>Importar do YouTube</h2>
+          <p>Cole um link suportado para preencher os dados iniciais. Depois disso, você continua no mesmo fluxo de capa, arquivos, licenças e revisão do beat individual.</p>
+        </header>
+        <label class="release-field release-wide">
+          <span class="release-label">Link do YouTube *</span>
+          <input name="youtube_url" type="url" placeholder="https://youtu.be/xxxxxxxxxxx" required>
+        </label>
+        <div class="youtube-release-preview" data-youtube-preview>
+          <i data-lucide="youtube"></i>
+          <span>Cole um link válido para gerar a prévia.</span>
+        </div>
+        <div class="release-source-warning">
+          <i data-lucide="info"></i>
+          <span>Quando o link não fornece arquivo utilizável, a ANSEND solicita o upload manual do áudio de preview e dos arquivos de entrega no fluxo compartilhado.</span>
+        </div>
+        <footer class="release-source-actions">
+          <button type="button" class="release-back-btn" data-action="release-mode-choice" data-mode="selector">Voltar</button>
+          <button type="button" class="release-next-btn" data-action="release-youtube-continue">Continuar no fluxo único</button>
+        </footer>
+      </form>
+    </div>
+  </section>`;
+  applyLocaleTextOverrides(appView);
   lucide.createIcons();
 }
 
@@ -17550,6 +17975,7 @@ function catalogImportItemMarkup(item, index) {
       </div>
       ${item.source_label ? `<p class="catalog-import-source">${htmlEscape(item.source_label)}</p>` : ""}
       ${item.error ? `<p class="catalog-import-error">${htmlEscape(item.error)}</p>` : ""}
+      ${["valid", "pending"].includes(status) ? `<button type="button" class="catalog-import-continue" data-action="release-catalog-continue" data-catalog-item-id="${htmlEscape(item.id)}"><i data-lucide="arrow-right"></i>Continuar no fluxo único</button>` : ""}
     </div>
     <button type="button" class="catalog-import-remove" data-action="catalog-remove-item" ${disabled} aria-label="Remover item"><i data-lucide="x"></i></button>
   </article>`;
@@ -17654,7 +18080,7 @@ function renderCatalogImportPage() {
     + '<div class="release-footer-actions">'
     + '<button type="button" class="release-back-btn" data-action="release-back" disabled>Voltar</button>'
     + '<button type="button" class="release-next-btn" data-action="release-next">Próximo</button>'
-    + '<button type="button" class="release-submit-btn is-primary" data-action="publish-catalog" style="display:none;" ' + (state.isPublishing || !validCount ? "disabled" : "") + '><i data-lucide="' + (state.isPublishing ? "loader-circle" : "cloud-check") + '"></i>' + (state.isPublishing ? "Publicando..." : "Publicar catálogo") + '</button>'
+    + '<button type="button" class="release-submit-btn is-primary" data-action="publish-catalog" style="display:none;" ' + (state.isPublishing || !validCount ? "disabled" : "") + '><i data-lucide="git-branch"></i>Continuar no fluxo único</button>'
     + '</div>'
     + '</div></footer></section>';
 
@@ -17937,12 +18363,13 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
   }
   if (mode === "selector") {
     appState.releaseMode = "";
+    clearReleaseDraft();
     renderReleaseModeSelector();
     return;
   }
   if (mode === "youtube") {
     appState.releaseMode = "youtube";
-    renderYouTubeBeatUpload();
+    renderReleaseYouTubeSourceImport();
     return;
   }
   if (mode === "catalog") {
@@ -17973,6 +18400,8 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
     + '<nav class="release-stepper" aria-label="Etapas do cadastro">' + stepperHTML + '</nav>'
     + '<form class="release-upload-form" data-release-step="0" data-beat-id="' + beatId + '" onsubmit="event.preventDefault();">'
     + '<input type="hidden" name="kind" value="beat"><input type="hidden" name="status" value="draft">'
+    + '<input type="hidden" name="source_type" value="upload"><input type="hidden" name="source_reference"><input type="hidden" name="import_source"><input type="hidden" name="import_status"><input type="hidden" name="original_file_name">'
+    + '<input type="hidden" name="youtube_url"><input type="hidden" name="youtube_video_id"><input type="hidden" name="youtube_embed_url"><input type="hidden" name="youtube_thumbnail_url"><input type="hidden" name="youtube_title"><input type="hidden" name="youtube_channel_title">'
     + '<input type="hidden" name="cover_url"><input type="hidden" name="cover_path">'
     + '<input type="hidden" name="audio_url"><input type="hidden" name="audio_path">'
     + '<input type="hidden" name="mp3_url"><input type="hidden" name="mp3_path">'
@@ -18162,7 +18591,12 @@ function renderMusicUpload(mode = appState.releaseMode || "selector") {
   setupMusicUploadEventListeners();
   prepareReleaseFilesLayout(releaseFormElement());
   refreshReleaseLicensesUI();
-  void restoreReleaseCoverDraft();
+  applyReleaseDraftToForm(releaseFormElement(), appState.releaseDraft);
+  if (!appState.releaseDraft) void restoreReleaseCoverDraft();
+  const sourceAudioFile = appState.releaseDraft?.audioFile || null;
+  if (sourceAudioFile) {
+    window.setTimeout(() => handleReleaseFile(sourceAudioFile, "audio"), 80);
+  }
   syncReleaseForm();
   applyLocaleTextOverrides(appView);
   lucide.createIcons();
@@ -18682,6 +19116,7 @@ function renderRoute() {
   const route = currentRoute();
   lastRoute = route;
   document.body.dataset.route = route;
+  if (route !== "feed") cleanupHeroHeadline();
   syncCheckoutStandaloneRoute(route);
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
@@ -21191,9 +21626,45 @@ document.addEventListener("click", async (event) => {
     event.preventDefault();
     const mode = target.dataset.mode || "selector";
     appState.releaseMode = mode === "selector" ? "" : mode;
+    if (mode === "selector" || mode === "upload") clearReleaseDraft();
     if (mode !== "catalog") appState.catalogImport = null;
     renderMusicUpload(mode);
     hydrateView();
+    return;
+  }
+  if (action === "release-youtube-continue") {
+    event.preventDefault();
+    const form = target.closest(".release-source-form");
+    const meta = youtubeMetadataFromUrl(form?.elements.youtube_url?.value || "");
+    if (!meta) {
+      showToast("Insira um link valido do YouTube.", "alert-triangle");
+      return;
+    }
+    const duplicate = await findYouTubeDuplicate(meta.youtube_video_id);
+    if (duplicate) {
+      showToast("Este beat parece ja existir no seu catalogo.", "triangle-alert");
+      return;
+    }
+    appState.releaseDraft = normalizeReleaseSource("youtube", meta);
+    appState.releaseMode = "upload";
+    renderMusicUpload("upload");
+    hydrateView();
+    return;
+  }
+  if (action === "release-catalog-continue") {
+    event.preventDefault();
+    const state = ensureCatalogImportState();
+    const itemId = target.dataset.catalogItemId || target.closest("[data-catalog-item-id]")?.dataset.catalogItemId;
+    const item = state.items.find((entry) => entry.id === itemId);
+    if (!item || ["invalid", "duplicate", "failed"].includes(item.status)) {
+      showToast("Selecione um item valido do catalogo para continuar.", "alert-triangle");
+      return;
+    }
+    appState.releaseDraft = normalizeReleaseSource("catalog", item);
+    appState.releaseMode = "upload";
+    renderMusicUpload("upload");
+    hydrateView();
+    showToast("Item carregado no fluxo unico de lancamento.", "git-branch");
     return;
   }
   if (action === "catalog-mode") {
@@ -21254,6 +21725,17 @@ document.addEventListener("click", async (event) => {
       const beatId = params.beatId || target.dataset.entityId;
       openBeatDetailForLicenseSelection(beatId, "nexo-add-to-cart");
       void logNexoAnalytics("ADD_TO_CART", { entityType: "beat", entityId: beatId, metadata: { redirectedToLicenseSelection: true } });
+      return;
+    }
+    if (action === "nexo-card-primary" && target.dataset.actionKey === "PLAY_BEAT_PREVIEW") {
+      const beatId = params.beatId || target.dataset.entityId;
+      const beat = findBeat(beatId);
+      if (!beat) {
+        showToast("Este beat nao esta disponivel para reproducao.", "alert-triangle");
+        return;
+      }
+      void playBeat(beat);
+      void logNexoAnalytics("BEAT_PLAY", { entityType: "beat", entityId: beatId, metadata: { source: "nexo-card" } });
       return;
     }
     const routeMap = {
@@ -22736,14 +23218,14 @@ document.addEventListener("input", (event) => {
   if (input.closest(".release-upload-form")) {
     syncReleaseForm(input.closest(".release-upload-form"));
   }
-  const youtubeForm = input.closest?.("[data-youtube-release-form]");
+  const youtubeForm = input.closest?.("[data-youtube-release-form], [data-release-source-form='youtube']");
   if (youtubeForm && input.name === "youtube_url") {
     const preview = youtubeForm.querySelector("[data-youtube-preview]");
     const meta = youtubeMetadataFromUrl(input.value);
     if (preview && meta) {
       preview.classList.add("has-preview");
       preview.innerHTML = `<img src="${htmlEscape(meta.youtube_thumbnail_url)}" alt="Preview do YouTube"><div><strong>ID ${htmlEscape(meta.youtube_video_id)}</strong><span>Player incorporado seguro via youtube-nocookie</span></div>`;
-      if (!youtubeForm.elements.title.value) youtubeForm.elements.title.value = `YouTube Beat ${meta.youtube_video_id}`;
+      if (youtubeForm.elements.title && !youtubeForm.elements.title.value) youtubeForm.elements.title.value = `YouTube Beat ${meta.youtube_video_id}`;
     } else if (preview) {
       preview.classList.remove("has-preview");
       preview.innerHTML = `<i data-lucide="youtube"></i><span>Cole um link valido para gerar a previa.</span>`;
@@ -23055,7 +23537,6 @@ document.addEventListener("submit", async (event) => {
       showToast("Selecione pelo menos um arquivo incluído para esta licença.", "alert-triangle");
       return;
     }
-
     const nullableLimit = (name) => {
       const value = customLicenseForm.elements[name]?.value;
       return value === "" || value === undefined ? null : Math.max(0, Number(value) || 0);
