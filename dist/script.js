@@ -5342,15 +5342,11 @@ function initRotatingText(element, options = {}) {
       }
     });
 
-    if (forceImmediate) {
-      element.querySelectorAll('.text-rotate-element').forEach(el => el.classList.add('is-active'));
-    } else {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          element.querySelectorAll('.text-rotate-element').forEach(el => el.classList.add('is-active'));
-        });
-      });
-    }
+    // Force style recalculation / reflow
+    element.offsetHeight;
+
+    // Add active class to start transition
+    element.querySelectorAll('.text-rotate-element').forEach(el => el.classList.add('is-active'));
   };
 
   const next = () => {
