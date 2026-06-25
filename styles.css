@@ -40810,3 +40810,107 @@ body[data-route="feed"] .ai-hero .hero-headline-line {
     max-width: min(560px, 100%) !important;
   }
 }
+
+/* Final release visual normalization: no orange chrome on launch flows. */
+body[data-route="cadastrar"] .release-page {
+  --release-accent: #ffffff !important;
+}
+
+body[data-route="cadastrar"] .release-source-form {
+  width: min(100%, 1080px) !important;
+  max-width: 1080px !important;
+  padding: clamp(28px, 4vw, 48px) !important;
+  border-radius: 14px !important;
+  background: #050505 !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+body[data-route="cadastrar"] .release-source-form .release-eyebrow {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+body[data-route="cadastrar"] .release-source-form .release-field input,
+body[data-route="cadastrar"] .release-source-form .release-field input:focus,
+body[data-route="cadastrar"] .catalog-import-youtube-box textarea:focus,
+body[data-route="cadastrar"] .catalog-import-bulk-panel input:focus,
+body[data-route="cadastrar"] .catalog-import-bulk-panel select:focus,
+body[data-route="cadastrar"] .catalog-import-fields input:focus,
+body[data-route="cadastrar"] .catalog-import-fields select:focus,
+body[data-route="cadastrar"] .catalog-import-fields textarea:focus {
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+body[data-route="cadastrar"] .youtube-release-preview,
+body[data-route="cadastrar"] .release-source-warning,
+body[data-route="cadastrar"] .release-source-note,
+body[data-route="cadastrar"] .catalog-import-dropzone,
+body[data-route="cadastrar"] .catalog-import-item,
+body[data-route="cadastrar"] .release-file-card,
+body[data-route="cadastrar"] .release-upload-card,
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone,
+body[data-route="cadastrar"] .release-file-card.release-dropzone,
+body[data-route="cadastrar"] .release-file-card.release-dropzone.has-file,
+body[data-route="cadastrar"] .release-preview-state {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone,
+body[data-route="cadastrar"] .release-file-card.release-dropzone.has-file,
+body[data-route="cadastrar"] .release-upload-card,
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone {
+  border-style: dashed !important;
+  background: #0d0d0d !important;
+}
+
+body[data-route="cadastrar"] .release-file-card.release-dropzone:hover,
+body[data-route="cadastrar"] .release-file-card.release-dropzone.has-file:hover,
+body[data-route="cadastrar"] .release-upload-card:hover,
+body[data-route="cadastrar"] .release-files-redesign .release-dropzone:hover,
+body[data-route="cadastrar"] .catalog-import-dropzone.is-dragging {
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  background: #101010 !important;
+  box-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-source-actions .release-next-btn,
+body[data-route="cadastrar"] .release-source-actions .release-submit-btn,
+body[data-route="cadastrar"] .catalog-import-continue,
+body[data-route="cadastrar"] .catalog-import-youtube-box button,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button.an-primary,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button[data-action="catalog-apply-bulk"],
+body[data-route="cadastrar"] .release-bottom-inner .release-next-btn,
+body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn {
+  background: #f4f4f5 !important;
+  border: 1px solid #f4f4f5 !important;
+  color: #09090b !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  text-shadow: none !important;
+}
+
+body[data-route="cadastrar"] .release-source-actions .release-next-btn:hover,
+body[data-route="cadastrar"] .release-source-actions .release-submit-btn:hover,
+body[data-route="cadastrar"] .catalog-import-continue:hover,
+body[data-route="cadastrar"] .catalog-import-youtube-box button:hover,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button.an-primary:hover,
+body[data-route="cadastrar"] .catalog-import-bulk-panel button[data-action="catalog-apply-bulk"]:hover,
+body[data-route="cadastrar"] .release-bottom-inner .release-next-btn:hover,
+body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn:hover {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.10) !important;
+}
+
+body[data-route="cadastrar"] .release-source-actions .release-next-btn:disabled,
+body[data-route="cadastrar"] .release-source-actions .release-submit-btn:disabled,
+body[data-route="cadastrar"] .release-bottom-inner .release-next-btn:disabled,
+body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn:disabled {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.32) !important;
+  box-shadow: none !important;
+}
