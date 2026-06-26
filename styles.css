@@ -10109,10 +10109,8 @@ body[data-route="detalhe"] #appView.app-view {
   gap: 2px !important;
   height: 36px !important;
   padding: 3px !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 999px !important;
 }
 
 .navbar-language-switcher button {
@@ -10146,8 +10144,8 @@ body[data-route="detalhe"] #appView.app-view {
 }
 
 .navbar-language-switcher button.is-active {
-  background: transparent !important;
-  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
 
 .navbar-language-switcher button.is-active .flag-icon {
