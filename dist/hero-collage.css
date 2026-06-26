@@ -72,7 +72,11 @@ body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-m
 }
 
 body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-main,
-body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-text {
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-main *,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-text,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-morph-text *,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-headline-rotator,
+body[data-route="feed"] .feed .ai-hero.an-theater-hero .hero-morph-title .hero-headline-rotator * {
   color: #fff !important;
   -webkit-text-fill-color: #fff !important;
   text-shadow: 0 12px 40px rgba(0, 0, 0, .9) !important;
