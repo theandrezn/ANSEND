@@ -4367,7 +4367,10 @@ let revealObserver = null;
 let homeScrollAnimationRaf = null;
 let lastRoute = null;
 let lastPageTransitionKey = null;
-let heroHeadlineController = null;
+let heroTypewriterTimer = null;
+let heroTypewriterToken = 0;
+let heroHeadlineIndex = 0;
+let heroHeadlineInterval = null;
 
 function currentRouteFromHash() {
   const route = (location.hash.replace("#", "") || "feed").split("?")[0];
@@ -5208,310 +5211,237 @@ function roleDashboardStripMarkup(dashboard) {
     <div class="role-dashboard-actions">${actions}</div>
   </section>`;
 }
-const HERO_HEADLINE_TIMING = Object.freeze({
-  wordStagger: 75,
-  introDuration: 480,
-  introHold: 2500,
-  readDuration: 5000,
-  rotateDuration: 560,
-});
-
-function heroHeadlineStates() {
-  if (appLocale.current === "en") {
-    return [
-      {
-        key: "marketplace",
-        accessible: "ANSEND THE INTELLIGENT MUSIC MARKETPLACE",
-        lines: [["THE", "INTELLIGENT"], ["MUSIC"], ["MARKETPLACE"]],
-      },
-      {
-        key: "social",
-        accessible: "ANSEND THE MUSIC SOCIAL NETWORK",
-        lines: [["THE", "MUSIC"], ["SOCIAL"], ["NETWORK"]],
-      },
-    ];
+function stopHeroMorphTitle() {
+  if (heroHeadlineInterval) {
+    if (typeof heroHeadlineInterval === "function") {
+      heroHeadlineInterval();
+    } else {
+      clearInterval(heroHeadlineInterval);
+    }
+    heroHeadlineInterval = null;
   }
-  return [
-    {
-      key: "marketplace",
-      accessible: "ANSEND O MARKETPLACE INTELIGENTE DA MÚSICA",
-      lines: [["O", "MARKETPLACE"], ["INTELIGENTE"], ["DA", "MÚSICA"]],
-    },
-    {
-      key: "social",
-      accessible: "ANSEND A REDE SOCIAL DA MÚSICA",
-      lines: [["A", "REDE", "SOCIAL"], ["DA", "MÚSICA"]],
-    },
-  ];
 }
 
-class HeroHeadlineController {
-  constructor(titleElement, brand = "ANSEND") {
-    this.titleElement = titleElement;
-    this.brand = String(brand || "ANSEND").trim() || "ANSEND";
-    this.states = heroHeadlineStates();
-    this.index = 0;
-    this.state = "intro";
-    this.destroyed = false;
-    this.timer = null;
-    this.timerStartedAt = 0;
-    this.timerDelay = 0;
-    this.timerRemaining = 0;
-    this.timerCallback = null;
-    this.animations = new Set();
-    this.visibilityHandler = () => this.handleVisibilityChange();
-    this.reducedMotionHandler = () => this.handleReducedMotionChange();
-  }
+function createPhraseElement(lines) {
+  const phraseDiv = document.createElement("div");
+  phraseDiv.className = "rotating-phrase";
+  
+  const srText = lines.join(" ");
+  const srSpan = document.createElement("span");
+  srSpan.className = "sr-only";
+  srSpan.textContent = srText;
+  phraseDiv.appendChild(srSpan);
 
-  mount() {
-    if (!this.titleElement) return;
-    this.titleElement.classList.add("hero-morph-title");
-    this.titleElement.classList.remove("is-glitching");
-    this.titleElement.dataset.revealKey = `${appLocale.current}|${this.brand}|hero-headline-controller`;
-    this.titleElement.dataset.headlineIndex = "0";
-    this.setState("intro");
-    this.render(this.states[0], true);
-    document.addEventListener("visibilitychange", this.visibilityHandler);
-    prefersReducedMotion.addEventListener?.("change", this.reducedMotionHandler);
-    requestAnimationFrame(() => this.titleElement?.classList.add("is-ready"));
-    this.playIntro();
-  }
-
-  setState(state) {
-    this.state = state;
-    if (this.titleElement) this.titleElement.dataset.headlineState = state;
-  }
-
-  isReducedMotion() {
-    return Boolean(prefersReducedMotion?.matches);
-  }
-
-  render(headlineState, includeBrand = false) {
-    const visual = includeBrand
-      ? `<span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${this.wordMarkup(this.brand, 0)}</span>
-        <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
-          <span class="hero-morph-text hero-headline-rotator">${this.panelMarkup(headlineState, true, 1)}</span>
-        </strong>`
-      : this.panelMarkup(headlineState, true, 0);
-
-    if (includeBrand) {
-      this.titleElement.innerHTML = `
-        <span class="hero-headline-accessible">${headlineState.accessible}</span>
-        <span class="hero-headline-visual" aria-hidden="true">${visual}</span>
-      `;
-      return;
-    }
-    const rotator = this.titleElement.querySelector(".hero-headline-rotator");
-    if (rotator) rotator.innerHTML = visual;
-    this.updateAccessible(headlineState);
-  }
-
-  updateAccessible(headlineState) {
-    const accessible = this.titleElement.querySelector(".hero-headline-accessible");
-    if (accessible) accessible.textContent = headlineState.accessible;
-  }
-
-  wordMarkup(word, index) {
-    return `<span class="hero-headline-word" style="--headline-word-index:${index}">${htmlEscape(String(word || ""))}</span>`;
-  }
-
-  panelMarkup(headlineState, isActive = false, startIndex = 0) {
-    let wordIndex = startIndex;
-    const lines = headlineState.lines.map((line) => {
-      const words = line.map((word) => this.wordMarkup(word, wordIndex++)).join(" ");
-      return `<span class="hero-headline-line">${words}</span>`;
-    }).join("");
-    return `<span class="hero-headline-panel${isActive ? " is-active" : ""}" data-headline-panel="${headlineState.key}">${lines}</span>`;
-  }
-
-  playIntro() {
-    if (this.destroyed) return;
-    const words = [...this.titleElement.querySelectorAll(".hero-headline-word")];
-    if (this.isReducedMotion() || !this.titleElement.animate) {
-      words.forEach((word) => {
-        word.style.opacity = "1";
-        word.style.transform = "none";
-        word.style.filter = "none";
-      });
-      this.finishIntro();
-      return;
-    }
-    const introAnimations = words.map((word, index) => this.trackAnimation(word.animate([
-      { opacity: 0, transform: "translate3d(0, 18px, 0)", filter: "blur(12px)" },
-      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
-    ], {
-      duration: HERO_HEADLINE_TIMING.introDuration,
-      delay: index * HERO_HEADLINE_TIMING.wordStagger,
-      easing: "cubic-bezier(.16, 1, .3, 1)",
-      fill: "both",
-    })));
-    Promise.allSettled(introAnimations.map((animation) => animation.finished)).then(() => this.finishIntro());
-  }
-
-  finishIntro() {
-    if (this.destroyed || this.state === "destroyed") return;
-    this.setState("holding");
-    this.schedule(() => this.startRotating(), HERO_HEADLINE_TIMING.introHold);
-  }
-
-  startRotating() {
-    if (this.destroyed) return;
-    this.setState("rotating");
-    this.schedule(() => this.rotateTo((this.index + 1) % this.states.length), HERO_HEADLINE_TIMING.readDuration);
-  }
-
-  rotateTo(nextIndex) {
-    if (this.destroyed) return;
-    const rotator = this.titleElement.querySelector(".hero-headline-rotator");
-    const outgoing = rotator?.querySelector(".hero-headline-panel.is-active");
-    const nextState = this.states[nextIndex] || this.states[0];
-    if (!rotator || !outgoing) {
-      this.index = nextIndex;
-      this.render(nextState, false);
-      this.finishRotation();
-      return;
-    }
-
-    const incomingWrapper = document.createElement("template");
-    incomingWrapper.innerHTML = this.panelMarkup(nextState, false, 0).trim();
-    const incoming = incomingWrapper.content.firstElementChild;
-    incoming.classList.add("is-entering");
-    rotator.appendChild(incoming);
-    this.updateAccessible(nextState);
-
-    if (this.isReducedMotion() || !incoming.animate || !outgoing.animate) {
-      outgoing.remove();
-      incoming.classList.remove("is-entering");
-      incoming.classList.add("is-active");
-      this.index = nextIndex;
-      this.finishRotation();
-      return;
-    }
-
-    const duration = HERO_HEADLINE_TIMING.rotateDuration;
-    const easing = "cubic-bezier(.22, 1, .36, 1)";
-    const outAnimation = this.trackAnimation(outgoing.animate([
-      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
-      { opacity: 0, transform: "translate3d(0, -34%, 0)", filter: "blur(8px)" },
-    ], { duration, easing, fill: "forwards" }));
-    const inAnimation = this.trackAnimation(incoming.animate([
-      { opacity: 0, transform: "translate3d(0, 36%, 0)", filter: "blur(8px)" },
-      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
-    ], { duration, easing, fill: "forwards" }));
-
-    Promise.allSettled([outAnimation.finished, inAnimation.finished]).then(() => {
-      if (this.destroyed) return;
-      outgoing.remove();
-      incoming.classList.remove("is-entering");
-      incoming.classList.add("is-active");
-      this.index = nextIndex;
-      this.finishRotation();
-    });
-  }
-
-  finishRotation() {
-    if (this.destroyed) return;
-    this.titleElement.dataset.headlineIndex = String(this.index);
-    this.setState("rotating");
-    this.schedule(() => this.rotateTo((this.index + 1) % this.states.length), HERO_HEADLINE_TIMING.readDuration);
-  }
-
-  trackAnimation(animation) {
-    this.animations.add(animation);
-    animation.finished.finally(() => this.animations.delete(animation)).catch(() => {});
-    return animation;
-  }
-
-  schedule(callback, delay) {
-    this.clearTimer();
-    this.timerCallback = callback;
-    this.timerDelay = delay;
-    this.timerRemaining = delay;
-    if (document.hidden) return;
-    this.timerStartedAt = performance.now();
-    this.timer = window.setTimeout(() => {
-      this.timer = null;
-      this.timerCallback = null;
-      callback();
-    }, delay);
-  }
-
-  clearTimer() {
-    if (this.timer) window.clearTimeout(this.timer);
-    this.timer = null;
-  }
-
-  handleVisibilityChange() {
-    if (this.destroyed) return;
-    if (document.hidden) {
-      if (this.timer) {
-        const elapsed = performance.now() - this.timerStartedAt;
-        this.timerRemaining = Math.max(0, this.timerDelay - elapsed);
-        this.clearTimer();
+  lines.forEach((lineText) => {
+    const lineDiv = document.createElement("div");
+    lineDiv.className = "rotating-line";
+    lineDiv.setAttribute("aria-hidden", "true");
+    
+    const words = lineText.split(" ");
+    words.forEach((wordText, wordIdx) => {
+      if (wordIdx > 0) {
+        const spaceSpan = document.createElement("span");
+        spaceSpan.className = "rotating-space";
+        lineDiv.appendChild(spaceSpan);
       }
-      this.animations.forEach((animation) => animation.pause?.());
-      return;
-    }
-    this.animations.forEach((animation) => animation.play?.());
-    if (this.timerCallback && !this.timer) {
-      const callback = this.timerCallback;
-      const delay = Math.max(0, this.timerRemaining || this.timerDelay);
-      this.timerStartedAt = performance.now();
-      this.timer = window.setTimeout(() => {
-        this.timer = null;
-        this.timerCallback = null;
-        callback();
-      }, delay);
-    }
-  }
-
-  handleReducedMotionChange() {
-    if (this.destroyed) return;
-    this.animations.forEach((animation) => animation.cancel?.());
-    this.animations.clear();
-  }
-
-  destroy() {
-    if (this.destroyed) return;
-    this.destroyed = true;
-    this.setState("destroyed");
-    this.clearTimer();
-    this.timerCallback = null;
-    this.animations.forEach((animation) => animation.cancel?.());
-    this.animations.clear();
-    document.removeEventListener("visibilitychange", this.visibilityHandler);
-    prefersReducedMotion.removeEventListener?.("change", this.reducedMotionHandler);
-  }
-}
-
-function cleanupHeroHeadline() {
-  if (!heroHeadlineController) return;
-  heroHeadlineController.destroy();
-  heroHeadlineController = null;
-}
-
-function animateHeadlineReveal(titleElement, line1) {
-  if (!titleElement) {
-    cleanupHeroHeadline();
-    return;
-  }
-  const brand = String(line1 || "ANSEND").trim().split(/\s+/)[0] || "ANSEND";
-  const nextKey = `${appLocale.current}|${brand}|hero-headline-controller`;
-  if (
-    heroHeadlineController
-    && heroHeadlineController.titleElement === titleElement
-    && titleElement.dataset.revealKey === nextKey
-    && !heroHeadlineController.destroyed
-  ) {
-    return;
-  }
-  cleanupHeroHeadline();
-  heroHeadlineController = new HeroHeadlineController(titleElement, brand);
-  heroHeadlineController.mount();
+      
+      const wordSpan = document.createElement("span");
+      wordSpan.className = "rotating-word";
+      wordSpan.textContent = wordText;
+      lineDiv.appendChild(wordSpan);
+    });
+    
+    phraseDiv.appendChild(lineDiv);
+  });
+  
+  return phraseDiv;
 }
 
 function runHeroHeadlineCycler(titleElement) {
-  animateHeadlineReveal(titleElement, t("hero.titleLine1"));
+  if (!titleElement) return;
+
+  if (heroHeadlineInterval) {
+    if (typeof heroHeadlineInterval === "function") {
+      heroHeadlineInterval();
+    } else {
+      clearInterval(heroHeadlineInterval);
+    }
+    heroHeadlineInterval = null;
+  }
+
+  const stage = titleElement.querySelector(".rotating-stage");
+  if (!stage) return;
+
+  const isEn = appLocale.current === "en";
+  const headlineVariants = isEn ? [
+    {
+      lines: [
+        "THE INTELLIGENT",
+        "MUSIC",
+        "MARKETPLACE"
+      ]
+    },
+    {
+      lines: [
+        "THE MUSIC",
+        "SOCIAL",
+        "NETWORK"
+      ]
+    }
+  ] : [
+    {
+      lines: [
+        "O MARKETPLACE",
+        "INTELIGENTE",
+        "DA MÚSICA"
+      ]
+    },
+    {
+      lines: [
+        "A REDE",
+        "SOCIAL",
+        "DA MÚSICA"
+      ]
+    }
+  ];
+
+  let currentPhraseIndex = 0;
+  let generation = (window._rotatingTextGeneration || 0) + 1;
+  window._rotatingTextGeneration = generation;
+
+  const timers = [];
+  const addTimeout = (fn, delay) => {
+    const id = setTimeout(() => {
+      if (window._rotatingTextGeneration !== generation) return;
+      fn();
+    }, delay);
+    timers.push(id);
+    return id;
+  };
+
+  const cleanup = () => {
+    timers.forEach((id) => clearTimeout(id));
+  };
+
+  heroHeadlineInterval = cleanup;
+
+  const rotate = () => {
+    const nextPhraseIndex = (currentPhraseIndex + 1) % headlineVariants.length;
+    const nextPhraseObj = headlineVariants[nextPhraseIndex];
+    
+    const nextPhraseEl = createPhraseElement(nextPhraseObj.lines);
+    stage.appendChild(nextPhraseEl);
+    
+    const nextWords = Array.from(nextPhraseEl.querySelectorAll(".rotating-word"));
+    const staggerDelay = prefersReducedMotion.matches ? 0 : 55;
+    
+    nextWords.forEach((word, index) => {
+      word.style.transitionDelay = `${index * staggerDelay}ms`;
+    });
+
+    requestAnimationFrame(() => {
+      if (window._rotatingTextGeneration !== generation) return;
+      
+      nextPhraseEl.classList.add("is-visible");
+      nextWords.forEach((word) => {
+        word.classList.add("is-active");
+      });
+    });
+
+    const currentPhraseEl = stage.querySelector(".rotating-phrase.is-visible:not(:last-child)");
+    if (currentPhraseEl) {
+      const currentWords = Array.from(currentPhraseEl.querySelectorAll(".rotating-word"));
+      currentPhraseEl.classList.remove("is-visible");
+      currentPhraseEl.classList.add("is-exiting");
+      
+      currentWords.forEach((word) => {
+        word.style.transitionDelay = "0ms";
+        word.classList.remove("is-active");
+        word.classList.add("is-exiting");
+      });
+      
+      addTimeout(() => {
+        currentPhraseEl.remove();
+      }, 450);
+    }
+
+    currentPhraseIndex = nextPhraseIndex;
+    addTimeout(rotate, 3800);
+  };
+
+  addTimeout(rotate, 3800);
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      timers.forEach((id) => clearTimeout(id));
+    } else {
+      if (window._rotatingTextGeneration === generation) {
+        generation = ++window._rotatingTextGeneration;
+        
+        const phrases = Array.from(stage.querySelectorAll(".rotating-phrase"));
+        if (phrases.length > 0) {
+          const activePhrase = phrases[phrases.length - 1];
+          phrases.forEach((p) => {
+            if (p !== activePhrase) p.remove();
+          });
+          activePhrase.className = "rotating-phrase is-visible";
+          activePhrase.querySelectorAll(".rotating-word").forEach((w) => {
+            w.style.transitionDelay = "0ms";
+            w.className = "rotating-word is-active";
+          });
+        }
+        
+        addTimeout(rotate, 3800);
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  
+  heroHeadlineInterval = () => {
+    cleanup();
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}
+
+function animateHeadlineReveal(titleElement, line1, line2) {
+  if (!titleElement) return;
+  const isEn = appLocale.current === "en";
+  const nextKey = `${appLocale.current}|${line1}|${line2}`;
+
+  if (titleElement.dataset.revealKey !== nextKey) {
+    titleElement.dataset.revealKey = nextKey;
+    titleElement.classList.add("hero-morph-title");
+    titleElement.classList.remove("is-glitching");
+    titleElement.innerHTML = `
+      <span class="hero-morph-brand">${line1}</span>
+      <div class="rotating-stage"></div>
+    `;
+    const stage = titleElement.querySelector(".rotating-stage");
+    const firstPhraseObj = isEn ? {
+      lines: [
+        "THE INTELLIGENT",
+        "MUSIC",
+        "MARKETPLACE"
+      ]
+    } : {
+      lines: [
+        "O MARKETPLACE",
+        "INTELIGENTE",
+        "DA MÚSICA"
+      ]
+    };
+    
+    const firstPhraseEl = createPhraseElement(firstPhraseObj.lines);
+    firstPhraseEl.classList.add("is-visible");
+    firstPhraseEl.querySelectorAll(".rotating-word").forEach((word) => {
+      word.classList.add("is-active");
+    });
+    stage.appendChild(firstPhraseEl);
+    
+    runHeroHeadlineCycler(titleElement);
+    requestAnimationFrame(() => titleElement.classList.add("is-ready"));
+  }
 }
 
 function applyRoleDashboard() {
@@ -5519,7 +5449,7 @@ function applyRoleDashboard() {
   const role = activeRoleKey();
   const hero = document.querySelector(".ai-hero");
   if (!hero) {
-    cleanupHeroHeadline();
+    stopHeroMorphTitle();
     return;
   }
   hero.classList.toggle("is-beatmaker-hero", role === "beatmaker");
@@ -19604,7 +19534,6 @@ function renderRoute() {
   }
   lastRoute = route;
   document.body.dataset.route = route;
-  if (route !== "feed") cleanupHeroHeadline();
   syncCheckoutStandaloneRoute(route);
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";

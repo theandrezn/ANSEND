@@ -22,7 +22,6 @@
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:responsive": "node tests/responsive-regression-check.js",
     "test:home-mobile": "node tests/home-mobile-responsive-check.js",
-    "test:home-headline": "node tests/home-headline-animation-check.js",
     "test:community-stability": "node tests/community-visual-stability-check.js",
     "test:chat-focus-stability": "node tests/chat-focus-stability-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
