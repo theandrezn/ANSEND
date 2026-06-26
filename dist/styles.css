@@ -41774,16 +41774,16 @@ body.auth-not-logged-in #appView.app-view {
 
 /* Feed headline guard: keep WAAPI fragments stable after broad responsive resets. */
 body[data-route="feed"] .ai-hero .hero-morph-title {
-  min-height: 4.35em !important;
-  font-size: clamp(42px, 4.8vw, 74px) !important;
+  min-height: 6.1em !important;
+  font-size: clamp(40px, 3.9vw, 60px) !important;
   line-height: .82 !important;
-  max-width: min(760px, 100%) !important;
+  max-width: min(680px, 100%) !important;
 }
 
 body[data-route="feed"] .ai-hero .hero-morph-main,
 body[data-route="feed"] .ai-hero .hero-morph-text,
 body[data-route="feed"] .ai-hero .hero-headline-rotator {
-  min-height: 3.34em !important;
+  min-height: 4.55em !important;
   font-size: 1em !important;
   line-height: .82 !important;
 }
@@ -41804,7 +41804,7 @@ body[data-route="feed"] .ai-hero .hero-headline-line {
 }
 
 body[data-route="feed"] .ai-hero .hero-headline-panel {
-  min-height: 3.34em !important;
+  min-height: 4.55em !important;
 }
 
 body[data-route="feed"] .ai-hero .hero-headline-word {
