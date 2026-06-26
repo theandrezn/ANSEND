@@ -41774,18 +41774,18 @@ body.auth-not-logged-in #appView.app-view {
 
 /* Feed headline guard: keep WAAPI fragments stable after broad responsive resets. */
 body[data-route="feed"] .ai-hero .hero-morph-title {
-  min-height: 3.82em !important;
-  font-size: clamp(40px, 3.45vw, 52px) !important;
-  line-height: .9 !important;
-  max-width: min(540px, 100%) !important;
+  min-height: 4.35em !important;
+  font-size: clamp(42px, 4.8vw, 74px) !important;
+  line-height: .82 !important;
+  max-width: min(760px, 100%) !important;
 }
 
 body[data-route="feed"] .ai-hero .hero-morph-main,
 body[data-route="feed"] .ai-hero .hero-morph-text,
 body[data-route="feed"] .ai-hero .hero-headline-rotator {
-  min-height: 2.76em !important;
+  min-height: 3.34em !important;
   font-size: 1em !important;
-  line-height: .92 !important;
+  line-height: .82 !important;
 }
 
 body[data-route="feed"] .ai-hero .hero-headline-line,
@@ -41800,6 +41800,20 @@ body[data-route="feed"] .ai-hero .hero-headline-line {
   display: block !important;
   width: max-content !important;
   max-width: 100% !important;
+  line-height: .82 !important;
+}
+
+body[data-route="feed"] .ai-hero .hero-headline-panel {
+  min-height: 3.34em !important;
+}
+
+body[data-route="feed"] .ai-hero .hero-headline-word {
+  display: inline-block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  line-height: inherit !important;
+  vertical-align: baseline !important;
 }
 
 @media (max-width: 767px) {
