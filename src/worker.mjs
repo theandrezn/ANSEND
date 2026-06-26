@@ -3,6 +3,17 @@ import { nexoDiagnosisSchema } from "./nexo/nexo-schema.mjs";
 import { validateNexoQuiz } from "./nexo/nexo-validation.mjs";
 import { ANSEND_ROUTES, inferNexoRouteAction, publicNexoRoutes, resolveNexoRouteKey } from "./nexo/ansend-routes.mjs";
 import {
+  normalizeSearchableBeat,
+  normalizeSearchableProfessional,
+} from "./nexo/nexo-catalog-foundation.mjs";
+import { validateNexoSearchRequest } from "./nexo/search/schema.mjs";
+import { normalizeNexoSearchFilters } from "./nexo/search/normalize.mjs";
+import {
+  NEXO_BEAT_SEARCH_VERSION,
+  NEXO_SEARCH_MAX_CANDIDATES,
+  searchNexoEntities,
+} from "./nexo/search/service.mjs";
+import {
   NEXO_ALGORITHM_VERSION,
   NEXO_PROMPT_VERSION,
   classifyNexoIntent,
@@ -35,7 +46,7 @@ function securityHeadersFor(request, contentType = "") {
       "frame-ancestors 'none'",
       "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://www.youtube.com https://sdk.mercadopago.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://qxujynzqdursxaehchik.supabase.co https://i.ytimg.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+      "img-src 'self' data: blob: https://qxujynzqdursxaehchik.supabase.co https://i.ytimg.com https://i.scdn.co https://mosaic.scdn.co https://lh3.googleusercontent.com https://*.googleusercontent.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' blob: https://qxujynzqdursxaehchik.supabase.co",
       "connect-src 'self' https://qxujynzqdursxaehchik.supabase.co wss://qxujynzqdursxaehchik.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://api.mercadopago.com https://*.mercadopago.com",
@@ -149,7 +160,7 @@ function clientKey(request, userId = "anonymous") {
   ].filter(Boolean).join(":");
 }
 
-function checkRateLimit(request, { userId = "anonymous", limit = 20, windowMs = 60_000 } = {}) {
+function checkRateLimit(request, { userId = "anonymous", limit = 20, windowMs = 60_000, errorCode = "" } = {}) {
   const key = clientKey(request, userId);
   const now = Date.now();
   const bucket = rateLimitStore.get(key);
@@ -159,7 +170,11 @@ function checkRateLimit(request, { userId = "anonymous", limit = 20, windowMs = 
   }
   bucket.count += 1;
   if (bucket.count > limit) {
-    return jsonResponse({ success: false, error: "Muitas tentativas em pouco tempo. Aguarde um momento e tente novamente." }, {
+    const message = "Muitas tentativas em pouco tempo. Aguarde um momento e tente novamente.";
+    return jsonResponse({
+      success: false,
+      error: errorCode ? { code: errorCode, message } : message,
+    }, {
       status: 429,
       headers: { "Retry-After": String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))) },
     });
@@ -276,6 +291,924 @@ async function supabaseAuthedRest(env, path, authHeader = "", init = {}) {
   return { configured: true, data, error: null };
 }
 
+async function supabaseUserRest(env, path, authHeader = "", init = {}) {
+  const { url, publishableKey } = supabaseServiceConfig(env);
+  if (!url || !publishableKey || !/^Bearer\s+/i.test(authHeader)) {
+    return { configured: false, data: null, error: "Consulta autenticada do Supabase indisponivel." };
+  }
+  const response = await fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: publishableKey,
+      Authorization: authHeader,
+      "Content-Type": "application/json; charset=utf-8",
+      ...(init.headers || {}),
+    },
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    return { configured: true, data: null, error: data?.message || data?.hint || text || "Erro Supabase." };
+  }
+  return { configured: true, data, error: null };
+}
+
+function normalizeSpotifyPlaylistInput(value = "") {
+  const raw = cleanRecommendationText(value, 500);
+  const idPattern = /^[A-Za-z0-9]{22}$/;
+  let playlistId = "";
+  if (/^spotify:playlist:/i.test(raw)) {
+    playlistId = raw.split(":")[2] || "";
+  } else {
+    try {
+      const parsed = new URL(raw);
+      const host = parsed.hostname.toLowerCase();
+      const segments = parsed.pathname.split("/").filter(Boolean);
+      const playlistIndex = segments.findIndex((segment) => segment.toLowerCase() === "playlist");
+      if ((host === "spotify.com" || host.endsWith(".spotify.com")) && playlistIndex >= 0) {
+        playlistId = segments[playlistIndex + 1] || "";
+      }
+    } catch (_error) {
+      playlistId = raw;
+    }
+  }
+  playlistId = String(playlistId || "").split("?")[0].trim();
+  if (!idPattern.test(playlistId)) {
+    return { ok: false, error: { code: "invalid_spotify_playlist_url", message: "Informe um link publico de playlist do Spotify ou URI spotify:playlist." } };
+  }
+  return {
+    ok: true,
+    playlistId,
+    spotifyUrl: `https://open.spotify.com/playlist/${playlistId}`,
+  };
+}
+
+function normalizeOfficialSpotifyPlaylistLink(value = "") {
+  const raw = cleanRecommendationText(value, 800);
+  const idPattern = /^[A-Za-z0-9]{22}$/;
+  try {
+    const parsed = new URL(raw);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    if (parsed.protocol !== "https:" || parsed.hostname.toLowerCase() !== "open.spotify.com" || segments.length < 2 || segments[0] !== "playlist") {
+      return { ok: false, error: { code: "invalid_spotify_playlist_url", message: "Cole um link oficial open.spotify.com/playlist/{id}." } };
+    }
+    const playlistId = segments[1] || "";
+    if (!idPattern.test(playlistId)) {
+      return { ok: false, error: { code: "invalid_spotify_playlist_url", message: "ID da playlist Spotify invalido." } };
+    }
+    return {
+      ok: true,
+      playlistId,
+      spotifyUrl: `https://open.spotify.com/playlist/${playlistId}`,
+    };
+  } catch (_error) {
+    return { ok: false, error: { code: "invalid_spotify_playlist_url", message: "Cole um link oficial open.spotify.com/playlist/{id}." } };
+  }
+}
+
+function normalizeSpotifyTrackUri(value = "") {
+  const raw = cleanRecommendationText(value, 120);
+  const match = raw.match(/^spotify:track:([A-Za-z0-9]{22})$/);
+  if (!match) {
+    return { ok: false, error: { code: "invalid_spotify_track_uri", message: "Envie uma Spotify Track URI valida." } };
+  }
+  return { ok: true, trackId: match[1], trackUri: `spotify:track:${match[1]}` };
+}
+
+async function spotifyRequest(url, init = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const data = await response.json().catch(() => ({}));
+    return { response, data };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function getSpotifyAccessToken(env) {
+  const clientId = cleanRecommendationText(env.SPOTIFY_CLIENT_ID, 200);
+  const clientSecret = cleanRecommendationText(env.SPOTIFY_CLIENT_SECRET, 400);
+  if (!clientId || !clientSecret) {
+    return { ok: false, code: "spotify_not_configured", message: "Integracao Spotify nao configurada." };
+  }
+  const credentials = btoa(`${clientId}:${clientSecret}`);
+  const { response, data } = await spotifyRequest("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  }, 8000);
+  if (!response.ok || !data?.access_token) {
+    return { ok: false, code: "spotify_auth_failed", message: "Nao foi possivel autenticar a integracao Spotify." };
+  }
+  return { ok: true, token: data.access_token };
+}
+
+function normalizeSpotifyPlaylistPreview(data = {}, normalized) {
+  const image = Array.isArray(data.images) ? data.images.find((item) => item?.url) : null;
+  return {
+    spotify_playlist_id: normalized.playlistId,
+    spotify_url: data.external_urls?.spotify || normalized.spotifyUrl,
+    name: cleanRecommendationText(data.name, 160),
+    description: cleanRecommendationText(data.description, 600),
+    cover_url: cleanRecommendationText(image?.url, 1200) || null,
+    spotify_owner_id: cleanRecommendationText(data.owner?.id, 160) || null,
+    spotify_owner_name: cleanRecommendationText(data.owner?.display_name || data.owner?.id, 160) || null,
+    track_count: Number.isInteger(Number(data.tracks?.total)) ? Number(data.tracks.total) : null,
+    source_attribution: "Spotify",
+  };
+}
+
+async function handleSpotifyPlaylistPreview(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({ success: false, error: { code: "invalid_request", message: "Metodo nao permitido." } }, { status: 405 });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) {
+    return jsonResponse({ success: false, error: { code: "unauthorized", message: "Entre na sua conta ANSEND para continuar." } }, { status: 401 });
+  }
+  const limited = checkRateLimit(request, { userId: auth.user.id, limit: 18, windowMs: 60_000, errorCode: "rate_limited" });
+  if (limited) return limited;
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 4_000) {
+    return jsonResponse({ success: false, error: { code: "invalid_request", message: "Payload grande demais." } }, { status: 413 });
+  }
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({ success: false, error: { code: "invalid_json", message: "JSON invalido." } }, { status: 400 });
+  }
+  const normalized = normalizeSpotifyPlaylistInput(payload?.spotify_url || payload?.url || payload?.playlist_url || "");
+  if (!normalized.ok) return jsonResponse({ success: false, error: normalized.error }, { status: 400 });
+
+  const token = await getSpotifyAccessToken(env);
+  if (!token.ok) {
+    return jsonResponse({
+      success: true,
+      configured: false,
+      preview: {
+        spotify_playlist_id: normalized.playlistId,
+        spotify_url: normalized.spotifyUrl,
+        source_attribution: "Spotify",
+      },
+      warning: { code: token.code, message: "Integracao Spotify nao configurada. Preencha os dados manualmente e salve como rascunho." },
+    });
+  }
+
+  try {
+    const fields = "id,name,description,external_urls,images,owner(id,display_name),tracks(total)";
+    const { response, data } = await spotifyRequest(`https://api.spotify.com/v1/playlists/${normalized.playlistId}?fields=${encodeURIComponent(fields)}`, {
+      headers: { Authorization: `Bearer ${token.token}` },
+    }, 9000);
+    if (response.status === 404) {
+      return jsonResponse({ success: false, error: { code: "spotify_playlist_not_found", message: "Playlist nao encontrada ou nao publica." } }, { status: 404 });
+    }
+    if (response.status === 429) {
+      return jsonResponse({ success: false, error: { code: "spotify_rate_limited", message: "Spotify limitou a busca. Tente novamente em instantes." } }, { status: 429 });
+    }
+    if (!response.ok || !data?.id) {
+      return jsonResponse({ success: false, error: { code: "spotify_preview_failed", message: "Nao foi possivel obter a previa da playlist." } }, { status: 502 });
+    }
+    return jsonResponse({
+      success: true,
+      configured: true,
+      preview: normalizeSpotifyPlaylistPreview(data, normalized),
+    });
+  } catch (error) {
+    const aborted = error?.name === "AbortError";
+    return jsonResponse({
+      success: false,
+      error: {
+        code: aborted ? "spotify_timeout" : "spotify_preview_failed",
+        message: aborted ? "A busca no Spotify demorou demais. Tente novamente." : "Nao foi possivel obter a previa da playlist.",
+      },
+    }, { status: aborted ? 504 : 502 });
+  }
+}
+
+const SPOTIFY_SCOPES = Object.freeze([
+  "user-read-private",
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "playlist-modify-public",
+  "playlist-modify-private",
+]);
+const SPOTIFY_OAUTH_STATE_TTL_MS = 8 * 60 * 1000;
+
+function bytesToBase64Url(bytes) {
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(value = "") {
+  const padded = String(value).replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function randomToken(size = 32) {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
+}
+
+function spotifyOAuthConfig(env) {
+  return {
+    clientId: cleanRecommendationText(env.SPOTIFY_CLIENT_ID, 200),
+    clientSecret: cleanRecommendationText(env.SPOTIFY_CLIENT_SECRET, 400),
+    redirectUri: cleanRecommendationText(env.SPOTIFY_REDIRECT_URI, 600),
+    tokenKey: cleanRecommendationText(env.SPOTIFY_TOKEN_ENCRYPTION_KEY, 300),
+  };
+}
+
+function spotifyOAuthConfigured(env) {
+  const config = spotifyOAuthConfig(env);
+  return Boolean(config.clientId && config.clientSecret && config.redirectUri && config.tokenKey);
+}
+
+function safeSpotifyReturnPath(value = "#curadoria") {
+  const raw = cleanRecommendationText(value, 160);
+  if (!raw || raw === "#curadoria") return "#curadoria";
+  if (["#curadoria", "#curadoria-playlists", "#curadoria-perfil"].includes(raw)) return raw;
+  if (/^\/(#curadoria|#curadoria-playlists|#curadoria-perfil)$/.test(raw)) return raw.slice(1);
+  return "#curadoria";
+}
+
+async function hashSpotifyState(state = "", env) {
+  const config = spotifyOAuthConfig(env);
+  const input = config.tokenKey ? `${state}.${config.tokenKey}` : state;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+
+async function importSpotifyTokenKey(env) {
+  const raw = spotifyOAuthConfig(env).tokenKey;
+  if (!raw) throw new Error("SPOTIFY_TOKEN_ENCRYPTION_KEY ausente.");
+  let bytes = new TextEncoder().encode(raw);
+  try {
+    const decoded = base64UrlToBytes(raw);
+    if (decoded.byteLength >= 32) bytes = decoded;
+  } catch (_error) {
+    bytes = new TextEncoder().encode(raw);
+  }
+  if (bytes.byteLength < 32) {
+    throw new Error("SPOTIFY_TOKEN_ENCRYPTION_KEY precisa ter ao menos 32 bytes.");
+  }
+  return crypto.subtle.importKey("raw", bytes.slice(0, 32), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptSpotifyToken(value = "", env) {
+  const key = await importSpotifyTokenKey(env);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(value));
+  return `v1:${bytesToBase64Url(iv)}:${bytesToBase64Url(new Uint8Array(encrypted))}`;
+}
+
+async function decryptSpotifyToken(value = "", env) {
+  const [version, iv, ciphertext] = String(value || "").split(":");
+  if (version !== "v1" || !iv || !ciphertext) throw new Error("Token Spotify criptografado invalido.");
+  const key = await importSpotifyTokenKey(env);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64UrlToBytes(iv) }, key, base64UrlToBytes(ciphertext));
+  return new TextDecoder().decode(decrypted);
+}
+
+function publicSpotifyConnection(row = null) {
+  if (!row || row.connection_status === "disconnected") {
+    return { configured: true, connected: false, status: row?.connection_status || "disconnected" };
+  }
+  return {
+    configured: true,
+    connected: row.connection_status === "connected",
+    status: row.connection_status,
+    reconnect_required: row.connection_status === "reconnect_required" || row.connection_status === "revoked",
+    spotify_user_id: row.spotify_user_id || "",
+    display_name: row.spotify_display_name || "",
+    avatar_url: row.spotify_avatar_url || "",
+    country: row.country || "",
+    scopes: row.granted_scopes || [],
+    authorized_at: row.authorized_at || null,
+    last_synced_at: row.last_synced_at || null,
+    reconnect_required_at: row.reconnect_required_at || null,
+    last_error_code: row.last_error_code || null,
+  };
+}
+
+async function getSpotifyConnectionForUser(env, userId) {
+  const result = await supabaseRest(env, `spotify_connections?select=*&user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+  if (result.error) return { ok: false, error: result.error };
+  return { ok: true, connection: result.data?.[0] || null };
+}
+
+async function getSpotifyConnectionWithSecrets(env, userId) {
+  const connectionResult = await getSpotifyConnectionForUser(env, userId);
+  if (!connectionResult.ok) return connectionResult;
+  const connection = connectionResult.connection;
+  if (!connection || connection.connection_status !== "connected") return { ok: false, code: "spotify_reconnect_required", connection };
+  const secretsResult = await supabaseRest(env, `spotify_connection_secrets?select=*&connection_id=eq.${connection.id}&limit=1`);
+  if (secretsResult.error || !secretsResult.data?.[0]) return { ok: false, code: "spotify_secret_missing", connection };
+  return { ok: true, connection, secrets: secretsResult.data[0] };
+}
+
+async function markSpotifyReconnectRequired(env, connectionId, code = "invalid_grant") {
+  if (!connectionId) return;
+  if (code === "invalid_grant") {
+    await supabaseRest(env, `spotify_connection_secrets?connection_id=eq.${connectionId}`, { method: "DELETE" });
+  }
+  await supabaseRest(env, `spotify_connections?id=eq.${connectionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      connection_status: code === "invalid_grant" ? "revoked" : "reconnect_required",
+      reconnect_required_at: new Date().toISOString(),
+      last_error_code: cleanRecommendationText(code, 80),
+    }),
+  });
+}
+
+async function refreshSpotifyAccessToken(env, connection, secrets) {
+  const refreshToken = await decryptSpotifyToken(secrets.encrypted_refresh_token, env);
+  const config = spotifyOAuthConfig(env);
+  const credentials = btoa(`${config.clientId}:${config.clientSecret}`);
+  const { response, data } = await spotifyRequest("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }).toString(),
+  }, 9000);
+  if (!response.ok || !data?.access_token) {
+    if (data?.error === "invalid_grant") await markSpotifyReconnectRequired(env, connection.id, "invalid_grant");
+    return { ok: false, code: data?.error || "spotify_refresh_failed" };
+  }
+  const expiresAt = new Date(Date.now() + Math.max(60, Number(data.expires_in || 3600)) * 1000).toISOString();
+  const encryptedAccessToken = await encryptSpotifyToken(data.access_token, env);
+  const encryptedRefreshToken = data.refresh_token
+    ? await encryptSpotifyToken(data.refresh_token, env)
+    : secrets.encrypted_refresh_token;
+  await supabaseRest(env, `spotify_connection_secrets?connection_id=eq.${connection.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      encrypted_access_token: encryptedAccessToken,
+      encrypted_refresh_token: encryptedRefreshToken,
+      encryption_version: "v1",
+    }),
+  });
+  await supabaseRest(env, `spotify_connections?id=eq.${connection.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      access_token_expires_at: expiresAt,
+      last_refreshed_at: new Date().toISOString(),
+      connection_status: "connected",
+      last_error_code: null,
+    }),
+  });
+  return { ok: true, accessToken: data.access_token, expiresAt };
+}
+
+async function getValidSpotifyAccessToken(env, userId) {
+  const loaded = await getSpotifyConnectionWithSecrets(env, userId);
+  if (!loaded.ok) return loaded;
+  const { connection, secrets } = loaded;
+  const expiresAt = connection.access_token_expires_at ? new Date(connection.access_token_expires_at).getTime() : 0;
+  if (expiresAt > Date.now() + 90_000) {
+    return { ok: true, accessToken: await decryptSpotifyToken(secrets.encrypted_access_token, env), connection };
+  }
+  const refreshed = await refreshSpotifyAccessToken(env, connection, secrets);
+  if (!refreshed.ok) return { ...refreshed, connection };
+  return { ok: true, accessToken: refreshed.accessToken, connection: { ...connection, access_token_expires_at: refreshed.expiresAt } };
+}
+
+async function spotifyApi(env, userId, path, init = {}, retry = true) {
+  const token = await getValidSpotifyAccessToken(env, userId);
+  if (!token.ok) return { ok: false, status: 401, code: token.code || "spotify_reconnect_required", data: null, connection: token.connection };
+  const { response, data } = await spotifyRequest(`https://api.spotify.com/v1${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      "Content-Type": "application/json; charset=utf-8",
+      ...(init.headers || {}),
+    },
+  }, 10_000);
+  if (response.status === 401 && retry) {
+    const loaded = await getSpotifyConnectionWithSecrets(env, userId);
+    if (loaded.ok) {
+      const refreshed = await refreshSpotifyAccessToken(env, loaded.connection, loaded.secrets);
+      if (refreshed.ok) return spotifyApi(env, userId, path, init, false);
+      return { ok: false, status: 401, code: refreshed.code || "spotify_reconnect_required", data, connection: loaded.connection };
+    }
+    return { ok: false, status: 401, code: loaded.code || "spotify_reconnect_required", data, connection: token.connection };
+  }
+  if (response.status === 429) {
+    return { ok: false, status: 429, code: "spotify_rate_limited", retryAfter: response.headers.get("Retry-After") || "", data, connection: token.connection };
+  }
+  if (!response.ok) {
+    const code = response.status === 403
+      ? "spotify_forbidden"
+      : response.status === 404
+        ? "spotify_not_found"
+        : response.status >= 500
+          ? "spotify_unavailable"
+          : "spotify_request_failed";
+    return { ok: false, status: response.status, code, data, connection: token.connection };
+  }
+  return { ok: true, status: response.status, data, connection: token.connection };
+}
+
+function normalizeSpotifyImage(images = []) {
+  return Array.isArray(images) ? images.find((item) => item?.url)?.url || null : null;
+}
+
+function normalizeConnectedSpotifyPlaylist(item = {}, connection = {}, importedIds = new Set()) {
+  const ownerId = cleanRecommendationText(item.owner?.id, 160);
+  const isOwner = ownerId && ownerId === connection.spotify_user_id;
+  const isCollaborative = Boolean(item.collaborative);
+  const ownershipType = isOwner ? "owner" : isCollaborative ? "collaborator" : "followed";
+  const eligible = ownershipType === "owner" || ownershipType === "collaborator";
+  return {
+    spotify_playlist_id: cleanRecommendationText(item.id, 80),
+    spotify_url: item.external_urls?.spotify || `https://open.spotify.com/playlist/${cleanRecommendationText(item.id, 80)}`,
+    name: cleanRecommendationText(item.name, 180),
+    description: cleanRecommendationText(item.description, 700),
+    cover_url: normalizeSpotifyImage(item.images),
+    spotify_owner_id: ownerId || null,
+    spotify_owner_name: cleanRecommendationText(item.owner?.display_name || ownerId, 160) || null,
+    track_count: Number.isInteger(Number(item.tracks?.total)) ? Number(item.tracks.total) : null,
+    spotify_public: item.public === null ? null : Boolean(item.public),
+    spotify_collaborative: isCollaborative,
+    spotify_snapshot_id: cleanRecommendationText(item.snapshot_id, 220) || null,
+    ownership_type: ownershipType,
+    verification_status: eligible ? "pending" : "unverified",
+    eligible,
+    imported: importedIds.has(cleanRecommendationText(item.id, 80)),
+    ineligible_reason: eligible ? "" : "Esta conta acompanha a playlist, mas nao foi possivel confirmar que possui permissao para gerencia-la.",
+  };
+}
+
+async function listImportedSpotifyPlaylistIds(env, userId) {
+  const rows = await supabaseRest(env, `curator_profiles?select=id,curator_playlists(spotify_playlist_id)&user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+  const playlists = rows.data?.[0]?.curator_playlists || [];
+  return new Set(playlists.map((item) => cleanRecommendationText(item.spotify_playlist_id, 80)).filter(Boolean));
+}
+
+function spotifyJsonError(code, message, status = 400, extra = {}) {
+  return jsonResponse({ success: false, error: { code, message }, ...extra }, { status });
+}
+
+async function handleSpotifyOAuthStart(request, env) {
+  if (!spotifyOAuthConfigured(env)) {
+    return spotifyJsonError("spotify_not_configured", "Integracao Spotify nao configurada.", 503, { configured: false });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const url = new URL(request.url);
+  const returnPath = safeSpotifyReturnPath(url.searchParams.get("return_path") || "#curadoria");
+  const state = randomToken(36);
+  const stateHash = await hashSpotifyState(state, env);
+  const expiresAt = new Date(Date.now() + SPOTIFY_OAUTH_STATE_TTL_MS).toISOString();
+  const saved = await supabaseRest(env, "spotify_oauth_states", {
+    method: "POST",
+    body: JSON.stringify([{ user_id: auth.user.id, state_hash: stateHash, return_path: returnPath, expires_at: expiresAt }]),
+  });
+  if (saved.error) return spotifyJsonError("spotify_state_failed", "Nao foi possivel iniciar a conexao Spotify.", 502);
+  const config = spotifyOAuthConfig(env);
+  const authorize = new URL("https://accounts.spotify.com/authorize");
+  authorize.searchParams.set("client_id", config.clientId);
+  authorize.searchParams.set("response_type", "code");
+  authorize.searchParams.set("redirect_uri", config.redirectUri);
+  authorize.searchParams.set("scope", SPOTIFY_SCOPES.join(" "));
+  authorize.searchParams.set("state", state);
+  if (request.headers.get("X-ANSEND-OAuth-Mode") !== "json") {
+    return Response.redirect(authorize.toString(), 302);
+  }
+  return jsonResponse({ success: true, configured: true, authorize_url: authorize.toString(), expires_at: expiresAt });
+}
+
+async function handleSpotifyOAuthCallback(request, env) {
+  const url = new URL(request.url);
+  const state = url.searchParams.get("state") || "";
+  const code = url.searchParams.get("code") || "";
+  const denied = url.searchParams.get("error") || "";
+  let returnPath = "#curadoria";
+  try {
+    if (!spotifyOAuthConfigured(env) || !state) throw new Error("spotify_oauth_invalid_state");
+    const stateHash = await hashSpotifyState(state, env);
+    const stateResult = await supabaseRest(env, `spotify_oauth_states?select=*&state_hash=eq.${encodeURIComponent(stateHash)}&consumed_at=is.null&limit=1`);
+    const stateRow = stateResult.data?.[0];
+    if (!stateRow || new Date(stateRow.expires_at).getTime() < Date.now()) throw new Error("spotify_oauth_invalid_state");
+    returnPath = safeSpotifyReturnPath(stateRow.return_path);
+    await supabaseRest(env, `spotify_oauth_states?id=eq.${stateRow.id}`, { method: "PATCH", body: JSON.stringify({ consumed_at: new Date().toISOString(), consumed_reason: denied ? "denied" : "callback" }) });
+    if (denied) throw new Error("spotify_access_denied");
+    if (!code) throw new Error("spotify_code_missing");
+    const config = spotifyOAuthConfig(env);
+    const credentials = btoa(`${config.clientId}:${config.clientSecret}`);
+    const tokenResponse = await spotifyRequest("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: config.redirectUri }).toString(),
+    }, 10_000);
+    if (!tokenResponse.response.ok || !tokenResponse.data?.access_token || !tokenResponse.data?.refresh_token) {
+      throw new Error("spotify_token_exchange_failed");
+    }
+    const profileResponse = await spotifyRequest("https://api.spotify.com/v1/me", {
+      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
+    }, 10_000);
+    if (!profileResponse.response.ok || !profileResponse.data?.id) throw new Error("spotify_profile_failed");
+    const avatar = normalizeSpotifyImage(profileResponse.data.images);
+    const expiresAt = new Date(Date.now() + Math.max(60, Number(tokenResponse.data.expires_in || 3600)) * 1000).toISOString();
+    const connectionPayload = {
+      user_id: stateRow.user_id,
+      spotify_user_id: cleanRecommendationText(profileResponse.data.id, 160),
+      spotify_display_name: cleanRecommendationText(profileResponse.data.display_name || profileResponse.data.id, 180),
+      spotify_avatar_url: avatar,
+      country: cleanRecommendationText(profileResponse.data.country, 20) || null,
+      connection_status: "connected",
+      granted_scopes: cleanStringList(String(tokenResponse.data.scope || SPOTIFY_SCOPES.join(" ")).split(/\s+/), 20),
+      authorized_at: new Date().toISOString(),
+      access_token_expires_at: expiresAt,
+      reconnect_required_at: null,
+      disconnected_at: null,
+      last_error_code: null,
+    };
+    const connectionResult = await supabaseRest(env, "spotify_connections?on_conflict=user_id", {
+      method: "POST",
+      body: JSON.stringify([connectionPayload]),
+    });
+    if (connectionResult.error || !connectionResult.data?.[0]?.id) throw new Error("spotify_connection_save_failed");
+    const connectionId = connectionResult.data[0].id;
+    await supabaseRest(env, "spotify_connection_secrets?on_conflict=connection_id", {
+      method: "POST",
+      body: JSON.stringify([{
+        connection_id: connectionId,
+        encrypted_access_token: await encryptSpotifyToken(tokenResponse.data.access_token, env),
+        encrypted_refresh_token: await encryptSpotifyToken(tokenResponse.data.refresh_token, env),
+        encryption_version: "v1",
+      }]),
+    });
+    return Response.redirect(`https://ansendmusic.site/${returnPath}?spotify=connected`, 302);
+  } catch (error) {
+    console.warn("[ANSEND spotify] oauth callback failed", { code: error?.message || "spotify_callback_failed" });
+    const safeCode = /access_denied/.test(error?.message || "") ? "denied" : "error";
+    return Response.redirect(`https://ansendmusic.site/${returnPath}?spotify=${safeCode}`, 302);
+  }
+}
+
+async function handleSpotifyConnection(request, env) {
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  if (!spotifyOAuthConfigured(env)) {
+    return jsonResponse({ success: true, configured: false, connection: { configured: false, connected: false, status: "not_configured" } });
+  }
+  const result = await getSpotifyConnectionForUser(env, auth.user.id);
+  if (!result.ok) return spotifyJsonError("spotify_connection_failed", "Nao foi possivel carregar a conexao Spotify.", 502);
+  return jsonResponse({ success: true, configured: true, connection: publicSpotifyConnection(result.connection) });
+}
+
+async function handleSpotifyStatus(request, env) {
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  if (!spotifyOAuthConfigured(env)) {
+    return jsonResponse({ success: true, connected: false, displayName: "", spotifyUserId: "", scopes: [], reconnectRequired: false, configured: false });
+  }
+  const result = await getSpotifyConnectionForUser(env, auth.user.id);
+  if (!result.ok) return spotifyJsonError("spotify_connection_failed", "Nao foi possivel carregar a conexao Spotify.", 502);
+  const connection = result.connection || {};
+  return jsonResponse({
+    success: true,
+    configured: true,
+    connected: connection.connection_status === "connected",
+    displayName: connection.spotify_display_name || "",
+    spotifyUserId: connection.spotify_user_id || "",
+    scopes: connection.granted_scopes || [],
+    reconnectRequired: connection.connection_status === "reconnect_required" || connection.connection_status === "revoked",
+  });
+}
+
+async function handleSpotifyDisconnect(request, env) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const result = await getSpotifyConnectionForUser(env, auth.user.id);
+  if (result.connection?.id) {
+    await supabaseRest(env, `spotify_oauth_states?user_id=eq.${auth.user.id}&consumed_at=is.null`, { method: "PATCH", body: JSON.stringify({ consumed_at: new Date().toISOString() }) });
+    await supabaseRest(env, `curator_playlists?spotify_connection_id=eq.${result.connection.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ verification_status: "access_lost", last_sync_status: "access_lost", sync_enabled: false }),
+    });
+    await supabaseRest(env, `curator_spotify_playlists?spotify_connection_id=eq.${result.connection.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ permission_status: "access_lost", last_error_code: "disconnected" }),
+    });
+    await supabaseRest(env, `spotify_connections?id=eq.${result.connection.id}`, { method: "DELETE" });
+  }
+  return jsonResponse({ success: true, connection: { configured: spotifyOAuthConfigured(env), connected: false, status: "disconnected" } });
+}
+
+async function handleSpotifyPlaylists(request, env) {
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const url = new URL(request.url);
+  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") || 20)));
+  const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
+  const importedIds = await listImportedSpotifyPlaylistIds(env, auth.user.id);
+  const result = await spotifyApi(env, auth.user.id, `/me/playlists?limit=${limit}&offset=${offset}`);
+  if (!result.ok) return spotifyJsonError(result.code || "spotify_playlists_failed", "Nao foi possivel listar suas playlists Spotify.", result.status || 502);
+  const playlists = (result.data.items || []).map((item) => normalizeConnectedSpotifyPlaylist(item, result.connection, importedIds));
+  return jsonResponse({
+    success: true,
+    playlists,
+    paging: {
+      limit: result.data.limit || limit,
+      offset: result.data.offset || offset,
+      total: result.data.total || playlists.length,
+      next: result.data.next || null,
+    },
+  });
+}
+
+async function loadCuratorProfileForUser(env, userId) {
+  const result = await supabaseRest(env, `curator_profiles?select=*&user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+  return result.data?.[0] || null;
+}
+
+async function saveOfficialCuratorSpotifyPlaylist(env, profile, connection, playlist) {
+  const normalized = normalizeConnectedSpotifyPlaylist(playlist, connection);
+  if (!normalized.eligible) {
+    return { ok: false, code: "spotify_playlist_not_editable", playlist: normalized };
+  }
+  const now = new Date().toISOString();
+  const officialPayload = {
+    curator_id: profile.id,
+    spotify_connection_id: connection.id,
+    spotify_playlist_id: normalized.spotify_playlist_id,
+    spotify_url: normalized.spotify_url,
+    name: normalized.name,
+    description: normalized.description || null,
+    cover_url: normalized.cover_url,
+    spotify_owner_id: normalized.spotify_owner_id,
+    spotify_owner_name: normalized.spotify_owner_name,
+    track_count: normalized.track_count,
+    spotify_public: normalized.spotify_public,
+    spotify_collaborative: normalized.spotify_collaborative,
+    spotify_snapshot_id: normalized.spotify_snapshot_id,
+    ownership_type: normalized.ownership_type,
+    permission_status: "verified",
+    verified_spotify_user_id: connection.spotify_user_id,
+    verified_at: now,
+    last_checked_at: now,
+    last_error_code: null,
+  };
+  const official = await supabaseRest(env, "curator_spotify_playlists?on_conflict=curator_id,spotify_playlist_id", {
+    method: "POST",
+    body: JSON.stringify([officialPayload]),
+  });
+  if (official.error || !official.data?.[0]) {
+    return { ok: false, code: "curator_spotify_playlist_save_failed", error: official.error };
+  }
+  const legacy = await upsertCuratorPlaylistFromSpotify(env, profile.user_id, profile, connection, playlist, { source: "manual" });
+  return { ok: true, playlist: official.data[0], legacy_playlist: legacy.playlist || null };
+}
+
+async function handleSpotifyResolveLink(request, env) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const payload = await request.json().catch(() => ({}));
+  const normalized = normalizeOfficialSpotifyPlaylistLink(payload?.url || payload?.spotify_url || payload?.playlist_url || "");
+  if (!normalized.ok) return jsonResponse({ success: false, error: normalized.error }, { status: 400 });
+  const profile = await loadCuratorProfileForUser(env, auth.user.id);
+  if (!profile?.id) return spotifyJsonError("curator_profile_required", "Crie seu perfil de curador antes de salvar playlists.", 409);
+  const fields = "id,name,description,external_urls,images,owner(id,display_name),tracks(total),public,collaborative,snapshot_id";
+  const result = await spotifyApi(env, auth.user.id, `/playlists/${encodeURIComponent(normalized.playlistId)}?fields=${encodeURIComponent(fields)}`);
+  if (!result.ok) {
+    const message = result.status === 404
+      ? "Playlist nao encontrada ou indisponivel para a conta conectada."
+      : result.status === 403
+        ? "Sua conta Spotify nao tem permissao para acessar esta playlist."
+        : "Nao foi possivel validar a playlist no Spotify.";
+    return spotifyJsonError(result.code || "spotify_playlist_resolve_failed", message, result.status || 502);
+  }
+  const saved = await saveOfficialCuratorSpotifyPlaylist(env, profile, result.connection, result.data);
+  if (!saved.ok) {
+    return spotifyJsonError(saved.code || "spotify_playlist_not_editable", "A playlist precisa pertencer a voce ou permitir edicao como colaborador.", 403, { playlist: saved.playlist || null });
+  }
+  return jsonResponse({ success: true, playlist: saved.playlist, legacy_playlist: saved.legacy_playlist });
+}
+
+async function fetchSpotifyPlaylistForUser(env, userId, spotifyPlaylistId) {
+  const fields = "id,name,description,external_urls,images,owner(id,display_name),tracks(total),public,collaborative,snapshot_id";
+  return spotifyApi(env, userId, `/playlists/${encodeURIComponent(spotifyPlaylistId)}?fields=${encodeURIComponent(fields)}`);
+}
+
+async function upsertCuratorPlaylistFromSpotify(env, userId, profile, connection, playlist, { moderationStatus = "draft", source = "import" } = {}) {
+  const normalized = normalizeConnectedSpotifyPlaylist(playlist, connection);
+  if (!normalized.eligible) return { ok: false, code: "spotify_playlist_not_controlled", playlist: normalized };
+  const verificationMethod = normalized.ownership_type === "owner" ? "owner" : "collaborator_access";
+  const payload = {
+    curator_profile_id: profile.id,
+    spotify_connection_id: connection.id,
+    spotify_playlist_id: normalized.spotify_playlist_id,
+    spotify_url: normalized.spotify_url,
+    name: normalized.name,
+    description: normalized.description || null,
+    cover_url: normalized.cover_url,
+    spotify_owner_id: normalized.spotify_owner_id,
+    spotify_owner_name: normalized.spotify_owner_name,
+    track_count: normalized.track_count,
+    spotify_snapshot_id: normalized.spotify_snapshot_id,
+    spotify_public: normalized.spotify_public,
+    spotify_collaborative: normalized.spotify_collaborative,
+    ownership_type: normalized.ownership_type,
+    verified_spotify_user_id: connection.spotify_user_id,
+    verification_method: verificationMethod,
+    verification_status: "verified",
+    verification_checked_at: new Date().toISOString(),
+    verified_at: new Date().toISOString(),
+    moderation_status: moderationStatus,
+    last_sync_status: "synced",
+    last_sync_at: new Date().toISOString(),
+    last_synced_at: new Date().toISOString(),
+    sync_enabled: true,
+  };
+  const saved = await supabaseRest(env, "curator_playlists?on_conflict=curator_profile_id,spotify_playlist_id", {
+    method: "POST",
+    body: JSON.stringify([payload]),
+  });
+  if (saved.error || !saved.data?.[0]) return { ok: false, code: "curator_playlist_save_failed", error: saved.error };
+  if (normalized.spotify_snapshot_id) {
+    await supabaseRest(env, "curator_playlist_snapshots?on_conflict=curator_playlist_id,spotify_snapshot_id", {
+      method: "POST",
+      body: JSON.stringify([{
+        curator_playlist_id: saved.data[0].id,
+        spotify_snapshot_id: normalized.spotify_snapshot_id,
+        track_count: normalized.track_count,
+        sync_source: source,
+      }]),
+    });
+  }
+  return { ok: true, playlist: saved.data[0] };
+}
+
+async function handleSpotifyPlaylistsImport(request, env) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const profile = await loadCuratorProfileForUser(env, auth.user.id);
+  if (!profile?.id) return spotifyJsonError("curator_profile_required", "Crie seu perfil de curador antes de importar playlists.", 409);
+  const payload = await request.json().catch(() => ({}));
+  const ids = [...new Set((Array.isArray(payload.playlist_ids) ? payload.playlist_ids : []).map((id) => cleanRecommendationText(id, 80)).filter((id) => /^[A-Za-z0-9]{22}$/.test(id)))].slice(0, 20);
+  if (!ids.length) return spotifyJsonError("invalid_playlist_ids", "Selecione ao menos uma playlist elegivel.", 400);
+  const connectionResult = await getSpotifyConnectionForUser(env, auth.user.id);
+  if (!connectionResult.connection?.id) return spotifyJsonError("spotify_reconnect_required", "Reconecte sua conta Spotify.", 401);
+  const imported = [];
+  const failed = [];
+  for (const id of ids) {
+    const playlistResult = await fetchSpotifyPlaylistForUser(env, auth.user.id, id);
+    if (!playlistResult.ok) {
+      failed.push({ spotify_playlist_id: id, code: playlistResult.code || "spotify_fetch_failed" });
+      continue;
+    }
+    const saved = await upsertCuratorPlaylistFromSpotify(env, auth.user.id, profile, playlistResult.connection, playlistResult.data, { source: "import" });
+    if (saved.ok) imported.push(saved.playlist);
+    else failed.push({ spotify_playlist_id: id, code: saved.code });
+  }
+  return jsonResponse({ success: true, imported, failed, partial: failed.length > 0 });
+}
+
+async function handleSpotifyPlaylistVerify(request, env, playlistId) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const rows = await supabaseRest(env, `curator_playlists?select=*,curator_profiles!inner(user_id)&id=eq.${encodeURIComponent(playlistId)}&curator_profiles.user_id=eq.${auth.user.id}&limit=1`);
+  const playlist = rows.data?.[0];
+  if (!playlist) return spotifyJsonError("playlist_not_found", "Playlist nao encontrada.", 404);
+  const fetched = await fetchSpotifyPlaylistForUser(env, auth.user.id, playlist.spotify_playlist_id);
+  if (!fetched.ok) {
+    await supabaseRest(env, `curator_playlists?id=eq.${playlist.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: fetched.status === 403 ? "access_lost" : "failed", verification_checked_at: new Date().toISOString(), last_sync_error_code: fetched.code }) });
+    return spotifyJsonError(fetched.code || "spotify_verify_failed", "Nao foi possivel confirmar o controle da playlist.", fetched.status || 502);
+  }
+  const normalized = normalizeConnectedSpotifyPlaylist(fetched.data, fetched.connection);
+  if (!normalized.eligible) {
+    await supabaseRest(env, `curator_playlists?id=eq.${playlist.id}`, { method: "PATCH", body: JSON.stringify({ verification_status: "failed", ownership_type: "followed", verification_checked_at: new Date().toISOString(), last_sync_error_code: "not_controlled" }) });
+    return spotifyJsonError("spotify_playlist_not_controlled", normalized.ineligible_reason, 403);
+  }
+  const saved = await upsertCuratorPlaylistFromSpotify(env, auth.user.id, { id: playlist.curator_profile_id }, fetched.connection, fetched.data, { moderationStatus: playlist.moderation_status, source: "manual" });
+  return jsonResponse({ success: saved.ok, playlist: saved.playlist || null, error: saved.ok ? null : { code: saved.code } }, { status: saved.ok ? 200 : 502 });
+}
+
+async function syncSingleCuratorPlaylist(env, userId, playlistId) {
+  const rows = await supabaseRest(env, `curator_playlists?select=*,curator_profiles!inner(user_id)&id=eq.${encodeURIComponent(playlistId)}&curator_profiles.user_id=eq.${userId}&limit=1`);
+  const playlist = rows.data?.[0];
+  if (!playlist) return { ok: false, code: "playlist_not_found" };
+  const fetched = await fetchSpotifyPlaylistForUser(env, userId, playlist.spotify_playlist_id);
+  if (!fetched.ok) {
+    await supabaseRest(env, `curator_playlists?id=eq.${playlist.id}`, { method: "PATCH", body: JSON.stringify({ last_sync_status: fetched.status === 403 ? "access_lost" : "failed", last_sync_error_code: fetched.code, last_sync_at: new Date().toISOString() }) });
+    return { ok: false, code: fetched.code || "spotify_sync_failed" };
+  }
+  const saved = await upsertCuratorPlaylistFromSpotify(env, userId, { id: playlist.curator_profile_id }, fetched.connection, fetched.data, { moderationStatus: playlist.moderation_status, source: "manual" });
+  return saved.ok ? { ok: true, playlist: saved.playlist } : { ok: false, code: saved.code };
+}
+
+async function handleSpotifyPlaylistSync(request, env, playlistId) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const result = await syncSingleCuratorPlaylist(env, auth.user.id, playlistId);
+  if (!result.ok) return spotifyJsonError(result.code || "spotify_sync_failed", "Nao foi possivel sincronizar a playlist.", 502);
+  return jsonResponse({ success: true, playlist: result.playlist });
+}
+
+async function handleSpotifySyncAll(request, env) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const connectionResult = await getSpotifyConnectionForUser(env, auth.user.id);
+  if (!connectionResult.connection?.id) return spotifyJsonError("spotify_reconnect_required", "Reconecte sua conta Spotify.", 401);
+  const list = await supabaseRest(env, `curator_playlists?select=id&spotify_connection_id=eq.${connectionResult.connection.id}&sync_enabled=eq.true&limit=25`);
+  const ids = (list.data || []).map((item) => item.id);
+  let updated = 0;
+  let failed = 0;
+  for (const id of ids) {
+    const result = await syncSingleCuratorPlaylist(env, auth.user.id, id);
+    if (result.ok) updated += 1;
+    else failed += 1;
+  }
+  await supabaseRest(env, `spotify_connections?id=eq.${connectionResult.connection.id}`, { method: "PATCH", body: JSON.stringify({ last_synced_at: new Date().toISOString() }) });
+  return jsonResponse({ success: true, updated, failed, partial: failed > 0 });
+}
+
+async function loadOfficialCuratorSpotifyPlaylistForUser(env, userId, playlistId) {
+  const id = cleanRecommendationText(playlistId, 90);
+  const filter = isUuid(id)
+    ? `id=eq.${encodeURIComponent(id)}`
+    : `spotify_playlist_id=eq.${encodeURIComponent(id)}`;
+  const result = await supabaseRest(env, `curator_spotify_playlists?select=*,curator_profiles!inner(user_id)&${filter}&curator_profiles.user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+  if (result.error) return { ok: false, code: "playlist_lookup_failed", error: result.error };
+  return { ok: true, playlist: result.data?.[0] || null };
+}
+
+async function handleSpotifyPlaylistItems(request, env, playlistId) {
+  if (request.method !== "POST") return spotifyJsonError("invalid_request", "Metodo nao permitido.", 405);
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) return auth.response;
+  const payload = await request.json().catch(() => ({}));
+  const track = normalizeSpotifyTrackUri(payload?.spotify_track_uri || payload?.track_uri || "");
+  if (!track.ok) return jsonResponse({ success: false, error: track.error }, { status: 400 });
+  const loaded = await loadOfficialCuratorSpotifyPlaylistForUser(env, auth.user.id, playlistId);
+  if (!loaded.ok) return spotifyJsonError(loaded.code, "Nao foi possivel carregar a playlist.", 502);
+  const playlist = loaded.playlist;
+  if (!playlist) return spotifyJsonError("playlist_not_found", "Playlist nao encontrada no seu perfil de curador.", 404);
+  if (playlist.permission_status !== "verified") {
+    return spotifyJsonError("spotify_playlist_not_editable", "Verifique a permissao da playlist antes de adicionar musicas.", 403);
+  }
+  const result = await spotifyApi(env, auth.user.id, `/playlists/${encodeURIComponent(playlist.spotify_playlist_id)}/items`, {
+    method: "POST",
+    body: JSON.stringify({ uris: [track.trackUri] }),
+  });
+  const basePlacement = {
+    curator_id: playlist.curator_id,
+    playlist_id: playlist.id,
+    submission_id: isUuid(payload?.submission_id) ? payload.submission_id : null,
+    spotify_track_id: track.trackId,
+    spotify_track_uri: track.trackUri,
+  };
+  if (!result.ok) {
+    await supabaseRest(env, "spotify_playlist_placements?on_conflict=playlist_id,spotify_track_uri", {
+      method: "POST",
+      body: JSON.stringify([{ ...basePlacement, status: "failed", error_code: result.code || "spotify_add_track_failed" }]),
+    });
+    const message = result.status === 403
+      ? "Sua conta Spotify nao tem permissao para editar esta playlist."
+      : result.status === 429
+        ? "Spotify limitou a requisicao. Tente novamente em instantes."
+        : "Nao foi possivel adicionar a faixa no Spotify.";
+    return spotifyJsonError(result.code || "spotify_add_track_failed", message, result.status || 502);
+  }
+  const placement = await supabaseRest(env, "spotify_playlist_placements?on_conflict=playlist_id,spotify_track_uri", {
+    method: "POST",
+    body: JSON.stringify([{
+      ...basePlacement,
+      added_at: new Date().toISOString(),
+      spotify_snapshot_id: cleanRecommendationText(result.data?.snapshot_id, 220) || null,
+      status: "added",
+      error_code: null,
+    }]),
+  });
+  await supabaseRest(env, `curator_spotify_playlists?id=eq.${playlist.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ spotify_snapshot_id: cleanRecommendationText(result.data?.snapshot_id, 220) || playlist.spotify_snapshot_id, last_checked_at: new Date().toISOString(), last_error_code: null }),
+  });
+  return jsonResponse({ success: true, placement: placement.data?.[0] || null, spotify_snapshot_id: result.data?.snapshot_id || null });
+}
+
 function searchTermFromMessages(messages = []) {
   const last = messages[messages.length - 1]?.content || "";
   return cleanRecommendationText(last, 180)
@@ -297,28 +1230,43 @@ async function collectNexoRetrievedData(env, authHeader, messages = []) {
   const retrievedData = { routes: publicNexoRoutes() };
   if (!term) return retrievedData;
   const [profiles, beats, posts] = await Promise.all([
-    supabaseAuthedRest(env, `public_profiles?select=id,username,display_name,artistic_name,account_role,bio,music_styles&or=(${supabaseOrFilter(["username", "display_name", "artistic_name", "bio"], term)})&limit=5`, authHeader),
-    supabaseAuthedRest(env, `public_catalog_items?select=id,title,producer,genre,price,price_label,user_id,status&or=(${supabaseOrFilter(["title", "producer", "genre"], term)})&limit=5`, authHeader),
-    supabaseAuthedRest(env, `hiring_posts?select=id,title,description,category,budget,work_mode,status,user_id,created_at&or=(${supabaseOrFilter(["title", "description", "category"], term)})&limit=5`, authHeader),
+    supabaseUserRest(env, `public_profiles?select=id,username,display_name,artistic_name,account_role,avatar_url,bio,music_styles,is_public&or=(${supabaseOrFilter(["username", "display_name", "artistic_name", "bio"], term)})&limit=5`, authHeader),
+    supabaseUserRest(env, `beats?select=id,user_id,title,producer_name,description,genre,subgenre,mood,tags,bpm,musical_key,status,is_public,sold_exclusively,cover_url,youtube_thumbnail_url,audio_url,youtube_url,youtube_embed_url,source_type,created_at,updated_at&status=eq.published&is_public=eq.true&sold_exclusively=eq.false&or=(${supabaseOrFilter(["title", "producer_name", "genre", "subgenre", "mood"], term)})&limit=12`, authHeader),
+    supabaseUserRest(env, `hiring_posts?select=id,title,description,category,budget,work_mode,status,user_id,created_at&or=(${supabaseOrFilter(["title", "description", "category"], term)})&limit=5`, authHeader),
   ]);
   if (!profiles.error && Array.isArray(profiles.data)) {
-    retrievedData.professionals = profiles.data.map((item) => ({
-      id: item.id,
-      username: item.username,
-      name: item.display_name || item.artistic_name,
-      role: item.account_role,
-      styles: item.music_styles,
-      bio: cleanRecommendationText(item.bio, 180),
-    }));
+    retrievedData.professionals = profiles.data
+      .filter((item) => item.is_public !== false)
+      .map((profile) => normalizeSearchableProfessional({ profile }));
   }
-  if (!beats.error && Array.isArray(beats.data)) {
-    retrievedData.beats = beats.data.map((item) => ({
-      id: item.id,
-      title: item.title,
-      producer: item.producer,
-      genre: item.genre,
-      price: item.price_label || item.price,
-    }));
+  if (!beats.error && Array.isArray(beats.data) && beats.data.length) {
+    const beatIds = beats.data.map((item) => item.id).filter(isUuid);
+    const producerIds = [...new Set(beats.data.map((item) => item.user_id).filter(isUuid))];
+    const [licenses, producers] = await Promise.all([
+      beatIds.length
+        ? supabaseUserRest(env, `beat_licenses?select=id,beat_id,license_key,name,price_cents,currency,is_active,is_custom,sort_order&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`, authHeader)
+        : Promise.resolve({ data: [], error: null }),
+      producerIds.length
+        ? supabaseUserRest(env, `public_profiles?select=id,username,display_name,artistic_name,account_role,avatar_url,bio,music_styles,is_public&id=in.(${producerIds.join(",")})`, authHeader)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (!licenses.error && !producers.error) {
+      const licensesByBeat = new Map();
+      for (const license of licenses.data || []) {
+        const list = licensesByBeat.get(license.beat_id) || [];
+        list.push(license);
+        licensesByBeat.set(license.beat_id, list);
+      }
+      const producersById = new Map((producers.data || []).map((producer) => [producer.id, producer]));
+      retrievedData.beats = beats.data
+        .map((beat) => normalizeSearchableBeat({
+          beat,
+          producer: producersById.get(beat.user_id) || null,
+          licenses: licensesByBeat.get(beat.id) || [],
+          authorized: true,
+        }))
+        .filter((beat) => beat.eligibility.recommendable);
+    }
   }
   if (!posts.error && Array.isArray(posts.data)) {
     retrievedData.communityPosts = posts.data.map((item) => ({
@@ -1839,8 +2787,8 @@ function nexoCandidateRelevance(candidate = {}, filters = {}) {
   const haystack = cleanRecommendationText([
     candidate.title,
     candidate.genre,
-    candidate.producer,
-    candidate.name,
+    candidate.producer?.display_name || candidate.producer,
+    candidate.display_name || candidate.name,
     candidate.role,
     ...(candidate.styles || []),
   ].flat().join(" "), 600).toLowerCase();
@@ -1877,9 +2825,9 @@ function buildNexoV2Response(message, retrievedData = {}, context = {}) {
   const source = wantsProfessionals ? (retrievedData.professionals || []) : (retrievedData.beats || []);
   const ranked = rankNexoCandidates(source.map((candidate) => ({
     ...candidate,
-    creatorId: candidate.user_id || candidate.id,
+    creatorId: candidate.producer?.id || candidate.user_id || candidate.id,
     relevance: nexoCandidateRelevance(candidate, classified.filters),
-    available: candidate.status ? candidate.status === "published" || candidate.status === "active" : true,
+    available: candidate.eligibility ? candidate.eligibility.recommendable : true,
     quality: candidate.quality || 0.5,
     trendVelocity: candidate.trend_score || 0,
     engagement: candidate.engagement || 0,
@@ -1897,12 +2845,18 @@ function buildNexoV2Response(message, retrievedData = {}, context = {}) {
       impression_id: crypto.randomUUID(),
       entity_type: entityType,
       entity_id: entityId,
-      title: candidate.name || candidate.title,
-      subtitle: wantsProfessionals ? candidate.role : [candidate.genre, candidate.producer].filter(Boolean).join(" · "),
+      title: candidate.display_name || candidate.name || candidate.title,
+      subtitle: wantsProfessionals ? candidate.role : [
+        candidate.genre,
+        candidate.producer?.display_name || candidate.producer,
+        candidate.price ? `${candidate.price.currency} ${(candidate.price.minimum_cents / 100).toFixed(2)}` : "",
+      ].filter(Boolean).join(" · "),
       reason: candidate.scoreComponents?.relevance >= 0.7 ? "Combina diretamente com os filtros do seu pedido." : "E uma opcao real disponivel no catalogo ANSEND.",
       score: candidate.score,
       badges: candidate.scoreComponents?.trend >= 0.7 ? ["Em alta"] : [],
-      primary_action: { label: wantsProfessionals ? "Ver perfil" : "Ouvir beat", route_key: primaryRoute, params },
+      primary_action: wantsProfessionals
+        ? { label: "Ver perfil", route_key: primaryRoute, params }
+        : { label: "Ouvir beat", action_key: "PLAY_BEAT_PREVIEW", params },
       secondary_action: wantsProfessionals ? null : { label: "Adicionar ao carrinho", action_key: "ADD_TO_CART", params: { beatId: entityId } },
     };
   });
@@ -1918,6 +2872,175 @@ function buildNexoV2Response(message, retrievedData = {}, context = {}) {
     needs_clarification: needsClarification,
     clarifying_question: needsClarification ? "Voce quer um beat mais sombrio, melodico ou agressivo?" : null,
   });
+}
+
+function nexoSearchBeatPath(filters) {
+  const select = [
+    "id", "user_id", "title", "producer_name", "description", "genre", "subgenre",
+    "mood", "tags", "bpm", "musical_key", "status", "is_public", "sold_exclusively",
+    "cover_url", "youtube_thumbnail_url", "audio_url", "youtube_url", "youtube_embed_url",
+    "source_type", "published_at", "created_at", "updated_at",
+  ].join(",");
+  const params = [
+    `select=${encodeURIComponent(select)}`,
+    "status=eq.published",
+    "is_public=eq.true",
+    "sold_exclusively=eq.false",
+    "limit=121",
+  ];
+  if (filters.producer_id) params.push(`user_id=eq.${filters.producer_id}`);
+  if (filters.bpm_min !== null) params.push(`bpm=gte.${filters.bpm_min}`);
+  if (filters.bpm_max !== null) params.push(`bpm=lte.${filters.bpm_max}`);
+  if (filters.musical_key) params.push(`musical_key=ilike.${encodeURIComponent(`*${filters.musical_key.raw}*`)}`);
+  if (filters.genres.length === 1) params.push(`genre=ilike.${encodeURIComponent(`*${filters.genres[0].raw}*`)}`);
+  return `beats?${params.join("&")}`;
+}
+
+async function loadNexoSearchCandidates(env, authHeader, filters) {
+  const beatsResponse = await supabaseUserRest(env, nexoSearchBeatPath(filters), authHeader);
+  if (beatsResponse.error || !Array.isArray(beatsResponse.data)) {
+    return { ok: false, code: "search_unavailable", error: beatsResponse.error || "Catalogo indisponivel." };
+  }
+  if (beatsResponse.data.length > NEXO_SEARCH_MAX_CANDIDATES) {
+    return { ok: false, code: "candidate_limit_exceeded", error: "A busca encontrou candidatos demais para um lote seguro." };
+  }
+  if (!beatsResponse.data.length) return { ok: true, candidates: [] };
+
+  const beatIds = beatsResponse.data.map((beat) => beat.id).filter(isUuid);
+  const producerIds = [...new Set(beatsResponse.data.map((beat) => beat.user_id).filter(isUuid))];
+  const [licensesResponse, profilesResponse] = await Promise.all([
+    supabaseUserRest(
+      env,
+      `beat_licenses?select=id,beat_id,license_key,name,price_cents,currency,is_active,is_custom,sort_order&beat_id=in.(${beatIds.join(",")})&is_active=eq.true`,
+      authHeader,
+    ),
+    supabaseUserRest(
+      env,
+      `public_profiles?select=id,username,display_name,artistic_name,account_role,avatar_url,bio,music_styles,is_public&id=in.(${producerIds.join(",")})`,
+      authHeader,
+    ),
+  ]);
+  if (licensesResponse.error || profilesResponse.error) {
+    return {
+      ok: false,
+      code: "search_unavailable",
+      error: licensesResponse.error || profilesResponse.error || "Dados comerciais indisponiveis.",
+    };
+  }
+
+  const licensesByBeat = new Map();
+  for (const license of licensesResponse.data || []) {
+    const licenses = licensesByBeat.get(license.beat_id) || [];
+    licenses.push(license);
+    licensesByBeat.set(license.beat_id, licenses);
+  }
+  const profilesById = new Map((profilesResponse.data || []).map((profile) => [profile.id, profile]));
+  return {
+    ok: true,
+    candidates: beatsResponse.data.map((beat) => ({
+      beat,
+      producer: profilesById.get(beat.user_id) || null,
+      licenses: licensesByBeat.get(beat.id) || [],
+      authorized: true,
+    })),
+  };
+}
+
+async function handleNexoSearch(request, env) {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (request.method !== "POST") {
+    return jsonResponse({
+      success: false,
+      error: { code: "invalid_request", message: "Metodo nao permitido." },
+    }, { status: 405 });
+  }
+  const auth = await requireAuthenticatedUser(request, env);
+  if (!auth.ok) {
+    const unavailable = auth.response.status >= 500;
+    return jsonResponse({
+      success: false,
+      error: {
+        code: unavailable ? "search_unavailable" : "unauthorized",
+        message: unavailable ? "Busca indisponivel no momento." : "Entre na sua conta ANSEND para buscar.",
+      },
+    }, { status: unavailable ? 503 : 401 });
+  }
+  const limited = checkRateLimit(request, {
+    userId: auth.user.id,
+    limit: 20,
+    windowMs: 60_000,
+    errorCode: "rate_limited",
+  });
+  if (limited) return limited;
+
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 12_000) {
+    return jsonResponse({
+      success: false,
+      error: { code: "invalid_request", message: "Payload de busca grande demais." },
+    }, { status: 413 });
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch (_error) {
+    return jsonResponse({
+      success: false,
+      error: { code: "invalid_json", message: "JSON de busca invalido." },
+    }, { status: 400 });
+  }
+  if (JSON.stringify(payload).length > 12_000) {
+    return jsonResponse({
+      success: false,
+      error: { code: "invalid_request", message: "Payload de busca grande demais." },
+    }, { status: 413 });
+  }
+
+  const validation = validateNexoSearchRequest(payload);
+  if (!validation.valid) {
+    return jsonResponse({ success: false, error: validation.error }, { status: 400 });
+  }
+  if (validation.request.entity_type !== "beat") {
+    return jsonResponse({
+      success: false,
+      error: { code: "unsupported_entity_type", message: "A busca desta fase suporta somente beats." },
+    }, { status: 400 });
+  }
+
+  const requestId = crypto.randomUUID();
+  const startedAt = performance.now();
+  const filters = normalizeNexoSearchFilters(validation.request);
+  const loaded = await loadNexoSearchCandidates(env, auth.authHeader, filters);
+  if (!loaded.ok) {
+    const status = loaded.code === "candidate_limit_exceeded" ? 422 : 503;
+    return jsonResponse({
+      success: false,
+      error: { code: loaded.code, message: loaded.error },
+    }, { status });
+  }
+
+  const result = await searchNexoEntities(validation.request, {
+    candidates: loaded.candidates,
+    requestId,
+    now: Date.now(),
+  });
+  if (!result.success) {
+    return jsonResponse(result, { status: result.error.code === "candidate_limit_exceeded" ? 422 : 400 });
+  }
+
+  const durationMs = Number((performance.now() - startedAt).toFixed(3));
+  result.response.query_time_ms = durationMs;
+  console.info("nexo_search_completed", {
+    request_id: requestId,
+    entity_type: "beat",
+    candidate_count: loaded.candidates.length,
+    result_count: result.response.results.length,
+    zero_result: result.response.zero_result,
+    ranking_version: NEXO_BEAT_SEARCH_VERSION,
+    duration_ms: durationMs,
+  });
+  return jsonResponse(result);
 }
 
 async function handleNexoRecommend(request, env) {
@@ -2183,7 +3306,18 @@ async function handleOrderDownload(request, env) {
   return jsonResponse({ success: true, download_url: absoluteSignedUrl });
 }
 
-export { applyPromotionDiscounts, sanitizeIdentification, timingSafeHexEqual };
+export {
+  decryptSpotifyToken,
+  encryptSpotifyToken,
+  hashSpotifyState,
+  normalizeConnectedSpotifyPlaylist,
+  normalizeOfficialSpotifyPlaylistLink,
+  applyPromotionDiscounts,
+  normalizeSpotifyPlaylistInput,
+  normalizeSpotifyTrackUri,
+  sanitizeIdentification,
+  timingSafeHexEqual,
+};
 
 export default {
   async fetch(request, env) {
@@ -2241,6 +3375,87 @@ export default {
 
     if (url.pathname === "/api/nexo/chat") {
       response = await handleNexoChat(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/curadoria/spotify-preview") {
+      response = await handleSpotifyPlaylistPreview(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/connect" || url.pathname === "/api/spotify/oauth/start") {
+      response = await handleSpotifyOAuthStart(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/callback" || url.pathname === "/api/spotify/oauth/callback") {
+      response = await handleSpotifyOAuthCallback(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/status") {
+      response = await handleSpotifyStatus(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/connection") {
+      response = await handleSpotifyConnection(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/disconnect") {
+      response = await handleSpotifyDisconnect(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/playlists") {
+      response = request.method === "GET"
+        ? await handleSpotifyPlaylists(request, env)
+        : await handleSpotifyPlaylistsImport(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/playlists/import") {
+      response = await handleSpotifyPlaylistsImport(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/spotify/resolve-link") {
+      response = await handleSpotifyResolveLink(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    {
+      const itemsMatch = url.pathname.match(/^\/api\/spotify\/playlists\/([^/]+)\/items$/);
+      if (itemsMatch) {
+        response = await handleSpotifyPlaylistItems(request, env, itemsMatch[1]);
+        return withSecurityHeaders(response, request);
+      }
+    }
+
+    {
+      const verifyMatch = url.pathname.match(/^\/api\/spotify\/playlists\/([^/]+)\/verify$/);
+      if (verifyMatch) {
+        response = await handleSpotifyPlaylistVerify(request, env, verifyMatch[1]);
+        return withSecurityHeaders(response, request);
+      }
+    }
+
+    {
+      const syncMatch = url.pathname.match(/^\/api\/spotify\/playlists\/([^/]+)\/sync$/);
+      if (syncMatch) {
+        response = await handleSpotifyPlaylistSync(request, env, syncMatch[1]);
+        return withSecurityHeaders(response, request);
+      }
+    }
+
+    if (url.pathname === "/api/spotify/sync-all") {
+      response = await handleSpotifySyncAll(request, env);
+      return withSecurityHeaders(response, request);
+    }
+
+    if (url.pathname === "/api/nexo/search") {
+      response = await handleNexoSearch(request, env);
       return withSecurityHeaders(response, request);
     }
 

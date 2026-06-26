@@ -120,12 +120,16 @@ const staticRoutes = Object.freeze({
   PURCHASES: "compras",
   MY_PROFILE: "perfil",
   NEXO: "ia",
+  SERVICES: "servicos",
 });
 
 export function resolveNexoAction(routeKey = "", params = {}) {
   if (staticRoutes[routeKey]) return { ok: true, hash: staticRoutes[routeKey] };
   if (routeKey === "BEAT_DETAIL" && uuidPattern.test(String(params.beatId || ""))) return { ok: true, hash: `beat-${params.beatId}` };
   if (routeKey === "PROFILE_DETAIL" && uuidPattern.test(String(params.profileId || ""))) return { ok: true, hash: `perfil-${params.profileId}` };
+  if (routeKey === "PLAY_BEAT_PREVIEW" && uuidPattern.test(String(params.beatId || ""))) {
+    return { ok: true, type: "play_beat_preview", beatId: params.beatId };
+  }
   return { ok: false, error: "Acao ou parametros invalidos." };
 }
 

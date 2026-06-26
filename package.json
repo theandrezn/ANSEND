@@ -22,6 +22,7 @@
     "test:layout-shell": "node tests/layout-shell-check.js",
     "test:responsive": "node tests/responsive-regression-check.js",
     "test:home-mobile": "node tests/home-mobile-responsive-check.js",
+    "test:home-headline": "node tests/home-headline-animation-check.js",
     "test:community-stability": "node tests/community-visual-stability-check.js",
     "test:chat-focus-stability": "node tests/chat-focus-stability-check.js",
     "test:release-cover": "node tests/release-cover-upload-check.js",
@@ -30,9 +31,12 @@
     "test:typography": "node tests/typography-font-check.js",
     "test:i18n": "node tests/i18n-language-check.js",
     "test:recommendations": "node tests/recommendations-architecture-check.js",
-    "test:nexo": "node tests/nexo-v2-core-check.mjs && node tests/nexo-v2-architecture-check.js && node tests/nexo-assistant-functional-check.js",
+    "test:nexo": "node tests/nexo-foundation-check.mjs && node tests/nexo-search-check.mjs && node tests/nexo-search-worker-check.mjs && node tests/nexo-v2-core-check.mjs && node tests/nexo-v2-architecture-check.js && node tests/nexo-assistant-functional-check.js",
+    "test:nexo-search": "node tests/nexo-search-check.mjs && node tests/nexo-search-worker-check.mjs",
     "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js",
-    "test:purchases:phase2": "node tests/purchase-phase2-contract-check.js && node tests/purchases-frontend-contract-check.js && node tests/checkout-database-contract-check.js && node tests/mercado-pago-checkout-check.js && node tests/mercado-pago-checkout-pro-check.js && node tests/mercado-pago-provider-idempotency-check.js && node tests/paypal-checkout-contract-check.js && node tests/mercado-pago-webhook-replay-check.mjs"
+    "test:purchases:phase2": "node tests/purchase-phase2-contract-check.js && node tests/purchases-frontend-contract-check.js && node tests/checkout-database-contract-check.js && node tests/mercado-pago-checkout-check.js && node tests/mercado-pago-checkout-pro-check.js && node tests/mercado-pago-provider-idempotency-check.js && node tests/paypal-checkout-contract-check.js && node tests/mercado-pago-webhook-replay-check.mjs",
+    "test:spotify": "node tests/spotify-phase2-contract-check.js && node tests/spotify-phase2-runtime-check.mjs",
+    "test:curadoria": "node tests/curadoria-phase1-check.js && node tests/spotify-playlist-normalize-check.mjs && npm run test:spotify"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

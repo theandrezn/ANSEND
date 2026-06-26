@@ -85,6 +85,7 @@ const i18n = {
     "nav.library": "Biblioteca",
     "nav.upload": "Lançar música",
     "nav.professionals": "Profissionais",
+    "nav.curation": "Curadoria",
     "nav.community": "Comunidade ANSEND",
     "nav.profile": "Meu perfil",
     "nav.settings": "Configurações",
@@ -164,6 +165,8 @@ const i18n = {
     "route.compras.subtitle": "Histórico de pedidos, licenças e serviços contratados.",
     "route.carrinho.title": "Carrinho",
     "route.carrinho.subtitle": "Revise seus beats e finalize seu pedido.",
+    "route.curadoria.title": "Curadoria",
+    "route.curadoria.subtitle": "Perfil editorial, playlists e status de curadoria vinculados a sua conta.",
     "route.biblioteca.title": "Biblioteca",
     "route.biblioteca.subtitle": "Playlists, históricos e itens salvos em um só lugar.",
     "route.cadastrar.title": "Lançar música",
@@ -187,6 +190,7 @@ const i18n = {
     "nav.library": "Library",
     "nav.upload": "Release music",
     "nav.professionals": "Professionals",
+    "nav.curation": "Curation",
     "nav.community": "ANSEND Community",
     "nav.profile": "My profile",
     "nav.settings": "Settings",
@@ -266,6 +270,8 @@ const i18n = {
     "route.compras.subtitle": "Your order history, licenses, and hired services.",
     "route.carrinho.title": "Cart",
     "route.carrinho.subtitle": "Review your beats and complete your order.",
+    "route.curadoria.title": "Curation",
+    "route.curadoria.subtitle": "Editorial profile, playlists, and curation status linked to your account.",
     "route.biblioteca.title": "Library",
     "route.biblioteca.subtitle": "Saved playlists, history, and library items.",
     "route.cadastrar.title": "Release music",
@@ -312,6 +318,46 @@ const appLocale = {
   current: "pt-BR",
   country: localStorage.getItem("ansend_country") || "UNKNOWN",
 };
+
+const ANSEND_MUSIC_GENRES = Object.freeze([
+  "Sertanejo",
+  "Acústico",
+  "Indie",
+  "Funk",
+  "Hip-Hop / Trap / Rap",
+  "Pop",
+  "Rock",
+  "Samba / Pagode",
+  "Forró",
+  "MPB",
+  "Gospel",
+  "Reggae",
+  "Eletrônica",
+  "Reggaeton",
+  "Música Latina",
+  "Instrumental / Clássica",
+  "Outros",
+]);
+
+const ANSEND_MUSIC_GENRE_ALIASES = Object.freeze({
+  "Hip-Hop / Trap / Rap": ["Hip-Hop / Trap / Rap", "Hip-Hop", "Hip Hop", "Trap", "Rap", "Drill", "Boom Bap", "Lo-fi", "R&B"],
+  "Samba / Pagode": ["Samba / Pagode", "Samba", "Pagode"],
+  "Forró": ["Forró", "Forro", "Piseiro"],
+  "Eletrônica": ["Eletrônica", "Eletronica", "Eletronico", "Electronic", "EDM", "House", "Dance"],
+  "Acústico": ["Acústico", "Acustico", "Acoustic", "Ao vivo"],
+  "Música Latina": ["Música Latina", "Musica Latina", "Latina", "Latin", "Afrobeat"],
+  "Instrumental / Clássica": ["Instrumental / Clássica", "Instrumental", "Clássica", "Classica", "Classical"],
+  "Outros": ["Outros", "Outro", "Experimental", "Autoral", "Type Beat"],
+});
+
+function expandMusicGenreAliases(values = [], { includeOriginal = true } = {}) {
+  const expanded = [];
+  for (const value of asArray(values)) {
+    if (includeOriginal) expanded.push(value);
+    expanded.push(...(ANSEND_MUSIC_GENRE_ALIASES[value] || []));
+  }
+  return [...new Set(expanded.filter(Boolean))];
+}
 
 function supportedLocale(locale) {
   const normalized = String(locale || "").trim();
@@ -398,9 +444,7 @@ function getRegionalContent(locale = appLocale.current, country = appLocale.coun
   return {
     ...config,
     country,
-    genres: locale === "pt-BR"
-      ? ["Trap", "Funk", "Forro", "Gospel", "Sertanejo", "Piseiro"]
-      : ["Trap", "R&B", "Drill", "Pop", "Afrobeat", "Gospel"],
+    genres: [...ANSEND_MUSIC_GENRES],
     cta: t("hero.primaryCta"),
   };
 }
@@ -456,6 +500,9 @@ function applyTranslations(root = document) {
     musicas: "nav.myMusic",
     cadastrar: "nav.upload",
     produtores: "nav.professionals",
+    curadoria: "nav.curation",
+    "curadoria-perfil": "nav.curation",
+    "curadoria-playlists": "nav.curation",
     comunidade: "nav.community",
     perfil: "nav.profile",
     configuracoes: "nav.settings",
@@ -1298,6 +1345,25 @@ const appState = {
   comprasSearch: "",
   comprasSort: "recent",
   comprasVisibleCount: 10,
+  curadoria: {
+    profile: null,
+    playlists: [],
+    spotifyConnection: null,
+    spotifyPlaylists: [],
+    spotifyPaging: null,
+    spotifyImportFilter: "all",
+    spotifyImportSearch: "",
+    loading: false,
+    error: "",
+    activePanel: "overview",
+    preview: null,
+    previewError: "",
+    previewLoading: false,
+    spotifyLoading: false,
+    spotifyImportLoading: false,
+    spotifySyncLoading: false,
+    loadedAt: 0,
+  },
   onboardingProfile: JSON.parse(localStorage.getItem("ansend-onboarding-profile") || "null"),
   musicProfile: JSON.parse(localStorage.getItem("ansend_user_music_profile") || "null"),
   // Community data always comes from Supabase. Keep owned and public records
@@ -1442,12 +1508,23 @@ const appState = {
 };
 
 const onboardingStyles = [
-  { id: "trap", label: "Trap", desc: "808 forte, melodia escura e espaço para voz.", icon: "flame", genres: ["Trap", "Type Beat"] },
-  { id: "drill", label: "Drill", desc: "Bateria seca, grave pesado e clima agressivo.", icon: "target", genres: ["Drill", "Trap"] },
-  { id: "funk", label: "Funk", desc: "Ritmo direto, bounce e energia de pista.", icon: "radio", genres: ["Funk", "Type Beat"] },
-  { id: "rnb", label: "R&B", desc: "Textura suave, acordes e refrões melódicos.", icon: "moon", genres: ["R&B", "Boom Bap"] },
-  { id: "boombap", label: "Boom Bap", desc: "Bateria clássica, sample e presença urbana.", icon: "disc-3", genres: ["Boom Bap", "R&B"] },
-  { id: "type", label: "Type Beat", desc: "Referências atuais para criar rápido.", icon: "sparkles", genres: ["Type Beat", "Trap"] },
+  { id: "sertanejo", label: "Sertanejo", desc: "Cancao popular, romantica ou ao vivo.", icon: "guitar", genres: ["Sertanejo"] },
+  { id: "acustico", label: "Acústico", desc: "Voz, instrumento e arranjo intimista.", icon: "mic-2", genres: ["Acústico"] },
+  { id: "indie", label: "Indie", desc: "Som alternativo, autoral e atmosferico.", icon: "sparkles", genres: ["Indie"] },
+  { id: "funk", label: "Funk", desc: "Ritmo direto, bounce e energia de pista.", icon: "radio", genres: ["Funk"] },
+  { id: "hiphop_trap_rap", label: "Hip-Hop / Trap / Rap", desc: "808, flow, rua, boom bap ou drill.", icon: "flame", genres: ["Hip-Hop / Trap / Rap"] },
+  { id: "pop", label: "Pop", desc: "Refrao forte, brilho e alcance comercial.", icon: "star", genres: ["Pop"] },
+  { id: "rock", label: "Rock", desc: "Guitarras, banda e energia organica.", icon: "zap", genres: ["Rock"] },
+  { id: "samba_pagode", label: "Samba / Pagode", desc: "Roda, groove e clima popular brasileiro.", icon: "drum", genres: ["Samba / Pagode"] },
+  { id: "forro", label: "Forró", desc: "Xote, piseiro e celebracao nordestina.", icon: "music", genres: ["Forró"] },
+  { id: "mpb", label: "MPB", desc: "Composicao brasileira e interpretacao.", icon: "audio-lines", genres: ["MPB"] },
+  { id: "gospel", label: "Gospel", desc: "Louvor, mensagem e atmosfera espiritual.", icon: "sun", genres: ["Gospel"] },
+  { id: "reggae", label: "Reggae", desc: "Groove relaxado, roots ou pop reggae.", icon: "waves", genres: ["Reggae"] },
+  { id: "eletronica", label: "Eletrônica", desc: "Dance, house, EDM e pista.", icon: "sliders-horizontal", genres: ["Eletrônica"] },
+  { id: "reggaeton", label: "Reggaeton", desc: "Dembow, urbano latino e perreo.", icon: "disc-3", genres: ["Reggaeton"] },
+  { id: "musica_latina", label: "Música Latina", desc: "Latin pop, bachata e urbano latino.", icon: "globe-2", genres: ["Música Latina"] },
+  { id: "instrumental_classica", label: "Instrumental / Clássica", desc: "Piano, cordas, trilha ou orquestral.", icon: "piano", genres: ["Instrumental / Clássica"] },
+  { id: "outros", label: "Outros", desc: "Experimental, autoral ou hibrido.", icon: "more-horizontal", genres: ["Outros"] },
 ];
 
 const onboardingGoals = [
@@ -1774,7 +1851,7 @@ function safeReadJson(key, fallback = null) {
 function nexoDefaultQuiz(prompt = "") {
   return {
     nomeArtistico: activeProfile()?.artist_name || activeProfile()?.full_name || "",
-    generoMusical: "Trap",
+    generoMusical: "Hip-Hop / Trap / Rap",
     subgenero: "Type Beat",
     nivelCarreira: "Iniciante",
     objetivoPrincipal: "encontrar beat/produtor",
@@ -1808,7 +1885,23 @@ function readNexoDiagnosis() {
 function promptToNexoQuiz(prompt) {
   const text = String(prompt || "").trim();
   const lower = text.toLowerCase();
-  const genre = /funk/.test(lower) ? "Funk" : /drill/.test(lower) ? "Drill" : /r&b|rnb/.test(lower) ? "R&B" : "Trap";
+  const genre = /sertanejo/.test(lower) ? "Sertanejo"
+    : /acustic|acústic|violao|violão/.test(lower) ? "Acústico"
+      : /indie/.test(lower) ? "Indie"
+        : /funk/.test(lower) ? "Funk"
+          : /pop/.test(lower) ? "Pop"
+            : /rock/.test(lower) ? "Rock"
+              : /samba|pagode/.test(lower) ? "Samba / Pagode"
+                : /forro|forró|piseiro/.test(lower) ? "Forró"
+                  : /mpb/.test(lower) ? "MPB"
+                    : /gospel|louvor|worship/.test(lower) ? "Gospel"
+                      : /reggae/.test(lower) ? "Reggae"
+                        : /eletronic|eletrônic|edm|house/.test(lower) ? "Eletrônica"
+                          : /reggaeton/.test(lower) ? "Reggaeton"
+                            : /latina|latin/.test(lower) ? "Música Latina"
+                              : /instrumental|classica|clássica/.test(lower) ? "Instrumental / Clássica"
+                                : /rap|trap|drill|r&b|rnb|hip.?hop|boom bap|lo-?fi/.test(lower) ? "Hip-Hop / Trap / Rap"
+                                  : "Hip-Hop / Trap / Rap";
   const objective = /divulg|marketing|campanha/.test(lower)
     ? "divulgar lancamento"
     : /mix|master/.test(lower)
@@ -1835,7 +1928,7 @@ const nexoQuizSteps = [
     helper: "A NEXO usa seu contexto para adaptar beats, profissionais e proximos passos.",
     fields: [
       { name: "nomeArtistico", label: "Nome artistico ou marca", type: "text", placeholder: "Ex: Viana Beats" },
-      { name: "generoMusical", label: "Genero musical", type: "select", options: ["Trap", "Rap", "Funk", "Pop", "Sertanejo", "R&B", "Gospel", "Rock", "Eletronico", "Pagode", "Samba", "Reggaeton", "Afrobeat", "Indie", "MPB", "Outro"] },
+      { name: "generoMusical", label: "Genero musical", type: "select", options: [...ANSEND_MUSIC_GENRES] },
       { name: "subgenero", label: "Subgenero ou referencia", type: "text", placeholder: "Ex: Trap melodic, funk 150, plug..." },
       { name: "nivelCarreira", label: "Nivel de carreira", type: "select", options: ["Iniciante", "Em desenvolvimento", "Intermediario", "Avancado", "Profissional", "Ja tenho publico consolidado"] },
     ],
@@ -1887,22 +1980,23 @@ const nexoQuizSteps = [
 ];
 
 const nexoSubgenreSuggestions = {
-  Trap: ["Trap melodico", "Plug", "Rage", "Detroit", "Type Beat"],
-  Rap: ["Boom bap", "Rap consciente", "Drill", "Trap rap", "Freestyle"],
-  Funk: ["Funk RJ", "Funk 150", "Mandelao", "Funk melody", "Bruxaria"],
-  Pop: ["Pop urbano", "Dance pop", "Synth pop", "Pop alternativo", "Referencia internacional"],
   Sertanejo: ["Sertanejo universitario", "Arrocha", "Modao", "Romantico", "Ao vivo"],
-  "R&B": ["R&B alternativo", "Neo soul", "Trap soul", "Slow jam", "Vocal suave"],
-  Gospel: ["Gospel trap", "Worship", "Pop gospel", "Louvor", "Inspiracional"],
-  Rock: ["Indie rock", "Alt rock", "Pop rock", "Hard rock", "Acustico"],
-  Eletronico: ["House", "Tech house", "Dance", "EDM", "Brazilian bass"],
-  Pagode: ["Pagode romantico", "Samba rock", "Ao vivo", "Pagode 90", "Roda de samba"],
-  Samba: ["Samba raiz", "Samba urbano", "Partido alto", "Samba rock", "MPB samba"],
-  Reggaeton: ["Dembow", "Urbano latino", "Perreo", "Pop latino", "Afro latino"],
-  Afrobeat: ["Afropop", "Amapiano", "Afro house", "Dancehall", "Afro urbano"],
+  "Acústico": ["Voz e violao", "Acustico pop", "Ao vivo", "Balada acustica", "Autoral"],
   Indie: ["Indie pop", "Bedroom pop", "Lo-fi", "Alternativo", "Dream pop"],
+  Funk: ["Funk RJ", "Funk 150", "Mandelao", "Funk melody", "Bruxaria"],
+  "Hip-Hop / Trap / Rap": ["Trap melodico", "Boom bap", "Drill", "Trap rap", "Freestyle"],
+  Pop: ["Pop urbano", "Dance pop", "Synth pop", "Pop alternativo", "Referencia internacional"],
+  Rock: ["Indie rock", "Alt rock", "Pop rock", "Hard rock", "Acustico"],
+  "Samba / Pagode": ["Pagode romantico", "Samba raiz", "Samba urbano", "Roda de samba", "Samba rock"],
+  "Forró": ["Forro universitario", "Piseiro", "Xote", "Baião", "Arrocha"],
   MPB: ["Nova MPB", "Acustico", "Tropicalia", "MPB pop", "Autoral"],
-  Outro: ["Referencia nacional", "Referencia internacional", "Experimental", "Autoral", "Hibrido"],
+  Gospel: ["Gospel trap", "Worship", "Pop gospel", "Louvor", "Inspiracional"],
+  Reggae: ["Roots reggae", "Reggae pop", "Dub", "Dancehall", "Reggae nacional"],
+  "Eletrônica": ["House", "Tech house", "Dance", "EDM", "Brazilian bass"],
+  Reggaeton: ["Dembow", "Urbano latino", "Perreo", "Pop latino", "Afro latino"],
+  "Música Latina": ["Pop latino", "Afro latino", "Bachata", "Salsa pop", "Urbano latino"],
+  "Instrumental / Clássica": ["Piano", "Cordas", "Trilha sonora", "Orquestral", "Instrumental moderno"],
+  Outros: ["Referencia nacional", "Referencia internacional", "Experimental", "Autoral", "Hibrido"],
 };
 
 function nexoSelectField(field, quiz) {
@@ -1921,8 +2015,8 @@ function nexoSelectField(field, quiz) {
 }
 
 function nexoSubgenreField(field, quiz) {
-  const genre = quiz.generoMusical || "Trap";
-  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  const genre = quiz.generoMusical || "Hip-Hop / Trap / Rap";
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outros;
   return `<label class="nexo-quiz-field nexo-subgenre-field">
     <span>${htmlEscape(field.label)}</span>
     <input name="${field.name}" id="nexo-${field.name}" type="text" value="${htmlEscape(quiz[field.name] || "")}" placeholder="${htmlEscape(field.placeholder || "")}">
@@ -1953,10 +2047,10 @@ function updateNexoSelectDirection(field) {
 }
 
 function updateNexoSubgenreChips(form) {
-  const genre = form?.elements?.generoMusical?.value || "Trap";
+  const genre = form?.elements?.generoMusical?.value || "Hip-Hop / Trap / Rap";
   const chips = form?.querySelector(".nexo-subgenre-chips");
   if (!chips) return;
-  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outro;
+  const suggestions = nexoSubgenreSuggestions[genre] || nexoSubgenreSuggestions.Outros;
   chips.innerHTML = suggestions.map((item) => `<button type="button" data-action="nexo-subgenre-chip" data-value="${htmlEscape(item)}">${htmlEscape(item)}</button>`).join("");
 }
 
@@ -2324,7 +2418,7 @@ const FIRST_ACCOUNT_QUIZ_PREFIX = "ansend_first_account_quiz_completed:";
 const PENDING_ACCOUNT_QUIZ_KEY = "ansend_pending_account_quiz";
 
 const musicQuiz = {
-  genres: ["Trap", "Funk", "Forro", "Sertanejo", "Gospel", "Rap", "Drill", "R&B", "Pop", "Afrobeat", "Piseiro", "Boom Bap", "Lo-fi", "Outro"],
+  genres: [...ANSEND_MUSIC_GENRES],
   objectives: ["Encontrar um beat", "Criar uma capa", "Produzir uma musica", "Mixar/masterizar", "Divulgar lancamento", "Entrar em playlists", "Montar lancamento completo", "Receber orientacao da IA"],
   stages: ["So tenho uma ideia", "Tenho uma letra", "Tenho uma demo", "Tenho a musica gravada", "Tenho a musica pronta", "Ja lancei e quero divulgar"],
   vibes: ["Romantica", "Pesada", "Dancante", "Melodica", "Triste", "Comercial", "Underground", "Espiritual", "Festiva", "Cinematografica"],
@@ -2372,7 +2466,7 @@ function createDefaultMusicProfile(seed = {}) {
   const profile = appState.profile || appState.onboardingProfile || {};
   const fallbackGenres = asArray(seed.genres || profile.music_styles || profile.genres).slice(0, 4);
   return {
-    genres: fallbackGenres.length ? fallbackGenres : ["Trap", "Drill"],
+    genres: fallbackGenres.length ? fallbackGenres : ["Hip-Hop / Trap / Rap", "Funk"],
     objective: seed.objective || profile.onboarding_goal || "Receber orientacao da IA",
     stage: seed.stage || "So tenho uma ideia",
     vibes: asArray(seed.vibes).length ? asArray(seed.vibes) : ["Pesada", "Melodica"],
@@ -2397,7 +2491,7 @@ function saveMusicProfile(profile) {
   const normalized = {
     ...createDefaultMusicProfile(previous || {}),
     ...profile,
-    genres: asArray(profile.genres).slice(0, 6),
+    genres: asArray(profile.genres).slice(0, 8),
     vibes: asArray(profile.vibes).slice(0, 6),
     completed: true,
     createdAt: previous?.createdAt || new Date().toISOString(),
@@ -2407,7 +2501,7 @@ function saveMusicProfile(profile) {
   localStorage.setItem(MUSIC_PROFILE_KEY, JSON.stringify(normalized));
   localStorage.setItem(MUSIC_ONBOARDING_KEY, "true");
   localStorage.setItem(MUSIC_RECS_KEY, JSON.stringify(buildNexoRecommendations(normalized, false)));
-  scheduleRecommendationProfileUpdate({ genres: normalized.genres, intentTags: [normalized.objective, normalized.stage, ...asArray(normalized.vibes)].filter(Boolean) });
+  scheduleRecommendationProfileUpdate({ genres: expandMusicGenreAliases(normalized.genres).slice(0, 8), intentTags: [normalized.objective, normalized.stage, ...asArray(normalized.vibes)].filter(Boolean) });
   return normalized;
 }
 
@@ -2455,13 +2549,13 @@ function launchFirstAccountQuiz(profile = appState.profile, user = appState.auth
 
 function calculateNexoMatch(userMusicProfile, item) {
   const profile = userMusicProfile || createDefaultMusicProfile();
-  const genres = asArray(profile.genres).map(normalizeToken);
+  const genres = expandMusicGenreAliases(profile.genres).map(normalizeToken);
   const vibes = asArray(profile.vibes).map(normalizeToken);
   const objective = normalizeToken(profile.objective);
   const stage = normalizeToken(profile.stage);
   const budget = normalizeToken(profile.budget);
   const refs = normalizeToken(profile.references);
-  const itemGenres = asArray(item.genres || item.tags?.[0]).map(normalizeToken);
+  const itemGenres = expandMusicGenreAliases(item.genres || item.tags?.[0]).map(normalizeToken);
   const itemVibes = asArray(item.vibes).map(normalizeToken);
   const itemObjectives = asArray(item.objectives || item.services || item.type).map(normalizeToken);
   const haystack = normalizeToken([item.title, item.type, item.reason, item.services, item.producer, item.name, item.category, ...(item.tags || [])].join(" "));
@@ -2509,6 +2603,22 @@ const genreVibeMap = {
   "R&B": ["Romantica", "Melodica", "Comercial"],
   "Boom Bap": ["Underground", "Triste", "Cinematografica"],
   "Type Beat": ["Comercial", "Melodica"],
+  Sertanejo: ["Romantica", "Comercial", "Festiva"],
+  "Acústico": ["Melodica", "Romantica"],
+  Indie: ["Melodica", "Underground", "Cinematografica"],
+  "Hip-Hop / Trap / Rap": ["Pesada", "Melodica", "Underground"],
+  Pop: ["Comercial", "Dancante", "Melodica"],
+  Rock: ["Pesada", "Underground"],
+  "Samba / Pagode": ["Festiva", "Romantica", "Dancante"],
+  "Forró": ["Festiva", "Dancante", "Comercial"],
+  MPB: ["Melodica", "Romantica", "Cinematografica"],
+  Gospel: ["Espiritual", "Melodica"],
+  Reggae: ["Melodica", "Festiva"],
+  "Eletrônica": ["Dancante", "Comercial", "Festiva"],
+  Reggaeton: ["Dancante", "Festiva", "Comercial"],
+  "Música Latina": ["Dancante", "Festiva", "Comercial"],
+  "Instrumental / Clássica": ["Cinematografica", "Melodica"],
+  Outros: ["Comercial"],
 };
 
 const objectiveGenreMap = {
@@ -2870,11 +2980,11 @@ function recommendationInterestPayload(extra = {}) {
   const musicProfile = getMusicProfile() || createDefaultMusicProfile();
   const profile = appState.profile || {};
   const recentEvents = readRecommendationEventBuffer().slice(-24);
-  const genres = [...new Set([
+  const genres = expandMusicGenreAliases([
     ...asArray(musicProfile.genres),
     ...asArray(profile.music_styles),
     ...asArray(extra.genres),
-  ].filter(Boolean))].slice(0, 8);
+  ]).slice(0, 8);
   const rolesInterested = [...new Set([
     musicProfile.userType,
     profile.account_role,
@@ -4274,6 +4384,9 @@ function currentRouteFromHash() {
     "explorar",
     "favoritos",
     "compras",
+    "curadoria",
+    "curadoria-perfil",
+    "curadoria-playlists",
     "chat",
     "biblioteca",
     "ia",
@@ -4738,6 +4851,9 @@ routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços 
 routeTitles.chat = ["Bate-papo", "Mensagens diretas entre perfis da ANSEND."];
 routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
+routeTitles.curadoria = ["Curadoria", "Perfil editorial, playlists e status de curadoria vinculados a sua conta."];
+routeTitles["curadoria-perfil"] = ["Perfil de curador", "Visualizacao publica do seu perfil editorial e playlists cadastradas."];
+routeTitles["curadoria-playlists"] = ["Playlists de curadoria", "Gerencie playlists cadastradas, status e disponibilidade editorial."];
 routeTitles.comunidade = [COMMUNITY_TITLE, COMMUNITY_SUBTITLE];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
@@ -11065,7 +11181,7 @@ function syncNavbarCartBadge() {
 }
 
 function protectedRoute(route) {
-  return ["compras", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
+  return ["compras", "curadoria", "curadoria-perfil", "curadoria-playlists", "chat", "perfil", "configuracoes", "cadastrar", "admin"].includes(route);
 }
 
 function requiresMandatoryOnboarding() {
@@ -11353,17 +11469,17 @@ function preferredGenres() {
   const profile = appState.profile;
   if (profile?.music_styles?.length) return [...new Set(profile.music_styles)].slice(0, 3);
   const onboarding = appState.onboardingProfile;
-  if (!onboarding?.genres?.length) return ["Trap", "Drill", "Funk"];
+  if (!onboarding?.genres?.length) return ["Hip-Hop / Trap / Rap", "Funk", "Sertanejo"];
   return [...new Set(onboarding.genres)].slice(0, 3);
 }
 
 function preferredBeats(limit = 8) {
   const musicProfile = getMusicProfile();
   if (musicProfile?.completed) return getRecommendedBeats(musicProfile, limit);
-  const selected = preferredGenres();
+  const selected = expandMusicGenreAliases(preferredGenres()).map(normalizeToken);
   const catalog = marketplaceBeats();
-  const exact = catalog.filter((item) => selected.includes(item.tags[0]));
-  return exact.concat(catalog.filter((item) => !selected.includes(item.tags[0]))).slice(0, limit);
+  const exact = catalog.filter((item) => selected.includes(normalizeToken(item.tags[0])));
+  return exact.concat(catalog.filter((item) => !selected.includes(normalizeToken(item.tags[0])))).slice(0, limit);
 }
 
 function personalizedPlaylists() {
@@ -11922,7 +12038,7 @@ function showMusicPreferenceQuiz(force = false, profile = getMusicProfile(), opt
         return;
       }
       const profile = saveMusicProfile({
-        genres: data.genres.length ? data.genres : ["Trap"],
+        genres: data.genres.length ? data.genres : ["Hip-Hop / Trap / Rap"],
         objective: data.objective,
         stage: data.stage,
         vibes: data.vibes.length ? data.vibes : ["Pesada"],
@@ -11963,7 +12079,7 @@ function showOnboarding(force = false) {
     isOnboarding: true,
     initialData: {
       "account-role": "artista",
-      "styles": ["trap"],
+      "styles": ["hiphop_trap_rap"],
       "goal": "descobrir"
     },
     steps: [
@@ -12002,8 +12118,8 @@ function showOnboarding(force = false) {
         account_role: "artista",
         userType: "artista",
         roleLabel: "Artista",
-        styles: ["trap", "drill"],
-        genres: ["Trap", "Drill", "Type Beat"],
+        styles: ["hiphop_trap_rap", "funk"],
+        genres: ["Hip-Hop / Trap / Rap", "Funk"],
         goal: "descobrir",
         goalLabel: "Descobrir produtores"
       });
@@ -12138,6 +12254,812 @@ function renderFavorites() {
   const items = searchableBeatPool().filter((item) => appState.favorites.has(item.id));
   const favoritesGrid = `<section class="catalog-section favorites-section">${gridView(items)}</section>`;
   appView.innerHTML = `${pageIntro("favoritos")}${items.length ? favoritesGrid : emptyState("heart", "Sua lista está vazia", "Favorite beats no feed para encontrá-los aqui.")}`;
+}
+
+const CURATOR_TYPES = Object.freeze([
+  ["playlist_curator", "Curador de playlist"],
+  ["label", "Selo"],
+  ["blog", "Blog"],
+  ["radio", "Radio"],
+  ["music_channel", "Canal musical"],
+  ["a_and_r", "Profissional de A&R"],
+]);
+
+const CURATOR_AVAILABILITY = Object.freeze([
+  ["open", "Recebendo musicas"],
+  ["limited", "Disponibilidade limitada"],
+  ["paused", "Pausado"],
+]);
+
+const CURATOR_STATUS_LABELS = Object.freeze({
+  draft: "Rascunho",
+  pending: "Pendente",
+  approved: "Aprovado",
+  rejected: "Recusado",
+  paused: "Pausado",
+});
+
+const CURATOR_VERIFICATION_LABELS = Object.freeze({
+  unverified: "Playlist ainda nao verificada.",
+  pending: "Verificacao pendente.",
+  verified: "Playlist verificada.",
+  failed: "Verificacao falhou.",
+  access_lost: "Acesso a playlist perdido.",
+});
+
+function splitCuradoriaList(value = "") {
+  return String(value || "")
+    .split(/[,;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 24);
+}
+
+function curadoriaListText(value = []) {
+  return asArray(value).filter(Boolean).join(", ");
+}
+
+function curadoriaChipList(items = [], empty = "Nao informado") {
+  const values = asArray(items).filter(Boolean);
+  if (!values.length) return `<span class="curadoria-muted">${htmlEscape(empty)}</span>`;
+  return `<div class="curadoria-chip-list">${values.map((item) => `<span>${htmlEscape(item)}</span>`).join("")}</div>`;
+}
+
+function curadoriaStatusBadge(status = "draft") {
+  const normalized = CURATOR_STATUS_LABELS[status] ? status : "draft";
+  return `<span class="curadoria-status is-${htmlEscape(normalized)}">${htmlEscape(CURATOR_STATUS_LABELS[normalized])}</span>`;
+}
+
+function curadoriaTypeLabel(value = "playlist_curator") {
+  return CURATOR_TYPES.find(([id]) => id === value)?.[1] || "Curador de playlist";
+}
+
+function curadoriaSelectOptions(options, selected) {
+  return options.map(([value, label]) => `<option value="${htmlEscape(value)}" ${value === selected ? "selected" : ""}>${htmlEscape(label)}</option>`).join("");
+}
+
+function curadoriaGenreCheckboxes(name, selected = []) {
+  const active = new Set(asArray(selected));
+  return `<div class="curadoria-checkbox-grid">${ANSEND_MUSIC_GENRES.map((genre) => `
+    <label><input type="checkbox" name="${htmlEscape(name)}" value="${htmlEscape(genre)}" ${active.has(genre) ? "checked" : ""}><span>${htmlEscape(genre)}</span></label>
+  `).join("")}</div>`;
+}
+
+function curadoriaRelativeTime(value) {
+  if (!value) return "Ainda nao sincronizado";
+  const diff = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(diff)) return "Data indisponivel";
+  const minutes = Math.max(0, Math.round(diff / 60000));
+  if (minutes < 1) return "Sincronizado agora";
+  if (minutes < 60) return `Sincronizado ha ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Sincronizado ha ${hours} h`;
+  return new Date(value).toLocaleDateString("pt-BR");
+}
+
+function curadoriaOwnershipLabel(value = "") {
+  return {
+    owner: "Proprietario",
+    collaborator: "Colaborador",
+    followed: "Apenas seguida",
+    unverified: "Nao verificada",
+    unknown: "Nao verificada",
+  }[value] || "Nao verificada";
+}
+
+function curadoriaSyncLabel(value = "never_synced") {
+  return {
+    never_synced: "Nunca sincronizada",
+    queued: "Na fila",
+    syncing: "Sincronizando",
+    synced: "Sincronizada",
+    partial: "Sync parcial",
+    failed: "Sync falhou",
+    access_lost: "Acesso perdido",
+  }[value] || "Sync indisponivel";
+}
+
+async function curadoriaSpotifyFetch(path, options = {}) {
+  if (!appState.authSession?.access_token) throw new Error("Entre novamente para continuar.");
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${appState.authSession.access_token}`,
+      "Content-Type": "application/json; charset=utf-8",
+      ...(options.headers || {}),
+    },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error?.message || result.error || "Nao foi possivel concluir a acao Spotify.");
+  }
+  return result;
+}
+
+async function loadCuradoriaSpotifyConnection() {
+  if (!appState.authUser) return null;
+  try {
+    const result = await curadoriaSpotifyFetch("/api/spotify/status", { method: "GET" });
+    appState.curadoria.spotifyConnection = {
+      configured: result.configured !== false,
+      connected: Boolean(result.connected),
+      status: result.reconnectRequired ? "reconnect_required" : (result.connected ? "connected" : "disconnected"),
+      display_name: result.displayName || "",
+      spotify_user_id: result.spotifyUserId || "",
+      scopes: result.scopes || [],
+      reconnect_required: Boolean(result.reconnectRequired),
+    };
+    return appState.curadoria.spotifyConnection;
+  } catch (error) {
+    console.error("[ANSEND curadoria] spotify connection failed", error);
+    appState.curadoria.spotifyConnection = { configured: true, connected: false, status: "error", error: error.message };
+    return appState.curadoria.spotifyConnection;
+  }
+}
+
+async function loadCuradoriaData({ force = false } = {}) {
+  if (!supabaseClient || !appState.authUser) return { profile: null, playlists: [] };
+  const state = appState.curadoria;
+  if (!force && state.loadedAt && Date.now() - state.loadedAt < 30_000) {
+    return { profile: state.profile, playlists: state.playlists };
+  }
+  state.loading = true;
+  state.error = "";
+  try {
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("curator_profiles")
+      .select("*")
+      .eq("user_id", appState.authUser.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+
+    let playlists = [];
+    if (profile?.id) {
+      const { data, error } = await supabaseClient
+        .from("curator_playlists")
+        .select("*")
+        .eq("curator_profile_id", profile.id)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      playlists = data || [];
+    }
+    state.profile = profile || null;
+    state.playlists = playlists;
+    await loadCuradoriaSpotifyConnection();
+    state.loadedAt = Date.now();
+    return { profile: state.profile, playlists: state.playlists };
+  } catch (error) {
+    console.error("[ANSEND curadoria] load failed", error);
+    state.error = /curator_profiles|schema cache|does not exist/i.test(error.message || "")
+      ? "A estrutura de Curadoria ainda nao foi aplicada no Supabase deste ambiente."
+      : "Nao foi possivel carregar a Curadoria agora.";
+    return { profile: null, playlists: [] };
+  } finally {
+    state.loading = false;
+  }
+}
+
+function renderCuradoriaSpotifyPanel(connection = appState.curadoria.spotifyConnection) {
+  const status = connection?.status || "disconnected";
+  if (!connection?.configured) {
+    return `<section class="curadoria-spotify-panel is-muted">
+      <header><span>Spotify</span><h3>Integracao nao configurada</h3></header>
+      <p>As playlists manuais continuam acessiveis. Configure os secrets Spotify no Worker para conectar contas.</p>
+    </section>`;
+  }
+  if (status === "reconnect_required" || status === "revoked") {
+    return `<section class="curadoria-spotify-panel">
+      <header><span>Spotify</span><h3>Reconexao necessaria</h3></header>
+      <p>A autorizacao expirou ou foi revogada. Suas playlists cadastradas foram preservadas, mas a sincronizacao esta suspensa.</p>
+      <div class="curadoria-actions"><button type="button" class="an-primary" data-action="curadoria-spotify-connect"><i data-lucide="refresh-cw"></i>Reconectar Spotify</button></div>
+    </section>`;
+  }
+  if (connection?.connected) {
+    const avatar = connection.avatar_url
+      ? `<img src="${htmlEscape(connection.avatar_url)}" alt="Avatar Spotify" referrerpolicy="no-referrer">`
+      : `<i data-lucide="music-2"></i>`;
+    return `<section class="curadoria-spotify-panel">
+      <header><span>Spotify conectado</span><h3>${htmlEscape(connection.display_name || "Conta Spotify")}</h3></header>
+      <div class="curadoria-spotify-account">
+        <div>${avatar}</div>
+        <p><strong>${htmlEscape(connection.spotify_user_id || "ID protegido")}</strong><span>${htmlEscape(curadoriaRelativeTime(connection.last_synced_at))}</span></p>
+      </div>
+      <p>A ANSEND utiliza esta conexao para verificar playlists que voce controla e adicionar apenas faixas aprovadas que ja possuem Spotify Track URI.</p>
+      <div class="curadoria-spotify-linkbox">
+        <label><span>Cole o link da sua playlist</span><input type="url" data-action="curadoria-spotify-link-input" placeholder="https://open.spotify.com/playlist/..." autocomplete="off"></label>
+        <button type="button" class="an-primary" data-action="curadoria-spotify-resolve-link"><i data-lucide="shield-check"></i>Validar e salvar</button>
+      </div>
+      ${appState.curadoria.preview ? `<div class="curadoria-preview-box is-compact"><strong>${htmlEscape(appState.curadoria.preview.name || "Playlist validada")}</strong><span>${htmlEscape(appState.curadoria.preview.spotify_owner_name || "Conta Spotify")} - ${Number.isInteger(Number(appState.curadoria.preview.track_count)) ? `${Number(appState.curadoria.preview.track_count)} faixas` : "faixas indisponiveis"}</span></div>` : ""}
+      <div class="curadoria-actions">
+        <button type="button" class="an-secondary" data-action="curadoria-spotify-import"><i data-lucide="list-plus"></i>Importar playlists</button>
+        <button type="button" class="an-secondary" data-action="curadoria-spotify-sync-all"><i data-lucide="refresh-cw"></i>Sincronizar agora</button>
+        <button type="button" class="an-secondary" data-action="curadoria-spotify-manage"><i data-lucide="settings"></i>Gerenciar conexao</button>
+      </div>
+    </section>`;
+  }
+  return `<section class="curadoria-spotify-panel">
+    <header><span>Spotify</span><h3>Conecte sua conta Spotify</h3></header>
+    <p>A ANSEND solicitara permissao oficial do Spotify para verificar suas playlists e adicionar faixas aprovadas quando voce autorizar.</p>
+    <div class="curadoria-actions"><button type="button" class="an-primary" data-action="curadoria-spotify-connect"><i data-lucide="music-2"></i>Conectar Spotify</button></div>
+  </section>`;
+}
+
+function renderCuradoriaSkeleton() {
+  return `${pageIntro("curadoria")}<section class="curadoria-shell curadoria-loading" aria-label="Carregando curadoria">
+    <div></div><div></div><div></div>
+  </section>`;
+}
+
+function renderCuradoriaOnboarding(error = "") {
+  return `${pageIntro("curadoria")}
+    <section class="curadoria-onboarding">
+      <div>
+        <span>Area editorial</span>
+        <h2>Comece seu cadastro como curador</h2>
+        <p>Crie um perfil editorial vinculado a sua conta ANSEND. Nesta fase voce cadastra playlists do Spotify, define preferencias e acompanha status sem receber submissoes ainda.</p>
+        ${error ? `<p class="curadoria-error">${htmlEscape(error)}</p>` : ""}
+        <div class="curadoria-actions">
+          <button type="button" class="an-primary" data-action="curadoria-edit-profile"><i data-lucide="user-plus"></i>Quero ser curador</button>
+          <button type="button" class="an-secondary" data-route="produtores"><i data-lucide="users"></i>Ver profissionais</button>
+        </div>
+      </div>
+      <aside>
+        <strong>Fase 1</strong>
+        <ul>
+          <li>Perfil editorial</li>
+          <li>Cadastro de playlist por link</li>
+          <li>Status de rascunho, pendente, aprovado, recusado ou pausado</li>
+          <li>Sem metricas inventadas</li>
+        </ul>
+      </aside>
+    </section>`;
+}
+
+function curatorPlaylistCard(playlist) {
+  const cover = playlist.cover_url
+    ? `<img src="${htmlEscape(playlist.cover_url)}" alt="Capa da playlist ${htmlEscape(playlist.name)}" loading="lazy" referrerpolicy="no-referrer">`
+    : `<div class="curadoria-cover-empty"><i data-lucide="list-music"></i></div>`;
+  const trackCount = Number.isInteger(Number(playlist.track_count)) ? `<span>${Number(playlist.track_count)} faixas</span>` : "";
+  const ownership = playlist.ownership_type ? `<span>${htmlEscape(curadoriaOwnershipLabel(playlist.ownership_type))}</span>` : "";
+  const publicState = playlist.spotify_public === true ? `<span>Publica</span>` : playlist.spotify_public === false ? `<span>Privada</span>` : "";
+  const syncState = playlist.last_sync_status && playlist.last_sync_status !== "never_synced"
+    ? `<span>${htmlEscape(curadoriaSyncLabel(playlist.last_sync_status))}</span>`
+    : "";
+  return `<article class="curadoria-playlist-card" data-curadoria-playlist-id="${htmlEscape(playlist.id)}">
+    <a class="curadoria-playlist-cover" href="${htmlEscape(playlist.spotify_url)}" target="_blank" rel="noopener noreferrer">${cover}</a>
+    <div class="curadoria-playlist-body">
+      <div class="curadoria-card-top">${curadoriaStatusBadge(playlist.moderation_status)}<span>${htmlEscape(CURATOR_VERIFICATION_LABELS[playlist.verification_status] || "Playlist ainda nao verificada.")}</span></div>
+      <h3>${htmlEscape(playlist.name || "Playlist sem titulo")}</h3>
+      <p>${htmlEscape(playlist.editorial_description || playlist.description || "Descricao editorial nao informada.")}</p>
+      <div class="curadoria-card-meta">${trackCount}${ownership}${publicState}${syncState}<span>${playlist.is_accepting_submissions ? "Disponivel" : "Nao recebe musicas nesta fase"}</span></div>
+      ${curadoriaChipList(playlist.genres, "Generos nao informados")}
+      <div class="curadoria-card-actions">
+        <button type="button" data-action="curadoria-edit-playlist" data-playlist-id="${htmlEscape(playlist.id)}"><i data-lucide="edit-3"></i>Editar</button>
+        <button type="button" data-action="curadoria-spotify-verify" data-playlist-id="${htmlEscape(playlist.id)}"><i data-lucide="shield-check"></i>Verificar</button>
+        <button type="button" data-action="curadoria-spotify-sync" data-playlist-id="${htmlEscape(playlist.id)}"><i data-lucide="refresh-cw"></i>Sync</button>
+        <button type="button" data-action="curadoria-pause-playlist" data-playlist-id="${htmlEscape(playlist.id)}"><i data-lucide="pause-circle"></i>Pausar</button>
+        <a href="${htmlEscape(playlist.spotify_url)}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i>Abrir</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderCuradoriaDashboard(profile, playlists, route) {
+  const playlistCount = playlists.length;
+  const pendingCount = playlists.filter((item) => item.moderation_status === "pending").length;
+  const approvedCount = playlists.filter((item) => item.moderation_status === "approved").length;
+  const activePanel = route === "curadoria-perfil" ? "perfil" : route === "curadoria-playlists" ? "playlists" : appState.curadoria.activePanel || "overview";
+  const profileStatus = curadoriaStatusBadge(profile.application_status);
+  const main = activePanel === "perfil"
+    ? renderCuradoriaProfileView(profile, playlists, false)
+    : `<section class="curadoria-main-panel">
+        <header>
+          <div>
+            <span>Dashboard do curador</span>
+            <h2>${htmlEscape(profile.public_name || "Curador ANSEND")}</h2>
+            <p>${htmlEscape(profile.bio || "Complete seu perfil editorial para orientar artistas e moderacao.")}</p>
+          </div>
+          <div class="curadoria-actions">
+            <button type="button" class="an-primary" data-action="curadoria-open-playlist-form"><i data-lucide="plus"></i>Cadastrar playlist</button>
+            <button type="button" class="an-secondary" data-action="curadoria-edit-profile"><i data-lucide="edit-3"></i>Editar perfil de curador</button>
+          </div>
+        </header>
+        ${renderCuradoriaSpotifyPanel()}
+        <div class="curadoria-summary-grid">
+          <article><span>Perfil</span><strong>${profileStatus}</strong></article>
+          <article><span>Playlists reais</span><strong>${playlistCount ? playlistCount : "Nenhuma"}</strong></article>
+          <article><span>Pendentes</span><strong>${pendingCount ? pendingCount : "Sem pendencias"}</strong></article>
+          <article><span>Aprovadas</span><strong>${approvedCount ? approvedCount : "Sem aprovacao ainda"}</strong></article>
+        </div>
+        <div class="curadoria-playlist-list">
+          ${playlists.length ? playlists.map(curatorPlaylistCard).join("") : `<section class="curadoria-empty-box"><i data-lucide="list-plus"></i><h3>Nenhuma playlist cadastrada</h3><p>Cadastre uma playlist publica do Spotify. A propriedade ainda nao sera verificada nesta fase.</p><button type="button" class="an-primary" data-action="curadoria-open-playlist-form">Cadastrar playlist</button></section>`}
+        </div>
+      </section>`;
+  return `${pageIntro("curadoria")}
+    <section class="curadoria-shell">
+      <aside class="curadoria-left-nav">
+        <strong>Curadoria ANSEND</strong>
+        <a class="${activePanel === "overview" ? "is-active" : ""}" href="#curadoria" data-route="curadoria"><i data-lucide="layout-dashboard"></i>Visao geral</a>
+        <a class="${activePanel === "playlists" ? "is-active" : ""}" href="#curadoria-playlists" data-route="curadoria-playlists"><i data-lucide="list-music"></i>Minhas playlists</a>
+        <a class="${activePanel === "perfil" ? "is-active" : ""}" href="#curadoria-perfil" data-route="curadoria-perfil"><i data-lucide="user-round"></i>Perfil</a>
+        <span>${profileStatus}</span>
+      </aside>
+      ${main}
+      <aside class="curadoria-inbox">
+        <span>Caixa de curadoria</span>
+        <h3>Sem submissoes nesta fase</h3>
+        <p>Futuras musicas enviadas por artistas aparecerao aqui quando a fase de submissao for liberada.</p>
+      </aside>
+    </section>`;
+}
+
+function renderCuradoriaProfileView(profile, playlists, standalone = true) {
+  const avatar = profile.avatar_url
+    ? `<img src="${htmlEscape(profile.avatar_url)}" alt="Avatar de ${htmlEscape(profile.public_name)}">`
+    : `<div><i data-lucide="user-round"></i></div>`;
+  return `<section class="curadoria-profile-view ${standalone ? "is-standalone" : ""}">
+    <header>
+      <div class="curadoria-profile-avatar">${avatar}</div>
+      <div>
+        <span>${htmlEscape(curadoriaTypeLabel(profile.curator_type))}</span>
+        <h2>${htmlEscape(profile.public_name || "Curador ANSEND")}</h2>
+        <p>${[profile.country, curadoriaListText(profile.languages)].filter(Boolean).map(htmlEscape).join(" - ") || "Pais e idiomas nao informados"}</p>
+        ${curadoriaStatusBadge(profile.application_status)}
+      </div>
+      <button type="button" class="an-secondary" data-action="curadoria-edit-profile"><i data-lucide="edit-3"></i>Editar perfil</button>
+    </header>
+    <p>${htmlEscape(profile.bio || "Biografia editorial nao informada.")}</p>
+    <div class="curadoria-profile-grid">
+      <article><span>Generos aceitos</span>${curadoriaChipList(profile.accepted_genres)}</article>
+      <article><span>Preferidos</span>${curadoriaChipList(profile.preferred_genres)}</article>
+      <article><span>Nao deseja receber</span>${curadoriaChipList(profile.rejected_genres)}</article>
+      <article><span>Artistas de referencia</span>${curadoriaChipList(profile.reference_artists, "Nao informado")}</article>
+    </div>
+    <section class="curadoria-profile-playlists">
+      <h3>Playlists</h3>
+      ${playlists.length ? playlists.map(curatorPlaylistCard).join("") : `<p class="curadoria-muted">Nenhuma playlist cadastrada ainda.</p>`}
+    </section>
+  </section>`;
+}
+
+async function renderCuradoria(route = currentRoute()) {
+  if (!supabaseClient || !appState.authUser) {
+    appView.innerHTML = `${pageIntro("curadoria")}${emptyState("lock-keyhole", "Entre para acessar a Curadoria", "Use sua conta ANSEND para criar perfil de curador e cadastrar playlists.", "vendedor")}`;
+    return;
+  }
+  appView.innerHTML = renderCuradoriaSkeleton();
+  lucide.createIcons();
+  const { profile, playlists } = await loadCuradoriaData({ force: true });
+  if (appState.curadoria.error) {
+    appView.innerHTML = renderCuradoriaOnboarding(appState.curadoria.error);
+  } else if (!profile) {
+    appView.innerHTML = renderCuradoriaOnboarding();
+  } else {
+    appView.innerHTML = renderCuradoriaDashboard(profile, playlists, route);
+  }
+  hydrateView();
+}
+
+async function connectCuradoriaSpotify() {
+  try {
+    const result = await curadoriaSpotifyFetch(`/api/spotify/connect?return_path=${encodeURIComponent(`#${currentRoute() || "curadoria"}`)}`, {
+      method: "GET",
+      headers: { "X-ANSEND-OAuth-Mode": "json" },
+    });
+    if (!result.configured) {
+      showToast("Integracao Spotify nao configurada neste ambiente.", "settings");
+      return;
+    }
+    window.location.href = result.authorize_url;
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel iniciar a conexao Spotify.", "alert-triangle");
+  }
+}
+
+function curadoriaImportedPlaylistIds() {
+  return new Set(appState.curadoria.playlists.map((item) => String(item.spotify_playlist_id || "")).filter(Boolean));
+}
+
+function filteredCuradoriaSpotifyPlaylists() {
+  const search = appState.curadoria.spotifyImportSearch.toLowerCase();
+  const importedIds = curadoriaImportedPlaylistIds();
+  return appState.curadoria.spotifyPlaylists.filter((playlist) => {
+    if (search && !String(playlist.name || "").toLowerCase().includes(search)) return false;
+    if (appState.curadoria.spotifyImportFilter === "mine" && playlist.ownership_type !== "owner") return false;
+    if (appState.curadoria.spotifyImportFilter === "collaborative" && playlist.ownership_type !== "collaborator") return false;
+    if (appState.curadoria.spotifyImportFilter === "imported" && !importedIds.has(playlist.spotify_playlist_id)) return false;
+    return true;
+  });
+}
+
+function renderCuradoriaSpotifyImportModal() {
+  const playlists = filteredCuradoriaSpotifyPlaylists();
+  const paging = appState.curadoria.spotifyPaging || {};
+  const filterButton = (value, label) => `<button type="button" class="${appState.curadoria.spotifyImportFilter === value ? "is-active" : ""}" data-action="curadoria-spotify-filter" data-filter="${htmlEscape(value)}">${htmlEscape(label)}</button>`;
+  return `<section class="curadoria-import-modal">
+    <header>
+      <span>Spotify</span>
+      <h2>Importar playlists</h2>
+      <p>Selecione playlists que voce possui ou controla como colaborador. Playlists apenas seguidas nao sao elegiveis.</p>
+    </header>
+    <div class="curadoria-import-toolbar">
+      <input type="search" value="${htmlEscape(appState.curadoria.spotifyImportSearch)}" placeholder="Buscar playlist" data-action="curadoria-spotify-search">
+      <div>${filterButton("all", "Todas")}${filterButton("mine", "Minhas")}${filterButton("collaborative", "Colaborativas")}${filterButton("imported", "Ja importadas")}</div>
+    </div>
+    <div class="curadoria-import-list">
+      ${playlists.length ? playlists.map((playlist) => {
+        const cover = playlist.cover_url ? `<img src="${htmlEscape(playlist.cover_url)}" alt="Capa da playlist ${htmlEscape(playlist.name)}" referrerpolicy="no-referrer">` : `<i data-lucide="list-music"></i>`;
+        return `<label class="curadoria-import-row ${playlist.eligible ? "" : "is-disabled"}">
+          <input type="checkbox" name="spotify_playlist_ids" value="${htmlEscape(playlist.spotify_playlist_id)}" ${playlist.eligible && !playlist.imported ? "" : "disabled"} ${playlist.imported ? "checked" : ""}>
+          <div class="curadoria-import-cover">${cover}</div>
+          <div>
+            <strong>${htmlEscape(playlist.name || "Playlist sem titulo")}</strong>
+            <p>${htmlEscape(playlist.spotify_owner_name || "Proprietario nao retornado")} ${Number.isInteger(Number(playlist.track_count)) ? `- ${Number(playlist.track_count)} faixas` : ""}</p>
+            <div class="curadoria-card-meta"><span>${htmlEscape(curadoriaOwnershipLabel(playlist.ownership_type))}</span><span>${playlist.spotify_public ? "Publica" : "Privada"}</span>${playlist.imported ? "<span>Ja importada</span>" : ""}</div>
+            ${playlist.ineligible_reason ? `<em>${htmlEscape(playlist.ineligible_reason)}</em>` : ""}
+          </div>
+        </label>`;
+      }).join("") : `<section class="curadoria-empty-box"><i data-lucide="search"></i><h3>Nenhuma playlist encontrada</h3><p>Ajuste a busca ou carregue mais playlists da sua conta.</p></section>`}
+    </div>
+    <footer>
+      <button type="button" class="an-secondary" data-action="close-modal">Fechar</button>
+      ${paging.offset + paging.limit < paging.total ? `<button type="button" class="an-secondary" data-action="curadoria-spotify-load-more">Carregar mais</button>` : ""}
+      <button type="button" class="an-primary" data-action="curadoria-spotify-import-selected">Importar selecionadas</button>
+    </footer>
+  </section>`;
+}
+
+async function openCuradoriaSpotifyImport() {
+  appState.curadoria.spotifyImportFilter = "all";
+  appState.curadoria.spotifyImportSearch = "";
+  appState.curadoria.spotifyPlaylists = [];
+  appState.curadoria.spotifyPaging = { limit: 20, offset: 0, total: 0 };
+  openModal(`<section class="curadoria-import-modal"><header><span>Spotify</span><h2>Carregando playlists</h2><p>Consultando sua conta conectada.</p></header><div class="curadoria-loading"><div></div></div></section>`);
+  await loadCuradoriaSpotifyPlaylists({ reset: true });
+}
+
+async function loadCuradoriaSpotifyPlaylists({ reset = false } = {}) {
+  const paging = appState.curadoria.spotifyPaging || { limit: 20, offset: 0, total: 0 };
+  const offset = reset ? 0 : Number(paging.offset || 0) + Number(paging.limit || 20);
+  try {
+    const result = await curadoriaSpotifyFetch(`/api/spotify/playlists?limit=20&offset=${offset}`, { method: "GET" });
+    appState.curadoria.spotifyPlaylists = reset ? result.playlists || [] : [...appState.curadoria.spotifyPlaylists, ...(result.playlists || [])];
+    appState.curadoria.spotifyPaging = result.paging || { limit: 20, offset, total: appState.curadoria.spotifyPlaylists.length };
+    openModal(renderCuradoriaSpotifyImportModal());
+    hydrateView();
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel listar playlists Spotify.", "alert-triangle");
+    closeModal();
+  }
+}
+
+async function importSelectedCuradoriaSpotifyPlaylists(modal) {
+  const ids = [...modal.querySelectorAll('input[name="spotify_playlist_ids"]:checked:not(:disabled)')].map((input) => input.value);
+  if (!ids.length) {
+    showToast("Selecione ao menos uma playlist elegivel.", "list-plus");
+    return;
+  }
+  try {
+    const result = await curadoriaSpotifyFetch("/api/spotify/playlists/import", {
+      method: "POST",
+      body: JSON.stringify({ playlist_ids: ids }),
+    });
+    showToast(result.partial ? "Algumas playlists foram importadas; outras precisam de atencao." : "Playlists importadas.", "check-circle");
+    appState.curadoria.loadedAt = 0;
+    closeModal();
+    await renderCuradoria("curadoria-playlists");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel importar playlists.", "alert-triangle");
+  }
+}
+
+async function resolveCuradoriaSpotifyLink(container) {
+  const input = container?.querySelector?.('[data-action="curadoria-spotify-link-input"]');
+  const url = input?.value?.trim() || "";
+  if (!url) {
+    showToast("Cole o link oficial da playlist Spotify.", "link");
+    return;
+  }
+  try {
+    const result = await curadoriaSpotifyFetch("/api/spotify/resolve-link", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
+    appState.curadoria.preview = result.playlist || null;
+    showToast("Playlist verificada e salva no seu perfil.", "shield-check");
+    appState.curadoria.loadedAt = 0;
+    await renderCuradoria("curadoria-playlists");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel validar a playlist.", "alert-triangle");
+  }
+}
+
+async function syncCuradoriaSpotifyPlaylist(playlistId) {
+  try {
+    await curadoriaSpotifyFetch(`/api/spotify/playlists/${encodeURIComponent(playlistId)}/sync`, { method: "POST" });
+    showToast("Playlist sincronizada.", "refresh-cw");
+    appState.curadoria.loadedAt = 0;
+    await renderCuradoria(currentRoute());
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel sincronizar a playlist.", "alert-triangle");
+  }
+}
+
+async function verifyCuradoriaSpotifyPlaylist(playlistId) {
+  try {
+    await curadoriaSpotifyFetch(`/api/spotify/playlists/${encodeURIComponent(playlistId)}/verify`, { method: "POST" });
+    showToast("Controle da playlist verificado pela ANSEND.", "shield-check");
+    appState.curadoria.loadedAt = 0;
+    await renderCuradoria(currentRoute());
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel confirmar o controle da playlist.", "alert-triangle");
+  }
+}
+
+async function syncAllCuradoriaSpotify() {
+  try {
+    const result = await curadoriaSpotifyFetch("/api/spotify/sync-all", { method: "POST" });
+    showToast(result.partial ? "Sincronizacao parcial concluida." : "Playlists sincronizadas.", "refresh-cw");
+    appState.curadoria.loadedAt = 0;
+    await renderCuradoria(currentRoute());
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel sincronizar agora.", "alert-triangle");
+  }
+}
+
+function openCuradoriaSpotifyManage() {
+  const connection = appState.curadoria.spotifyConnection || {};
+  openModal(`<section class="curadoria-import-modal">
+    <header><span>Spotify</span><h2>Gerenciar conexao</h2><p>Ao desconectar, a ANSEND deixara de sincronizar suas playlists. Seu perfil e os dados editoriais cadastrados serao preservados.</p></header>
+    <div class="curadoria-profile-grid">
+      <article><span>Conta</span><strong>${htmlEscape(connection.display_name || "Spotify")}</strong></article>
+      <article><span>ID Spotify</span><strong>${htmlEscape(connection.spotify_user_id || "Nao informado")}</strong></article>
+      <article><span>Autorizada em</span><strong>${connection.authorized_at ? new Date(connection.authorized_at).toLocaleDateString("pt-BR") : "Nao informado"}</strong></article>
+      <article><span>Ultima sincronizacao</span><strong>${htmlEscape(curadoriaRelativeTime(connection.last_synced_at))}</strong></article>
+    </div>
+    <p class="curadoria-muted">Escopos concedidos: ${(connection.scopes || []).map(htmlEscape).join(", ") || "Nao informado"}.</p>
+    <footer>
+      <button type="button" class="an-secondary" data-action="close-modal">Fechar</button>
+      <button type="button" class="an-secondary" data-action="curadoria-spotify-connect">Reconectar</button>
+      <button type="button" class="an-primary" data-action="curadoria-spotify-disconnect">Desconectar Spotify</button>
+    </footer>
+  </section>`);
+}
+
+async function disconnectCuradoriaSpotify() {
+  try {
+    await curadoriaSpotifyFetch("/api/spotify/disconnect", { method: "POST" });
+    showToast("Spotify desconectado. Dados editoriais preservados.", "check-circle");
+    closeModal();
+    appState.curadoria.loadedAt = 0;
+    await renderCuradoria(currentRoute());
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel desconectar Spotify.", "alert-triangle");
+  }
+}
+
+function openCuradoriaProfileForm() {
+  const profile = appState.curadoria.profile || {};
+  openModal(`<form class="curadoria-profile-form curadoria-modal-form">
+    <header><span>Perfil editorial</span><h2>${profile.id ? "Editar perfil de curador" : "Cadastro de curador"}</h2><p>A funcao de curador sera uma capacidade adicional da sua conta.</p></header>
+    <div class="curadoria-form-grid">
+      <label><span>Nome publico *</span><input name="public_name" required maxlength="120" value="${htmlEscape(profile.public_name || activeProfile()?.artistic_name || activeProfile()?.full_name || "")}"></label>
+      <label><span>Avatar ou imagem</span><input name="avatar_url" type="url" maxlength="900" value="${htmlEscape(profile.avatar_url || activeProfile()?.avatar_url || "")}" placeholder="https://..."></label>
+      <label class="is-wide"><span>Biografia curta</span><textarea name="bio" rows="3" maxlength="600">${htmlEscape(profile.bio || "")}</textarea></label>
+      <label><span>Pais</span><input name="country" maxlength="80" value="${htmlEscape(profile.country || appLocale.country || "")}"></label>
+      <label><span>Idiomas</span><input name="languages" value="${htmlEscape(curadoriaListText(profile.languages))}" placeholder="Portugues, Ingles"></label>
+      <label><span>Tipo de curador</span><select name="curator_type">${curadoriaSelectOptions(CURATOR_TYPES, profile.curator_type || "playlist_curator")}</select></label>
+      <label><span>Disponibilidade</span><select name="availability_status">${curadoriaSelectOptions(CURATOR_AVAILABILITY, profile.availability_status || "open")}</select></label>
+      <label><span>Prazo medio pretendido</span><input name="expected_response_days" type="number" min="1" max="60" value="${htmlEscape(profile.expected_response_days || "")}" placeholder="7"></label>
+      <label class="is-wide"><span>Artistas de referencia</span><input name="reference_artists" value="${htmlEscape(curadoriaListText(profile.reference_artists))}" placeholder="Separados por virgula"></label>
+    </div>
+    <fieldset><legend>Generos aceitos</legend>${curadoriaGenreCheckboxes("accepted_genres", profile.accepted_genres)}</fieldset>
+    <fieldset><legend>Generos preferidos</legend>${curadoriaGenreCheckboxes("preferred_genres", profile.preferred_genres)}</fieldset>
+    <fieldset><legend>Generos que nao deseja receber</legend>${curadoriaGenreCheckboxes("rejected_genres", profile.rejected_genres)}</fieldset>
+    <label class="curadoria-check"><input type="checkbox" name="no_payola" ${profile.no_payola_confirmed_at ? "checked" : ""} required><span>Confirmo que nao vendo aprovacao, inclusao em playlist ou streams.</span></label>
+    <label class="curadoria-check"><input type="checkbox" name="terms" ${profile.terms_accepted_at ? "checked" : ""} required><span>Aceito os termos da curadoria ANSEND.</span></label>
+    <footer>
+      <button type="button" class="an-secondary" data-action="close-modal">Cancelar</button>
+      <button type="submit" class="an-secondary" data-intent="draft">Salvar perfil</button>
+      <button type="submit" class="an-primary" data-intent="pending">Enviar para analise</button>
+    </footer>
+  </form>`);
+}
+
+function openCuradoriaPlaylistForm(playlistId = "") {
+  const playlist = appState.curadoria.playlists.find((item) => String(item.id) === String(playlistId)) || {};
+  appState.curadoria.preview = playlist.spotify_playlist_id ? {
+    spotify_playlist_id: playlist.spotify_playlist_id,
+    spotify_url: playlist.spotify_url,
+    name: playlist.name,
+    description: playlist.description,
+    cover_url: playlist.cover_url,
+    spotify_owner_id: playlist.spotify_owner_id,
+    spotify_owner_name: playlist.spotify_owner_name,
+    track_count: playlist.track_count,
+  } : null;
+  appState.curadoria.previewError = "";
+  openModal(curadoriaPlaylistFormMarkup(playlist));
+}
+
+function curadoriaPlaylistFormMarkup(playlist = {}) {
+  const preview = appState.curadoria.preview || null;
+  const cover = preview?.cover_url ? `<img src="${htmlEscape(preview.cover_url)}" alt="Capa da playlist" referrerpolicy="no-referrer">` : `<i data-lucide="list-music"></i>`;
+  return `<form class="curadoria-playlist-form curadoria-modal-form" data-playlist-id="${htmlEscape(playlist.id || "")}">
+    <header><span>Playlist Spotify</span><h2>${playlist.id ? "Editar playlist" : "Cadastrar playlist"}</h2><p>Cadastro por link nao verifica propriedade nesta fase.</p></header>
+    <label class="is-wide"><span>URL ou URI da playlist *</span><div class="curadoria-inline-field"><input name="spotify_url" required value="${htmlEscape(playlist.spotify_url || preview?.spotify_url || "")}" placeholder="https://open.spotify.com/playlist/..."><button type="button" data-action="curadoria-preview-spotify">Buscar playlist</button></div></label>
+    <div class="curadoria-preview-box" data-curadoria-preview>
+      ${preview ? `<div class="curadoria-preview-cover">${cover}</div><div><strong>${htmlEscape(preview.name || "Nome nao retornado")}</strong><p>${htmlEscape(preview.description || "Descricao nao retornada pelo Spotify.")}</p><span>${htmlEscape(preview.spotify_owner_name || "Proprietario nao retornado")} ${Number.isInteger(Number(preview.track_count)) ? `- ${Number(preview.track_count)} faixas` : ""}</span><a href="${htmlEscape(preview.spotify_url)}" target="_blank" rel="noopener noreferrer">Abrir playlist original</a><em>Playlist ainda nao verificada.</em></div>` : `<p>Busque a playlist para preencher a previa quando a integracao estiver configurada. Se nao estiver, preencha manualmente e salve como rascunho.</p>`}
+    </div>
+    <div class="curadoria-form-grid">
+      <label><span>Nome *</span><input name="name" required maxlength="160" value="${htmlEscape(playlist.name || preview?.name || "")}"></label>
+      <label><span>ID Spotify</span><input name="spotify_playlist_id" maxlength="80" value="${htmlEscape(playlist.spotify_playlist_id || preview?.spotify_playlist_id || "")}"></label>
+      <label class="is-wide"><span>Descricao</span><textarea name="description" rows="2" maxlength="700">${htmlEscape(playlist.description || preview?.description || "")}</textarea></label>
+      <label><span>Capa</span><input name="cover_url" type="url" maxlength="1200" value="${htmlEscape(playlist.cover_url || preview?.cover_url || "")}"></label>
+      <label><span>Proprietario</span><input name="spotify_owner_name" maxlength="160" value="${htmlEscape(playlist.spotify_owner_name || preview?.spotify_owner_name || "")}"></label>
+      <label><span>Quantidade de faixas</span><input name="track_count" type="number" min="0" value="${htmlEscape(playlist.track_count ?? preview?.track_count ?? "")}"></label>
+      <label><span>Subgeneros</span><input name="subgenres" value="${htmlEscape(curadoriaListText(playlist.subgenres))}"></label>
+      <label><span>Idiomas</span><input name="languages" value="${htmlEscape(curadoriaListText(playlist.languages))}"></label>
+      <label><span>Paises prioritarios</span><input name="priority_countries" value="${htmlEscape(curadoriaListText(playlist.priority_countries))}"></label>
+      <label><span>Artistas de referencia</span><input name="reference_artists" value="${htmlEscape(curadoriaListText(playlist.reference_artists))}"></label>
+      <label class="is-wide"><span>Descricao editorial</span><textarea name="editorial_description" rows="3" maxlength="700">${htmlEscape(playlist.editorial_description || "")}</textarea></label>
+      <label class="is-wide"><span>Tipos de musica que nao aceita</span><input name="rejected_styles" value="${htmlEscape(curadoriaListText(playlist.rejected_styles))}"></label>
+      <label><span>Limite diario pretendido</span><input name="daily_limit" type="number" min="1" max="500" value="${htmlEscape(playlist.daily_limit || "")}"></label>
+      <label class="is-wide"><span>Observacoes adicionais</span><textarea name="notes" rows="2" maxlength="700">${htmlEscape(playlist.notes || "")}</textarea></label>
+    </div>
+    <fieldset><legend>Generos</legend>${curadoriaGenreCheckboxes("genres", playlist.genres)}</fieldset>
+    <label class="curadoria-check"><input type="checkbox" name="allows_explicit" ${playlist.allows_explicit ? "checked" : ""}><span>Conteudo explicito permitido</span></label>
+    <label class="curadoria-check"><input type="checkbox" name="accepts_instrumental" ${playlist.accepts_instrumental !== false ? "checked" : ""}><span>Aceita instrumental</span></label>
+    <label class="curadoria-check"><input type="checkbox" name="is_accepting_submissions" ${playlist.is_accepting_submissions ? "checked" : ""}><span>Disponivel para receber musicas quando a fase de submissao for liberada</span></label>
+    <footer>
+      <button type="button" class="an-secondary" data-action="close-modal">Cancelar</button>
+      <button type="submit" class="an-secondary" data-intent="draft">Salvar como rascunho</button>
+      <button type="submit" class="an-primary" data-intent="pending">Enviar para analise</button>
+    </footer>
+  </form>`;
+}
+
+function checkedFormValues(form, name) {
+  return [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((input) => input.value).filter(Boolean);
+}
+
+async function saveCuradoriaProfile(form, intent = "draft") {
+  if (!supabaseClient || !appState.authUser) return;
+  const now = new Date().toISOString();
+  const payload = {
+    user_id: appState.authUser.id,
+    public_name: form.elements.public_name.value.trim(),
+    avatar_url: form.elements.avatar_url.value.trim() || null,
+    bio: form.elements.bio.value.trim() || null,
+    country: form.elements.country.value.trim() || null,
+    languages: splitCuradoriaList(form.elements.languages.value),
+    accepted_genres: checkedFormValues(form, "accepted_genres"),
+    preferred_genres: checkedFormValues(form, "preferred_genres"),
+    rejected_genres: checkedFormValues(form, "rejected_genres"),
+    reference_artists: splitCuradoriaList(form.elements.reference_artists.value),
+    curator_type: form.elements.curator_type.value || "playlist_curator",
+    availability_status: form.elements.availability_status.value || "open",
+    expected_response_days: form.elements.expected_response_days.value ? Number(form.elements.expected_response_days.value) : null,
+    application_status: intent === "pending" ? "pending" : (appState.curadoria.profile?.application_status || "draft"),
+    no_payola_confirmed_at: form.elements.no_payola.checked ? (appState.curadoria.profile?.no_payola_confirmed_at || now) : null,
+    terms_accepted_at: form.elements.terms.checked ? (appState.curadoria.profile?.terms_accepted_at || now) : null,
+  };
+  const { data, error } = await supabaseClient
+    .from("curator_profiles")
+    .upsert(payload, { onConflict: "user_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  appState.curadoria.profile = data;
+  appState.curadoria.loadedAt = 0;
+  closeModal();
+  showToast(intent === "pending" ? "Perfil enviado para analise." : "Perfil de curador salvo.", "check-circle");
+  await renderCuradoria(currentRoute());
+}
+
+async function previewCuradoriaSpotify(form) {
+  const button = form.querySelector('[data-action="curadoria-preview-spotify"]');
+  if (!appState.authSession?.access_token) {
+    showToast("Entre novamente para buscar playlist.", "lock");
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Buscando...";
+  try {
+    const response = await fetch("/api/curadoria/spotify-preview", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${appState.authSession.access_token}`,
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({ spotify_url: form.elements.spotify_url.value }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.success === false) {
+      throw new Error(result.error?.message || result.error || "Nao foi possivel buscar a playlist.");
+    }
+    appState.curadoria.preview = result.preview || null;
+    if (result.warning) showToast(result.warning.message, "info");
+    const existingId = form.dataset.playlistId || "";
+    openModal(curadoriaPlaylistFormMarkup(appState.curadoria.playlists.find((item) => String(item.id) === String(existingId)) || {}));
+  } catch (error) {
+    console.error("[ANSEND curadoria] spotify preview failed", error);
+    showToast(error.message || "Link de playlist invalido.", "alert-triangle");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Buscar playlist";
+    }
+  }
+}
+
+async function saveCuradoriaPlaylist(form, intent = "draft") {
+  const profile = appState.curadoria.profile;
+  if (!supabaseClient || !profile?.id) {
+    showToast("Crie seu perfil de curador antes da playlist.", "user-plus");
+    return;
+  }
+  const preview = appState.curadoria.preview || {};
+  const playlistId = form.dataset.playlistId || "";
+  const payload = {
+    curator_profile_id: profile.id,
+    spotify_playlist_id: form.elements.spotify_playlist_id.value.trim() || preview.spotify_playlist_id || "",
+    spotify_url: form.elements.spotify_url.value.trim() || preview.spotify_url || "",
+    name: form.elements.name.value.trim(),
+    description: form.elements.description.value.trim() || null,
+    cover_url: form.elements.cover_url.value.trim() || null,
+    spotify_owner_name: form.elements.spotify_owner_name.value.trim() || null,
+    spotify_owner_id: preview.spotify_owner_id || null,
+    track_count: form.elements.track_count.value === "" ? null : Math.max(0, Number(form.elements.track_count.value) || 0),
+    genres: checkedFormValues(form, "genres"),
+    subgenres: splitCuradoriaList(form.elements.subgenres.value),
+    languages: splitCuradoriaList(form.elements.languages.value),
+    priority_countries: splitCuradoriaList(form.elements.priority_countries.value),
+    reference_artists: splitCuradoriaList(form.elements.reference_artists.value),
+    rejected_styles: splitCuradoriaList(form.elements.rejected_styles.value),
+    allows_explicit: form.elements.allows_explicit.checked,
+    accepts_instrumental: form.elements.accepts_instrumental.checked,
+    daily_limit: form.elements.daily_limit.value ? Number(form.elements.daily_limit.value) : null,
+    is_accepting_submissions: form.elements.is_accepting_submissions.checked,
+    editorial_description: form.elements.editorial_description.value.trim() || null,
+    notes: form.elements.notes.value.trim() || null,
+    moderation_status: intent === "pending" ? "pending" : "draft",
+  };
+  if (!payload.spotify_playlist_id || !payload.spotify_url || !payload.name) {
+    showToast("Informe link, ID e nome da playlist.", "alert-triangle");
+    return;
+  }
+  const query = playlistId
+    ? supabaseClient.from("curator_playlists").update(payload).eq("id", playlistId).select("*").single()
+    : supabaseClient.from("curator_playlists").insert(payload).select("*").single();
+  const { error } = await query;
+  if (error) {
+    if (/duplicate|unique|curator_playlists_profile_spotify/i.test(error.message || "")) {
+      showToast("Esta playlist ja esta cadastrada no seu perfil.", "copy");
+      return;
+    }
+    throw error;
+  }
+  appState.curadoria.preview = null;
+  appState.curadoria.loadedAt = 0;
+  closeModal();
+  showToast(intent === "pending" ? "Playlist enviada para analise." : "Playlist salva como rascunho.", "check-circle");
+  await renderCuradoria("curadoria-playlists");
+}
+
+async function pauseCuradoriaPlaylist(playlistId) {
+  if (!playlistId || !supabaseClient) return;
+  const { error } = await supabaseClient
+    .from("curator_playlists")
+    .update({ moderation_status: "paused", is_accepting_submissions: false })
+    .eq("id", playlistId);
+  if (error) {
+    showToast("Nao foi possivel pausar a playlist.", "alert-triangle");
+    return;
+  }
+  appState.curadoria.loadedAt = 0;
+  showToast("Playlist pausada.", "pause-circle");
+  await renderCuradoria(currentRoute());
 }
 
 async function loadUserPurchases() {
@@ -19177,6 +20099,7 @@ function renderRoute() {
   if (route === "explorar" || route === "marketplace" || route === "ofertas") renderExplore();
   if (route === "favoritos") renderFavorites();
   if (route === "compras") renderPurchases();
+  if (route === "curadoria" || route === "curadoria-perfil" || route === "curadoria-playlists") renderCuradoria(route);
   if (route === "chat") renderChatPage();
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ia" || route === "ferramentas") renderAiWorkspace();
@@ -22052,6 +22975,75 @@ document.addEventListener("click", async (event) => {
     closeMusicPreferenceQuiz();
     return;
   }
+  if (action === "curadoria-edit-profile") {
+    openCuradoriaProfileForm();
+    return;
+  }
+  if (action === "curadoria-open-playlist-form") {
+    openCuradoriaPlaylistForm();
+    return;
+  }
+  if (action === "curadoria-edit-playlist") {
+    openCuradoriaPlaylistForm(target.dataset.playlistId || "");
+    return;
+  }
+  if (action === "curadoria-pause-playlist") {
+    await pauseCuradoriaPlaylist(target.dataset.playlistId || "");
+    return;
+  }
+  if (action === "curadoria-preview-spotify") {
+    const form = target.closest(".curadoria-playlist-form");
+    if (form) await previewCuradoriaSpotify(form);
+    return;
+  }
+  if (action === "curadoria-spotify-connect") {
+    await connectCuradoriaSpotify();
+    return;
+  }
+  if (action === "curadoria-spotify-import") {
+    await openCuradoriaSpotifyImport();
+    return;
+  }
+  if (action === "curadoria-spotify-load-more") {
+    await loadCuradoriaSpotifyPlaylists();
+    return;
+  }
+  if (action === "curadoria-spotify-import-selected") {
+    const modal = target.closest(".curadoria-import-modal");
+    if (modal) await importSelectedCuradoriaSpotifyPlaylists(modal);
+    return;
+  }
+  if (action === "curadoria-spotify-resolve-link") {
+    const panel = target.closest(".curadoria-spotify-panel");
+    await resolveCuradoriaSpotifyLink(panel || document);
+    return;
+  }
+  if (action === "curadoria-spotify-filter") {
+    appState.curadoria.spotifyImportFilter = target.dataset.filter || "all";
+    openModal(renderCuradoriaSpotifyImportModal());
+    hydrateView();
+    return;
+  }
+  if (action === "curadoria-spotify-sync") {
+    await syncCuradoriaSpotifyPlaylist(target.dataset.playlistId || "");
+    return;
+  }
+  if (action === "curadoria-spotify-verify") {
+    await verifyCuradoriaSpotifyPlaylist(target.dataset.playlistId || "");
+    return;
+  }
+  if (action === "curadoria-spotify-sync-all") {
+    await syncAllCuradoriaSpotify();
+    return;
+  }
+  if (action === "curadoria-spotify-manage") {
+    openCuradoriaSpotifyManage();
+    return;
+  }
+  if (action === "curadoria-spotify-disconnect") {
+    await disconnectCuradoriaSpotify();
+    return;
+  }
   if (action === "close-feed-comments") {
     closeNexoFeedComments();
     return;
@@ -22125,7 +23117,7 @@ document.addEventListener("click", async (event) => {
     return;
   }
   if (action === "skip-onboarding") {
-    persistOnboarding({ completed: true, account_role: "artista", userType: "artista", roleLabel: "Artista", styles: ["trap", "drill"], genres: ["Trap", "Drill", "Type Beat"], goal: "descobrir", goalLabel: "Descobrir produtores" });
+    persistOnboarding({ completed: true, account_role: "artista", userType: "artista", roleLabel: "Artista", styles: ["hiphop_trap_rap", "funk"], genres: ["Hip-Hop / Trap / Rap", "Funk"], goal: "descobrir", goalLabel: "Descobrir produtores" });
     saveMusicProfile(createDefaultMusicProfile({ completed: true }));
     closeOnboarding();
     if (currentRoute() === "feed") {
@@ -23170,6 +24162,20 @@ document.addEventListener("input", (event) => {
     appState.chat.searchTimer = window.setTimeout(() => loadChatGifs(appState.chat.gifQuery), 350);
     return;
   }
+  if (input.matches?.('[data-action="curadoria-spotify-search"]')) {
+    appState.curadoria.spotifyImportSearch = input.value || "";
+    window.clearTimeout(appState.curadoria.spotifySearchTimer);
+    appState.curadoria.spotifySearchTimer = window.setTimeout(() => {
+      openModal(renderCuradoriaSpotifyImportModal());
+      hydrateView();
+      window.requestAnimationFrame(() => {
+        const field = document.querySelector('[data-action="curadoria-spotify-search"]');
+        field?.focus();
+        field?.setSelectionRange?.(field.value.length, field.value.length);
+      });
+    }, 180);
+    return;
+  }
   if (input.matches?.(".nexo-assistant-form textarea")) {
     input.style.height = "44px";
     input.style.height = `${Math.min(132, Math.max(44, input.scrollHeight))}px`;
@@ -23447,6 +24453,28 @@ document.addEventListener("submit", async (event) => {
     appState.nexoQuizError = "";
     renderAiWorkspace();
     hydrateView();
+    return;
+  }
+  const curadoriaProfileForm = event.target.closest(".curadoria-profile-form");
+  if (curadoriaProfileForm) {
+    event.preventDefault();
+    try {
+      await saveCuradoriaProfile(curadoriaProfileForm, event.submitter?.dataset.intent || "draft");
+    } catch (error) {
+      console.error("[ANSEND curadoria] profile save failed", error);
+      showToast("Nao foi possivel salvar o perfil de curador.", "alert-triangle");
+    }
+    return;
+  }
+  const curadoriaPlaylistForm = event.target.closest(".curadoria-playlist-form");
+  if (curadoriaPlaylistForm) {
+    event.preventDefault();
+    try {
+      await saveCuradoriaPlaylist(curadoriaPlaylistForm, event.submitter?.dataset.intent || "draft");
+    } catch (error) {
+      console.error("[ANSEND curadoria] playlist save failed", error);
+      showToast("Nao foi possivel salvar a playlist.", "alert-triangle");
+    }
     return;
   }
   const aiForm = event.target.closest(".ai-diagnostic-form");
@@ -24820,9 +25848,11 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
   });
   
   const cardsHtml = renderBeatLicenseCards(licenses, selectedId);
-  container.querySelector(".beat-license-grid").innerHTML = cardsHtml;
+  const licenseGrid = container.querySelector(".beat-license-grid");
+  if (licenseGrid) licenseGrid.innerHTML = cardsHtml;
   
-  container.querySelector("[data-license-terms]").innerHTML = licenseTermsMarkup(selectedLicense);
+  const licenseTerms = container.querySelector("[data-license-terms]");
+  if (licenseTerms) licenseTerms.innerHTML = licenseTermsMarkup(selectedLicense);
   
   const termsHeader = container.querySelector(".beat-terms-panel header");
   if (termsHeader) {

@@ -25,6 +25,31 @@ requirePattern(script, /allowSkip:\s*!options\.mandatory/, "Mandatory quiz can s
 requirePattern(script, /rpc\("complete_onboarding_quiz"/, "Quiz completion is not persisted through the atomic RPC");
 requirePattern(script, /profile\.quiz_completed !== true/, "Frontend does not verify server completion");
 requirePattern(script, /storedIntent === "google"/, "OAuth intent still depends on a destination hash");
+requirePattern(script, /const ANSEND_MUSIC_GENRES = Object\.freeze\(\[/, "Canonical onboarding genre list is missing");
+requirePattern(script, /genres:\s*\[\.\.\.ANSEND_MUSIC_GENRES\]/, "Music preference quiz must use canonical ANSEND genres");
+requirePattern(script, /generoMusical"[\s\S]*?options:\s*\[\.\.\.ANSEND_MUSIC_GENRES\]/, "NEXO diagnosis quiz must use canonical ANSEND genres");
+requirePattern(script, /function expandMusicGenreAliases\(/, "Genre aliases must feed recommendation matching");
+for (const genre of [
+  "Sertanejo",
+  "Acústico",
+  "Indie",
+  "Funk",
+  "Hip-Hop / Trap / Rap",
+  "Pop",
+  "Rock",
+  "Samba / Pagode",
+  "Forró",
+  "MPB",
+  "Gospel",
+  "Reggae",
+  "Eletrônica",
+  "Reggaeton",
+  "Música Latina",
+  "Instrumental / Clássica",
+  "Outros",
+]) {
+  if (!script.includes(`"${genre}"`)) throw new Error(`Missing canonical onboarding genre: ${genre}`);
+}
 
 for (const sql of [schema, migration]) {
   requirePattern(sql, /quiz_completed boolean not null default false/i, "quiz_completed must default to false");

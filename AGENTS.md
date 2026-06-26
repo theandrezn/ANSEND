@@ -1,3 +1,75 @@
+<!-- codex:ansend-agent-instructions-start -->
+# ANSEND - Agent Instructions
+
+## Identidade do projeto
+ANSEND e uma SPA musical premium para catalogo de beats, perfis, carrinho, checkout, pagamentos, compras, pedidos, licencas, contratos, downloads autorizados, chat, comunidade e NEXO IA. A fonte de verdade para dados autenticados e Supabase/backend real; `localStorage` pode existir como cache ou fallback anonimo, mas nao representa pedidos autenticados.
+
+Claude-Mem e ferramenta local de desenvolvimento e memoria do processo do Codex. Ele nao faz parte da aplicacao ANSEND: nao adicione `claude-mem` ao `package.json`, nao importe no frontend ou no Worker, nao exponha ao navegador, nao use em migrations e nao inclua no deploy.
+
+## Estrutura principal
+- `index.html`: entrada da SPA, CDNs e configuracao publica do Supabase.
+- `script.js`: roteamento hash, estado global `appState`, renderizacao principal, auth, catalogo, compras, perfil, chat, player, comunidade e NEXO UI.
+- `checkout/checkout.js` e `checkout/checkout.css`: experiencia isolada de checkout.
+- `src/worker.mjs`: Cloudflare Worker, APIs privadas, NEXO, Mercado Pago, webhooks e downloads seguros.
+- `src/nexo/`: regras, prompt, schema, validacao e core deterministico da NEXO.
+- `styles.css`, `profile-page.css`, `nexo-ia.css`, `hero-collage.css`: estilos globais e de areas especificas.
+- `supabase/schema.sql` e `supabase/migrations/`: schema, RLS, RPCs, storage policies e evolucao cronologica.
+- `tests/`: checks Node/Playwright por contrato, seguranca, UI e regressao.
+- `scripts/build-worker.js`: build que sincroniza `dist/`, usado pela publicacao Cloudflare.
+- `dist/`: artefatos gerados e versionados; rebuild obrigatorio apos mudancas de frontend/Worker.
+
+## Comandos oficiais
+- Instalar dependencias: `npm install`
+- Build: `npm run build`
+- Deploy: `npm run deploy` somente com autorizacao explicita.
+- Testes disponiveis: usar apenas scripts reais de `package.json`, por exemplo `npm run test:routes`, `npm run test:auth-focus`, `npm run test:data-boundaries`, `npm run test:purchases:phase2`, `npm run test:layout-shell`, `npm run test:responsive`, `npm run test:nexo`.
+- Nao ha script oficial de lint no `package.json` atual.
+
+## Protocolo obrigatorio no inicio de tarefas
+1. Confirmar diretorio completo, raiz Git, branch atual e `git status --short`.
+2. Ler `git remote -v` e confirmar o remote oficial `https://github.com/theandrezn/ANSEND.git` quando a tarefa depender do repositorio correto.
+3. Consultar `git log --oneline -10` e diffs relevantes antes de editar.
+4. Consultar Claude-Mem por dominio da tarefa quando houver memoria disponivel; se os MCP tools nao estiverem carregados, usar o mecanismo oficial disponivel e registrar a limitacao.
+5. Validar toda memoria contra o codigo atual, Git, migrations e configuracoes efetivamente carregadas.
+6. Identificar alteracoes deixadas por outros agentes e preserva-las.
+7. Reabrir do disco os arquivos relacionados antes de propor ou aplicar alteracoes.
+
+## Protocolo durante tarefas
+- Fazer a menor alteracao util e justificada, seguindo os padroes existentes.
+- Preservar SPA, `script.js`, Worker Cloudflare, Supabase, `#compras`, checkout, auth, perfil, chat, player e catalogo.
+- Nao criar rotas, paginas, arquiteturas, tabelas, fluxos ou sistemas paralelos sem pedido explicito.
+- Nao trocar integracoes reais por mocks quando a tarefa exigir funcionalidade real.
+- Nao alterar frontend e backend fora do escopo.
+- Nao executar migrations de producao, deploy, commit ou push sem autorizacao explicita.
+- Nunca expor secrets, tokens, cookies, service role keys, headers de autorizacao ou valores de `.env`.
+- Nunca usar service role no cliente.
+- Preservar acessibilidade, responsividade e design escuro, premium e neutro; laranja apenas como destaque pontual.
+- Validar integracoes reais antes de afirmar que funcionam.
+
+## Protocolo de finalizacao
+1. Executar testes relevantes quando houver mudanca funcional.
+2. Executar `npm run build` quando fontes de frontend, Worker ou assets servidos mudarem.
+3. Revisar `git diff` e `git diff --stat`.
+4. Listar arquivos alterados.
+5. Separar problemas corrigidos de pendencias.
+6. Produzir resumo estruturado e seguro para captura pelo Claude-Mem.
+7. Nao fazer commit, push, deploy ou migration sem solicitacao explicita.
+
+## Regras de Git
+- Nunca usar `git reset --hard`, `git clean -fd`, `git checkout --`, `git restore .`, rebase, merge, cherry-pick, revert, commit, push ou force push sem autorizacao especifica.
+- Nunca sobrescrever alteracoes de outros agentes.
+- Sincronizar o entendimento com commits recentes antes de mexer em areas sensiveis.
+- Nao enviar direto para producao e nao reescrever historico.
+
+## Regras de memoria
+- Consultar memoria por dominio antes de tarefas grandes ou sensiveis.
+- Tratar memoria como contexto auxiliar, nunca como fonte absoluta.
+- Validar informacoes antigas contra codigo, Git, schema e migrations atuais.
+- Registrar somente decisoes duraveis, descobertas importantes, causa raiz, arquivos alterados, testes e pendencias.
+- Nao registrar logs gigantes, dados pessoais desnecessarios, tokens, conteudo de `.env`, cookies, sessions, secrets ou credenciais.
+- Nao editar diretamente o banco interno do Claude-Mem; usar apenas ferramentas, hooks, CLI ou endpoints oficiais disponiveis.
+<!-- codex:ansend-agent-instructions-end -->
+
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 

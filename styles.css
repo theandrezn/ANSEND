@@ -40914,3 +40914,736 @@ body[data-route="cadastrar"] .release-bottom-inner .release-submit-btn:disabled 
   color: rgba(255, 255, 255, 0.32) !important;
   box-shadow: none !important;
 }
+/* Curadoria ANSEND - fase 1 */
+.curadoria-shell,
+.curadoria-onboarding {
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto 48px;
+}
+
+.curadoria-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+.curadoria-left-nav,
+.curadoria-main-panel,
+.curadoria-inbox,
+.curadoria-onboarding,
+.curadoria-profile-view,
+.curadoria-playlist-card,
+.curadoria-empty-box,
+.curadoria-modal-form,
+.curadoria-summary-grid article,
+.curadoria-profile-grid article {
+  background: #080808;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.curadoria-left-nav,
+.curadoria-inbox {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.curadoria-left-nav strong,
+.curadoria-inbox h3,
+.curadoria-main-panel h2,
+.curadoria-profile-view h2,
+.curadoria-onboarding h2,
+.curadoria-empty-box h3,
+.curadoria-playlist-card h3 {
+  color: #fff;
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.curadoria-left-nav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: #a1a1aa;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.curadoria-left-nav a.is-active,
+.curadoria-left-nav a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.curadoria-left-nav svg,
+.curadoria-card-actions svg,
+.curadoria-empty-box svg,
+.curadoria-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.curadoria-left-nav > span,
+.curadoria-inbox > span,
+.curadoria-main-panel header span,
+.curadoria-profile-view header span,
+.curadoria-onboarding > div > span,
+.curadoria-modal-form header span,
+.curadoria-summary-grid span,
+.curadoria-profile-grid span {
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.curadoria-main-panel {
+  padding: 18px;
+  min-width: 0;
+}
+
+.curadoria-main-panel > header,
+.curadoria-profile-view > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.curadoria-main-panel p,
+.curadoria-inbox p,
+.curadoria-onboarding p,
+.curadoria-profile-view p,
+.curadoria-playlist-card p,
+.curadoria-empty-box p,
+.curadoria-modal-form p {
+  color: #a1a1aa;
+  margin: 6px 0 0;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.curadoria-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.curadoria-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.curadoria-summary-grid article {
+  padding: 12px;
+}
+
+.curadoria-summary-grid strong {
+  display: block;
+  color: #fff;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.curadoria-playlist-list {
+  display: grid;
+  gap: 12px;
+}
+
+.curadoria-playlist-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+}
+
+.curadoria-playlist-cover,
+.curadoria-cover-empty,
+.curadoria-preview-cover {
+  width: 96px;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #111;
+  display: grid;
+  place-items: center;
+}
+
+.curadoria-playlist-cover img,
+.curadoria-preview-cover img,
+.curadoria-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.curadoria-card-top,
+.curadoria-card-meta,
+.curadoria-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.curadoria-card-top > span:not(.curadoria-status),
+.curadoria-card-meta span {
+  color: #a1a1aa;
+  font-size: 12px;
+}
+
+.curadoria-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.curadoria-status.is-approved { color: #b7f7c8; }
+.curadoria-status.is-pending { color: #f2f2f2; }
+.curadoria-status.is-rejected { color: #f4a7a7; }
+.curadoria-status.is-paused { color: #c8c8d2; }
+
+.curadoria-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.curadoria-chip-list span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4d4d8;
+  font-size: 11px;
+}
+
+.curadoria-card-actions {
+  margin-top: 12px;
+}
+
+.curadoria-card-actions button,
+.curadoria-card-actions a,
+.curadoria-inline-field button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  text-decoration: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.curadoria-empty-box,
+.curadoria-onboarding {
+  padding: 28px;
+}
+
+.curadoria-onboarding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.curadoria-onboarding aside {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.curadoria-onboarding li {
+  color: #d4d4d8;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.curadoria-inbox {
+  position: sticky;
+  top: 88px;
+}
+
+.curadoria-muted,
+.curadoria-error {
+  color: #a1a1aa;
+  font-size: 13px;
+}
+
+.curadoria-error {
+  color: #f4a7a7;
+}
+
+.curadoria-profile-view {
+  padding: 18px;
+}
+
+.curadoria-profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  background: #111;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.curadoria-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.curadoria-profile-grid article {
+  padding: 12px;
+}
+
+.curadoria-profile-playlists {
+  display: grid;
+  gap: 12px;
+}
+
+.curadoria-modal-form {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(86vh, 820px);
+  overflow: auto;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.curadoria-modal-form header h2 {
+  margin: 4px 0 0;
+  color: #fff;
+}
+
+.curadoria-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.curadoria-form-grid .is-wide,
+.curadoria-modal-form .is-wide {
+  grid-column: 1 / -1;
+}
+
+.curadoria-modal-form label,
+.curadoria-modal-form fieldset {
+  display: grid;
+  gap: 7px;
+  color: #fff;
+  font-size: 12px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.curadoria-modal-form legend {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.curadoria-modal-form input,
+.curadoria-modal-form select,
+.curadoria-modal-form textarea {
+  width: 100%;
+  background: #050505;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  font: inherit;
+}
+
+.curadoria-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.curadoria-checkbox-grid label,
+.curadoria-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.curadoria-checkbox-grid input,
+.curadoria-check input {
+  width: auto;
+}
+
+.curadoria-inline-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.curadoria-preview-box {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 112px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.curadoria-preview-box > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.curadoria-preview-box strong,
+.curadoria-preview-box a,
+.curadoria-preview-box em {
+  display: block;
+  color: #fff;
+}
+
+.curadoria-preview-box a {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.curadoria-preview-box em {
+  margin-top: 6px;
+  color: #a1a1aa;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.curadoria-spotify-panel {
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: #0b0b0b;
+}
+
+.curadoria-spotify-panel.is-muted {
+  opacity: .86;
+}
+
+.curadoria-spotify-panel header,
+.curadoria-import-modal header {
+  margin: 0 0 12px;
+}
+
+.curadoria-spotify-panel header span,
+.curadoria-import-modal header span {
+  display: block;
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.curadoria-spotify-panel h3,
+.curadoria-import-modal h2 {
+  margin: 4px 0 0;
+  color: #fff;
+}
+
+.curadoria-spotify-panel p,
+.curadoria-import-modal p,
+.curadoria-import-row em {
+  color: #a1a1aa;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.curadoria-spotify-linkbox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 14px 0;
+}
+
+.curadoria-spotify-linkbox label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.curadoria-spotify-linkbox span {
+  color: #d4d4d8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.curadoria-spotify-linkbox input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: #050505;
+  color: #fff;
+  padding: 0 12px;
+  outline: none;
+}
+
+.curadoria-spotify-linkbox input:focus {
+  border-color: rgba(255,255,255,.24);
+}
+
+.curadoria-preview-box.is-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+}
+
+.curadoria-preview-box.is-compact span {
+  color: #a1a1aa;
+  font-size: 12px;
+}
+
+.curadoria-spotify-account {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+}
+
+.curadoria-spotify-account > div:first-child,
+.curadoria-import-cover {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: #111;
+  color: #d4d4d8;
+}
+
+.curadoria-spotify-account img,
+.curadoria-import-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.curadoria-spotify-account p {
+  margin: 0;
+}
+
+.curadoria-spotify-account strong,
+.curadoria-spotify-account span {
+  display: block;
+}
+
+.curadoria-import-modal {
+  width: min(780px, calc(100vw - 28px));
+  max-height: min(760px, calc(100vh - 56px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: #080808;
+}
+
+.curadoria-import-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.curadoria-import-toolbar input {
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: #0e0e0e;
+  color: #fff;
+  padding: 0 12px;
+}
+
+.curadoria-import-toolbar div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.curadoria-import-toolbar button,
+.curadoria-card-actions button,
+.curadoria-card-actions a {
+  white-space: nowrap;
+}
+
+.curadoria-import-toolbar button.is-active {
+  background: #f4f4f5;
+  color: #090909;
+  border-color: #f4f4f5;
+}
+
+.curadoria-import-list {
+  display: grid;
+  gap: 8px;
+}
+
+.curadoria-import-row {
+  display: grid;
+  grid-template-columns: 20px 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: #0d0d0d;
+}
+
+.curadoria-import-row.is-disabled {
+  opacity: .62;
+}
+
+.curadoria-import-row input {
+  width: 16px;
+  height: 16px;
+}
+
+.curadoria-import-row strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+}
+
+.curadoria-import-row p,
+.curadoria-import-row em {
+  display: block;
+  margin: 3px 0 0;
+}
+
+.curadoria-import-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  bottom: -20px;
+  margin-top: 14px;
+  padding-top: 12px;
+  background: #080808;
+}
+
+.curadoria-modal-form footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  bottom: -20px;
+  padding-top: 12px;
+  background: #080808;
+}
+
+.curadoria-loading div {
+  min-height: 180px;
+  border-radius: 8px;
+  background: #101010;
+  animation: curadoriaSkeleton 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes curadoriaSkeleton {
+  0% { opacity: .55; }
+  100% { opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+  .curadoria-shell {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  .curadoria-inbox {
+    position: static;
+    grid-column: 1 / -1;
+  }
+  .curadoria-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .curadoria-shell,
+  .curadoria-onboarding {
+    width: calc(100% - 20px);
+  }
+  .curadoria-shell,
+  .curadoria-onboarding,
+  .curadoria-form-grid,
+  .curadoria-profile-grid,
+  .curadoria-checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+  .curadoria-left-nav {
+    display: flex;
+    overflow-x: auto;
+  }
+  .curadoria-left-nav strong,
+  .curadoria-left-nav > span {
+    display: none;
+  }
+  .curadoria-main-panel > header,
+  .curadoria-profile-view > header {
+    flex-direction: column;
+  }
+  .curadoria-playlist-card,
+  .curadoria-preview-box {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .curadoria-playlist-cover,
+  .curadoria-cover-empty,
+  .curadoria-preview-cover {
+    width: 72px;
+  }
+  .curadoria-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .curadoria-spotify-linkbox {
+    grid-template-columns: 1fr;
+  }
+  .curadoria-inline-field {
+    grid-template-columns: 1fr;
+  }
+  .curadoria-import-toolbar,
+  .curadoria-import-row {
+    grid-template-columns: 1fr;
+  }
+}
+/* End Curadoria ANSEND - fase 1 */
