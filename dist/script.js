@@ -5528,8 +5528,20 @@ function runHeroHeadlineCycler(titleElement) {
 }
 
 function applyRoleDashboard() {
-  const dashboard = roleDashboard();
   const role = activeRoleKey();
+  const labels = {
+    ia: "NEXO IA",
+    explorar: role === "artista" ? "Explorar" : "Demandas",
+    compras: "Pedidos",
+    biblioteca: role === "curador" ? "Curadoria" : "Biblioteca",
+    produtores: role === "artista" ? "Profissionais" : "Comunidade",
+  };
+  Object.entries(labels).forEach(([route, label]) => {
+    const target = document.querySelector(`[data-route="${route}"] span`);
+    if (target) target.textContent = label;
+  });
+
+  const dashboard = roleDashboard();
   const hero = document.querySelector(".ai-hero");
   if (!hero) {
     cleanupHeroHeadline();
@@ -5571,18 +5583,6 @@ function applyRoleDashboard() {
   if (!appState.aiPlan || appState.aiPlan.role !== activeRoleKey()) defaultRolePreview(dashboard);
 
   document.querySelector("#roleDashboardStrip")?.remove();
-
-  const labels = {
-    ia: "NEXO IA",
-    explorar: activeRoleKey() === "artista" ? "Explorar" : "Demandas",
-    compras: "Pedidos",
-    biblioteca: activeRoleKey() === "curador" ? "Playlists" : "Biblioteca",
-    produtores: activeRoleKey() === "artista" ? "Profissionais" : "Comunidade",
-  };
-  Object.entries(labels).forEach(([route, label]) => {
-    const target = document.querySelector(`[data-route="${route}"] span`);
-    if (target) target.textContent = label;
-  });
 }
 
 function persistCatalogItems() {
@@ -19627,6 +19627,7 @@ function renderRoute() {
   lastRoute = route;
   document.body.dataset.route = route;
   if (route !== "feed") cleanupHeroHeadline();
+  applyRoleDashboard();
   syncCheckoutStandaloneRoute(route);
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
