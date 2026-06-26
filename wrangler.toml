@@ -1,12 +1,18 @@
 name = "ansend"
 compatibility_date = "2026-06-08"
 main = "src/worker.mjs"
+routes = [
+  { pattern = "ansendmusic.site", custom_domain = true },
+  { pattern = "www.ansendmusic.site", custom_domain = true }
+]
 
 [vars]
 OPENAI_MODEL = "gpt-5.4-mini"
 NEXO_FALLBACK_MODELS = "gpt-5-mini,gpt-4.1-mini"
 NEXO_MAX_OUTPUT_TOKENS = "2200"
 NEXO_REASONING_EFFORT = "low"
+PAYPAL_ENVIRONMENT = "LIVE"
+PAYPAL_CURRENCY_CODE = "BRL"
 SUPABASE_URL = "https://qxujynzqdursxaehchik.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_28zSST9BNCM5aqFfLnMrPg_X8MZp8pe"
 
