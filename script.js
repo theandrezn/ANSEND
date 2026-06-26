@@ -14664,6 +14664,10 @@ function renderLibraryLegacy() {
 }
 
 function renderLibrary() {
+  if (activeRoleKey() === "curador") {
+    renderCuratorCurationDashboard();
+    return;
+  }
   const recent = marketplaceBeats().slice(0, 8);
   const savedIds = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
   const saved = dedupeById(savedIds.map(findBeat).filter(Boolean)).filter((item) => item.id !== topBeatOfDay.id);
@@ -14673,6 +14677,7 @@ function renderLibrary() {
     : emptyState("library-big", "Biblioteca vazia", "Cadastre ou salve beats reais para montar sua biblioteca.", "perfil");
   appView.innerHTML = `${pageIntro("biblioteca")}${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Conteudo real publicado na plataforma</p></div></div>${recentSection}</section>`;
 }
+
 function renderInfoCards(items = []) {
   return items.length ? `<div class="legal-card-grid">${items.map(([title, text]) => `
     <article class="legal-info-card">
@@ -15461,6 +15466,10 @@ function renderProducers() {
 
 function renderPlaylistDetail() {
   const playlistId = location.hash.replace("#playlist-", "");
+  if (activeRoleKey() === "curador") {
+    renderCuratorPlaylistDetail(playlistId);
+    return;
+  }
   const pack = findPlaylistPack(playlistId);
   const firstTrack = pack.tracks[0] || topBeatOfDay;
   const totalMinutes = pack.tracks.reduce((total, item) => total + Number(item.duration.split(":")[0] || 0), 0);
@@ -26258,6 +26267,597 @@ document.addEventListener("click", (event) => {
     }
   }
 }, true);
+
+/* === ANSEND CURATOR CURATION DASHBOARD AND SPOTIFY IMPORT SYSTEM === */
+const defaultCuratorPlaylists = [
+  {
+    id: "vibes-bars",
+    title: "Vibes & Bars",
+    cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+    followers: "33,105",
+    value: "$25",
+    proposals: 29,
+    signals: 0,
+    placements: 0,
+    genres: ["House", "Latin"],
+    tracks: [
+      { id: "t1", title: "Coffee Black", artist: "Cody Landress-Gibson", album: "Coffee Black", duration: "4:04", popularity: 21, added: "6 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" },
+      { id: "t2", title: "Do You Feel Me", artist: "Two Guys Walk Into A Bar", album: "Slippin' Bourbon in Hell", duration: "5:20", popularity: 24, added: "20 days ago", cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" },
+      { id: "t3", title: "Streetlight", artist: "Brendan Antony", album: "Streetlight", duration: "2:20", popularity: 20, added: "20 days ago", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" },
+      { id: "t4", title: "The Woman Who Sold The World", artist: "The Lonely People", album: "Destitute Island", duration: "3:08", popularity: 10, added: "20 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" }
+    ]
+  },
+  {
+    id: "rb-trap-soul",
+    title: "R&B & Trap Soul",
+    cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=300",
+    followers: "24,895",
+    value: "$15",
+    proposals: 33,
+    signals: 0,
+    placements: 0,
+    genres: ["Hip Hop", "House"],
+    tracks: [
+      { id: "t5", title: "SO I CAN HATE YOU", artist: "Janine Nel", album: "SO I CAN HATE YOU", duration: "4:28", popularity: 12, added: "20 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" },
+      { id: "t6", title: "kiss me right back", artist: "Harry Owen", album: "kiss me right back", duration: "2:51", popularity: 17, added: "20 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" },
+      { id: "t7", title: "Circles", artist: "mixo", album: "Circles", duration: "2:01", popularity: 33, added: "20 days ago", cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" }
+    ]
+  },
+  {
+    id: "late-night-vibes",
+    title: "Late Night Vibes",
+    cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300",
+    followers: "21,283",
+    value: "$15",
+    proposals: 0,
+    signals: 0,
+    placements: 0,
+    genres: ["Pop", "R&B"],
+    tracks: []
+  },
+  {
+    id: "rb-neo-soul-waves",
+    title: "R&B & Neo-Soul Waves",
+    cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300",
+    followers: "17,925",
+    value: "$25",
+    proposals: 25,
+    signals: 0,
+    placements: 0,
+    genres: ["Afro", "Electronic"],
+    tracks: [
+      { id: "t8", title: "Streetlights", artist: "Purplespace", album: "Radiosynthesis", duration: "4:28", popularity: 8, added: "4 days ago", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" },
+      { id: "t9", title: "Candy Rain", artist: "Blaq", album: "Trap Soul", duration: "2:33", popularity: 27, added: "4 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" },
+      { id: "t10", title: "Viajando a la Luna", artist: "Droide", album: "Viajando a la Luna", duration: "4:31", popularity: 22, added: "20 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" }
+    ]
+  }
+];
+
+function getCuratorPlaylists() {
+  const data = localStorage.getItem("ansend-curator-playlists");
+  if (!data) {
+    localStorage.setItem("ansend-curator-playlists", JSON.stringify(defaultCuratorPlaylists));
+    return defaultCuratorPlaylists;
+  }
+  return JSON.parse(data);
+}
+
+function saveCuratorPlaylists(playlists) {
+  localStorage.setItem("ansend-curator-playlists", JSON.stringify(playlists));
+}
+
+function renderCuratorCurationDashboard() {
+  const playlists = getCuratorPlaylists();
+  
+  appView.innerHTML = `
+    <div class="curator-dashboard-page">
+      <div class="curator-main-layout">
+        <header class="curator-dashboard-header">
+          <div class="header-left">
+            <h1>Playlists</h1>
+            <p>Manage your playlists and collaborations.</p>
+          </div>
+          <button class="import-spotify-btn" type="button" data-action="curador-import-spotify">
+            <i data-lucide="plus"></i> Importar via Spotify
+          </button>
+        </header>
+
+        <div class="curator-filter-strip">
+          <div class="search-wrapper">
+            <i data-lucide="search"></i>
+            <input type="text" id="curatorPlaylistSearch" placeholder="Search tracks..." oninput="filterCuratorPlaylistCards()">
+          </div>
+          <div class="filter-right">
+            <span>Recents every:</span>
+            <select id="curatorRecentsFilter" onchange="filterCuratorPlaylistCards()">
+              <option value="12h">12 hours</option>
+              <option value="24h">24 hours</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="curator-playlists-grid" id="curatorPlaylistsGrid">
+          ${playlists.map(curatorPlaylistCardMarkup).join("")}
+        </div>
+      </div>
+
+      <aside class="curator-right-tray">
+        <div class="tray-header">
+          <h3>Curation Tray</h3>
+          <i data-lucide="copy"></i>
+        </div>
+        <div class="tray-content">
+          <div class="tray-empty-state">
+            <i data-lucide="file-text" class="tray-icon"></i>
+            <strong>Save tracks here while you explore.</strong>
+            <p>Favorite tracks to filter them quickly. Rooms reset daily. Other tracks expire within 7 days.</p>
+            <p class="tray-hint">Drag or press the ➕ icon on songs from Discover to review, sort, and decide later.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function curatorPlaylistCardMarkup(playlist) {
+  const trackCount = playlist.tracks ? playlist.tracks.length : 0;
+  const genresMarkup = playlist.genres ? playlist.genres.map(g => `<span>${g}</span>`).join(" ") : "";
+  
+  return `
+    <div class="curator-playlist-card" data-action="open-curator-playlist" data-id="${playlist.id}">
+      <div class="card-cover-wrapper">
+        <img src="${playlist.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'}" alt="Capa de ${playlist.title}" onerror="this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'">
+      </div>
+      <div class="card-body">
+        <div class="card-header-row">
+          <h3>${playlist.title}</h3>
+          <div class="card-header-right">
+            <i data-lucide="volume-2" class="speaker-icon"></i>
+            <span class="followers-count">${playlist.followers || '0'}</span>
+          </div>
+        </div>
+        
+        <div class="card-stats-grid">
+          <div class="stat-box">
+            <strong>${playlist.proposals || 0}</strong>
+            <span>PROPOSALS</span>
+          </div>
+          <div class="stat-box">
+            <strong>${playlist.signals || 0}</strong>
+            <span>SIGNALS</span>
+          </div>
+          <div class="stat-box">
+            <strong>${playlist.placements || 0}</strong>
+            <span>PLACEMENTS</span>
+          </div>
+        </div>
+
+        <div class="card-footer-row">
+          <span class="song-count-badge">${trackCount} songs</span>
+          <div class="genres-row">
+            ${genresMarkup}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function filterCuratorPlaylistCards() {
+  const query = document.getElementById("curatorPlaylistSearch")?.value.toLowerCase() || "";
+  const cards = document.querySelectorAll(".curator-playlist-card");
+  cards.forEach(card => {
+    const title = card.querySelector("h3")?.innerText.toLowerCase() || "";
+    if (title.includes(query)) {
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
+function renderCuratorPlaylistDetail(playlistId) {
+  const playlists = getCuratorPlaylists();
+  const playlist = playlists.find(p => p.id === playlistId) || playlists[0];
+  
+  const genresMarkup = playlist.genres ? playlist.genres.map(g => `<span class="detail-genre-tag">${g}</span>`).join("") : "";
+  
+  appView.innerHTML = `
+    <div class="curator-detail-page">
+      <div class="curator-main-layout">
+        <button class="detail-back-btn" type="button" onclick="location.hash='biblioteca'">
+          <i data-lucide="chevron-left"></i> Voltar para Playlists
+        </button>
+
+        <header class="curator-detail-header">
+          <div class="detail-cover-wrapper">
+            <img src="${playlist.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'}" alt="Capa de ${playlist.title}" onerror="this.src='https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300'">
+          </div>
+          <div class="detail-info">
+            <div class="detail-title-row">
+              <h1>${playlist.title}</h1>
+              <div class="followers-badge">
+                <i data-lucide="volume-2"></i> ${playlist.followers || '0'}
+              </div>
+            </div>
+            <div class="detail-meta-row">
+              <div class="detail-genre-tags">
+                ${genresMarkup}
+              </div>
+              <div class="price-badge">${playlist.value || '$15'}</div>
+            </div>
+          </div>
+        </header>
+
+        <div class="curator-tab-strip">
+          <button class="curator-tab-btn is-active" type="button" data-action="curator-playlist-tab" data-tab="tracks">
+            Tracks
+          </button>
+          <button class="curator-tab-btn" type="button" data-action="curator-playlist-tab" data-tab="proposals">
+            Proposals (${playlist.proposals || 0})
+          </button>
+        </div>
+
+        <div class="curator-tab-content">
+          <div class="curator-tab curator-tab-tracks is-active" data-tab="tracks">
+            <table class="curator-tracks-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Song</th>
+                  <th>Album</th>
+                  <th>Duration</th>
+                  <th>Popularity</th>
+                  <th>Added</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${playlist.tracks && playlist.tracks.length > 0 
+                  ? playlist.tracks.map((t, index) => curatorTrackRowMarkup(t, index + 1)).join("") 
+                  : `<tr><td colspan="6" class="table-empty-row">Nenhuma faixa nesta playlist. Adicione ou importe faixas via Spotify!</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="curator-tab curator-tab-proposals" data-tab="proposals" style="display:none;">
+            <div class="proposals-empty-box">
+              <i data-lucide="message-square"></i>
+              <h3>Sem propostas pendentes</h3>
+              <p>Propostas enviadas por artistas para curadoria nesta playlist aparecerão aqui.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="curator-right-tray">
+        <div class="tray-header">
+          <h3>Curation Tray</h3>
+          <i data-lucide="copy"></i>
+        </div>
+        <div class="tray-content">
+          <div class="tray-empty-state">
+            <i data-lucide="file-text" class="tray-icon"></i>
+            <strong>Save tracks here while you explore.</strong>
+            <p>Favorite tracks to filter them quickly. Rooms reset daily. Other tracks expire within 7 days.</p>
+            <p class="tray-hint">Drag or press the ➕ icon on songs from Discover to review, sort, and decide later.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function curatorTrackRowMarkup(track, num) {
+  const popPercent = track.popularity || 20;
+  const popBar = `
+    <div class="popularity-bar-container">
+      <div class="popularity-bar-fill" style="width: ${popPercent}%"></div>
+      <span class="popularity-value">${popPercent}</span>
+    </div>
+  `;
+  
+  return `
+    <tr class="curator-track-row">
+      <td class="col-num">${num}</td>
+      <td class="col-song">
+        <div class="song-cell">
+          <img src="${track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'}" alt="Capa de ${track.title}" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'">
+          <div class="song-info">
+            <span class="song-title">${track.title}</span>
+            <span class="song-artist">${track.artist}</span>
+          </div>
+        </div>
+      </td>
+      <td class="col-album">${track.album}</td>
+      <td class="col-duration">${track.duration}</td>
+      <td class="col-popularity">${popBar}</td>
+      <td class="col-added">${track.added}</td>
+    </tr>
+  `;
+}
+
+function openSpotifyImportCurationModal() {
+  const modalHTML = `
+    <div class="spotify-import-modal-overlay">
+      <div class="spotify-import-modal">
+        <header class="modal-header">
+          <div class="spotify-badge"><i data-lucide="music"></i> Spotify Integration</div>
+          <h2>Conectar ao Spotify</h2>
+          <p>Link your account or import playlists directly to manage submissions.</p>
+        </header>
+        
+        <div class="modal-body" id="spotifyModalBody">
+          <div class="connect-options-layout">
+            <div class="option-card">
+              <h3>Conectar Conta Spotify</h3>
+              <p>Autorize a ANSEND a visualizar suas playlists públicas e colaborativas.</p>
+              <button class="connect-spotify-btn" type="button" data-action="simulate-spotify-connect">
+                Conectar Conta Spotify
+              </button>
+            </div>
+            
+            <div class="divider-text">OU</div>
+            
+            <div class="option-card">
+              <h3>Importar via Link</h3>
+              <p>Insira a URL pública da sua playlist do Spotify.</p>
+              <div class="input-row">
+                <input type="text" id="spotifyPlaylistLink" placeholder="https://open.spotify.com/playlist/...">
+                <button class="import-link-btn" type="button" onclick="importSpotifyPlaylistByLink()">Importar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <footer class="modal-footer">
+          <button class="close-modal-btn" type="button" data-action="close-spotify-import-modal">Cancelar</button>
+        </footer>
+      </div>
+    </div>
+  `;
+  
+  const container = document.createElement("div");
+  container.innerHTML = modalHTML;
+  document.body.appendChild(container.firstElementChild);
+  lucide.createIcons();
+}
+
+function simulateSpotifyConnection() {
+  const body = document.getElementById("spotifyModalBody");
+  if (!body) return;
+  
+  body.innerHTML = `
+    <div class="spotify-loading-container">
+      <div class="spotify-spinner"></div>
+      <p>Buscando suas playlists do Spotify...</p>
+    </div>
+  `;
+  
+  setTimeout(() => {
+    body.innerHTML = `
+      <div class="spotify-playlists-selection-list">
+        <h3>Olá, Andrezn! Selecione a playlist para importar:</h3>
+        <p class="selection-subtitle">Playlists detectadas na sua conta Spotify:</p>
+        
+        <div class="spotify-playlists-rows">
+          <label class="spotify-playlist-row">
+            <input type="radio" name="spotify-import-playlist" value="acoustic-vibes" checked>
+            <div class="row-cover"><img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" alt=""></div>
+            <div class="row-info">
+              <strong>Acoustic Vibes</strong>
+              <span>45,538 followers • 15 tracks</span>
+            </div>
+          </label>
+          <label class="spotify-playlist-row">
+            <input type="radio" name="spotify-import-playlist" value="soft-pop-vibes">
+            <div class="row-cover"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" alt=""></div>
+            <div class="row-info">
+              <strong>Soft Pop Vibes</strong>
+              <span>43,948 followers • 20 tracks</span>
+            </div>
+          </label>
+          <label class="spotify-playlist-row">
+            <input type="radio" name="spotify-import-playlist" value="country-vibes">
+            <div class="row-cover"><img src="https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" alt=""></div>
+            <div class="row-info">
+              <strong>Country Vibes</strong>
+              <span>38,974 followers • 12 tracks</span>
+            </div>
+          </label>
+          <label class="spotify-playlist-row">
+            <input type="radio" name="spotify-import-playlist" value="feel-good-vibes">
+            <div class="row-cover"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" alt=""></div>
+            <div class="row-info">
+              <strong>Feel Good Vibes</strong>
+              <span>35,078 followers • 30 tracks</span>
+            </div>
+          </label>
+        </div>
+        
+        <button class="import-confirm-btn" type="button" data-action="finish-spotify-import">Importar Playlist</button>
+      </div>
+    `;
+  }, 1200);
+}
+
+function finishSpotifyImport() {
+  const selectedRadio = document.querySelector("input[name='spotify-import-playlist']:checked");
+  if (!selectedRadio) return;
+  
+  const val = selectedRadio.value;
+  let newPlaylist = {};
+  
+  if (val === "acoustic-vibes") {
+    newPlaylist = {
+      id: "acoustic-vibes",
+      title: "Acoustic Vibes",
+      cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300",
+      followers: "45,538",
+      value: "$15",
+      proposals: 10,
+      signals: 0,
+      placements: 0,
+      genres: ["Acoustic", "Pop"],
+      tracks: [
+        { id: "a1", title: "Coffee Black", artist: "Cody Landress-Gibson", album: "Coffee Black", duration: "4:04", popularity: 21, added: "6 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" },
+        { id: "a2", title: "Do You Feel Me", artist: "Two Guys Walk Into A Bar", album: "Slippin' Bourbon in Hell", duration: "5:20", popularity: 24, added: "20 days ago", cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" },
+        { id: "a3", title: "Streetlight", artist: "Brendan Antony", album: "Streetlight", duration: "2:20", popularity: 20, added: "20 days ago", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" },
+        { id: "a4", title: "The Woman Who Sold The World", artist: "The Lonely People", album: "Destitute Island", duration: "3:08", popularity: 10, added: "20 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" },
+        { id: "a5", title: "SO I CAN HATE YOU", artist: "Janine Nel", album: "SO I CAN HATE YOU", duration: "4:28", popularity: 12, added: "20 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" },
+        { id: "a6", title: "kiss me right back", artist: "Harry Owen", album: "kiss me right back", duration: "2:51", popularity: 17, added: "20 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" },
+        { id: "a7", title: "Circles", artist: "mixo", album: "Circles", duration: "2:01", popularity: 33, added: "20 days ago", cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" },
+        { id: "a8", title: "Streetlights", artist: "Purplespace", album: "Radiosynthesis", duration: "4:28", popularity: 8, added: "4 days ago", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" },
+        { id: "a9", title: "Candy Rain", artist: "Blaq", album: "Trap Soul", duration: "2:33", popularity: 27, added: "4 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" },
+        { id: "a10", title: "Viajando a la Luna", artist: "Droide", album: "Viajando a la Luna", duration: "4:31", popularity: 22, added: "20 days ago", cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100" }
+      ]
+    };
+  } else if (val === "soft-pop-vibes") {
+    newPlaylist = {
+      id: "soft-pop-vibes",
+      title: "Soft Pop Vibes",
+      cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+      followers: "43,948",
+      value: "$15",
+      proposals: 5,
+      signals: 0,
+      placements: 0,
+      genres: ["Soft", "Pop"],
+      tracks: [
+        { id: "s1", title: "heavenly melody", artist: "Saintz", album: "heavenly melody", duration: "2:48", popularity: 29, added: "4 days ago", cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100" },
+        { id: "s2", title: "To love and not to love", artist: "Olu boomboom", album: "To love and not to love", duration: "3:34", popularity: 11, added: "11 days ago", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" }
+      ]
+    };
+  } else {
+    newPlaylist = {
+      id: val,
+      title: val.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+      cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=300",
+      followers: "10,500",
+      value: "$15",
+      proposals: 2,
+      signals: 0,
+      placements: 0,
+      genres: ["Indie", "Alternative"],
+      tracks: []
+    };
+  }
+  
+  const playlists = getCuratorPlaylists();
+  const idx = playlists.findIndex(p => p.id === newPlaylist.id);
+  if (idx !== -1) {
+    playlists[idx] = newPlaylist;
+  } else {
+    playlists.push(newPlaylist);
+  }
+  
+  saveCuratorPlaylists(playlists);
+  
+  document.querySelector(".spotify-import-modal-overlay")?.remove();
+  renderCuratorCurationDashboard();
+  
+  if (typeof showToast === "function") {
+    showToast("Playlist importada com sucesso!", "check-circle");
+  } else {
+    alert("Playlist importada com sucesso!");
+  }
+}
+
+function importSpotifyPlaylistByLink() {
+  const link = document.getElementById("spotifyPlaylistLink")?.value;
+  if (!link || !link.includes("spotify.com")) {
+    alert("Por favor, insira uma URL válida do Spotify.");
+    return;
+  }
+  
+  const match = link.match(/playlist\/([a-zA-Z0-9]+)/);
+  const id = match ? match[1] : "link-playlist";
+  
+  const newPlaylist = {
+    id: id,
+    title: "Playlist Importada",
+    cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300",
+    followers: "12,400",
+    value: "$15",
+    proposals: 0,
+    signals: 0,
+    placements: 0,
+    genres: ["Importado", "Spotify"],
+    tracks: [
+      { id: "link-t1", title: "Circles", artist: "mixo", album: "Circles", duration: "2:01", popularity: 33, added: "Hoje", cover: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=100" },
+      { id: "link-t2", title: "Candy Rain", artist: "Blaq", album: "Trap Soul", duration: "2:33", popularity: 27, added: "Hoje", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100" }
+    ]
+  };
+  
+  const playlists = getCuratorPlaylists();
+  playlists.push(newPlaylist);
+  saveCuratorPlaylists(playlists);
+  
+  document.querySelector(".spotify-import-modal-overlay")?.remove();
+  renderCuratorCurationDashboard();
+  
+  if (typeof showToast === "function") {
+    showToast("Playlist importada com sucesso!", "check-circle");
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const importSpotify = event.target.closest("[data-action='curador-import-spotify']");
+  if (importSpotify) {
+    event.preventDefault();
+    openSpotifyImportCurationModal();
+    return;
+  }
+  
+  const openPlaylist = event.target.closest("[data-action='open-curator-playlist']");
+  if (openPlaylist) {
+    event.preventDefault();
+    const playlistId = openPlaylist.dataset.id;
+    location.hash = `#playlist-${playlistId}`;
+    return;
+  }
+  
+  const playlistTab = event.target.closest("[data-action='curator-playlist-tab']");
+  if (playlistTab) {
+    event.preventDefault();
+    const tab = playlistTab.dataset.tab;
+    document.querySelectorAll(".curator-tab").forEach(t => {
+      if (t.dataset.tab === tab) {
+        t.style.display = "";
+        t.classList.add("is-active");
+      } else {
+        t.style.display = "none";
+        t.classList.remove("is-active");
+      }
+    });
+    document.querySelectorAll("[data-action='curator-playlist-tab']").forEach(btn => btn.classList.toggle("is-active", btn === playlistTab));
+    return;
+  }
+  
+  const simulateSpotify = event.target.closest("[data-action='simulate-spotify-connect']");
+  if (simulateSpotify) {
+    event.preventDefault();
+    simulateSpotifyConnection();
+    return;
+  }
+  
+  const finishImport = event.target.closest("[data-action='finish-spotify-import']");
+  if (finishImport) {
+    event.preventDefault();
+    finishSpotifyImport();
+    return;
+  }
+  
+  const closeImportModal = event.target.closest("[data-action='close-spotify-import-modal']");
+  if (closeImportModal) {
+    event.preventDefault();
+    document.querySelector(".spotify-import-modal-overlay")?.remove();
+    return;
+  }
+});
 
 
 
