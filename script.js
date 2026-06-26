@@ -5533,7 +5533,7 @@ function applyRoleDashboard() {
     ia: "NEXO IA",
     explorar: role === "artista" ? "Explorar" : "Demandas",
     compras: "Pedidos",
-    biblioteca: role === "curador" ? "Curadoria" : "Biblioteca",
+    biblioteca: "Curadoria",
     produtores: role === "artista" ? "Profissionais" : "Comunidade",
   };
   Object.entries(labels).forEach(([route, label]) => {
@@ -14664,18 +14664,7 @@ function renderLibraryLegacy() {
 }
 
 function renderLibrary() {
-  if (activeRoleKey() === "curador") {
-    renderCuratorCurationDashboard();
-    return;
-  }
-  const recent = marketplaceBeats().slice(0, 8);
-  const savedIds = JSON.parse(localStorage.getItem("ansend-saved-playlist") || "[]");
-  const saved = dedupeById(savedIds.map(findBeat).filter(Boolean)).filter((item) => item.id !== topBeatOfDay.id);
-  const savedSection = saved.length ? `<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="bookmark-plus"></i>Salvos no player</h2><p>Beats adicionados pelo menu do player</p></div></div>${gridView(saved)}</section>` : "";
-  const recentSection = recent.length
-    ? gridView(recent)
-    : emptyState("library-big", "Biblioteca vazia", "Cadastre ou salve beats reais para montar sua biblioteca.", "perfil");
-  appView.innerHTML = `${pageIntro("biblioteca")}${savedSection}<section class="catalog-section"><div class="section-head"><div><h2><i data-lucide="history"></i>Ouvidos recentemente</h2><p>Conteudo real publicado na plataforma</p></div></div>${recentSection}</section>`;
+  renderCuratorCurationDashboard();
 }
 
 function renderInfoCards(items = []) {
@@ -15466,10 +15455,8 @@ function renderProducers() {
 
 function renderPlaylistDetail() {
   const playlistId = location.hash.replace("#playlist-", "");
-  if (activeRoleKey() === "curador") {
-    renderCuratorPlaylistDetail(playlistId);
-    return;
-  }
+  renderCuratorPlaylistDetail(playlistId);
+  return;
   const pack = findPlaylistPack(playlistId);
   const firstTrack = pack.tracks[0] || topBeatOfDay;
   const totalMinutes = pack.tracks.reduce((total, item) => total + Number(item.duration.split(":")[0] || 0), 0);
