@@ -85,6 +85,7 @@ const i18n = {
     "nav.library": "Biblioteca",
     "nav.upload": "Lançar música",
     "nav.professionals": "Profissionais",
+    "nav.curation": "Curadoria",
     "nav.community": "Comunidade ANSEND",
     "nav.profile": "Meu perfil",
     "nav.settings": "Configurações",
@@ -192,6 +193,7 @@ const i18n = {
     "nav.library": "Library",
     "nav.upload": "Release music",
     "nav.professionals": "Professionals",
+    "nav.curation": "Curation",
     "nav.community": "ANSEND Community",
     "nav.profile": "My profile",
     "nav.settings": "Settings",
@@ -466,6 +468,7 @@ function applyTranslations(root = document) {
     musicas: "nav.myMusic",
     cadastrar: "nav.upload",
     produtores: "nav.professionals",
+    curadoria: "nav.curation",
     comunidade: "nav.community",
     perfil: "nav.profile",
     configuracoes: "nav.settings",
@@ -4367,10 +4370,7 @@ let revealObserver = null;
 let homeScrollAnimationRaf = null;
 let lastRoute = null;
 let lastPageTransitionKey = null;
-let heroTypewriterTimer = null;
-let heroTypewriterToken = 0;
-let heroHeadlineIndex = 0;
-let heroHeadlineInterval = null;
+let heroHeadlineController = null;
 
 function currentRouteFromHash() {
   const route = (location.hash.replace("#", "") || "feed").split("?")[0];
@@ -4391,6 +4391,7 @@ function currentRouteFromHash() {
     "biblioteca",
     "ia",
     "produtores",
+    "curadoria",
     COMMUNITY_ROUTE,
     "perfil",
     "cadastrar",
@@ -4851,6 +4852,7 @@ routeTitles.compras = ["Pedidos", "Histórico de pedidos, licenças e serviços 
 routeTitles.chat = ["Bate-papo", "Mensagens diretas entre perfis da ANSEND."];
 routeTitles.ia = ["NEXO IA", "Diagnóstico musical inteligente para adaptar sua jornada."];
 routeTitles.produtores = ["Profissionais", "Beatmakers, designers, produtores, curadores e marketing musical."];
+routeTitles.curadoria = ["Curadoria", "Curadores, playlists e posicionamento musical."];
 routeTitles.comunidade = [COMMUNITY_TITLE, COMMUNITY_SUBTITLE];
 routeTitles.vendedor = ["Conta ANSEND", "Cadastre, entre e escolha a função da sua conta na plataforma."];
 routeTitles.cadastrar = ["Lançar música", "Cadastre releases, capa, áudio e licenças para publicar no catálogo."];
@@ -5211,237 +5213,310 @@ function roleDashboardStripMarkup(dashboard) {
     <div class="role-dashboard-actions">${actions}</div>
   </section>`;
 }
-function stopHeroMorphTitle() {
-  if (heroHeadlineInterval) {
-    if (typeof heroHeadlineInterval === "function") {
-      heroHeadlineInterval();
-    } else {
-      clearInterval(heroHeadlineInterval);
+const HERO_HEADLINE_TIMING = Object.freeze({
+  wordStagger: 75,
+  introDuration: 480,
+  introHold: 2500,
+  readDuration: 5000,
+  rotateDuration: 560,
+});
+
+function heroHeadlineStates() {
+  if (appLocale.current === "en") {
+    return [
+      {
+        key: "marketplace",
+        accessible: "ANSEND THE INTELLIGENT MUSIC MARKETPLACE",
+        lines: [["THE", "INTELLIGENT"], ["MUSIC"], ["MARKETPLACE"]],
+      },
+      {
+        key: "social",
+        accessible: "ANSEND THE MUSIC SOCIAL NETWORK",
+        lines: [["THE", "MUSIC"], ["SOCIAL"], ["NETWORK"]],
+      },
+    ];
+  }
+  return [
+    {
+      key: "marketplace",
+      accessible: "ANSEND O MARKETPLACE INTELIGENTE DA MÚSICA",
+      lines: [["O", "MARKETPLACE"], ["INTELIGENTE"], ["DA", "MÚSICA"]],
+    },
+    {
+      key: "social",
+      accessible: "ANSEND A REDE SOCIAL DA MÚSICA",
+      lines: [["A", "REDE", "SOCIAL"], ["DA", "MÚSICA"]],
+    },
+  ];
+}
+
+class HeroHeadlineController {
+  constructor(titleElement, brand = "ANSEND") {
+    this.titleElement = titleElement;
+    this.brand = String(brand || "ANSEND").trim() || "ANSEND";
+    this.states = heroHeadlineStates();
+    this.index = 0;
+    this.state = "intro";
+    this.destroyed = false;
+    this.timer = null;
+    this.timerStartedAt = 0;
+    this.timerDelay = 0;
+    this.timerRemaining = 0;
+    this.timerCallback = null;
+    this.animations = new Set();
+    this.visibilityHandler = () => this.handleVisibilityChange();
+    this.reducedMotionHandler = () => this.handleReducedMotionChange();
+  }
+
+  mount() {
+    if (!this.titleElement) return;
+    this.titleElement.classList.add("hero-morph-title");
+    this.titleElement.classList.remove("is-glitching");
+    this.titleElement.dataset.revealKey = `${appLocale.current}|${this.brand}|hero-headline-controller`;
+    this.titleElement.dataset.headlineIndex = "0";
+    this.setState("intro");
+    this.render(this.states[0], true);
+    document.addEventListener("visibilitychange", this.visibilityHandler);
+    prefersReducedMotion.addEventListener?.("change", this.reducedMotionHandler);
+    requestAnimationFrame(() => this.titleElement?.classList.add("is-ready"));
+    this.playIntro();
+  }
+
+  setState(state) {
+    this.state = state;
+    if (this.titleElement) this.titleElement.dataset.headlineState = state;
+  }
+
+  isReducedMotion() {
+    return Boolean(prefersReducedMotion?.matches);
+  }
+
+  render(headlineState, includeBrand = false) {
+    const visual = includeBrand
+      ? `<span class="headline-reveal-line headline-reveal-brand hero-morph-brand">${this.wordMarkup(this.brand, 0)}</span>
+        <strong class="headline-reveal-line headline-reveal-main hero-morph-main">
+          <span class="hero-morph-text hero-headline-rotator">${this.panelMarkup(headlineState, true, 1)}</span>
+        </strong>`
+      : this.panelMarkup(headlineState, true, 0);
+
+    if (includeBrand) {
+      this.titleElement.innerHTML = `
+        <span class="hero-headline-accessible">${headlineState.accessible}</span>
+        <span class="hero-headline-visual" aria-hidden="true">${visual}</span>
+      `;
+      return;
     }
-    heroHeadlineInterval = null;
+    const rotator = this.titleElement.querySelector(".hero-headline-rotator");
+    if (rotator) rotator.innerHTML = visual;
+    this.updateAccessible(headlineState);
+  }
+
+  updateAccessible(headlineState) {
+    const accessible = this.titleElement.querySelector(".hero-headline-accessible");
+    if (accessible) accessible.textContent = headlineState.accessible;
+  }
+
+  wordMarkup(word, index) {
+    return `<span class="hero-headline-word" style="--headline-word-index:${index}">${htmlEscape(String(word || ""))}</span>`;
+  }
+
+  panelMarkup(headlineState, isActive = false, startIndex = 0) {
+    let wordIndex = startIndex;
+    const lines = headlineState.lines.map((line) => {
+      const words = line.map((word) => this.wordMarkup(word, wordIndex++)).join(" ");
+      return `<span class="hero-headline-line">${words}</span>`;
+    }).join("");
+    return `<span class="hero-headline-panel${isActive ? " is-active" : ""}" data-headline-panel="${headlineState.key}">${lines}</span>`;
+  }
+
+  playIntro() {
+    if (this.destroyed) return;
+    const words = [...this.titleElement.querySelectorAll(".hero-headline-word")];
+    if (this.isReducedMotion() || !this.titleElement.animate) {
+      words.forEach((word) => {
+        word.style.opacity = "1";
+        word.style.transform = "none";
+        word.style.filter = "none";
+      });
+      this.finishIntro();
+      return;
+    }
+    const introAnimations = words.map((word, index) => this.trackAnimation(word.animate([
+      { opacity: 0, transform: "translate3d(0, 18px, 0)", filter: "blur(12px)" },
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+    ], {
+      duration: HERO_HEADLINE_TIMING.introDuration,
+      delay: index * HERO_HEADLINE_TIMING.wordStagger,
+      easing: "cubic-bezier(.16, 1, .3, 1)",
+      fill: "both",
+    })));
+    Promise.allSettled(introAnimations.map((animation) => animation.finished)).then(() => this.finishIntro());
+  }
+
+  finishIntro() {
+    if (this.destroyed || this.state === "destroyed") return;
+    this.setState("holding");
+    this.schedule(() => this.startRotating(), HERO_HEADLINE_TIMING.introHold);
+  }
+
+  startRotating() {
+    if (this.destroyed) return;
+    this.setState("rotating");
+    this.schedule(() => this.rotateTo((this.index + 1) % this.states.length), HERO_HEADLINE_TIMING.readDuration);
+  }
+
+  rotateTo(nextIndex) {
+    if (this.destroyed) return;
+    const rotator = this.titleElement.querySelector(".hero-headline-rotator");
+    const outgoing = rotator?.querySelector(".hero-headline-panel.is-active");
+    const nextState = this.states[nextIndex] || this.states[0];
+    if (!rotator || !outgoing) {
+      this.index = nextIndex;
+      this.render(nextState, false);
+      this.finishRotation();
+      return;
+    }
+
+    const incomingWrapper = document.createElement("template");
+    incomingWrapper.innerHTML = this.panelMarkup(nextState, false, 0).trim();
+    const incoming = incomingWrapper.content.firstElementChild;
+    incoming.classList.add("is-entering");
+    rotator.appendChild(incoming);
+    this.updateAccessible(nextState);
+
+    if (this.isReducedMotion() || !incoming.animate || !outgoing.animate) {
+      outgoing.remove();
+      incoming.classList.remove("is-entering");
+      incoming.classList.add("is-active");
+      this.index = nextIndex;
+      this.finishRotation();
+      return;
+    }
+
+    const duration = HERO_HEADLINE_TIMING.rotateDuration;
+    const easing = "cubic-bezier(.22, 1, .36, 1)";
+    const outAnimation = this.trackAnimation(outgoing.animate([
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+      { opacity: 0, transform: "translate3d(0, -34%, 0)", filter: "blur(8px)" },
+    ], { duration, easing, fill: "forwards" }));
+    const inAnimation = this.trackAnimation(incoming.animate([
+      { opacity: 0, transform: "translate3d(0, 36%, 0)", filter: "blur(8px)" },
+      { opacity: 1, transform: "translate3d(0, 0, 0)", filter: "blur(0)" },
+    ], { duration, easing, fill: "forwards" }));
+
+    Promise.allSettled([outAnimation.finished, inAnimation.finished]).then(() => {
+      if (this.destroyed) return;
+      outgoing.remove();
+      incoming.classList.remove("is-entering");
+      incoming.classList.add("is-active");
+      this.index = nextIndex;
+      this.finishRotation();
+    });
+  }
+
+  finishRotation() {
+    if (this.destroyed) return;
+    this.titleElement.dataset.headlineIndex = String(this.index);
+    this.setState("rotating");
+    this.schedule(() => this.rotateTo((this.index + 1) % this.states.length), HERO_HEADLINE_TIMING.readDuration);
+  }
+
+  trackAnimation(animation) {
+    this.animations.add(animation);
+    animation.finished.finally(() => this.animations.delete(animation)).catch(() => {});
+    return animation;
+  }
+
+  schedule(callback, delay) {
+    this.clearTimer();
+    this.timerCallback = callback;
+    this.timerDelay = delay;
+    this.timerRemaining = delay;
+    if (document.hidden) return;
+    this.timerStartedAt = performance.now();
+    this.timer = window.setTimeout(() => {
+      this.timer = null;
+      this.timerCallback = null;
+      callback();
+    }, delay);
+  }
+
+  clearTimer() {
+    if (this.timer) window.clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  handleVisibilityChange() {
+    if (this.destroyed) return;
+    if (document.hidden) {
+      if (this.timer) {
+        const elapsed = performance.now() - this.timerStartedAt;
+        this.timerRemaining = Math.max(0, this.timerDelay - elapsed);
+        this.clearTimer();
+      }
+      this.animations.forEach((animation) => animation.pause?.());
+      return;
+    }
+    this.animations.forEach((animation) => animation.play?.());
+    if (this.timerCallback && !this.timer) {
+      const callback = this.timerCallback;
+      const delay = Math.max(0, this.timerRemaining || this.timerDelay);
+      this.timerStartedAt = performance.now();
+      this.timer = window.setTimeout(() => {
+        this.timer = null;
+        this.timerCallback = null;
+        callback();
+      }, delay);
+    }
+  }
+
+  handleReducedMotionChange() {
+    if (this.destroyed) return;
+    this.animations.forEach((animation) => animation.cancel?.());
+    this.animations.clear();
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.setState("destroyed");
+    this.clearTimer();
+    this.timerCallback = null;
+    this.animations.forEach((animation) => animation.cancel?.());
+    this.animations.clear();
+    document.removeEventListener("visibilitychange", this.visibilityHandler);
+    prefersReducedMotion.removeEventListener?.("change", this.reducedMotionHandler);
   }
 }
 
-function createPhraseElement(lines) {
-  const phraseDiv = document.createElement("div");
-  phraseDiv.className = "rotating-phrase";
-  
-  const srText = lines.join(" ");
-  const srSpan = document.createElement("span");
-  srSpan.className = "sr-only";
-  srSpan.textContent = srText;
-  phraseDiv.appendChild(srSpan);
+function cleanupHeroHeadline() {
+  if (!heroHeadlineController) return;
+  heroHeadlineController.destroy();
+  heroHeadlineController = null;
+}
 
-  lines.forEach((lineText) => {
-    const lineDiv = document.createElement("div");
-    lineDiv.className = "rotating-line";
-    lineDiv.setAttribute("aria-hidden", "true");
-    
-    const words = lineText.split(" ");
-    words.forEach((wordText, wordIdx) => {
-      if (wordIdx > 0) {
-        const spaceSpan = document.createElement("span");
-        spaceSpan.className = "rotating-space";
-        lineDiv.appendChild(spaceSpan);
-      }
-      
-      const wordSpan = document.createElement("span");
-      wordSpan.className = "rotating-word";
-      wordSpan.textContent = wordText;
-      lineDiv.appendChild(wordSpan);
-    });
-    
-    phraseDiv.appendChild(lineDiv);
-  });
-  
-  return phraseDiv;
+function animateHeadlineReveal(titleElement, line1) {
+  if (!titleElement) {
+    cleanupHeroHeadline();
+    return;
+  }
+  const brand = String(line1 || "ANSEND").trim().split(/\s+/)[0] || "ANSEND";
+  const nextKey = `${appLocale.current}|${brand}|hero-headline-controller`;
+  if (
+    heroHeadlineController
+    && heroHeadlineController.titleElement === titleElement
+    && titleElement.dataset.revealKey === nextKey
+    && !heroHeadlineController.destroyed
+  ) {
+    return;
+  }
+  cleanupHeroHeadline();
+  heroHeadlineController = new HeroHeadlineController(titleElement, brand);
+  heroHeadlineController.mount();
 }
 
 function runHeroHeadlineCycler(titleElement) {
-  if (!titleElement) return;
-
-  if (heroHeadlineInterval) {
-    if (typeof heroHeadlineInterval === "function") {
-      heroHeadlineInterval();
-    } else {
-      clearInterval(heroHeadlineInterval);
-    }
-    heroHeadlineInterval = null;
-  }
-
-  const stage = titleElement.querySelector(".rotating-stage");
-  if (!stage) return;
-
-  const isEn = appLocale.current === "en";
-  const headlineVariants = isEn ? [
-    {
-      lines: [
-        "THE INTELLIGENT",
-        "MUSIC",
-        "MARKETPLACE"
-      ]
-    },
-    {
-      lines: [
-        "THE MUSIC",
-        "SOCIAL",
-        "NETWORK"
-      ]
-    }
-  ] : [
-    {
-      lines: [
-        "O MARKETPLACE",
-        "INTELIGENTE",
-        "DA MÚSICA"
-      ]
-    },
-    {
-      lines: [
-        "A REDE",
-        "SOCIAL",
-        "DA MÚSICA"
-      ]
-    }
-  ];
-
-  let currentPhraseIndex = 0;
-  let generation = (window._rotatingTextGeneration || 0) + 1;
-  window._rotatingTextGeneration = generation;
-
-  const timers = [];
-  const addTimeout = (fn, delay) => {
-    const id = setTimeout(() => {
-      if (window._rotatingTextGeneration !== generation) return;
-      fn();
-    }, delay);
-    timers.push(id);
-    return id;
-  };
-
-  const cleanup = () => {
-    timers.forEach((id) => clearTimeout(id));
-  };
-
-  heroHeadlineInterval = cleanup;
-
-  const rotate = () => {
-    const nextPhraseIndex = (currentPhraseIndex + 1) % headlineVariants.length;
-    const nextPhraseObj = headlineVariants[nextPhraseIndex];
-    
-    const nextPhraseEl = createPhraseElement(nextPhraseObj.lines);
-    stage.appendChild(nextPhraseEl);
-    
-    const nextWords = Array.from(nextPhraseEl.querySelectorAll(".rotating-word"));
-    const staggerDelay = prefersReducedMotion.matches ? 0 : 55;
-    
-    nextWords.forEach((word, index) => {
-      word.style.transitionDelay = `${index * staggerDelay}ms`;
-    });
-
-    requestAnimationFrame(() => {
-      if (window._rotatingTextGeneration !== generation) return;
-      
-      nextPhraseEl.classList.add("is-visible");
-      nextWords.forEach((word) => {
-        word.classList.add("is-active");
-      });
-    });
-
-    const currentPhraseEl = stage.querySelector(".rotating-phrase.is-visible:not(:last-child)");
-    if (currentPhraseEl) {
-      const currentWords = Array.from(currentPhraseEl.querySelectorAll(".rotating-word"));
-      currentPhraseEl.classList.remove("is-visible");
-      currentPhraseEl.classList.add("is-exiting");
-      
-      currentWords.forEach((word) => {
-        word.style.transitionDelay = "0ms";
-        word.classList.remove("is-active");
-        word.classList.add("is-exiting");
-      });
-      
-      addTimeout(() => {
-        currentPhraseEl.remove();
-      }, 450);
-    }
-
-    currentPhraseIndex = nextPhraseIndex;
-    addTimeout(rotate, 3800);
-  };
-
-  addTimeout(rotate, 3800);
-
-  const handleVisibilityChange = () => {
-    if (document.hidden) {
-      timers.forEach((id) => clearTimeout(id));
-    } else {
-      if (window._rotatingTextGeneration === generation) {
-        generation = ++window._rotatingTextGeneration;
-        
-        const phrases = Array.from(stage.querySelectorAll(".rotating-phrase"));
-        if (phrases.length > 0) {
-          const activePhrase = phrases[phrases.length - 1];
-          phrases.forEach((p) => {
-            if (p !== activePhrase) p.remove();
-          });
-          activePhrase.className = "rotating-phrase is-visible";
-          activePhrase.querySelectorAll(".rotating-word").forEach((w) => {
-            w.style.transitionDelay = "0ms";
-            w.className = "rotating-word is-active";
-          });
-        }
-        
-        addTimeout(rotate, 3800);
-      }
-    }
-  };
-
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  
-  heroHeadlineInterval = () => {
-    cleanup();
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}
-
-function animateHeadlineReveal(titleElement, line1, line2) {
-  if (!titleElement) return;
-  const isEn = appLocale.current === "en";
-  const nextKey = `${appLocale.current}|${line1}|${line2}`;
-
-  if (titleElement.dataset.revealKey !== nextKey) {
-    titleElement.dataset.revealKey = nextKey;
-    titleElement.classList.add("hero-morph-title");
-    titleElement.classList.remove("is-glitching");
-    titleElement.innerHTML = `
-      <span class="hero-morph-brand">${line1}</span>
-      <div class="rotating-stage"></div>
-    `;
-    const stage = titleElement.querySelector(".rotating-stage");
-    const firstPhraseObj = isEn ? {
-      lines: [
-        "THE INTELLIGENT",
-        "MUSIC",
-        "MARKETPLACE"
-      ]
-    } : {
-      lines: [
-        "O MARKETPLACE",
-        "INTELIGENTE",
-        "DA MÚSICA"
-      ]
-    };
-    
-    const firstPhraseEl = createPhraseElement(firstPhraseObj.lines);
-    firstPhraseEl.classList.add("is-visible");
-    firstPhraseEl.querySelectorAll(".rotating-word").forEach((word) => {
-      word.classList.add("is-active");
-    });
-    stage.appendChild(firstPhraseEl);
-    
-    runHeroHeadlineCycler(titleElement);
-    requestAnimationFrame(() => titleElement.classList.add("is-ready"));
-  }
+  animateHeadlineReveal(titleElement, t("hero.titleLine1"));
 }
 
 function applyRoleDashboard() {
@@ -5449,7 +5524,7 @@ function applyRoleDashboard() {
   const role = activeRoleKey();
   const hero = document.querySelector(".ai-hero");
   if (!hero) {
-    stopHeroMorphTitle();
+    cleanupHeroHeadline();
     return;
   }
   hero.classList.toggle("is-beatmaker-hero", role === "beatmaker");
@@ -15343,8 +15418,8 @@ function professionalCategorySummary(category) {
   </button>`;
 }
 
-function renderProducers() {
-  appState.professionalCategory = appState.professionalCategory || "todos";
+function renderProducers({ routeKey = "produtores", category = "" } = {}) {
+  appState.professionalCategory = category || appState.professionalCategory || "todos";
   const selectedCategory = appState.professionalCategory;
   const recommendedIds = new Set((appState.recommendations?.professionals || []).map((profile) => String(profile.id)));
   const profiles = [
@@ -15355,7 +15430,7 @@ function renderProducers() {
     ? profiles
     : profiles.filter((profile) => profile.category === selectedCategory);
   if (!visibleProfiles.length) {
-    appView.innerHTML = `${pageIntro("produtores")}<section class="professionals-directory">
+    appView.innerHTML = `${pageIntro(routeKey)}<section class="professionals-directory">
       <div class="professional-tabs" aria-label="Categorias de profissionais">
         ${professionalCategories.map(professionalCategorySummary).join("")}
       </div>
@@ -15364,7 +15439,7 @@ function renderProducers() {
     return;
   }
   appView.innerHTML = `
-    ${pageIntro("produtores")}
+    ${pageIntro(routeKey)}
     <section class="professionals-directory">
       <div class="professional-tabs" aria-label="Categorias de profissionais">
         ${professionalCategories.map(professionalCategorySummary).join("")}
@@ -19534,6 +19609,7 @@ function renderRoute() {
   }
   lastRoute = route;
   document.body.dataset.route = route;
+  if (route !== "feed") cleanupHeroHeadline();
   syncCheckoutStandaloneRoute(route);
   const institutionalFooter = document.querySelector(".footer");
   if (institutionalFooter) institutionalFooter.hidden = route !== "feed";
@@ -19600,6 +19676,7 @@ function renderRoute() {
   if (route === "biblioteca" || route === "musicas") renderLibrary();
   if (route === "ferramentas") renderAiWorkspace();
   if (route === "produtores") renderProducers();
+  if (route === "curadoria") renderProducers({ routeKey: "curadoria", category: "curadores" });
   if (route === COMMUNITY_ROUTE) {
     renderHiringPage();
   }
@@ -25613,6 +25690,7 @@ function renderBeatLicenseCards(licenses, selectedLicenseId) {
 }
 
 function updateBeatDetailLicensingPanel(container, beat, licenses) {
+  if (!container || !container.isConnected) return;
   if (beat.sold_exclusively || beat.raw?.sold_exclusively) {
     const mainContent = container.closest(".beat-main-content") || container;
     const panel = mainContent.querySelector(".beat-licensing-panel");
@@ -25646,7 +25724,8 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
   
   const priceFormatted = selectedLicense ? `R$ ${(selectedLicense.price_cents / 100).toFixed(2)}` : "Selecione";
   
-  container.querySelector("[data-license-total]").textContent = priceFormatted;
+  const licenseTotal = container.querySelector("[data-license-total]");
+  if (licenseTotal) licenseTotal.textContent = priceFormatted;
   
   container.querySelectorAll("[data-action='detail-add-cart'], [data-action='detail-buy-now']").forEach(btn => {
     if (selectedId) btn.dataset.license = selectedId;
@@ -25654,9 +25733,11 @@ function updateBeatDetailLicensingPanel(container, beat, licenses) {
   });
   
   const cardsHtml = renderBeatLicenseCards(licenses, selectedId);
-  container.querySelector(".beat-license-grid").innerHTML = cardsHtml;
+  const licenseGrid = container.querySelector(".beat-license-grid");
+  if (licenseGrid) licenseGrid.innerHTML = cardsHtml;
   
-  container.querySelector("[data-license-terms]").innerHTML = licenseTermsMarkup(selectedLicense);
+  const licenseTerms = container.querySelector("[data-license-terms]");
+  if (licenseTerms) licenseTerms.innerHTML = licenseTermsMarkup(selectedLicense);
   
   const termsHeader = container.querySelector(".beat-terms-panel header");
   if (termsHeader) {
