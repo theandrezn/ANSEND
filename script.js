@@ -10287,6 +10287,15 @@ const STORAGE_UPLOAD_LIMITS = {
     allowedExt: ["zip"],
     upsert: false,
   },
+  license_pdf: {
+    label: "PDF da licenca",
+    bucket: "beat-secure-files",
+    folder: "beat-secure-files",
+    maxBytes: 20 * 1024 * 1024,
+    allowedMime: ["application/pdf"],
+    allowedExt: ["pdf"],
+    upsert: false,
+  },
   avatar: {
     label: "avatar",
     bucket: "profile-avatars",
@@ -16054,6 +16063,19 @@ async function restoreReleaseCoverDraft(form = releaseFormElement()) {
       size: data.stems_size_bytes,
     });
   }
+  if (data.license_pdf_url && data.license_pdf_path) {
+    setReleaseFileHiddenValues(form, "license_pdf", {
+      url: data.license_pdf_url,
+      path: data.license_pdf_path,
+      originalName: data.license_pdf_original_name,
+      mimeType: data.license_pdf_mime_type,
+      size: data.license_pdf_size_bytes,
+    });
+    setReleaseFilePreview(form, "license_pdf", {
+      originalName: data.license_pdf_original_name || "Documento da licenca.pdf",
+      size: data.license_pdf_size_bytes,
+    });
+  }
   syncReleaseForm(form);
 }
 
@@ -16146,6 +16168,19 @@ const RELEASE_DELIVERY_FIELDS = {
     sizeNode: "[data-secure-stems-size]",
     label: "ZIP de stems",
     role: "stems",
+  },
+  license_pdf: {
+    url: "license_pdf_url",
+    path: "license_pdf_path",
+    name: "license_pdf_original_name",
+    mime: "license_pdf_mime_type",
+    size: "license_pdf_size_bytes",
+    preview: ".license-pdf-preview",
+    drop: ".release-license-pdf-drop",
+    nameNode: "[data-license-pdf-name]",
+    sizeNode: "[data-license-pdf-size]",
+    label: "PDF da licenca",
+    role: "license",
   },
 };
 
@@ -16588,7 +16623,7 @@ function syncReleaseForm(form = releaseFormElement()) {
   if (releaseFileIsConfirmed(form, "secure_mp3")) files.push("MP3");
   if (releaseFileIsConfirmed(form, "secure_wav")) files.push("WAV");
   if (releaseFileIsConfirmed(form, "secure_stems")) files.push("Stems");
-  files.push("Contrato");
+  files.push(releaseFileIsConfirmed(form, "license_pdf") ? "Licenca PDF" : "Contrato");
   form.querySelectorAll("[data-review-files]").forEach(el => el.textContent = files.join(", ") || "-");
 }
 
@@ -16829,12 +16864,12 @@ async function handleReleaseFile(file, type) {
       setReleaseFilePreview(form, "audio", result);
       await persistReleaseUploadDraft(releaseFileMetadataPatch("audio", result), form);
       showToast("Audio enviado com sucesso!", "music");
-    } else if (["secure_mp3", "secure_wav", "secure_stems", "stems"].includes(type)) {
+    } else if (["secure_mp3", "secure_wav", "secure_stems", "stems", "license_pdf"].includes(type)) {
       const deliveryType = type === "stems" ? "secure_stems" : type;
       setReleaseFileHiddenValues(form, deliveryType, result);
       setReleaseFilePreview(form, deliveryType, result);
       await persistReleaseUploadDraft(releaseFileMetadataPatch(deliveryType, result), form);
-      const toastIcon = deliveryType === "secure_stems" ? "archive" : "music";
+      const toastIcon = deliveryType === "secure_stems" ? "archive" : deliveryType === "license_pdf" ? "file-text" : "music";
       showToast(`${releaseFileField(deliveryType)?.label || "Arquivo"} enviado com sucesso!`, toastIcon);
     }
     
@@ -16902,7 +16937,7 @@ function setupMusicUploadEventListeners() {
 
   form.addEventListener("click", (e) => {
     const usePreviewBtn = e.target.closest(".use-preview-as-delivery-btn");
-    const removeAction = e.target.closest('[data-action="remove-secure-mp3"], [data-action="remove-secure-wav"], [data-action="remove-secure-stems"]');
+    const removeAction = e.target.closest('[data-action="remove-secure-mp3"], [data-action="remove-secure-wav"], [data-action="remove-secure-stems"], [data-action="remove-license-pdf"]');
     if (!usePreviewBtn && !removeAction) return;
     e.preventDefault();
     e.stopPropagation();
@@ -16953,10 +16988,12 @@ function setupMusicUploadEventListeners() {
       ? "secure_mp3"
       : removeAction?.dataset.action === "remove-secure-wav"
         ? "secure_wav"
-        : "secure_stems";
+        : removeAction?.dataset.action === "remove-secure-stems"
+          ? "secure_stems"
+          : "license_pdf";
     void persistReleaseUploadDraft(clearReleaseFileState(form, type), form);
     syncReleaseForm(form);
-    showToast(type === "secure_mp3" ? "MP3 seguro removido." : type === "secure_wav" ? "WAV seguro removido." : "Stems ZIP seguro removido.", "info");
+    showToast(type === "secure_mp3" ? "MP3 seguro removido." : type === "secure_wav" ? "WAV seguro removido." : type === "secure_stems" ? "Stems ZIP seguro removido." : "PDF da licenca removido.", "info");
   }, true);
   
   // Initialize Custom Select Component Logic
@@ -17321,6 +17358,11 @@ async function saveBeatRelease(status = "published") {
     stems_original_name: form.elements.stems_original_name?.value || null,
     stems_mime_type: form.elements.stems_mime_type?.value || null,
     stems_size_bytes: form.elements.stems_size_bytes?.value ? Number(form.elements.stems_size_bytes.value) : null,
+    license_pdf_url: form.elements.license_pdf_url?.value || null,
+    license_pdf_path: form.elements.license_pdf_path?.value || null,
+    license_pdf_original_name: form.elements.license_pdf_original_name?.value || null,
+    license_pdf_mime_type: form.elements.license_pdf_mime_type?.value || null,
+    license_pdf_size_bytes: form.elements.license_pdf_size_bytes?.value ? Number(form.elements.license_pdf_size_bytes.value) : null,
     duration_seconds: form.elements.duration_seconds?.value ? Number(form.elements.duration_seconds.value) : null,
     file_size: form.elements.file_size?.value ? Number(form.elements.file_size.value) : null,
     status: status,
@@ -18331,6 +18373,8 @@ function renderMusicUpload(mode = appState.releaseMode || "selector", editBeatId
     + '<input type="hidden" name="mp3_original_name"><input type="hidden" name="mp3_mime_type"><input type="hidden" name="mp3_size_bytes"><input type="hidden" name="mp3_duration_seconds">'
     + '<input type="hidden" name="wav_original_name"><input type="hidden" name="wav_mime_type"><input type="hidden" name="wav_size_bytes"><input type="hidden" name="wav_duration_seconds">'
     + '<input type="hidden" name="stems_original_name"><input type="hidden" name="stems_mime_type"><input type="hidden" name="stems_size_bytes">'
+    + '<input type="hidden" name="license_pdf_url"><input type="hidden" name="license_pdf_path">'
+    + '<input type="hidden" name="license_pdf_original_name"><input type="hidden" name="license_pdf_mime_type"><input type="hidden" name="license_pdf_size_bytes">'
     + '<input type="hidden" name="duration_seconds"><input type="hidden" name="file_size">'
     + '<input type="hidden" name="tags">'
     + '<input type="hidden" name="producer_name" value="' + htmlEscape(releaseProducerName) + '">'
@@ -18568,6 +18612,20 @@ function renderMusicUpload(mode = appState.releaseMode || "selector", editBeatId
     + '  <h2 style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -0.025em; margin: 0 0 8px 0; color: #f5f5f7; line-height: 1.2;">Licenças e valores</h2>'
     + '  <p style="color: #8e8e93; font-family: \'Montserrat\', sans-serif; font-size: 14px; margin: 0; max-width: 500px; line-height: 1.5;">Defina os preços, arquivos e condições de uso disponíveis para este lançamento.</p>'
     + '</div>'
+    + '<div class="release-license-pdf-section">'
+    + '  <div class="release-license-pdf-heading"><div><strong>Documento da licen&ccedil;a</strong><p>Envie o contrato em PDF que acompanha este lan&ccedil;amento.</p></div><span>Opcional &middot; PDF at&eacute; 20 MB</span></div>'
+    + '  <article class="release-upload-card release-dropzone release-license-pdf-drop" data-delivery-card="license_pdf" data-upload-drop="license_pdf">'
+    + '    <input class="release-file-input" type="file" accept="application/pdf,.pdf" data-upload-type="license_pdf" style="display:none;">'
+    + '    <div class="dropzone-unuploaded"><span class="release-upload-icon"><i data-lucide="file-up"></i></span><div><strong>Selecione o PDF da licen&ccedil;a</strong><small>ou arraste o arquivo para esta &aacute;rea</small></div></div>'
+    + '    <div class="license-pdf-preview release-file-result" style="display:none;">'
+    + '      <div class="release-license-pdf-result"><span class="release-license-pdf-file-icon"><i data-lucide="file-text"></i></span><div class="release-license-pdf-meta"><strong data-license-pdf-name>Documento da licen&ccedil;a.pdf</strong><small><span data-license-pdf-size>0 MB</span> &middot; PDF enviado</small></div>'
+    + '        <div class="release-file-actions-menu"><button type="button" class="release-file-menu-trigger" aria-label="A&ccedil;&otilde;es do PDF"><i data-lucide="more-horizontal"></i></button><div class="release-file-menu-dropdown" style="display:none;"><button type="button" class="release-menu-item btn-replace-file" data-target="license_pdf"><i data-lucide="refresh-cw"></i> Substituir</button><button type="button" class="release-menu-item" data-action="remove-license-pdf"><i data-lucide="trash-2"></i> Remover</button></div></div>'
+    + '      </div>'
+    + '    </div>'
+    + '    <div class="upload-progress-container" style="display:none;"><div class="upload-progress-header"><span>Enviando arquivo...</span><span class="upload-progress-percent">0%</span></div><div class="upload-progress-track"><div class="upload-progress-bar"></div></div></div>'
+    + '    <p class="release-upload-error" hidden></p>'
+    + '  </article>'
+    + '</div>'
     + '<div class="release-licenses-container"></div>'
     + '</section>'
 
@@ -18666,7 +18724,7 @@ window.duplicateReleaseBeat = async function(beatId) {
     // Reset cover & file hidden inputs & previews
     form.elements.cover_url.value = "";
     form.elements.cover_path.value = "";
-    ["audio", "secure_mp3", "secure_wav", "secure_stems"].forEach(t => {
+    ["audio", "secure_mp3", "secure_wav", "secure_stems", "license_pdf"].forEach(t => {
       clearReleaseFileState(form, t);
     });
     
@@ -18776,7 +18834,7 @@ function populateReleaseFormFromBeat(item, form) {
     if (coverActions) coverActions.style.display = "none";
   }
 
-  ["audio", "secure_mp3", "secure_wav", "secure_stems"].forEach(t => {
+  ["audio", "secure_mp3", "secure_wav", "secure_stems", "license_pdf"].forEach(t => {
     clearReleaseFileState(form, t);
   });
 
@@ -18840,6 +18898,20 @@ function populateReleaseFormFromBeat(item, form) {
     setReleaseFilePreview(form, "secure_stems", {
       originalName: item.stems_original_name || "ZIP de stems",
       size: item.stems_size_bytes,
+    });
+  }
+
+  if (item.license_pdf_url && item.license_pdf_path) {
+    setReleaseFileHiddenValues(form, "license_pdf", {
+      url: item.license_pdf_url,
+      path: item.license_pdf_path,
+      originalName: item.license_pdf_original_name,
+      mimeType: item.license_pdf_mime_type,
+      size: item.license_pdf_size_bytes,
+    });
+    setReleaseFilePreview(form, "license_pdf", {
+      originalName: item.license_pdf_original_name || "Documento da licenca.pdf",
+      size: item.license_pdf_size_bytes,
     });
   }
 

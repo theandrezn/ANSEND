@@ -11,6 +11,10 @@ const secureStorageMigration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260617213000_release_secure_file_uploads.sql"),
   "utf8"
 );
+const licensePdfMigration = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260716153000_release_license_pdf_upload.sql"),
+  "utf8"
+);
 const schema = fs.readFileSync(path.join(root, "supabase", "schema.sql"), "utf8");
 
 function assert(condition, message) {
@@ -43,6 +47,11 @@ assert(storageMigration.includes("Public can read beat covers"), "Beat covers ne
 assert(storageMigration.includes("Users can upload their own covers"), "Beat covers need authenticated insert policy.");
 assert(secureStorageMigration.includes("(storage.foldername(name))[2] = 'beat-secure-files'"), "Secure file policies must validate the folder segment.");
 assert(secureStorageMigration.includes("validate_beat_storage_paths"), "Beat storage paths must be validated before saving.");
+assert(licensePdfMigration.includes("application/pdf"), "License PDF migration must allow only PDF in secure storage.");
+assert(licensePdfMigration.includes("license_pdf_path must belong to the beat owner and beat id"), "License PDF path must be bound to its owner and beat.");
+assert(script.includes('allowedMime: ["application/pdf"]'), "License upload must accept only application/pdf.");
+assert(script.includes('data-upload-type="license_pdf"'), "Licenses step must render the PDF upload input.");
+assert(schema.includes("license_pdf_path text"), "Schema must persist the license PDF path.");
 assert(script.includes("releaseFileIsConfirmed(form, \"secure_mp3\")"), "Release validation must require confirmed MP3 storage path.");
 assert(script.includes("releaseFileIsConfirmed(form, \"secure_wav\")"), "Release validation must require confirmed WAV storage path.");
 assert(script.includes("releaseFileIsConfirmed(form, \"secure_stems\")"), "Release validation must require confirmed Stems storage path.");

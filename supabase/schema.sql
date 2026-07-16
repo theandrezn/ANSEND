@@ -532,6 +532,11 @@ create table if not exists public.beats (
   stems_original_name text,
   stems_mime_type text,
   stems_size_bytes bigint,
+  license_pdf_url text,
+  license_pdf_path text,
+  license_pdf_original_name text,
+  license_pdf_mime_type text,
+  license_pdf_size_bytes bigint,
   duration_seconds numeric,
   file_size numeric,
   source_type text not null default 'upload' check (source_type in ('upload', 'youtube')),
@@ -585,6 +590,11 @@ alter table public.beats add column if not exists wav_duration_seconds numeric n
 alter table public.beats add column if not exists stems_original_name text null;
 alter table public.beats add column if not exists stems_mime_type text null;
 alter table public.beats add column if not exists stems_size_bytes bigint null;
+alter table public.beats add column if not exists license_pdf_url text null;
+alter table public.beats add column if not exists license_pdf_path text null;
+alter table public.beats add column if not exists license_pdf_original_name text null;
+alter table public.beats add column if not exists license_pdf_mime_type text null;
+alter table public.beats add column if not exists license_pdf_size_bytes bigint null;
 
 -- Enable RLS
 alter table public.beats enable row level security;
@@ -645,6 +655,12 @@ begin
     )
   then
     raise exception 'stems_path must belong to the beat owner and beat id';
+  end if;
+
+  if new.license_pdf_path is not null
+    and new.license_pdf_path not like owner_prefix || 'beat-secure-files' || beat_segment || '%'
+  then
+    raise exception 'license_pdf_path must belong to the beat owner and beat id';
   end if;
 
   return new;
@@ -785,6 +801,11 @@ create table if not exists public.release_upload_drafts (
   stems_original_name text,
   stems_mime_type text,
   stems_size_bytes bigint,
+  license_pdf_url text,
+  license_pdf_path text,
+  license_pdf_original_name text,
+  license_pdf_mime_type text,
+  license_pdf_size_bytes bigint,
   updated_at timestamptz not null default now()
 );
 
@@ -1212,7 +1233,7 @@ values
   ('beat-covers', 'beat-covers', true, 10485760, array['image/jpeg','image/png','image/webp']),
   ('beat-audio', 'beat-audio', true, 262144000, array['audio/mpeg','audio/wav','audio/x-wav','audio/flac','audio/mp4','audio/aac','audio/ogg','video/mp4']),
   ('beat-stems', 'beat-stems', false, 524288000, array['application/zip','application/x-zip-compressed']),
-  ('beat-secure-files', 'beat-secure-files', false, 524288000, array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','application/zip','application/x-zip-compressed']),
+  ('beat-secure-files', 'beat-secure-files', false, 524288000, array['audio/mpeg','audio/mp3','audio/wav','audio/x-wav','application/zip','application/x-zip-compressed','application/pdf']),
   ('profile-avatars', 'profile-avatars', true, 10485760, array['image/jpeg','image/png','image/webp']),
   ('profile-banners', 'profile-banners', true, 15728640, array['image/jpeg','image/png','image/webp']),
   ('chat-attachments', 'chat-attachments', true, 104857600, array['image/jpeg','image/png','image/webp','audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/flac','audio/mp4','audio/aac','audio/ogg','audio/x-m4a','video/mp4','video/webm','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain','application/zip','application/x-zip-compressed'])
@@ -1809,7 +1830,7 @@ values (
   'beat-secure-files',
   false,
   524288000,
-  array['audio/mpeg', 'audio/wav', 'audio/x-wav', 'application/zip', 'application/x-zip-compressed']
+  array['audio/mpeg', 'audio/wav', 'audio/x-wav', 'application/zip', 'application/x-zip-compressed', 'application/pdf']
 )
 on conflict (id) do update set
   public = excluded.public,
