@@ -464,14 +464,25 @@ async function mercadoPagoRequest(env, path, init = {}) {
   if (!token) {
     return { ok: false, status: 503, data: null, error: "Configure MERCADO_PAGO_ACCESS_TOKEN no Cloudflare para ativar Pix." };
   }
-  const response = await fetch(`https://api.mercadopago.com${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json; charset=utf-8",
-      ...(init.headers || {}),
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12_000);
+  let response;
+  try {
+    response = await fetch(`https://api.mercadopago.com${path}`, {
+      ...init,
+      signal: init.signal || controller.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json; charset=utf-8",
+        ...(init.headers || {}),
+      },
+    });
+  } catch (error) {
+    const timedOut = error?.name === "AbortError";
+    return { ok: false, status: timedOut ? 504 : 502, data: null, error: timedOut ? "Tempo esgotado ao consultar o Mercado Pago." : "Falha de rede ao consultar o Mercado Pago." };
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     return { ok: false, status: response.status, data, error: data?.message || data?.error || "Erro Mercado Pago." };
@@ -851,7 +862,7 @@ export function isFreshMercadoPagoWebhookTimestamp(value, now = Date.now(), tole
   return Math.abs(Number(now) - timestampMs) <= toleranceMs;
 }
 
-async function verifyMercadoPagoSignature(request, env, paymentId) {
+export async function verifyMercadoPagoSignature(request, env, paymentId) {
   const secret = env.MERCADO_PAGO_WEBHOOK_SECRET || "";
   if (!secret) return false;
   const signature = request.headers.get("x-signature") || "";
@@ -878,9 +889,27 @@ async function handleMercadoPagoWebhook(request, env) {
   const paymentId = String(url.searchParams.get("data.id") || payload?.data?.id || "").trim();
   if (!/^\d+$/.test(paymentId) || !(await verifyMercadoPagoSignature(request, env, paymentId))) return jsonResponse({ success: false, error: "Assinatura de webhook invalida." }, { status: 401 });
   const stored = await supabaseRest(env, `payment_attempts?select=*&provider=eq.mercado_pago&provider_payment_id=eq.${paymentId}&limit=1`);
-  const attempt = stored.data?.[0];
+  if (stored.error) return jsonResponse({ success: false, error: "Nao foi possivel localizar a tentativa de pagamento." }, { status: 502 });
+
+  let attempt = stored.data?.[0] || null;
+  let payment = null;
+
+  // A notification can arrive before the provider payment id is persisted.
+  // Resolve the pre-created attempt from the trusted provider reference instead of acknowledging and losing it.
+  if (!attempt) {
+    payment = await mercadoPagoRequest(env, `/v1/payments/${paymentId}`, { method: "GET" });
+    if (!payment.ok) return jsonResponse({ success: false, error: payment.error }, { status: payment.status || 502 });
+    const externalReference = String(payment.data?.external_reference || "").trim();
+    const referenceMatch = externalReference.match(/^ansend:[0-9a-f-]{36}:([0-9a-f-]{36})$/i);
+    if (referenceMatch && isUuid(referenceMatch[1])) {
+      const fallback = await supabaseRest(env, `payment_attempts?select=*&provider=eq.mercado_pago&id=eq.${referenceMatch[1]}&external_reference=eq.${encodeURIComponent(externalReference)}&limit=1`);
+      if (fallback.error) return jsonResponse({ success: false, error: "Nao foi possivel reconciliar a tentativa de pagamento." }, { status: 502 });
+      attempt = fallback.data?.[0] || null;
+    }
+  }
+
   if (!attempt) return jsonResponse({ success: true, ignored: true });
-  const payment = await mercadoPagoRequest(env, `/v1/payments/${paymentId}`, { method: "GET" });
+  if (!payment) payment = await mercadoPagoRequest(env, `/v1/payments/${paymentId}`, { method: "GET" });
   if (!payment.ok) return jsonResponse({ success: false, error: payment.error }, { status: payment.status || 502 });
   const reconciled = await reconcilePaymentAttempt(env, attempt, payment.data);
   if (!reconciled.ok) return jsonResponse({ success: false, error: reconciled.error }, { status: 409 });

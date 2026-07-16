@@ -31,7 +31,9 @@
     "test:i18n": "node tests/i18n-language-check.js",
     "test:recommendations": "node tests/recommendations-architecture-check.js",
     "test:nexo": "node tests/nexo-v2-core-check.mjs && node tests/nexo-v2-architecture-check.js && node tests/nexo-assistant-functional-check.js",
-    "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js"
+    "test:data-boundaries": "node tests/data-boundary-check.js && node tests/multi-account-visibility-check.js",
+    "test:payments": "node tests/mercado-pago-checkout-check.js && node tests/mercado-pago-provider-idempotency-check.js && node tests/mercado-pago-webhook-topic-check.mjs && node tests/mercado-pago-webhook-replay-check.mjs && node tests/mercado-pago-webhook-signature-check.mjs && node tests/pix-purchase-fulfillment-check.mjs",
+    "test:purchases:phase2": "node tests/licensing-system-check.js && node tests/pix-purchase-fulfillment-check.mjs"
   },
   "devDependencies": {
     "playwright": "^1.60.0",

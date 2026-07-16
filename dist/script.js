@@ -12744,27 +12744,19 @@ async function renderPurchases() {
       
       // Contract loading
       let contractText = "";
+      let contractNumber = "";
       if (order && isCompleted) {
         const { data: doc } = await supabaseClient
           .from("license_documents")
-          .select("contract_text")
+          .select("contract_text,contract_number")
           .eq("order_item_id", item.id)
           .maybeSingle();
-        if (doc) contractText = doc.contract_text;
+        if (doc?.contract_text) {
+          contractText = doc.contract_text;
+          contractNumber = doc.contract_number || "";
+        }
       }
-      if (!contractText) {
-        contractText = generateContractText(
-          beatTitle,
-          producerName,
-          item.buyerName,
-          item.licenseName,
-          item.buyerRoyalty || 50,
-          item.producerRoyalty || 50,
-          "Ilimitados",
-          item.filesIncluded || "MP3",
-          new Date(item.createdAt).toLocaleDateString("pt-BR")
-        );
-      }
+      const contractReady = Boolean(contractText && contractNumber);
       
       const contractFileName = `CONTRATO-${orderNum}-${beatTitle.replace(/\s+/g, "_").toUpperCase()}.txt`;
       
@@ -12788,11 +12780,13 @@ async function renderPurchases() {
             </div>
           </div>
           <div class="compras-file-actions">
-            ${isCompleted ? `
+            ${isCompleted && contractReady ? `
               <button type="button" class="compras-btn-download-sm an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))">Visualizar</button>
               <button type="button" class="compras-btn-download-sm an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))">
                 <i data-lucide="download"></i> Baixar
               </button>
+            ` : isCompleted ? `
+              <span class="compras-file-status compras-file-status--locked"><i data-lucide="clock-3"></i> Processando</span>
             ` : `
               <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
             `}

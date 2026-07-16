@@ -2214,6 +2214,9 @@ create table if not exists public.purchase_entitlements (
 
 create index if not exists purchase_entitlements_buyer_status_idx on public.purchase_entitlements (buyer_id, status);
 create index if not exists purchase_entitlements_beat_idx on public.purchase_entitlements (beat_id);
+create unique index if not exists purchase_entitlements_order_item_uidx
+  on public.purchase_entitlements (order_item_id)
+  where order_item_id is not null;
 
 create table if not exists public.license_documents (
   id uuid primary key default gen_random_uuid(),
@@ -2233,6 +2236,7 @@ create table if not exists public.license_documents (
 create index if not exists license_documents_buyer_idx on public.license_documents (buyer_id);
 create index if not exists license_documents_producer_idx on public.license_documents (producer_id);
 create index if not exists license_documents_order_item_idx on public.license_documents (order_item_id);
+create unique index if not exists license_documents_order_item_uidx on public.license_documents (order_item_id);
 
 create table if not exists public.download_logs (
   id uuid primary key default gen_random_uuid(),
@@ -2330,78 +2334,118 @@ end;
 $$;
 
 -- Trigger to automatically create entitlements and generate contracts on completion, and revoke on refund
+create or replace function public.fulfill_completed_order(p_order_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.orders%rowtype;
+  v_item record;
+  v_contract_text text;
+begin
+  select * into v_order
+  from public.orders
+  where id = p_order_id and status = 'completed';
+
+  if not found then return; end if;
+
+  for v_item in
+    select oi.id, oi.beat_id, oi.license_id, oi.license_name_snapshot,
+           oi.files_included_snapshot, oi.buyer_royalty_snapshot,
+           oi.producer_royalty_snapshot, b.user_id as producer_id,
+           b.title as beat_title,
+           coalesce(b.producer_name, p.artistic_name, p.full_name, 'Produtor ANSEND') as producer_name
+    from public.order_items oi
+    join public.beats b on b.id = oi.beat_id
+    left join public.profiles p on p.id = b.user_id
+    where oi.order_id = v_order.id
+  loop
+    insert into public.purchase_entitlements (
+      buyer_id, order_id, order_item_id, beat_id, license_id, status, allowed_files
+    ) values (
+      v_order.buyer_id, v_order.id, v_item.id, v_item.beat_id, v_item.license_id,
+      'active', v_item.files_included_snapshot
+    )
+    on conflict (order_item_id) where order_item_id is not null do update
+    set status = 'active', revoked_at = null, revocation_reason = null,
+        allowed_files = excluded.allowed_files;
+
+    v_contract_text := public.generate_contract_text_sql(
+      v_item.beat_title,
+      v_item.producer_name,
+      v_order.buyer_name,
+      v_item.license_name_snapshot,
+      coalesce(v_item.buyer_royalty_snapshot, 50),
+      coalesce(v_item.producer_royalty_snapshot, 50),
+      'Ilimitados',
+      v_item.files_included_snapshot,
+      to_char(v_order.created_at, 'DD/MM/YYYY'),
+      v_order.id
+    );
+
+    insert into public.license_documents (
+      buyer_id, producer_id, order_id, order_item_id, beat_id, license_id,
+      contract_number, contract_text
+    ) values (
+      v_order.buyer_id, v_item.producer_id, v_order.id, v_item.id,
+      v_item.beat_id, v_item.license_id,
+      'CTR-' || to_char(v_order.created_at, 'YYYYMMDD') || '-' || substring(v_item.id::text from 1 for 8),
+      v_contract_text
+    )
+    on conflict (order_item_id) do nothing;
+  end loop;
+end;
+$$;
+
+revoke execute on function public.fulfill_completed_order(uuid) from public, anon, authenticated;
+grant execute on function public.fulfill_completed_order(uuid) to service_role;
+
 create or replace function public.manage_purchase_entitlements()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  v_item record;
-  v_producer_id uuid;
-  v_beat_title text;
-  v_producer_name text;
-  v_contract_text text;
 begin
-  if new.status = 'completed' and (old.status is null or old.status <> 'completed') then
-    for v_item in 
-      select oi.id, oi.beat_id, oi.license_id, oi.license_name_snapshot, oi.files_included_snapshot, 
-             oi.buyer_royalty_snapshot, oi.producer_royalty_snapshot, oi.license_terms_snapshot,
-             b.user_id as producer_id, b.title as beat_title, 
-             coalesce(b.producer_name, p.artistic_name, p.full_name, 'Produtor ANSEND') as producer_name
-      from public.order_items oi
-      join public.beats b on b.id = oi.beat_id
-      left join public.profiles p on p.id = b.user_id
-      where oi.order_id = new.id
-    loop
-      -- 1. Create access right / entitlement if it doesn't exist
-      insert into public.purchase_entitlements (
-        buyer_id, order_id, order_item_id, beat_id, license_id, status, allowed_files
-      ) values (
-        new.buyer_id, new.id, v_item.id, v_item.beat_id, v_item.license_id, 'active', v_item.files_included_snapshot
-      ) on conflict do nothing;
-
-      -- 2. Create contract document
-      v_contract_text := public.generate_contract_text_sql(
-        v_item.beat_title,
-        v_item.producer_name,
-        new.buyer_name,
-        v_item.license_name_snapshot,
-        coalesce(v_item.buyer_royalty_snapshot, 50),
-        coalesce(v_item.producer_royalty_snapshot, 50),
-        'Ilimitados',
-        v_item.files_included_snapshot,
-        to_char(new.created_at, 'DD/MM/YYYY'),
-        new.id
-      );
-
-      insert into public.license_documents (
-        buyer_id, producer_id, order_id, order_item_id, beat_id, license_id, contract_number, contract_text
-      ) values (
-        new.buyer_id, v_item.producer_id, new.id, v_item.id, v_item.beat_id, v_item.license_id,
-        'CTR-' || to_char(new.created_at, 'YYYYMMDD') || '-' || substring(v_item.id::text from 1 for 8),
-        v_contract_text
-      ) on conflict do nothing;
-    end loop;
-
-  elsif new.status = 'refunded' and old.status = 'completed' then
-    -- Revoke entitlements for this order
+  if new.status = 'completed' and (tg_op = 'INSERT' or old.status <> 'completed') then
+    perform public.fulfill_completed_order(new.id);
+  elsif tg_op = 'UPDATE' and new.status = 'refunded' and old.status = 'completed' then
     update public.purchase_entitlements
-    set status = 'revoked',
-        revoked_at = now(),
-        revocation_reason = 'Payment refunded'
+    set status = 'revoked', revoked_at = now(), revocation_reason = 'Payment refunded'
     where order_id = new.id;
   end if;
-
   return new;
 end;
 $$;
+
+create or replace function public.fulfill_purchase_after_order_item()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.fulfill_completed_order(new.order_id);
+  return new;
+end;
+$$;
+
+revoke execute on function public.manage_purchase_entitlements() from public, anon, authenticated;
+revoke execute on function public.fulfill_purchase_after_order_item() from public, anon, authenticated;
 
 drop trigger if exists manage_purchase_entitlements_trigger on public.orders;
 create trigger manage_purchase_entitlements_trigger
 after insert or update of status on public.orders
 for each row
 execute function public.manage_purchase_entitlements();
+
+drop trigger if exists fulfill_purchase_after_order_item_trigger on public.order_items;
+create trigger fulfill_purchase_after_order_item_trigger
+after insert on public.order_items
+for each row
+execute function public.fulfill_purchase_after_order_item();
 
 -- Beat Stats (Plays & Likes) additions
 alter table public.beats add column if not exists likes_count integer not null default 0;
