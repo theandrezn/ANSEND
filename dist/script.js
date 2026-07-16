@@ -6264,6 +6264,13 @@ function mimeTypeForFile(file = {}) {
   return map[ext] || "application/octet-stream";
 }
 
+function storageContentTypeForFile(file = {}) {
+  const ext = fileExtension(file.name || "").toLowerCase();
+  if (ext === "mp3") return "audio/mpeg";
+  if (ext === "wav") return "audio/wav";
+  return mimeTypeForFile(file);
+}
+
 function chatAttachmentDraft(conversationId = "") {
   return appState.chat.attachmentDrafts[conversationId] || null;
 }
@@ -10360,7 +10367,7 @@ async function uploadStorageFile(file, options = {}) {
   const config = options.config || STORAGE_UPLOAD_LIMITS[options.type || "cover"];
   if (!config) throw new Error("Tipo de upload nao suportado.");
   const ext = validateStorageFile(file, config);
-  const contentType = options.contentType || mimeTypeForFile(file);
+  const contentType = options.contentType || storageContentTypeForFile(file);
   const { user } = await ensureStorageAuthSession({ forceRefresh: Boolean(options.forceRefresh) });
   const safeBase = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ""), config.label);
   const fileId = typeof window.crypto?.randomUUID === "function" ? window.crypto.randomUUID() : generateUUID();
@@ -16077,11 +16084,16 @@ function releaseStorageErrorMessage(error, type) {
   return normalized.message;
 }
 
-function releaseUploadTimeoutMs(type) {
+function releaseUploadTimeoutMs(type, fileSize = 0) {
   if (type === "cover") return 180000;
-  if (type === "audio") return 60000;
-  if (["secure_mp3", "secure_wav", "secure_stems", "stems"].includes(type)) return 180000;
-  return 90000;
+  const baseTimeout = type === "audio" || ["secure_mp3", "secure_wav"].includes(type)
+    ? 180000
+    : ["secure_stems", "stems"].includes(type)
+      ? 180000
+      : 90000;
+  if (!Number.isFinite(Number(fileSize)) || Number(fileSize) <= 0) return baseTimeout;
+  const sizeTimeout = Math.ceil(Number(fileSize) / (1024 * 1024)) * 4000;
+  return Math.min(900000, Math.max(baseTimeout, sizeTimeout));
 }
 
 const RELEASE_DELIVERY_FIELDS = {
@@ -16725,7 +16737,7 @@ async function handleReleaseUpload(file, type, progressCallback) {
   const result = await uploadStorageFile(file, {
     type: configType,
     path,
-    timeoutMs: releaseUploadTimeoutMs(type),
+    timeoutMs: releaseUploadTimeoutMs(type, file.size),
   });
   progressCallback?.(100);
   return {

@@ -5,6 +5,32 @@ const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
 
+function wavFixture() {
+  const sampleRate = 8000;
+  const sampleCount = sampleRate;
+  const buffer = Buffer.alloc(44 + sampleCount * 2);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(buffer.length - 8, 4);
+  buffer.write("WAVEfmt ", 8);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(sampleCount * 2, 40);
+  for (let index = 0; index < sampleCount; index += 1) {
+    buffer.writeInt16LE(Math.round(Math.sin((index / sampleRate) * Math.PI * 2 * 440) * 4000), 44 + index * 2);
+  }
+  return buffer;
+}
+
+function mp3Fixture() {
+  return Buffer.from("SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQDkAAAAAAAAAGw9wrNaQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/+MYxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxDsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxHYAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV", "base64");
+}
+
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -14,10 +40,21 @@ const mimeTypes = {
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
+  ".mp3": "audio/mpeg",
 };
 
 function serveStatic(req, res) {
   const requestPath = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
+  if (requestPath === "/__test__/preview.wav") {
+    res.writeHead(200, { "Content-Type": "audio/wav", "Content-Length": wavFixture().length });
+    res.end(wavFixture());
+    return;
+  }
+  if (requestPath === "/__test__/preview.mp3") {
+    res.writeHead(200, { "Content-Type": "audio/mpeg", "Content-Length": mp3Fixture().length });
+    res.end(mp3Fixture());
+    return;
+  }
   const safePath = requestPath === "/" ? "/index.html" : requestPath;
   const filePath = path.normalize(path.join(root, safePath));
   if (!filePath.startsWith(root)) {
@@ -61,7 +98,7 @@ async function run() {
     server.listen(0, "127.0.0.1", resolve);
   });
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, args: ["--autoplay-policy=no-user-gesture-required"] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
 
@@ -120,7 +157,7 @@ async function run() {
                     window.__releaseUploads.push({ bucket, uploadPath, size: file.size, type: file.type, options });
                     return { data: { path: uploadPath }, error: null };
                   },
-                  getPublicUrl: (uploadPath) => ({ data: { publicUrl: "https://cdn.test/" + uploadPath } })
+                  getPublicUrl: (uploadPath) => ({ data: { publicUrl: location.origin + (uploadPath.endsWith(".wav") ? "/__test__/preview.wav" : uploadPath.endsWith(".mp3") ? "/__test__/preview.mp3" : "/__test__/file") } })
                 })
               }
             })
@@ -147,11 +184,31 @@ async function run() {
       window.setReleaseStep(2, form);
     });
 
-    await attachFile(page, "audio", "preview.mp3", "audio/mpeg");
+    await attachFile(page, "audio", "preview.wav", "audio/vnd.wave");
     await page.waitForFunction(() => Boolean(document.querySelector('input[name="audio_path"]')?.value), null, { timeout: 10000 });
-    await attachFile(page, "secure_mp3", "delivery.mp3", "audio/mpeg");
+    await page.waitForFunction(() => {
+      const player = document.querySelector(".release-audio-player");
+      return player?.readyState >= 1 && Number.isFinite(player.duration) && player.duration > 0;
+    }, null, { timeout: 10000 });
+    await page.evaluate(() => document.querySelector(".release-audio-player").play());
+    await page.waitForFunction(() => document.querySelector(".release-audio-player")?.currentTime > 0.05, null, { timeout: 10000 });
+
+    const wavPreviewPath = await page.locator('input[name="audio_path"]').inputValue();
+    await attachFile(page, "audio", "preview.mp3", "audio/mp3");
+    await page.waitForFunction((previousPath) => {
+      const path = document.querySelector('input[name="audio_path"]')?.value || "";
+      return path && path !== previousPath;
+    }, wavPreviewPath, { timeout: 10000 });
+    await page.waitForFunction(() => {
+      const player = document.querySelector(".release-audio-player");
+      return player?.readyState >= 1 && Number.isFinite(player.duration) && player.duration > 0;
+    }, null, { timeout: 30000 });
+    await page.evaluate(() => document.querySelector(".release-audio-player").play());
+    await page.waitForFunction(() => document.querySelector(".release-audio-player")?.currentTime > 0.01, null, { timeout: 10000 });
+
+    await attachFile(page, "secure_mp3", "delivery.mp3", "audio/mp3");
     await page.waitForFunction(() => Boolean(document.querySelector('input[name="mp3_path"]')?.value), null, { timeout: 10000 });
-    await attachFile(page, "secure_wav", "master.wav", "audio/wav");
+    await attachFile(page, "secure_wav", "master.wav", "application/octet-stream");
     await page.waitForFunction(() => Boolean(document.querySelector('input[name="wav_path"]')?.value), null, { timeout: 10000 });
     await attachFile(page, "secure_stems", "stems.zip", "application/zip");
     await page.waitForFunction(() => Boolean(document.querySelector('input[name="stems_path"]')?.value), null, { timeout: 10000 });
@@ -165,6 +222,7 @@ async function run() {
         stemsPath: form.elements.stems_path.value,
         mp3Name: form.elements.mp3_original_name.value,
         wavMime: form.elements.wav_mime_type.value,
+        previewMime: form.elements.audio_mime_type.value,
         stemsMime: form.elements.stems_mime_type.value,
         stepValid: window.validateReleaseStep(2),
         uploads: window.__releaseUploads,
@@ -181,9 +239,14 @@ async function run() {
     if (!result.stemsPath.includes("/beat-secure-files/")) throw new Error(`Stems secure path not saved correctly: ${result.stemsPath}`);
     if (result.mp3Name !== "delivery.mp3") throw new Error("MP3 original file name was not persisted.");
     if (result.wavMime !== "audio/wav") throw new Error("WAV MIME type was not persisted.");
+    if (result.previewMime !== "audio/mpeg") throw new Error("MP3 preview MIME type was not normalized.");
     if (result.stemsMime !== "application/zip") throw new Error("ZIP MIME type was not persisted.");
     if (!result.stepValid) throw new Error("Release files step is still blocked after confirmed uploads.");
     if (result.uploads.filter((upload) => upload.bucket === "beat-secure-files").length !== 3) throw new Error("Secure files were not uploaded to beat-secure-files.");
+    const wavUploads = result.uploads.filter((upload) => upload.uploadPath.endsWith(".wav"));
+    const mp3Uploads = result.uploads.filter((upload) => upload.uploadPath.endsWith(".mp3"));
+    if (!wavUploads.length || wavUploads.some((upload) => upload.options.contentType !== "audio/wav")) throw new Error("WAV uploads were not normalized to audio/wav.");
+    if (!mp3Uploads.length || mp3Uploads.some((upload) => upload.options.contentType !== "audio/mpeg")) throw new Error("MP3 uploads were not normalized to audio/mpeg.");
     if (!result.drafts.some((draft) => draft.payload?.mp3_path)
       || !result.drafts.some((draft) => draft.payload?.wav_path)
       || !result.drafts.some((draft) => draft.payload?.stems_path)) {

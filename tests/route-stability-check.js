@@ -24,7 +24,7 @@ const routes = [
   { hash: "nexo-feed", required: ["NEXO IA"], selector: ".nexo-feed-page" },
   { hash: "explorar", required: ["Explore"], selector: ".genre-banner-section" },
   { hash: "favoritos", required: ["Favoritos"], selector: ".view-header-favoritos" },
-  { hash: "biblioteca", required: ["Biblioteca"], selector: ".view-header-biblioteca" },
+  { hash: "biblioteca", required: ["Playlists"], selector: ".curator-dashboard-page" },
   { hash: "produtores", required: ["Profissionais"], selector: ".view-header-produtores" },
   { hash: "comunidade", required: ["Comunidade ANSEND"], selector: ".hiring-page" },
   { hash: "contratacoes", required: ["Comunidade ANSEND"], selector: ".hiring-page" },
