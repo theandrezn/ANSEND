@@ -12405,7 +12405,7 @@ async function loadUserPurchases() {
     if (missingBeatIds.length > 0) {
       const { data: fetchedBeats } = await supabaseClient
         .from("beats")
-        .select("id,title,cover,user_id,producer_name,genre,bpm,key,tags,audio_path,mp3_path,wav_path,stems_path,status")
+        .select("id,title,cover,user_id,producer_name,genre,bpm,key,tags,audio_path,mp3_path,wav_path,stems_path,license_pdf_path,status")
         .in("id", missingBeatIds);
 
       if (fetchedBeats) {
@@ -12766,8 +12766,12 @@ async function renderPurchases() {
         }
       }
       const contractReady = Boolean(contractText && contractNumber);
+      const uploadedLicensePdfReady = Boolean(beat.license_pdf_path);
       
       const contractFileName = `CONTRATO-${orderNum}-${beatTitle.replace(/\s+/g, "_").toUpperCase()}.txt`;
+      const downloadScopeAttrs = item.orderId && item.id
+        ? `data-order-id="${htmlEscape(item.orderId)}" data-order-item-id="${htmlEscape(item.id)}"`
+        : "";
       
       // Downloads section
       let downloadsHtml = "";
@@ -12785,14 +12789,19 @@ async function renderPurchases() {
             </div>
             <div>
               <span class="compras-file-name">Contrato de Licença</span>
-              <span class="compras-file-meta">Documento legal oficial (.txt)</span>
+              <span class="compras-file-meta">${uploadedLicensePdfReady ? "Documento em PDF enviado pelo produtor" : "Documento legal oficial (.txt)"}</span>
             </div>
           </div>
           <div class="compras-file-actions">
-            ${isCompleted && contractReady ? `
+            ${isCompleted && uploadedLicensePdfReady ? `
+              ${contractReady ? `<button type="button" class="compras-btn-download-sm an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))">Visualizar termos</button>` : ""}
+              <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="license_pdf" ${downloadScopeAttrs}>
+                <i data-lucide="download"></i> Baixar PDF
+              </button>
+            ` : isCompleted && contractReady ? `
               <button type="button" class="compras-btn-download-sm an-secondary" onclick="openContractModal(decodeURIComponent('${encodeURIComponent(contractText)}'))">Visualizar</button>
               <button type="button" class="compras-btn-download-sm an-primary" onclick="downloadContractTextFile('${contractFileName}', decodeURIComponent('${encodeURIComponent(contractText)}'))">
-                <i data-lucide="download"></i> Baixar
+                <i data-lucide="download"></i> Baixar TXT
               </button>
             ` : isCompleted ? `
               <span class="compras-file-status compras-file-status--locked"><i data-lucide="clock-3"></i> Processando</span>
@@ -12817,11 +12826,15 @@ async function renderPurchases() {
               </div>
             </div>
             <div class="compras-file-actions">
-              ${isCompleted ? `
-                <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3">
-                  <i data-lucide="download"></i> Baixar MP3
-                </button>
-              ` : `
+              ${isCompleted ? (
+                beat.mp3_path ? `
+                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="mp3" ${downloadScopeAttrs}>
+                    <i data-lucide="download"></i> Baixar MP3
+                  </button>
+                ` : `
+                  <span class="compras-file-status compras-file-status--preparing"><i data-lucide="loader-circle" class="animate-spin" style="width:12px; height:12px; display:inline-block;"></i> Preparando</span>
+                `
+              ) : `
                 <span class="compras-file-status compras-file-status--locked"><i data-lucide="lock"></i> Bloqueado</span>
               `}
             </div>
@@ -12844,8 +12857,8 @@ async function renderPurchases() {
             </div>
             <div class="compras-file-actions">
               ${isCompleted ? (
-                (beat.wav_path || beat.audio_path) ? `
-                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav">
+                beat.wav_path ? `
+                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="wav" ${downloadScopeAttrs}>
                     <i data-lucide="download"></i> Baixar WAV
                   </button>
                 ` : `
@@ -12875,7 +12888,7 @@ async function renderPurchases() {
             <div class="compras-file-actions">
               ${isCompleted ? (
                 beat.stems_path ? `
-                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems">
+                  <button type="button" class="compras-btn-download-sm an-primary" data-action="download-secure-file" data-beat-id="${item.beatId}" data-file-type="stems" ${downloadScopeAttrs}>
                     <i data-lucide="download"></i> Baixar Stems
                   </button>
                 ` : `
@@ -23336,7 +23349,7 @@ document.addEventListener("click", async (event) => {
   if (action === "download-secure-file") {
     const beatId = target.dataset.beatId;
     const fileType = target.dataset.fileType;
-    downloadPurchasedFile(beatId, fileType);
+    downloadPurchasedFile(beatId, fileType, target.dataset.orderId, target.dataset.orderItemId);
     return;
   }
   if (action === "view-purchased-contract") {
@@ -26197,7 +26210,7 @@ function openContractModal(text) {
   lucide.createIcons();
 }
 
-async function downloadPurchasedFile(beatId, fileType) {
+async function downloadPurchasedFile(beatId, fileType, orderId = "", orderItemId = "") {
   const session = supabaseClient?.auth?.session?.() || (await supabaseClient?.auth?.getSession?.())?.data?.session;
   if (!session) {
     showToast("Você precisa estar logado para baixar arquivos.", "triangle-alert");
@@ -26205,7 +26218,10 @@ async function downloadPurchasedFile(beatId, fileType) {
   }
   showToast("Gerando link de download seguro...", "loader");
   try {
-    const response = await fetch(`/api/orders/download?beat_id=${beatId}&file_type=${fileType}`, {
+    const params = new URLSearchParams({ beat_id: beatId, file_type: fileType });
+    if (orderId) params.set("order_id", orderId);
+    if (orderItemId) params.set("order_item_id", orderItemId);
+    const response = await fetch(`/api/orders/download?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }

@@ -1732,14 +1732,26 @@ async function handleOrderDownload(request, env) {
 
   const url = new URL(request.url);
   const beatId = url.searchParams.get("beat_id");
-  const fileType = url.searchParams.get("file_type")?.toLowerCase(); // 'mp3', 'wav', or 'stems'
+  const fileType = url.searchParams.get("file_type")?.toLowerCase();
+  const orderId = url.searchParams.get("order_id") || "";
+  const orderItemId = url.searchParams.get("order_item_id") || "";
 
-  if (!isUuid(beatId) || !["mp3", "wav", "stems"].includes(fileType)) {
+  if (!isUuid(beatId)
+    || !["mp3", "wav", "stems", "license_pdf"].includes(fileType)
+    || (orderId && !isUuid(orderId))
+    || (orderItemId && !isUuid(orderItemId))) {
     return jsonResponse({ success: false, error: "Parametros invalidos." }, { status: 400 });
   }
 
   // 1. Verify active entitlement for this user, beat, and file type
-  const entitlementsResponse = await supabaseRest(env, `purchase_entitlements?select=id,status,allowed_files,order_id,order_item_id&buyer_id=eq.${auth.user.id}&beat_id=eq.${beatId}&status=eq.active`);
+  const entitlementFilters = [
+    `buyer_id=eq.${auth.user.id}`,
+    `beat_id=eq.${beatId}`,
+    "status=eq.active",
+  ];
+  if (orderId) entitlementFilters.push(`order_id=eq.${orderId}`);
+  if (orderItemId) entitlementFilters.push(`order_item_id=eq.${orderItemId}`);
+  const entitlementsResponse = await supabaseRest(env, `purchase_entitlements?select=id,status,allowed_files,order_id,order_item_id&${entitlementFilters.join("&")}&limit=1`);
   if (entitlementsResponse.error) {
     return jsonResponse({ success: false, error: "Erro ao verificar permissao de download." }, { status: 500 });
   }
@@ -1755,13 +1767,14 @@ async function handleOrderDownload(request, env) {
   if (fileType === "mp3" && /mp3/i.test(filesIncluded)) isAuthorized = true;
   if (fileType === "wav" && /wav/i.test(filesIncluded)) isAuthorized = true;
   if (fileType === "stems" && /stem|zip/i.test(filesIncluded)) isAuthorized = true;
+  if (fileType === "license_pdf") isAuthorized = true;
 
   if (!isAuthorized) {
     return jsonResponse({ success: false, error: "Este formato de arquivo nao esta incluido na sua licenca." }, { status: 403 });
   }
 
   // 2. Fetch the beat path from the database
-  const beatResponse = await supabaseRest(env, `beats?select=id,user_id,audio_path,stems_path,mp3_path,wav_path&id=eq.${beatId}`);
+  const beatResponse = await supabaseRest(env, `beats?select=id,user_id,audio_path,stems_path,mp3_path,wav_path,license_pdf_path&id=eq.${beatId}`);
   if (beatResponse.error || !beatResponse.data?.length) {
     return jsonResponse({ success: false, error: "Beat nao encontrado." }, { status: 404 });
   }
@@ -1771,14 +1784,17 @@ async function handleOrderDownload(request, env) {
   let filePath = "";
 
   if (fileType === "mp3") {
-    filePath = beat.mp3_path || beat.audio_path;
-    bucket = beat.mp3_path ? "beat-secure-files" : "beat-audio";
+    filePath = beat.mp3_path;
+    bucket = "beat-secure-files";
   } else if (fileType === "wav") {
-    filePath = beat.wav_path || beat.audio_path;
-    bucket = beat.wav_path ? "beat-secure-files" : "beat-audio";
+    filePath = beat.wav_path;
+    bucket = "beat-secure-files";
   } else if (fileType === "stems") {
     filePath = beat.stems_path;
     bucket = (beat.stems_path && beat.stems_path.includes("secure")) ? "beat-secure-files" : "beat-stems";
+  } else if (fileType === "license_pdf") {
+    filePath = beat.license_pdf_path;
+    bucket = "beat-secure-files";
   }
 
   if (!filePath) {

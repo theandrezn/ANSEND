@@ -2265,12 +2265,17 @@ create table if not exists public.download_logs (
   order_id uuid references public.orders(id) on delete cascade,
   order_item_id uuid references public.order_items(id) on delete cascade,
   beat_id uuid references public.beats(id) on delete cascade,
-  file_type text not null check (file_type in ('mp3', 'wav', 'stems')),
+  file_type text not null check (file_type in ('mp3', 'wav', 'stems', 'license_pdf')),
   ip_address text,
   user_agent text,
   success boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table public.download_logs drop constraint if exists download_logs_file_type_check;
+alter table public.download_logs
+  add constraint download_logs_file_type_check
+  check (file_type in ('mp3', 'wav', 'stems', 'license_pdf'));
 
 create index if not exists download_logs_buyer_idx on public.download_logs (buyer_id);
 create index if not exists download_logs_beat_idx on public.download_logs (beat_id);
